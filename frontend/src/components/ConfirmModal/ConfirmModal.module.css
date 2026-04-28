@@ -1,0 +1,65 @@
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 24px;
+}
+
+.mensagem {
+  font-size: 14px;
+  color: var(--sc-text-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.acoes {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.btnCancelar {
+  padding: 9px 18px;
+  background-color: #F5F5F7;
+  color: #1D1D1F;
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.btnCancelar:hover {
+  background-color: #E5E5EA;
+}
+
+.btnConfirmar {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.btnConfirmar_perigo {
+  background-color: #F5F5F7;
+  color: #FF3B30;
+}
+
+.btnConfirmar_perigo:hover {
+  background-color: #FFF0EF;
+}
+
+.btnConfirmar_neutro {
+  background-color: #1D1D1F;
+  color: #FFFFFF;
+}
+
+.btnConfirmar_neutro:hover {
+  background-color: #3D3D3F;
+}

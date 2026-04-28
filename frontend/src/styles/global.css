@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════════
+   SmartCut — Design System Global (Apple Style)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Aliases legados → sc-tokens ── */
+  --color-primary:        var(--sc-action);
+  --color-primary-hover:  var(--sc-action-hover);
+  --color-bg:             var(--sc-bg-secondary);
+  --color-surface:        var(--sc-surface);
+  --color-border:         var(--sc-border);
+  --color-text:           var(--sc-text-primary);
+  --color-text-muted:     var(--sc-text-secondary);
+
+  --color-accent:         var(--sc-action);
+  --color-accent-hover:   var(--sc-action-hover);
+  --color-accent-light:   var(--sc-bg-secondary);
+  --color-accent-border:  var(--sc-border);
+
+  --color-danger:         var(--sc-danger-text);
+  --color-danger-hover:   var(--sc-danger-text);
+  --color-danger-light:   var(--sc-danger-bg);
+
+  --color-success:        var(--sc-success-text);
+  --color-success-light:  var(--sc-success-bg);
+  --color-warning:        var(--sc-text-secondary);
+  --color-warning-light:  var(--sc-bg-secondary);
+
+  /* ── Escala de cinzas → sc-tokens ── */
+  --color-black:      var(--sc-text-primary);
+  --color-white:      var(--sc-surface);
+  --color-gray-50:    var(--sc-bg-secondary);
+  --color-gray-100:   var(--sc-bg-secondary);
+  --color-gray-200:   #E8E8ED;
+  --color-gray-300:   #E8E8ED;
+  --color-gray-400:   #E8E8ED;
+  --color-gray-500:   var(--sc-text-muted);
+  --color-gray-600:   var(--sc-text-secondary);
+  --color-gray-700:   #3D3D3F;
+  --color-gray-800:   #2C2C2E;
+  --color-gray-900:   var(--sc-text-primary);
+
+  /* ── Forma ── */
+  --radius:    var(--sc-radius-sm);
+  --radius-lg: var(--sc-radius-md);
+  --radius-xl: var(--sc-radius-lg);
+
+  /* ── Sombra ── */
+  --shadow:    0 2px 8px rgba(0,0,0,0.05), 0 0 0 1px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  --shadow-lg: 0 24px 80px rgba(0,0,0,0.2);
+
+  /* ── Tipografia ── */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+               "Inter", "Segoe UI", Roboto, sans-serif;
+}
+
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--sc-text-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }

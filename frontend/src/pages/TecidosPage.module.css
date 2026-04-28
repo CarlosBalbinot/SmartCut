@@ -1,0 +1,421 @@
+/* ── Cabeçalho ── */
+.headerAcoes {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btnHistorico {
+  padding: 9px 18px;
+  background-color: #F5F5F7;
+  color: #1D1D1F;
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btnHistorico:hover {
+  background-color: #E5E5EA;
+}
+
+/* ── Lista principal ── */
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vazio {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--sc-text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+
+/* ── Modelo accordion ── */
+.modeloCard {
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.modeloHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s;
+}
+
+.modeloHeader:hover {
+  background-color: #FBFBFD;
+}
+
+.modeloLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chevron {
+  font-size: 1.05rem;
+  color: var(--sc-text-muted);
+  transition: transform 0.15s;
+  display: inline-block;
+  line-height: 1;
+}
+
+.chevronAberto {
+  transform: rotate(90deg);
+}
+
+.chevronSm {
+  font-size: 0.9rem;
+}
+
+.modeloNome {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.modeloTipo {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  background-color: #F5F5F7;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.modeloCores {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+.modeloAcoes {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.modeloHeader:hover .modeloAcoes {
+  opacity: 1;
+}
+
+/* ── Cor accordion ── */
+.coresList {
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 8px 0 4px 0;
+}
+
+.corCard {
+  margin: 0 8px 4px 28px;
+  border-radius: var(--sc-radius-sm);
+  overflow: hidden;
+  background-color: #FBFBFD;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.corHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.1s;
+}
+
+.corHeader:hover {
+  background-color: #F5F5F7;
+}
+
+.corLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.corNome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.corSpec {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+.corEncolhimento {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  background: #E8E8ED;
+  padding: 1px 6px;
+  border-radius: 100px;
+}
+
+.corLotes {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+.corAcoes {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.corHeader:hover .corAcoes {
+  opacity: 1;
+}
+
+/* ── Lotes ── */
+.lotesList {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.loteRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px 8px 36px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  transition: background-color 0.1s;
+}
+
+.loteRow:last-child {
+  border-bottom: none;
+}
+
+.loteRow:hover {
+  background-color: #FBFBFD;
+}
+
+.loteCritico {
+  background-color: var(--sc-danger-bg);
+}
+
+.loteCritico:hover {
+  background-color: var(--sc-danger-bg);
+  filter: brightness(0.98);
+}
+
+.loteLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.loteCodigo {
+  font-size: 13px;
+  font-weight: 600;
+  font-family: monospace;
+  color: var(--sc-text-primary);
+  min-width: 52px;
+}
+
+.loteKg {
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.alertaIcon {
+  color: var(--sc-danger-text);
+  font-size: 13px;
+}
+
+.loteValor {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.loteData {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.loteAcoes {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.loteRow:hover .loteAcoes {
+  opacity: 1;
+}
+
+/* ── Badges de status ── */
+.badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.badge_intacto {
+  background-color: #F5F5F7;
+  color: #6E6E73;
+}
+
+.badge_aberto {
+  background-color: var(--sc-info-bg);
+  color: var(--sc-info-text);
+}
+
+.badge_critico {
+  background-color: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
+
+.badgeArquivado,
+.badge_arquivado {
+  background-color: #F5F5F7;
+  color: #AEAEB2;
+}
+
+.badge_esgotado {
+  background-color: #F5F5F7;
+  color: #AEAEB2;
+}
+
+/* ── Botões de ação ── */
+.btnAcao {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #F5F5F7;
+  color: var(--sc-text-primary);
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.1s;
+}
+
+.btnAcao:hover {
+  background-color: #E5E5EA;
+}
+
+.btnAcaoSm {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background-color: #F5F5F7;
+  color: var(--sc-text-primary);
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.1s;
+}
+
+.btnAcaoSm:hover {
+  background-color: #E5E5EA;
+}
+
+.btnPerigo {
+  color: var(--sc-danger-text);
+}
+
+.btnPerigo:hover {
+  background-color: var(--sc-danger-bg) !important;
+}
+
+.btnArquivar {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: none;
+  color: var(--sc-text-muted);
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.btnArquivar:hover {
+  background-color: #F5F5F7;
+  color: var(--sc-text-primary);
+}
+
+.btnLink {
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  font-size: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btnLink:hover {
+  color: var(--sc-text-primary);
+}
+
+/* ── Mensagens sem itens ── */
+.semCores,
+.semLotes {
+  padding: 12px 16px;
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ── Modal histórico ── */
+.vazioModal {
+  text-align: center;
+  color: var(--sc-text-muted);
+  padding: 24px 0;
+  font-size: 13px;
+}
+
+.tabelaHistorico {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.linhaHistorico {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.linhaHistorico:last-child {
+  border-bottom: none;
+}
+
+.codigoLote {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 13px;
+  min-width: 60px;
+  color: var(--sc-text-primary);
+}
+
+.pesoHistorico {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  flex: 1;
+}

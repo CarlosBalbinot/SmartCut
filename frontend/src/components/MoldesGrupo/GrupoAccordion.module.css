@@ -1,0 +1,162 @@
+.grupo {
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+/* ── Cabeçalho ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s;
+}
+
+.header:hover {
+  background-color: #FBFBFD;
+}
+
+.seta {
+  font-size: 1.05rem;
+  color: var(--sc-text-muted);
+  transition: transform 0.18s;
+  display: inline-block;
+  line-height: 1;
+}
+
+.setaAberta {
+  transform: rotate(90deg);
+}
+
+.nomeGrupo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  flex: 1;
+}
+
+.contagem {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+}
+
+.btnDeletar {
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 50%;
+  line-height: 1;
+  transition: color 0.12s, background-color 0.12s;
+}
+
+.btnDeletar:hover {
+  color: var(--sc-danger-text);
+  background-color: var(--sc-danger-bg);
+}
+
+/* ── Corpo expandido ── */
+.corpo {
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 0 0 8px;
+}
+
+/* ── Parte (Frente, Costa...) ── */
+.parte {
+  padding: 10px 16px 0;
+}
+
+.parte + .parte {
+  border-top: 1px solid rgba(0,0,0,0.04);
+  margin-top: 6px;
+  padding-top: 12px;
+}
+
+.parteHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.parteNome {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.parteMeta {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+/* ── Lista de moldes ── */
+.moldesList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.moldeRow {
+  display: grid;
+  grid-template-columns: 42px 1fr 90px 70px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: var(--sc-radius-sm);
+  transition: background-color 0.1s;
+}
+
+.moldeRow:hover {
+  background-color: #FBFBFD;
+}
+
+.tamanhoTag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background-color: #F5F5F7;
+  color: var(--sc-text-secondary);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.moldeNome {
+  font-size: 13px;
+  color: var(--sc-text-primary);
+}
+
+.moldeArea {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.btnEditar {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background-color: #F5F5F7;
+  color: var(--sc-text-secondary);
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.btnEditar:hover {
+  background-color: #E5E5EA;
+  color: var(--sc-text-primary);
+}

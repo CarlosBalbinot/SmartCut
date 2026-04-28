@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(node -e ':*)",
+      "Bash(npm install:*)",
+      "Bash(node nesting/nest_worker.js)",
+      "Bash(alembic upgrade:*)",
+      "Bash(python -c \"from models.tecido import ModeloTecido, CorTecido, LoteTecido, ConsumoLote, Tecido; print\\('models OK'\\)\")",
+      "Bash(python -c \"from models.pedido import Pedido, PedidoTecido, PedidoPeca; print\\('pedido models OK'\\)\")",
+      "Bash(python -c \"from services.modelo_service import listar; from services.cor_service import listar_por_modelo; from services.lote_service import proximo_codigo; print\\('services OK'\\)\")",
+      "Bash(python -c \"from routers.modelos_tecido import router; from routers.cores_tecido import router; from routers.lotes_tecido import router; print\\('routers OK'\\)\")",
+      "Bash(python -c \"from main import app; print\\('main OK'\\)\")",
+      "Bash(python -c \"from services.pedido_service import listar, obter_detalhe; print\\('pedido_service OK'\\)\")",
+      "Bash(python -m alembic revision --autogenerate -m \"precificacao\")",
+      "Bash(alembic revision *)",
+      "Bash(python -c \"from routers.precificacoes import router; from services.precificacao_service import calcular_precificacao, get_ou_criar_custos; from schemas.precificacao_schema import ConfiguracaoCustosFixosOut; print\\('OK'\\)\")",
+      "Bash(python -m py_compile models/precificacao.py schemas/precificacao_schema.py services/precificacao_service.py routers/precificacoes.py)",
+      "Bash(node -e ' *)",
+      "Bash(npm run *)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

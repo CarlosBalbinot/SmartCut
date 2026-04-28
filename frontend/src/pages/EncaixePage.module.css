@@ -1,0 +1,276 @@
+/* ── Layout ── */
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+}
+
+.erroMsg {
+  color: var(--sc-danger-text);
+  font-size: 13px;
+  padding: 12px 0;
+}
+
+.vazio {
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ── Barra superior ── */
+.topBar {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: -4px;
+}
+
+.topBarCenter { flex: 1; }
+
+.voltar {
+  background: none;
+  border: none;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  padding-top: 4px;
+}
+
+.voltar:hover { color: var(--sc-text-primary); }
+
+.titulo {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitulo {
+  font-size: 13px;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.btnPdf {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  background-color: #1D1D1F;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.btnPdf:hover:not(:disabled) { background-color: #3D3D3F; transform: scale(1.01); }
+.btnPdf:disabled { opacity: 0.55; cursor: wait; }
+
+/* ── Cards de resumo ── */
+.cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-radius: var(--sc-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 22px;
+  flex: 1;
+  min-width: 130px;
+  background-color: var(--sc-surface);
+  border-right: 1px solid rgba(0,0,0,0.06);
+}
+
+.card:last-child { border-right: none; }
+
+.cardDestaque { background-color: #1D1D1F; }
+.cardBom      { background-color: var(--sc-success-bg); }
+.cardAlerta   { background-color: var(--sc-danger-bg); }
+
+.cardLabel {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--sc-text-muted);
+}
+
+.cardValor {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+}
+
+.cardSub {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.cardDestaque .cardLabel { color: rgba(255,255,255,0.5); }
+.cardDestaque .cardValor { color: #FFFFFF; }
+.cardDestaque .cardSub   { color: rgba(255,255,255,0.4); }
+.cardBom .cardLabel      { color: var(--sc-success-text); opacity: 0.7; }
+.cardBom .cardValor      { color: var(--sc-success-text); }
+.cardAlerta .cardLabel   { color: var(--sc-danger-text); opacity: 0.7; }
+.cardAlerta .cardValor   { color: var(--sc-danger-text); }
+
+/* ── Seção de enfesto ── */
+.enfesto {
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.enfestoHeader {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  background-color: #FBFBFD;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.enfestoTopo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badgeTecido {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 6px;
+  background-color: #F5F5F7;
+  color: var(--sc-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.enfestoNum {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.enfestoInstrucoes {
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.desperdicioBom    { color: var(--sc-success-text); font-weight: 600; }
+.desperdicioAlerta { color: var(--sc-danger-text); font-weight: 600; }
+
+/* ── Corpo do enfesto ── */
+.enfestoBody {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+@media (max-width: 860px) {
+  .enfestoBody { grid-template-columns: 1fr; }
+}
+
+/* ── Lista de peças ── */
+.pecasList {
+  padding: 16px 18px;
+  border-right: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .pecasList { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.06); }
+}
+
+.pecasTitle {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+  margin: 0 0 4px 0;
+}
+
+.pecaItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pecaCor {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.pecaLabel {
+  flex: 1;
+  color: var(--sc-text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pecaTamanho {
+  display: inline-block;
+  background-color: #F5F5F7;
+  color: var(--sc-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.pecaQtd {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  flex-shrink: 0;
+}
+
+.semDados {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+/* ── Visualizador ── */
+.visualizadorWrap {
+  padding: 16px;
+  min-width: 0;
+}

@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════════════════════
+   SmartCut — Design Tokens (Apple Style)
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  /* ── Superfícies ── */
+  --sc-bg: #FFFFFF;
+  --sc-bg-secondary: #F5F5F7;
+  --sc-bg-tertiary: #FBFBFD;
+  --sc-surface: #FFFFFF;
+  --sc-surface-hover: #F5F5F7;
+
+  /* ── Bordas ── */
+  --sc-border: rgba(0,0,0,0.08);
+  --sc-border-strong: rgba(0,0,0,0.15);
+
+  /* ── Texto ── */
+  --sc-text-primary: #1D1D1F;
+  --sc-text-secondary: #6E6E73;
+  --sc-text-muted: #AEAEB2;
+
+  /* ── Ação primária ── */
+  --sc-action: #1D1D1F;
+  --sc-action-hover: #3D3D3F;
+  --sc-action-text: #FFFFFF;
+
+  /* ── Raios ── */
+  --sc-radius-sm: 10px;
+  --sc-radius-md: 14px;
+  --sc-radius-lg: 20px;
+  --sc-radius-xl: 28px;
+
+  /* ── Status semânticos ── */
+  --sc-danger-bg: #FFF0EF;
+  --sc-danger-text: #FF3B30;
+  --sc-danger-border: rgba(255,59,48,0.2);
+
+  --sc-success-bg: #E8F8E8;
+  --sc-success-text: #1A7F37;
+  --sc-success-border: rgba(26,127,55,0.2);
+
+  --sc-info-bg: #E8F4FD;
+  --sc-info-text: #0071E3;
+  --sc-info-border: rgba(0,113,227,0.2);
+
+  /* ── Aliases legados → novos tokens ── */
+  --sc-50: #F5F5F7;
+  --sc-100: #F5F5F7;
+  --sc-200: #E8E8ED;
+  --sc-400: #E8E8ED;
+  --sc-500: #AEAEB2;
+  --sc-600: #6E6E73;
+  --sc-700: #3D3D3F;
+  --sc-800: #2C2C2E;
+  --sc-900: #1D1D1F;
+  --sc-surface-raised: #F5F5F7;
+}

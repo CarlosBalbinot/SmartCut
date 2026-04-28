@@ -1,0 +1,186 @@
+/* ── Layout raiz ── */
+.layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ══ SIDEBAR ══════════════════════════════════════════════════ */
+.sidebar {
+  width: 220px;
+  background-color: #FFFFFF;
+  border-right: 1px solid var(--sc-border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.logoWrap {
+  padding: 28px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.logo {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1D1D1F;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.logoSub {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #AEAEB2;
+  line-height: 1;
+}
+
+/* ── Seções ── */
+.section {
+  padding-top: 4px;
+}
+
+.sectionLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #AEAEB2;
+  padding: 16px 16px 4px;
+  line-height: 1;
+}
+
+.navList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── Links de navegação ── */
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 1px 10px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 14px;
+  font-weight: 400;
+  color: #6E6E73;
+  transition: background 0.12s, color 0.12s;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  background-color: #F5F5F7;
+  color: #1D1D1F;
+  text-decoration: none;
+}
+
+.navLinkActive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin: 1px 10px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: #1D1D1F;
+  background-color: #F0F0F5;
+  text-decoration: none;
+}
+
+.navLinkActive:hover { text-decoration: none; }
+
+.navIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: inherit;
+}
+
+/* ── Badge contador ── */
+.navBadge {
+  margin-left: auto;
+  background: #E5E5EA;
+  color: #6E6E73;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+
+/* ── Rodapé sidebar ── */
+.sidebarFooter {
+  margin-top: auto;
+  padding: 16px 20px;
+  border-top: 1px solid var(--sc-border);
+}
+
+.versao {
+  font-size: 11px;
+  color: #AEAEB2;
+}
+
+/* ══ ÁREA PRINCIPAL ════════════════════════════════════════════ */
+.mainArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background-color: var(--sc-bg-secondary);
+}
+
+.content {
+  flex: 1;
+  padding: 28px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* ══ BANNER DE ALERTA ══════════════════════════════════════════ */
+.alertaBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background-color: var(--sc-danger-bg);
+  border-bottom: 1px solid var(--sc-danger-border);
+  font-size: 13px;
+  color: var(--sc-danger-text);
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.alertaBannerLink {
+  font-weight: 600;
+  color: var(--sc-danger-text);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.alertaBannerFechar {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-danger-text);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 4px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.alertaBannerFechar:hover { opacity: 1; }

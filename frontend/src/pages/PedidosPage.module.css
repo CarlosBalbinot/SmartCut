@@ -1,0 +1,204 @@
+.numPedido {
+  font-weight: 600;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+}
+
+.totalGrupos {
+  color: var(--sc-text-muted);
+  font-size: 13px;
+}
+
+/* ── Linha de tabela ── */
+.linhaTabela {
+  cursor: default;
+}
+
+.linhaTabela:hover {
+  background-color: #FBFBFD;
+}
+
+/* ── Badges de status ── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge_cinza {
+  background-color: #F5F5F7;
+  color: #6E6E73;
+}
+
+.badge_azul {
+  background-color: var(--sc-info-bg);
+  color: var(--sc-info-text);
+}
+
+.badge_verde {
+  background-color: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+
+/* ── Célula de ações ── */
+.acoesCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* ── Botão Abrir ── */
+.btnAbrir {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #1D1D1F;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+  white-space: nowrap;
+}
+
+.btnAbrir:hover {
+  background-color: #3D3D3F;
+}
+
+/* ── Menu ⋮ ── */
+.menuWrapper {
+  display: inline-block;
+}
+
+.btnMenu {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: var(--sc-text-secondary);
+  transition: background-color 0.1s, color 0.1s;
+  line-height: 1;
+}
+
+.btnMenu:hover {
+  background-color: #F5F5F7;
+  color: var(--sc-text-primary);
+}
+
+.dropdown {
+  position: fixed;
+  z-index: 9999;
+  background-color: #FFFFFF;
+  border-radius: var(--sc-radius-md);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  min-width: 170px;
+  padding: 6px 0;
+  animation: dropEntrar 0.12s ease;
+}
+
+@keyframes dropEntrar {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  padding: 9px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+  transition: background-color 0.1s;
+  white-space: nowrap;
+}
+
+.dropdownItem:hover {
+  background-color: #F5F5F7;
+}
+
+.dropdownItemPerigo {
+  color: var(--sc-danger-text);
+}
+
+.dropdownItemPerigo:hover {
+  background-color: var(--sc-danger-bg);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background-color: rgba(0,0,0,0.06);
+  margin: 4px 0;
+}
+
+/* ── Checkboxes de tecidos no modal ── */
+.checkboxGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: var(--sc-radius-sm);
+  padding: 8px;
+  background-color: #F5F5F7;
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.checkboxItem:hover {
+  background-color: #E5E5EA;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #1D1D1F;
+}
+
+.checkboxLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.checkboxNome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.checkboxMeta {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+.semTecidos {
+  font-size: 13px;
+  color: var(--sc-text-muted);
+  font-style: italic;
+  margin: 0;
+}

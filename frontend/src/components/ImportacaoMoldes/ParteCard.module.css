@@ -1,0 +1,209 @@
+.card {
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+/* ── Cabeçalho ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.parteNum {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.nomeInput {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  background-color: #F5F5F7;
+  color: var(--sc-text-primary);
+  outline: none;
+  font-family: inherit;
+  transition: box-shadow 0.15s;
+}
+
+.nomeInput:focus {
+  box-shadow: 0 0 0 3px rgba(0,125,250,0.3);
+}
+
+/* ── Miniaturas de tamanhos ── */
+.tamanhos {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tamanhoItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  flex: 1;
+}
+
+.miniPreview {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: #F5F5F7;
+  border-radius: var(--sc-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.miniSvg {
+  width: 100%;
+  height: 60px;
+  display: block;
+}
+
+.tamanhoLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sc-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.areaLabel {
+  font-size: 10px;
+  color: var(--sc-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Controles compartilhados ── */
+.controles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.controleItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+}
+
+/* ── Dica de label ── */
+.labelDica {
+  font-weight: 400;
+  color: var(--sc-text-muted);
+  font-size: 10px;
+}
+
+/* ── Controles de rotação ── */
+.rotacaoWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rotacaoBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.btnRotacao {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: #F5F5F7;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  color: var(--sc-text-secondary);
+  white-space: nowrap;
+  text-align: center;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.btnRotacao:hover {
+  background-color: #E5E5EA;
+  color: var(--sc-text-primary);
+}
+
+.btnReset {
+  padding: 5px 8px;
+  font-size: 13px;
+  background-color: #F5F5F7;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  flex-shrink: 0;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.btnReset:hover {
+  background-color: #E5E5EA;
+  color: var(--sc-text-primary);
+}
+
+.rotacaoIndicador {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Botões de sentido/corte ── */
+.btnGroup,
+.btnGroupCorte {
+  display: flex;
+  gap: 4px;
+}
+
+.btnSentido,
+.btnCorte {
+  flex: 1;
+  padding: 5px 4px;
+  font-size: 13px;
+  background-color: #F5F5F7;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.btnSentido { font-size: 1rem; }
+
+.btnSentido:hover,
+.btnCorte:hover {
+  background-color: #E5E5EA;
+  color: var(--sc-text-primary);
+}
+
+.btnAtivo {
+  background-color: #1D1D1F !important;
+  color: #FFFFFF !important;
+}
+
+.btnAtivo:hover {
+  background-color: #3D3D3F !important;
+}

@@ -1,0 +1,171 @@
+.loading {
+  padding: 48px;
+  text-align: center;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+}
+
+.countBadge {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  background-color: #F5F5F7;
+  border-radius: 12px;
+  padding: 3px 12px;
+}
+
+/* ── Grupo por pedido ── */
+.grupo {
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.grupoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background-color: #FBFBFD;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.grupoInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.numPedido {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  font-family: monospace;
+}
+
+.cliente {
+  font-size: 13px;
+  color: var(--sc-text-secondary);
+}
+
+.dataPedido {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.btnVerPedido {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btnVerPedido:hover { color: var(--sc-text-primary); }
+
+/* ── Lista de encaixes ── */
+.encaixesList {
+  display: flex;
+  flex-direction: column;
+}
+
+.encaixeCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.encaixeCard:last-child { border-bottom: none; }
+
+.cardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tecidoBadge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background-color: #F5F5F7;
+  color: var(--sc-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  align-self: flex-start;
+}
+
+.cardMeta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--sc-text-muted);
+}
+
+.cardRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Badge de aproveitamento ── */
+.aprovBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aprovBadge_bom   { background-color: var(--sc-success-bg); color: var(--sc-success-text); }
+.aprovBadge_medio { background-color: #F5F5F7; color: #6E6E73; }
+.aprovBadge_ruim  { background-color: var(--sc-danger-bg); color: var(--sc-danger-text); }
+
+/* ── Botão ver ── */
+.btnVer {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #1D1D1F;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s;
+}
+
+.btnVer:hover { background-color: #3D3D3F; }
+
+/* ── Botão deletar ── */
+.btnDeletar {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--sc-danger-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  flex-shrink: 0;
+}
+
+.btnDeletar:hover { background-color: var(--sc-danger-bg); }

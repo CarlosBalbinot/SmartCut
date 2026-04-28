@@ -1,0 +1,3 @@
+/* index.css — importa os tokens e o design system */
+@import './styles/variables.css';
+@import './styles/global.css';

@@ -1,0 +1,13 @@
+C:\Users\carlo\.local\bin\claude.exe
+
+
+cd "D:\Estudos - VSC\SmartCut\backend"
+uvicorn main:app --reload
+
+
+cd "D:\Estudos - VSC\SmartCut\frontend"
+npm run dev
+
+
+cd "D:\Estudos - VSC\SmartCut\backend"
+alembic upgrade head

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Ambiente
+.env
+
+# Uploads
+backend/uploads/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# DB / Docker volumes
+postgres_data/
+
+# Alembic
+backend/alembic/versions/*.py
+!backend/alembic/versions/.gitkeep
