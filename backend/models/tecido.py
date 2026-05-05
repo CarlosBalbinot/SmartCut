@@ -37,7 +37,6 @@ class CorTecido(Base):
 
     modelo: Mapped["ModeloTecido"] = relationship(back_populates="cores")
     lotes: Mapped[list["LoteTecido"]] = relationship(back_populates="cor", cascade="all, delete-orphan")
-    pedido_pecas: Mapped[list["PedidoPeca"]] = relationship(back_populates="cor_tecido")  # noqa: F821
 
 
 class LoteTecido(Base):
@@ -55,7 +54,6 @@ class LoteTecido(Base):
 
     cor: Mapped["CorTecido"] = relationship(back_populates="lotes")
     consumos: Mapped[list["ConsumoLote"]] = relationship(back_populates="lote", cascade="all, delete-orphan")
-    pedido_tecidos: Mapped[list["PedidoTecido"]] = relationship(back_populates="lote")  # noqa: F821
     encaixes: Mapped[list["Encaixe"]] = relationship(back_populates="lote")  # noqa: F821
 
 
@@ -65,7 +63,7 @@ class ConsumoLote(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lote_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=False)
     encaixe_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("encaixes.id", ondelete="SET NULL"), nullable=True)
-    pedido_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("pedidos.id", ondelete="SET NULL"), nullable=True)
+    pedido_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True)
     peso_planejado_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     peso_retalho_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     data_consumo: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -94,4 +92,3 @@ class Tecido(Base):
     max_camadas: Mapped[int] = mapped_column(Integer, default=15)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    pedido_tecidos: Mapped[list["PedidoTecido"]] = relationship(back_populates="tecido")  # noqa: F821

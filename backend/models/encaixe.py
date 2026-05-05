@@ -12,7 +12,9 @@ class Encaixe(Base):
     __tablename__ = "encaixes"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    pedido_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("pedidos.id"), nullable=False)
+    pedido_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Nova FK — lote consumido neste encaixe
     lote_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -33,7 +35,7 @@ class Encaixe(Base):
     data_corte: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(30), default="ativo")
 
-    pedido: Mapped["Pedido"] = relationship(back_populates="encaixes")  # noqa: F821
+    pedido: Mapped["PedidoVenda | None"] = relationship(back_populates="encaixes")  # noqa: F821
     lote: Mapped["LoteTecido | None"] = relationship(back_populates="encaixes")  # noqa: F821
     defeitos: Mapped[list["Defeito"]] = relationship(back_populates="encaixe")
 

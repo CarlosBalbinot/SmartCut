@@ -1,0 +1,621 @@
+.page {
+  padding: 0 1.5rem 2rem;
+}
+
+.head {
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+/* ── 2 colunas ── */
+.cols {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.colLeft {
+  width: 400px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.colRight {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 1.25rem;
+}
+
+.cardTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 1rem;
+}
+
+/* ── Campos ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 0.75rem;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  background: var(--sc-bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--sc-action);
+}
+
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+  cursor: not-allowed;
+}
+
+/* ── Badge lote ── */
+.loteBadge {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+  border: 1px solid var(--sc-success-border);
+}
+
+/* ── Lista de peças ── */
+.pecasList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pecaItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  background: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-sm);
+  padding: 8px 10px;
+}
+
+.pecaInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.pecaCod {
+  font-family: monospace;
+  font-size: 11px;
+  background: var(--sc-200);
+  color: var(--sc-text-secondary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+
+.pecaQtds {
+  font-size: 11px;
+  color: var(--sc-text-secondary);
+  margin-top: 3px;
+}
+
+.btnRemovePeca {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btnRemovePeca:hover {
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+}
+
+/* ── Botão adicionar peça ── */
+.btnAddPeca {
+  width: 100%;
+  padding: 8px;
+  border: 1.5px dashed var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btnAddPeca:hover {
+  border-color: var(--sc-action);
+  color: var(--sc-text-primary);
+}
+
+/* ── Botão gerar ── */
+.btnGerar {
+  width: 100%;
+  padding: 14px;
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btnGerar:hover:not(:disabled) {
+  background: var(--sc-action-hover);
+}
+
+.btnGerar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Erro ── */
+.erro {
+  font-size: 12px;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 8px 10px;
+}
+
+/* ── Empty state (coluna direita) ── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 320px;
+  padding: 3rem 2rem;
+  background: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-md);
+  border: 1.5px dashed var(--sc-border-strong);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  opacity: 0.45;
+  line-height: 1;
+}
+
+.emptyText {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--sc-text-secondary);
+  margin: 0;
+}
+
+/* ── Result card ── */
+.resultCard {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  overflow: hidden;
+}
+
+.resultHeader {
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  padding: 1.25rem 1.5rem;
+}
+
+.resultTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 3px;
+}
+
+.resultSub {
+  font-size: 12px;
+  opacity: 0.65;
+  margin: 0;
+}
+
+.resultGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--sc-border);
+}
+
+.resultMetric {
+  background: var(--sc-surface);
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resultMetricLabel {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.resultMetricValue {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.resultActions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* ── Botões genéricos (coluna direita + modal) ── */
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnPrimary:hover:not(:disabled) { background: var(--sc-action-hover); }
+
+.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnSecondary:hover { background: var(--sc-surface-hover); }
+
+.btnDownload {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btnDownload:hover { background: var(--sc-surface-hover); }
+
+/* ── Modal ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 0;
+}
+
+.modalTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btnClose:hover {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
+
+.modalBody {
+  flex: 1;
+  overflow: visible;
+  padding: 1rem 1.25rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+/* ── Busca / autocomplete ── */
+.searchWrap {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 10px;
+  margin-top: 2px;
+  list-style: none;
+  padding: 4px;
+  z-index: 1000;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.acItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+}
+
+.acItem:hover { background: var(--sc-surface-hover); }
+
+.acCod {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--sc-text-secondary);
+  background: var(--sc-bg-secondary);
+  padding: 2px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.acNome { flex: 1; }
+
+.acPlus {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--sc-info-bg);
+  color: var(--sc-info-text);
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* ── Tamanhos ── */
+.tamSection { margin: 0.75rem 0; }
+
+.tamLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+  margin: 0 0 0.5rem;
+}
+
+.tamGrid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tamItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.tamItem > span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+}
+
+.tamInput {
+  width: 52px;
+  text-align: center;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 6px 4px;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  background: var(--sc-bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.tamInput:focus { border-color: var(--sc-action); }
+
+.erroModal {
+  font-size: 12px;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 7px 10px;
+  margin-top: 0.75rem;
+}
+
+/* ── Lista de tecidos ── */
+.tecidosVazio {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  font-style: italic;
+  margin: 0 0 0.5rem;
+}
+
+.tecidosList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tecidoItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  background: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-sm);
+  padding: 8px 10px;
+}
+
+.tecidoInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tecidoNome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.tecidoMeta {
+  font-size: 11px;
+  color: var(--sc-text-secondary);
+}
+
+/* ── Tecido vinculado na linha de peça ── */
+.pecaTecido {
+  font-size: 11px;
+  color: var(--sc-text-secondary);
+}
+
+/* ── Aviso no select de tecido (modal peça) ── */
+.tecidoAviso {
+  font-size: 11px;
+  color: var(--sc-danger-text);
+  margin-top: 3px;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 900px) {
+  .cols {
+    flex-direction: column;
+  }
+
+  .colLeft {
+    width: 100%;
+  }
+}

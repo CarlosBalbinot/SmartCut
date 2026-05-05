@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, useNavigate } from "react-router-dom";
+import { Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 import styles from "./App.module.css";
 import TecidosPage from "./pages/TecidosPage";
 import PedidosPage from "./pages/PedidosPage";
@@ -11,6 +11,10 @@ import PrecificacaoPage from "./pages/PrecificacaoPage";
 import ProjecaoPage from "./pages/ProjecaoPage";
 import Topbar from "./components/Topbar/Topbar";
 import { lotesApi } from "./services/api";
+import PedidosVendaPage from "./pages/PedidosVendaPage";
+import PedidoVendaDetalhePage from "./pages/PedidoVendaDetalhePage";
+import ConfiguracoesPage from "./pages/ConfiguracoesPage";
+import EncaixeRapidoPage from "./pages/EncaixeRapidoPage";
 
 /* ── Ícones SVG inline 15×15 ── */
 const IconTecidos = () => (
@@ -63,6 +67,26 @@ const IconProjecao = () => (
   </svg>
 );
 
+const IconDocVenda = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="2.5" y="1.5" width="10" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M5 5.5h5M5 8h5M5 10.5h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconEngrenagem = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M7.5 1v1.5M7.5 12.5V14M14 7.5h-1.5M2.5 7.5H1M11.7 3.3l-1.1 1.1M4.4 10.6l-1.1 1.1M11.7 11.7l-1.1-1.1M4.4 4.4L3.3 3.3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconRelampago = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <path d="M8.5 2L4.5 8.5H7.5L6.5 13L11 6.5H8L8.5 2Z" fill="currentColor" />
+  </svg>
+);
+
 const SECTIONS = [
   {
     label: "CADASTROS",
@@ -74,8 +98,8 @@ const SECTIONS = [
   {
     label: "PRODUÇÃO",
     items: [
-      { to: "/pedidos",  label: "Pedidos",  Icon: IconPedidos  },
-      { to: "/encaixes", label: "Encaixes", Icon: IconEncaixes },
+      { to: "/encaixe-rapido", label: "Encaixe Rápido", Icon: IconRelampago },
+      { to: "/encaixes",       label: "Encaixes",      Icon: IconEncaixes  },
     ],
   },
   {
@@ -85,10 +109,18 @@ const SECTIONS = [
       { to: "/projecao",     label: "Projeção",     Icon: IconProjecao     },
     ],
   },
+  {
+    label: "VENDAS",
+    items: [
+      { to: "/pedidos-venda", label: "Pedidos de Venda", Icon: IconDocVenda },
+    ],
+  },
 ];
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isConfigActive = location.pathname.startsWith("/configuracoes");
   const [alertas, setAlertas] = useState([]);
   const [bannerFechado, setBannerFechado] = useState(false);
 
@@ -102,34 +134,56 @@ export default function App() {
     <div className={styles.layout}>
       {/* ── Sidebar ── */}
       <nav className={styles.sidebar}>
-        <div className={styles.logoWrap}>
-          <span className={styles.logo}>SmartCut</span>
-          <span className={styles.logoSub}>Gestão de Corte</span>
+        {/* scrollable nav content */}
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+          <div className={styles.logoWrap}>
+            <span className={styles.logo}>SmartCut</span>
+            <span className={styles.logoSub}>Gestão de Corte</span>
+          </div>
+
+          {SECTIONS.map(({ label, items }) => (
+            <div key={label} className={styles.section}>
+              <span className={styles.sectionLabel}>{label}</span>
+              <ul className={styles.navList}>
+                {items.map(({ to, label: itemLabel, Icon }) => (
+                  <li key={to}>
+                    <NavLink
+                      to={to}
+                      className={({ isActive }) =>
+                        isActive ? styles.navLinkActive : styles.navLink
+                      }
+                    >
+                      <span className={styles.navIcon}><Icon /></span>
+                      {itemLabel}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        {SECTIONS.map(({ label, items }) => (
-          <div key={label} className={styles.section}>
-            <span className={styles.sectionLabel}>{label}</span>
-            <ul className={styles.navList}>
-              {items.map(({ to, label: itemLabel, Icon }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    className={({ isActive }) =>
-                      isActive ? styles.navLinkActive : styles.navLink
-                    }
-                  >
-                    <span className={styles.navIcon}><Icon /></span>
-                    {itemLabel}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-
-        <div className={styles.sidebarFooter}>
-          <span className={styles.versao}>v1.0</span>
+        {/* Footer fixo — Configurações */}
+        <div
+          className={`${styles.sidebarConfigItem} ${isConfigActive ? styles.sidebarConfigItemActive : ""}`}
+          onClick={() => navigate("/configuracoes")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/configuracoes")}
+        >
+          <span className={styles.navIcon} style={{ color: isConfigActive ? "var(--sc-text-primary)" : "var(--sc-text-muted)", flexShrink: 0 }}>
+            <IconEngrenagem />
+          </span>
+          <span style={{
+            flex: 1,
+            fontSize: 13,
+            color: isConfigActive ? "var(--sc-text-primary)" : "var(--sc-text-muted)",
+            fontWeight: isConfigActive ? 600 : 400,
+          }}>
+            Configurações
+          </span>
+          <span style={{ fontSize: 11, color: "var(--sc-text-muted)", opacity: 0.6 }}>·</span>
+          <span style={{ fontSize: 11, color: "var(--sc-text-muted)", opacity: 0.6 }}>v1.0</span>
         </div>
       </nav>
 
@@ -161,15 +215,20 @@ export default function App() {
 
         <main className={styles.content}>
           <Routes>
-            <Route path="/"             element={<TecidosPage />} />
-            <Route path="/tecidos"      element={<TecidosPage />} />
-            <Route path="/moldes"       element={<MoldesPage />} />
-            <Route path="/pedidos"      element={<PedidosPage />} />
-            <Route path="/pedidos/:id"  element={<PedidoDetalhePage />} />
-            <Route path="/encaixes"        element={<EncaixesPage />} />
-            <Route path="/encaixes/:id"    element={<EncaixePage />} />
-            <Route path="/precificacao"    element={<PrecificacaoPage />} />
-            <Route path="/projecao"        element={<ProjecaoPage />} />
+            <Route path="/"                  element={<TecidosPage />} />
+            <Route path="/tecidos"           element={<TecidosPage />} />
+            <Route path="/moldes"            element={<MoldesPage />} />
+            <Route path="/pedidos"           element={<PedidosPage />} />
+            <Route path="/pedidos/:id"       element={<PedidoDetalhePage />} />
+            <Route path="/encaixes"          element={<EncaixesPage />} />
+            <Route path="/encaixes/:id"      element={<EncaixePage />} />
+            <Route path="/precificacao"      element={<PrecificacaoPage />} />
+            <Route path="/projecao"          element={<ProjecaoPage />} />
+            <Route path="/encaixe-rapido"   element={<EncaixeRapidoPage />} />
+            <Route path="/pedidos-venda"     element={<PedidosVendaPage />} />
+            <Route path="/pedidos-venda/:id" element={<PedidoVendaDetalhePage />} />
+            <Route path="/configuracoes"     element={<ConfiguracoesPage />} />
+            <Route path="/configuracoes/*"   element={<ConfiguracoesPage />} />
           </Routes>
         </main>
       </div>

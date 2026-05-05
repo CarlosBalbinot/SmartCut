@@ -38,4 +38,3 @@ class Molde(Base):
     grupo: Mapped["GrupoMolde | None"] = relationship(  # noqa: F821
         back_populates="moldes"
     )
-    pedido_pecas: Mapped[list["PedidoPeca"]] = relationship(back_populates="molde")  # noqa: F821

@@ -25,7 +25,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe
 from models.molde import Molde
-from models.pedido import Pedido, PedidoPeca, PedidoTecido
+from models.pedido import PedidoVenda as Pedido
+
+# Stubs — PedidoPeca e PedidoTecido removidos na reestruturação
+class PedidoPeca:
+    pass
+
+class PedidoTecido:
+    pass
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from nesting.nesting_bridge import build_polygon, executar
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso

@@ -92,12 +92,14 @@ class GrupoMoldeCreate(BaseModel):
 
 
 class GrupoMoldeUpdate(BaseModel):
-    nome: str = Field(..., max_length=150)
+    nome: str | None = Field(None, max_length=150)
+    codigo: str | None = Field(None, max_length=20)
 
 
 class GrupoMoldeOut(BaseModel):
     id: uuid.UUID
     nome: str
+    codigo: str | None = None
     criado_em: datetime
     moldes: list[MoldeOut] = []
 

@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from models.encaixe import Defeito, Encaixe
-from models.pedido import Pedido
+from models.pedido import PedidoVenda as Pedido
 from schemas.encaixe_schema import EncaixeCreate, EncaixeOut
 
 

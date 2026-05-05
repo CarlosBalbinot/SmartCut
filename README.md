@@ -1,8 +1,8 @@
 # SmartCut
 
-**Sistema inteligente de gestão e otimização de corte têxtil.**
+**Sistema inteligente de gestão e otimização de corte têxtil e vendas para confecções.**
 
-O SmartCut automatiza o planejamento de produção em confecções — desde o cadastro de tecidos e moldes até a geração do mapa de encaixe e relatório de corte para o cortador. O objetivo é maximizar o aproveitamento de matéria-prima e eliminar cálculos manuais.
+O SmartCut centraliza toda a operação da confecção — desde o cadastro de tecidos e moldes até a geração de encaixes, pedidos de venda, precificação e gestão completa da força de vendas com painel mobile para representantes.
 
 ---
 
@@ -10,14 +10,17 @@ O SmartCut automatiza o planejamento de produção em confecções — desde o c
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Frontend | React 18 + Vite + CSS Modules |
+| Frontend Desktop | React 18 + Vite + CSS Modules |
+| Frontend Mobile | React 18 + Vite (rota separada, mobile first) |
 | Backend | Python 3.11 + FastAPI |
 | ORM | SQLAlchemy 2.x + Alembic |
 | Banco de dados | PostgreSQL 15+ |
+| Autenticação | JWT (apenas painel do vendedor) |
 | Parser de moldes | ezdxf (DXF), custom (PLT/ADS) |
-| Motor de nesting | Node.js (skyline packer) |
+| Motor de nesting | Node.js (skyline packer → futuro: Deepnest C++) |
 | Relatórios | ReportLab (PDF) |
 | Visualizador | Konva.js |
+| Gráficos | Recharts |
 
 ---
 
@@ -26,72 +29,80 @@ O SmartCut automatiza o planejamento de produção em confecções — desde o c
 ```
 SmartCut/
 ├── README.md
-├── CLAUDE.md                        ← contexto do projeto para Claude Code
-├── .env                             ← variáveis de ambiente (não versionar)
-├── .env.example                     ← modelo do .env
+├── CLAUDE.md
+├── .env
+├── .env.example
 ├── docker-compose.yml
 │
 ├── backend/
-│   ├── main.py                      ← entry point FastAPI
-│   ├── config.py                    ← configurações via pydantic-settings
-│   ├── database.py                  ← engine SQLAlchemy + get_db()
+│   ├── main.py
+│   ├── config.py
+│   ├── database.py
 │   ├── requirements.txt
-│   │
-│   ├── alembic/                     ← migrations do banco
-│   │   ├── env.py
+│   ├── alembic/
 │   │   └── versions/
-│   │
-│   ├── models/                      ← modelos ORM (tabelas)
-│   │   ├── modelo_tecido.py         ← modelo de tecido (Maxxi, Wish...)
-│   │   ├── cor_tecido.py            ← cor por modelo (Preto, Marrom...)
-│   │   ├── lote_tecido.py           ← rolo/lote com rastreio de consumo
-│   │   ├── grupo_molde.py           ← grupo de peças (Legging, Top...)
-│   │   ├── molde.py                 ← peça individual com geometria
-│   │   ├── pedido.py                ← pedido de produção
-│   │   ├── pedido_peca.py           ← peças e quantidades por tamanho
-│   │   ├── pedido_tecido.py         ← tecidos vinculados ao pedido
-│   │   └── encaixe.py               ← resultado do nesting
-│   │
-│   ├── schemas/                     ← validação Pydantic
-│   ├── routers/                     ← endpoints REST
-│   ├── services/                    ← lógica de negócio
-│   │   ├── nesting_service.py       ← orquestra o motor de nesting
-│   │   ├── gramatura_service.py     ← converte peso ↔ metros
-│   │   ├── report_service.py        ← gera PDF do relatório de corte
-│   │   └── lote_service.py          ← controle de estoque por lote
-│   │
-│   ├── parsers/                     ← leitura de arquivos de molde
+│   ├── models/
+│   │   ├── modelo_tecido.py
+│   │   ├── cor_tecido.py
+│   │   ├── lote_tecido.py
+│   │   ├── grupo_molde.py
+│   │   ├── molde.py
+│   │   ├── pedido.py
+│   │   ├── encaixe.py
+│   │   ├── precificacao.py
+│   │   ├── venda.py           ← pedidos de venda, itens, tabelas, vendedores
+│   │   ├── usuario.py         ← autenticação JWT para vendedores
+│   │   ├── catalogo.py        ← catálogos PDF por tabela de preço
+│   │   └── lead.py            ← leads/prospecção por vendedor
+│   ├── schemas/
+│   ├── routers/
+│   │   ├── auth.py            ← POST /api/v1/vendedor/login
+│   │   ├── vendedor_painel.py ← rotas do painel mobile do vendedor
+│   │   └── ...outros routers
+│   ├── services/
+│   │   ├── nesting_service.py
+│   │   ├── gramatura_service.py
+│   │   ├── report_service.py
+│   │   ├── lote_service.py
+│   │   ├── precificacao_service.py
+│   │   ├── venda_service.py
+│   │   ├── pdf_venda_service.py
+│   │   └── auth_service.py    ← geração e validação de JWT
+│   ├── parsers/
 │   │   ├── dxf_parser.py
-│   │   ├── plt_parser.py            ← suporte a HP-GL/2 PE encoding
-│   │   └── ads_parser.py            ← Audaces (parcial)
-│   │
+│   │   ├── plt_parser.py
+│   │   └── ads_parser.py
 │   └── nesting/
-│       ├── nest_worker.js           ← motor Node.js (skyline packer)
-│       └── nesting_bridge.py        ← ponte Python → Node.js
+│       ├── nest_worker.js
+│       ├── nesting_bridge.py
+│       └── engine/            ← Deepnest C++ (futuro)
+│           └── Release/addon.node
 │
 └── frontend/
     ├── index.html
-    ├── vite.config.js               ← proxy /api → :8000
+    ├── vite.config.js
     └── src/
         ├── main.jsx
-        ├── App.jsx
+        ├── App.jsx             ← sistema de gestão (desktop, sem login)
+        ├── AppVendedor.jsx     ← painel do vendedor (mobile, com login JWT)
         ├── styles/
-        │   ├── variables.css        ← design system (tokens de cor)
+        │   ├── variables.css
         │   └── index.css
         ├── services/
-        │   └── api.js               ← todas as chamadas à API centralizadas
-        ├── components/              ← componentes reutilizáveis
+        │   └── api.js
+        ├── components/
         │   ├── Modal/
-        │   ├── Toast/               ← notificações do sistema
-        │   ├── GrupoAccordion/      ← accordion de moldes
-        │   └── PecaCard/            ← card de peça na importação
+        │   ├── Toast/
+        │   ├── GrupoAccordion/
+        │   └── PecaCard/
         └── pages/
-            ├── TecidosPage.jsx
-            ├── MoldesPage.jsx
-            ├── PedidosPage.jsx
-            ├── PedidoDetalhePage.jsx
-            ├── EncaixesPage.jsx
-            └── EncaixePage.jsx
+            ├── [páginas do sistema de gestão — desktop]
+            └── vendedor/
+                ├── LoginPage.jsx
+                ├── DashboardVendedorPage.jsx
+                ├── CatalogosPage.jsx
+                ├── PedidosVendedorPage.jsx
+                └── LeadsPage.jsx
 ```
 
 ---
@@ -106,7 +117,7 @@ SmartCut/
 
 ## Como rodar o projeto
 
-### 1. Clonar e configurar o ambiente
+### 1. Clonar e configurar
 
 ```bash
 git clone <repositorio>
@@ -114,7 +125,7 @@ cd SmartCut
 copy .env.example .env
 ```
 
-Editar o `.env` com suas configurações:
+Editar o `.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres:root@localhost:8844/smartcut_db
@@ -122,11 +133,11 @@ SECRET_KEY=smartcut-secret-key-2024
 UPLOAD_DIR=./uploads
 MAX_FILE_SIZE_MB=50
 NESTING_TIMEOUT_SEC=120
+JWT_SECRET=smartcut-jwt-secret-2024
+JWT_EXPIRE_HOURS=24
 ```
 
 ### 2. Banco de dados
-
-Criar o banco `smartcut_db` no PostgreSQL (via pgAdmin ou linha de comando):
 
 ```sql
 CREATE DATABASE smartcut_db;
@@ -137,17 +148,13 @@ CREATE DATABASE smartcut_db;
 ```bash
 cd backend
 pip install -r requirements.txt
-copy .env.example .env    # copiar o .env para dentro do backend também
-
-# Criar as tabelas
+copy .env.example .env
 alembic upgrade head
-
-# Rodar o servidor
 uvicorn main:app --reload
 ```
 
-Backend disponível em: `http://localhost:8000`
-Documentação da API: `http://localhost:8000/docs`
+Backend: `http://localhost:8000`
+Docs: `http://localhost:8000/docs`
 
 ### 4. Frontend
 
@@ -157,102 +164,233 @@ npm install
 npm run dev
 ```
 
-Sistema disponível em: `http://localhost:5173`
+Sistema de gestão (desktop): `http://localhost:5173`
+Painel do vendedor (mobile): `http://localhost:5173/vendedor`
+
+---
+
+## Dois sistemas em uma base
+
+### Sistema de Gestão — desktop, sem login
+Acessado pelo gestor (Carlos) direto pela URL raiz.
+Menu completo com todos os módulos de produção, vendas e gestão.
+
+### Painel do Vendedor — mobile first, com login JWT
+Rota separada `/vendedor`. Login com usuário e senha criados pelo gestor.
+Layout responsivo otimizado para celular.
+Cada vendedor vê apenas suas informações, catálogos e leads atribuídos.
+
+---
+
+## Módulos do sistema de gestão
+
+### CADASTROS
+- **Tecidos** — modelos, cores e lotes com rastreio de consumo
+- **Moldes** — importação PLT/DXF/ADS com código de referência
+
+### PRODUÇÃO
+- **Encaixe Rápido** — gerar encaixe ágil sem criar pedido completo
+- **Encaixes** — histórico de encaixes gerados
+
+### VENDAS
+- **Pedidos de Venda** — pedido completo com PDF comercial e PDF de corte
+
+### GESTÃO
+- **Precificação** — custo detalhado e preço de venda por produto
+- **Projeção** — simulação de lucratividade com gráficos
+
+### CONFIGURAÇÕES (footer do menu)
+- **Dados da Empresa** — razão social, logo, contatos
+- **Configurações Gerais** — alíquota, insumos, logística
+- **Tabelas de Preço** — cadastro e gestão de tabelas com produtos e preços
+- **Vendedores** — cadastro, credenciais, tabelas liberadas, metas e dashboard
 
 ---
 
 ## Fases do projeto
 
 ### ✅ Fase 1 — Infraestrutura (concluída)
+- Banco PostgreSQL com migrations via Alembic
+- API FastAPI com CRUD completo
+- Frontend React com design system Apple-inspired (neutros quentes)
+- Sistema de notificações Toast e modais reutilizáveis
 
-- Estrutura de pastas backend e frontend
-- Banco PostgreSQL com todas as tabelas e migrations via Alembic
-- API FastAPI com CRUD completo de todos os módulos
-- Frontend React com roteamento e design system próprio
-- Sistema de notificações (Toast) e modais reutilizáveis
-
-### ✅ Fase 2 — Cadastros (concluída)
+### ✅ Fase 2 — Cadastros de Produção (concluída)
 
 **Tecidos**
 - Hierarquia: Modelo → Cor → Lote/Rolo
-- Cada lote tem: peso inicial, peso disponível, valor/kg, data de compra, status
-- Alerta automático quando lote atinge ≤ 5kg
-- Histórico de lotes esgotados/arquivados
-- Rastreio de consumo por pedido
+- Alerta automático ≤ 5kg, histórico de lotes esgotados
 
 **Moldes**
-- Importação de arquivos PLT (HP-GL/2 PE encoding), DXF e ADS
-- Preview visual das peças extraídas do arquivo
-- Suporte a arquivos com graduação (P ao GG) — agrupamento automático por área
-- Por peça: nome, tipo de corte (simples/par/par sem espelho), sentido do fio livre com linha arrastável, flip horizontal/vertical
-- Organização hierárquica: Grupo → Parte → Tamanho
-- Edição posterior de qualquer propriedade
+- Importação PLT (HP-GL/2 PE), DXF, ADS
+- Preview SVG das peças, graduação P ao GG
+- Sentido do fio com linha arrastável em ângulo livre, flip horizontal/vertical
+- Código de referência por grupo vinculado ao código de venda
 
-### ✅ Fase 3 — Pedidos (concluída)
-
-- Numeração automática sequencial (editável)
-- Múltiplos tecidos por pedido (com lote recomendado automaticamente)
-- Adição de peças por grupo + tamanho + quantidade + tecido específico
-- Cálculo automático de moldes necessários (considerando tipo de corte par)
-- Resumo do corte agrupado por tecido com: metros estimados, peso, custo
-- Status com histórico: Rascunho → Em produção → Concluído
-- Exclusão com confirmação
+### ✅ Fase 3 — Pedidos de Produção (concluída)
+- Pedidos com múltiplos tecidos, peças por tamanho, resumo do corte
+- Status: Rascunho → Em produção → Concluído
 
 ### ✅ Fase 4 — Nesting e Relatórios (parcialmente concluída)
+- Motor Node.js skyline packer, limite 130cm, múltiplos enfestos
+- Visualizador Konva.js, PDF de corte com ReportLab
+- Encaixe Rápido: seleção ágil de tecidos e peças sem criar pedido
 
-- Motor de nesting em Node.js (skyline bottom-left packer)
-- Cálculo automático de camadas por enfesto (respeitando máx. do tecido)
-- Limite de 130cm de comprimento por enfesto
-- Criação automática de múltiplos enfestos quando necessário
-- Visualizador Konva.js do mapa de encaixe
-- Geração de PDF com ReportLab (relatório de corte para o cortador)
+### ✅ Fase 5 — Precificação e Projeção (concluída)
+- Custos detalhados: tecido, costura, linha overlock/reta, saquinho, caixa, gasolina
+- Fórmula Simples Nacional em tempo real
+- Projeção com gráficos Recharts (pizza, barras, margem)
 
-### ⬜ Fase 5 — Nesting avançado (pendente)
+### ✅ Fase 6 — Vendas (concluída)
+- Pedidos de venda com tabela única de preço por pedido
+- Preço unitário automático por tabela + condição (à vista / a prazo)
+- PDF Formulário de Pedido e PDF Formulário de Corte
+- Suporte a Plus Size (G1/G2/G3)
+- Dashboard por vendedor: metas, comissões, gráficos
 
-- Substituir algoritmo atual por SVGnest real (algoritmo genético)
-- Respeitar sentido do fio livre (ângulo em graus) no posicionamento
-- Aplicar flip_horizontal e flip_vertical de cada peça
-- Reduzir desperdício de ~58% para <20%
+### ⬜ Fase 7 — Autenticação e Painel Mobile do Vendedor (pendente)
 
-### ⬜ Fase 6 — Defeitos no tecido (pendente)
+**Autenticação JWT**
+- Tabela `usuarios` vinculada a `vendedores`
+- Gestor cria usuário e senha para cada vendedor na tela de Configurações
+- Login via POST /api/v1/vendedor/login → retorna JWT
+- Rotas do painel protegidas por token
+- Sistema de gestão desktop continua sem login
 
-- Cortador informa coordenadas de furos/manchas no rolo
-- Sistema cria zonas de exclusão no plano de corte
-- Algoritmo de nesting desvia os moldes das zonas proibidas
+**Painel do Vendedor — rota `/vendedor` (mobile first)**
 
-### ⬜ Fase 7 — Dashboard e controle de estoque (pendente)
+Dashboard de metas:
+- Barra de progresso: total vendido no mês vs meta de ativação
+- Card bônus logística: "Falta R$X para ganhar R$300"
+- Card bônus expansão: "X de 5 novos clientes — falta Y"
+- Total de comissão acumulada no mês
+- Últimos 3 pedidos registrados
 
-- Dashboard inicial com resumo operacional
+Catálogos:
+- Lista de PDFs liberados pelo gestor especificamente para este vendedor
+- Cada catálogo vinculado a uma tabela de preço
+- Botão download + botão compartilhar (abre share nativo do celular / WhatsApp)
+
+Pedidos:
+- Lista dos pedidos registrados em nome deste vendedor
+- Status de cada pedido
+- Total e comissão por pedido
+
+Leads:
+- Lista de leads atribuídos manualmente pelo gestor a este vendedor
+- Campos: nome do estabelecimento, endereço, telefone, observação
+- Status: Novo / Visitado / Orçamento enviado / Não interessado / Cliente
+- Botão "Traçar rota" → abre Google Maps com o endereço
+- Botão "Registrar visita" → atualiza status com observação
+
+**Gestão pelo gestor (em Configurações → Vendedores)**
+
+Por vendedor:
+- Usuário (login) e senha
+- Tabelas de preço liberadas (checkboxes — cada vendedor tem acesso a tabelas específicas)
+- Meta de ativação mensal (R$) — personalizada por vendedor
+- Meta de novos clientes para bônus — personalizada
+- Valor do bônus logística — personalizado
+- Valor do bônus expansão — personalizado
+- Pedido mínimo permitido (R$)
+
+Catálogos:
+- Upload de PDF por catálogo (nome + tabela vinculada)
+- Atribuição manual: para cada catálogo, definir quais vendedores têm acesso
+- Um mesmo catálogo pode ser liberado para múltiplos vendedores
+- Um vendedor pode ter catálogos exclusivos
+
+Leads:
+- Gestor cadastra lead com: nome, endereço, cidade, telefone, segmento, observação
+- Atribui manualmente a um vendedor específico
+- Pode reatribuir a qualquer momento
+
+### ⬜ Fase 8 — Nesting avançado com Deepnest (pendente)
+- Motor C++ Deepnest via addon Node.js (compilar para Windows/Linux)
+- NFP via Minkowski Sum para encaixe preciso de moldes irregulares
+- Respeitar sentido do fio (ângulo livre em graus)
+- Aplicar flip_horizontal e flip_vertical
+- Reduzir desperdício de ~58% para < 20%
+
+### ⬜ Fase 9 — Defeitos no tecido (pendente)
+- Cortador informa coordenadas de furos/manchas
+- Zonas de exclusão no plano de corte
+- Nesting desvia automaticamente os moldes
+
+### ⬜ Fase 10 — Dashboard e controle de estoque (pendente)
+- Dashboard operacional completo
 - Baixa automática de estoque ao confirmar encaixe
 - Relatório de perdas e retalhos por período
-- Histórico de aproveitamento por modelo de tecido
+- Analytics de performance comparativo entre vendedores
 
 ---
 
-## Regras de negócio principais
+## Regras de negócio
 
 **Conversão gramatura → metros**
 ```
 metros = peso_kg × 1000 / (gramatura_g_m2 × largura_util_cm / 100)
 ```
 
+**Precificação — Simples Nacional**
+```
+preco_venda = custo_base / (1 - aliquota - margem_desejada)
+imposto = preco_venda × aliquota
+lucro = preco_venda - custo_base - imposto
+```
+
+**Comissão de vendedor**
+```
+base = total dos itens no preço à vista ou a prazo (conforme condição do pedido)
+comissao = base × tabela.comissao_pct
+```
+
+**Bônus logística**
+```
+if total_vendido_mes >= vendedor.meta_ativacao:
+    bonus_logistica = vendedor.bonus_logistica_valor
+```
+
+**Bônus expansão**
+```
+novos_clientes = clientes que aparecem pela primeira vez nos pedidos do mês
+bonus_expansao = floor(novos_clientes / vendedor.meta_novos_clientes) × vendedor.bonus_expansao_valor
+```
+
 **Recomendação de lote**
-O sistema sempre sugere o lote já aberto mais antigo antes de sugerir um lote intacto.
+Sistema sugere lote aberto mais antigo antes de lote intacto.
 
 **Cálculo de camadas**
 ```
-camadas = ceil(quantidade_pedido / peças_por_enfesto)
-camadas = min(camadas, max_camadas_do_tecido)
+camadas = min(ceil(qtd / pecas_por_enfesto), tecido.max_camadas)
 ```
 
 **Alerta de estoque**
-Lotes com peso_disponivel_kg ≤ 5kg geram alerta visual em toda a interface.
+Lotes com `peso_disponivel_kg ≤ 5kg` geram alerta em toda a interface.
+
+**Plus Size**
+Grupos com `tem_plus=true` exibem colunas G1/G2/G3 em pedidos e PDFs.
+
+**Tabela única por pedido**
+Um pedido de venda usa uma única tabela de preço — não permite misturar.
+
+**Catálogos por vendedor**
+Cada catálogo é atribuído manualmente pelo gestor a vendedores específicos.
+O vendedor só vê os catálogos que o gestor liberou para ele.
+
+**Leads por vendedor**
+Cada lead é atribuído manualmente pelo gestor a um vendedor específico.
+O vendedor só vê leads atribuídos a ele.
 
 ---
 
 ## Padrões de desenvolvimento
 
-- **Backend:** type hints em todas as funções, schemas Pydantic em todos os endpoints, lógica de negócio apenas em services (nunca nos routers)
-- **Frontend:** componentes funcionais com hooks, chamadas à API centralizadas em `src/services/api.js`, CSS Modules para escopo de estilo
-- **API:** prefixo `/api/v1/`, resposta padrão `{ data, error }`, status HTTP corretos
-- **Banco:** migrations via Alembic, nunca deletar registros (soft delete com status)
+- **Backend:** type hints, schemas Pydantic em todos os endpoints, lógica apenas em services
+- **Frontend desktop:** CSS Modules, chamadas à API centralizadas em `api.js`
+- **Frontend mobile:** componentes separados em `pages/vendedor/`, layout responsivo mobile first
+- **Auth:** JWT no header `Authorization: Bearer <token>` nas rotas do painel do vendedor
+- **API:** prefixo `/api/v1/`, resposta `{ data, error }`, status HTTP corretos
+- **Banco:** soft delete com `status` ou `ativo`, nunca deletar registros de produção
+- **PDFs:** ReportLab, A4, preto e branco, logo no cabeçalho
+- **Gráficos:** Recharts, paleta de cinzas neutros

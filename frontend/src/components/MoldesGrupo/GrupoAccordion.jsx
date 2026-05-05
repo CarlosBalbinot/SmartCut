@@ -25,7 +25,9 @@ export default function GrupoAccordion({ grupo, onEditarMolde, onDeletarGrupo })
       {/* ── Cabeçalho do grupo ── */}
       <div className={styles.header} onClick={() => setAberto((v) => !v)}>
         <span className={`${styles.seta} ${aberto ? styles.setaAberta : ""}`}>›</span>
-        <span className={styles.nomeGrupo}>{grupo.nome}</span>
+        <span className={styles.nomeGrupo}>
+          {grupo.codigo ? `${grupo.codigo} — ${grupo.nome}` : grupo.nome}
+        </span>
         <span className={styles.contagem}>
           {Object.keys(porParte).length} parte{Object.keys(porParte).length !== 1 ? "s" : ""}
           {" · "}
@@ -46,6 +48,21 @@ export default function GrupoAccordion({ grupo, onEditarMolde, onDeletarGrupo })
       {/* ── Conteúdo expandido ── */}
       {aberto && (
         <div className={styles.corpo}>
+          {grupo.codigo && (
+            <span style={{
+              display: "inline-block",
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              background: "var(--sc-bg-secondary)",
+              color: "var(--sc-text-secondary)",
+              border: "1px solid var(--sc-border-strong)",
+              borderRadius: "999px",
+              padding: "0.15rem 0.55rem",
+              marginBottom: "0.75rem",
+            }}>
+              Ref. {grupo.codigo}
+            </span>
+          )}
           {Object.entries(porParte).map(([parte, moldes]) => (
             <div key={parte} className={styles.parte}>
               <div className={styles.parteHeader}>

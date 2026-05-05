@@ -20,12 +20,15 @@ function calcLocal(form, config, custos) {
     custo_tecido = parseFloat(form.custo_tecido_manual) || 0;
   }
 
-  // custo linha
+  // custo linha (por metro)
   const metros_overlock = parseFloat(form.metros_linha_overlock) || 0;
   const metros_reta = parseFloat(form.metros_linha_reta) || 0;
-  const val_overlock = parseFloat(custos?.valor_kg_overlock) || 0;
-  const val_reta = parseFloat(custos?.valor_kg_reta) || 0;
-  const custo_linha = metros_overlock * val_overlock + metros_reta * val_reta;
+  const metros_rolo_ov = parseFloat(custos?.metros_rolo_overlock) || 1;
+  const metros_rolo_re = parseFloat(custos?.metros_rolo_reta) || 1;
+  const custo_metro_overlock = (parseFloat(custos?.custo_rolo_overlock) || 0) / metros_rolo_ov;
+  const custo_metro_reta = (parseFloat(custos?.custo_rolo_reta) || 0) / metros_rolo_re;
+  const custo_overlock = metros_overlock * custo_metro_overlock;
+  const custo_reta = metros_reta * custo_metro_reta;
 
   // custo gasolina
   let custo_gasolina = 0;
@@ -38,6 +41,10 @@ function calcLocal(form, config, custos) {
     custo_gasolina = (dist * 2 * num_viagens / consumo) * preco_comb / pecas_viagem;
   }
 
+  // custo saquinho (automático, 1 por peça)
+  const unid_saq = parseFloat(custos?.unidades_saquinho_lote) || 1;
+  const custo_saquinho = (parseFloat(custos?.custo_saquinho_lote) || 0) / unid_saq;
+
   // custo caixa
   let custo_caixa = 0;
   const custo_cx = parseFloat(custos?.custo_caixa) || 0;
@@ -48,15 +55,14 @@ function calcLocal(form, config, custos) {
 
   const custo_costura = parseFloat(form.custo_costura) || 0;
   const custo_etiqueta = parseFloat(config?.custo_etiqueta) || 0;
-  const custo_embalagem = parseFloat(config?.custo_embalagem) || 0;
 
-  const custo_base = custo_tecido + custo_costura + custo_linha + custo_gasolina + custo_caixa + custo_etiqueta + custo_embalagem;
+  const custo_base = custo_tecido + custo_costura + custo_overlock + custo_reta + custo_gasolina + custo_saquinho + custo_caixa + custo_etiqueta;
 
   const aliquota = parseFloat(config?.aliquota_simples) || 0;
   const margem = (parseFloat(form.margem_desejada) || 60) / 100;
   const denom = 1 - aliquota - margem;
 
-  const base = { custo_tecido, custo_costura, custo_linha, custo_gasolina, custo_caixa, custo_etiqueta, custo_embalagem, custo_base };
+  const base = { custo_tecido, custo_costura, custo_overlock, custo_reta, custo_metro_overlock, custo_metro_reta, custo_gasolina, custo_saquinho, custo_caixa, custo_etiqueta, custo_base };
 
   if (denom <= 0 || custo_base <= 0) return { ...base, preco: null, imposto: null, lucro: null };
 
@@ -91,14 +97,6 @@ export default function PrecificacaoPage() {
   const [config, setConfig] = useState(null);
   const [custos, setCustos] = useState(null);
 
-  const [configAberto, setConfigAberto] = useState(false);
-  const [cfgForm, setCfgForm] = useState({});
-  const [salvandoCfg, setSalvandoCfg] = useState(false);
-
-  const [custosAberto, setCustosAberto] = useState(false);
-  const [custosForm, setCustosForm] = useState({});
-  const [salvandoCustos, setSalvandoCustos] = useState(false);
-
   const [grupos, setGrupos] = useState([]);
   const [expandidos, setExpandidos] = useState({});
   const [precsPorGrupo, setPrecsPorGrupo] = useState({});
@@ -118,21 +116,6 @@ export default function PrecificacaoPage() {
         setGrupos(gs);
         setConfig(cfg);
         setCustos(cst);
-        setCfgForm({
-          aliquota: (parseFloat(cfg.aliquota_simples) * 100).toFixed(2),
-          etiqueta: parseFloat(cfg.custo_etiqueta).toFixed(2),
-          embalagem: parseFloat(cfg.custo_embalagem).toFixed(2),
-        });
-        setCustosForm({
-          val_overlock: cst.valor_kg_overlock ?? "",
-          val_reta: cst.valor_kg_reta ?? "",
-          distancia: parseFloat(cst.distancia_costureira_km).toFixed(1),
-          num_viagens: String(cst.num_viagens),
-          consumo: parseFloat(cst.consumo_veiculo_km_l).toFixed(1),
-          combustivel: cst.preco_combustivel ?? "",
-          custo_caixa: cst.custo_caixa ?? "",
-          pecas_caixa: String(cst.pecas_por_caixa),
-        });
       })
       .catch((e) => setErro(e.message))
       .finally(() => setLoading(false));
@@ -269,46 +252,6 @@ export default function PrecificacaoPage() {
     }
   };
 
-  /* ── Salvar configurações ── */
-  const salvarConfig = async () => {
-    setSalvandoCfg(true);
-    try {
-      const cfg = await precificacoesApi.updateConfig({
-        aliquota_simples: parseFloat(cfgForm.aliquota) / 100,
-        custo_etiqueta: parseFloat(cfgForm.etiqueta) || 0,
-        custo_embalagem: parseFloat(cfgForm.embalagem) || 0,
-      });
-      setConfig(cfg);
-      setConfigAberto(false);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setSalvandoCfg(false);
-    }
-  };
-
-  const salvarCustos = async () => {
-    setSalvandoCustos(true);
-    try {
-      const cst = await precificacoesApi.updateCustos({
-        valor_kg_overlock: custosForm.val_overlock !== "" ? parseFloat(custosForm.val_overlock) : null,
-        valor_kg_reta: custosForm.val_reta !== "" ? parseFloat(custosForm.val_reta) : null,
-        distancia_costureira_km: parseFloat(custosForm.distancia) || 1.5,
-        num_viagens: parseInt(custosForm.num_viagens) || 2,
-        consumo_veiculo_km_l: parseFloat(custosForm.consumo) || 12,
-        preco_combustivel: custosForm.combustivel !== "" ? parseFloat(custosForm.combustivel) : null,
-        custo_caixa: custosForm.custo_caixa !== "" ? parseFloat(custosForm.custo_caixa) : null,
-        pecas_por_caixa: parseInt(custosForm.pecas_caixa) || 12,
-      });
-      setCustos(cst);
-      setCustosAberto(false);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setSalvandoCustos(false);
-    }
-  };
-
   /* ── CSV ── */
   const exportarCSV = () => {
     const linhas = [["Modelo", "Tamanho", "Faixa", "Custo", "Imposto", "Preço", "Lucro", "Margem%"]];
@@ -352,113 +295,6 @@ export default function PrecificacaoPage() {
 
   return (
     <div className={styles.pagina}>
-
-      {/* ══ Card 1 — Configurações globais ══ */}
-      <div className={styles.card}>
-        <button className={styles.cardHeader} onClick={() => setConfigAberto((v) => !v)}>
-          <span className={styles.cardTitulo}>Configurações globais</span>
-          <span className={`${styles.chevron} ${configAberto ? styles.chevronAberto : ""}`}>›</span>
-        </button>
-        {configAberto && (
-          <div className={styles.cardBody}>
-            <div className={styles.configGrid}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Alíquota Simples Nacional (%)</label>
-                <input type="number" step="0.01" className={styles.input}
-                  value={cfgForm.aliquota}
-                  onChange={(e) => setCfgForm((f) => ({ ...f, aliquota: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Custo da Etiqueta (R$)</label>
-                <input type="number" step="0.01" className={styles.input}
-                  value={cfgForm.etiqueta}
-                  onChange={(e) => setCfgForm((f) => ({ ...f, etiqueta: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Custo da Embalagem (R$)</label>
-                <input type="number" step="0.01" className={styles.input}
-                  value={cfgForm.embalagem}
-                  onChange={(e) => setCfgForm((f) => ({ ...f, embalagem: e.target.value }))} />
-              </div>
-            </div>
-            <div className={styles.configAcoes}>
-              <button className={styles.btnSecundario} onClick={() => setConfigAberto(false)}>Cancelar</button>
-              <button className={styles.btnPrimario} onClick={salvarConfig} disabled={salvandoCfg}>
-                {salvandoCfg ? "Salvando…" : "Salvar"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ══ Card 2 — Custos fixos ══ */}
-      <div className={styles.card}>
-        <button className={styles.cardHeader} onClick={() => setCustosAberto((v) => !v)}>
-          <span className={styles.cardTitulo}>Custos fixos</span>
-          <span className={`${styles.chevron} ${custosAberto ? styles.chevronAberto : ""}`}>›</span>
-        </button>
-        {custosAberto && (
-          <div className={styles.cardBody}>
-            <p className={styles.cardDescricao}>Custos globais usados no cálculo automático de linha, gasolina e embalagem.</p>
-            <div className={styles.configGrid}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Custo/m linha overlock (R$)</label>
-                <input type="number" step="0.0001" className={styles.input}
-                  placeholder="0,0000" value={custosForm.val_overlock}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, val_overlock: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Custo/m linha reta (R$)</label>
-                <input type="number" step="0.0001" className={styles.input}
-                  placeholder="0,0000" value={custosForm.val_reta}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, val_reta: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Distância costureira (km)</label>
-                <input type="number" step="0.1" className={styles.input}
-                  value={custosForm.distancia}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, distancia: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Nº viagens/semana</label>
-                <input type="number" step="1" className={styles.input}
-                  value={custosForm.num_viagens}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, num_viagens: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Consumo veículo (km/l)</label>
-                <input type="number" step="0.1" className={styles.input}
-                  value={custosForm.consumo}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, consumo: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Preço combustível (R$/l)</label>
-                <input type="number" step="0.01" className={styles.input}
-                  placeholder="0,00" value={custosForm.combustivel}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, combustivel: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Custo caixa/embalagem (R$)</label>
-                <input type="number" step="0.01" className={styles.input}
-                  placeholder="0,00" value={custosForm.custo_caixa}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, custo_caixa: e.target.value }))} />
-              </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Peças por caixa</label>
-                <input type="number" step="1" className={styles.input}
-                  value={custosForm.pecas_caixa}
-                  onChange={(e) => setCustosForm((f) => ({ ...f, pecas_caixa: e.target.value }))} />
-              </div>
-            </div>
-            <div className={styles.configAcoes}>
-              <button className={styles.btnSecundario} onClick={() => setCustosAberto(false)}>Cancelar</button>
-              <button className={styles.btnPrimario} onClick={salvarCustos} disabled={salvandoCustos}>
-                {salvandoCustos ? "Salvando…" : "Salvar"}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* ══ Seção — Accordion por grupo ══ */}
       <div className={styles.secao}>
@@ -675,13 +511,23 @@ export default function PrecificacaoPage() {
             {/* Linha */}
             <div className={styles.grade2}>
               <div className={styles.campo}>
-                <label className={styles.label}>Metros overlock</label>
+                <label className={styles.label}>
+                  Linha overlock por peça (m)
+                  {calc.custo_metro_overlock > 0 && (
+                    <span className={styles.labelDica}> — {R(calc.custo_metro_overlock)}/m</span>
+                  )}
+                </label>
                 <input type="number" step="0.01" className={styles.input} placeholder="0,00"
                   value={form.metros_linha_overlock}
                   onChange={(e) => setForm((f) => ({ ...f, metros_linha_overlock: e.target.value }))} />
               </div>
               <div className={styles.campo}>
-                <label className={styles.label}>Metros reta</label>
+                <label className={styles.label}>
+                  Linha reta por peça (m)
+                  {calc.custo_metro_reta > 0 && (
+                    <span className={styles.labelDica}> — {R(calc.custo_metro_reta)}/m</span>
+                  )}
+                </label>
                 <input type="number" step="0.01" className={styles.input} placeholder="0,00"
                   value={form.metros_linha_reta}
                   onChange={(e) => setForm((f) => ({ ...f, metros_linha_reta: e.target.value }))} />
@@ -710,25 +556,47 @@ export default function PrecificacaoPage() {
 
             {/* Preview breakdown */}
             <div className={styles.preview}>
-              <div className={styles.previewRow}><span>Tecido</span><span>{R(calc.custo_tecido)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Tecido{form.usar_kg && form.pecas_por_kg ? ` (${parseFloat(form.pecas_por_kg) > 0 ? (1/parseFloat(form.pecas_por_kg)).toFixed(3) : "?"}kg)` : ""}</span>
+                <span>{R(calc.custo_tecido)}</span>
+              </div>
               <div className={styles.previewRow}><span>Costura</span><span>{R(calc.custo_costura)}</span></div>
-              <div className={styles.previewRow}><span>Linha (overlock + reta)</span><span>{R(calc.custo_linha)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Overlock ({form.metros_linha_overlock || 0}m)</span>
+                <span>{R(calc.custo_overlock)}</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Reta ({form.metros_linha_reta || 0}m)</span>
+                <span>{R(calc.custo_reta)}</span>
+              </div>
               <div className={styles.previewRow}><span>Gasolina</span><span>{R(calc.custo_gasolina)}</span></div>
-              <div className={styles.previewRow}><span>Caixa/embalagem</span><span>{R(calc.custo_caixa)}</span></div>
+              <div className={styles.previewRow}><span>Saquinho</span><span>{R(calc.custo_saquinho)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Caixa (÷{custos?.pecas_por_caixa || 50} peças)</span>
+                <span>{R(calc.custo_caixa)}</span>
+              </div>
               <div className={styles.previewRow}><span>Etiqueta</span><span>{R(calc.custo_etiqueta)}</span></div>
-              <div className={styles.previewRow}><span>Embalagem</span><span>{R(calc.custo_embalagem)}</span></div>
               <div className={`${styles.previewRow} ${styles.previewSubtotal}`}><span>Custo base</span><span>{R(calc.custo_base)}</span></div>
               <div className={styles.previewRow}><span>Imposto ({Pct(config?.aliquota_simples)})</span><span>{R(calc.imposto)}</span></div>
-              <div className={styles.previewRow}><span>Lucro</span><span>{R(calc.lucro)}</span></div>
               <div className={`${styles.previewRow} ${styles.previewTotal}`}><span>Preço sugerido</span><span>{R(calc.preco)}</span></div>
             </div>
 
-            {/* Preço final */}
+            {/* Preço final + lucro */}
             <div className={styles.campo}>
               <label className={styles.label}>Preço final <span className={styles.labelDica}>(vazio = usar sugerido)</span></label>
               <input type="number" step="0.01" className={styles.input} placeholder="R$ 0,00"
                 value={form.preco_venda_final}
                 onChange={(e) => setForm((f) => ({ ...f, preco_venda_final: e.target.value, preco_final_manual: true }))} />
+              {calc.lucro != null && (() => {
+                const precoFinal = form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : calc.preco;
+                const lucroFinal = precoFinal && calc.custo_base ? precoFinal - calc.custo_base - (precoFinal * (parseFloat(config?.aliquota_simples) || 0)) : calc.lucro;
+                const margemFinal = precoFinal > 0 ? lucroFinal / precoFinal : null;
+                return (
+                  <span className={styles.lucroInfo}>
+                    Lucro: {R(lucroFinal)} {margemFinal != null ? `(${(margemFinal * 100).toFixed(1)}%)` : ""}
+                  </span>
+                );
+              })()}
             </div>
 
             {erroModal && <p className={styles.erroInline}>{erroModal}</p>}

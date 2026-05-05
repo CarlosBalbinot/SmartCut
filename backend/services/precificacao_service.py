@@ -42,20 +42,26 @@ def calcular_precificacao(
     # ── Custo linha ──
     metros_overlock = Decimal(str(prec.metros_linha_overlock or 0))
     metros_reta = Decimal(str(prec.metros_linha_reta or 0))
-    val_overlock = Decimal(str(custos.valor_kg_overlock or 0))
-    val_reta = Decimal(str(custos.valor_kg_reta or 0))
-    custo_linha = metros_overlock * val_overlock + metros_reta * val_reta
+    metros_rolo_ov = Decimal(str(custos.metros_rolo_overlock or 1))
+    metros_rolo_re = Decimal(str(custos.metros_rolo_reta or 1))
+    custo_metro_overlock = Decimal(str(custos.custo_rolo_overlock or 0)) / metros_rolo_ov if metros_rolo_ov > 0 else Decimal("0")
+    custo_metro_reta = Decimal(str(custos.custo_rolo_reta or 0)) / metros_rolo_re if metros_rolo_re > 0 else Decimal("0")
+    custo_overlock = metros_overlock * custo_metro_overlock
+    custo_reta = metros_reta * custo_metro_reta
 
     # ── Custo gasolina ──
     custo_gasolina = Decimal("0")
-    if custos.distancia_costureira_km and custos.consumo_veiculo_km_l and custos.preco_combustivel:
-        dist = Decimal(str(custos.distancia_costureira_km))
-        num_viagens = Decimal(str(custos.num_viagens or 2))
-        consumo = Decimal(str(custos.consumo_veiculo_km_l))
-        preco_comb = Decimal(str(custos.preco_combustivel))
-        pecas_viagem = Decimal(str(prec.pecas_por_viagem or 50))
-        if consumo > 0 and pecas_viagem > 0:
-            custo_gasolina = (dist * 2 * num_viagens / consumo) * preco_comb / pecas_viagem
+    dist = Decimal(str(custos.distancia_costureira_km or 0))
+    num_viagens = Decimal(str(custos.num_viagens or 2))
+    consumo = Decimal(str(custos.consumo_veiculo_km_l or 0))
+    preco_comb = Decimal(str(custos.preco_combustivel or 0))
+    pecas_viagem = Decimal(str(prec.pecas_por_viagem or 50))
+    if dist > 0 and consumo > 0 and preco_comb > 0 and pecas_viagem > 0:
+        custo_gasolina = (dist * 2 * num_viagens / consumo) * preco_comb / pecas_viagem
+
+    # ── Custo saquinho (automático, 1 por peça) ──
+    unidades_saq = Decimal(str(custos.unidades_saquinho_lote or 1))
+    custo_saquinho = Decimal(str(custos.custo_saquinho_lote or 0)) / unidades_saq if unidades_saq > 0 else Decimal("0")
 
     # ── Custo caixa (unitário) ──
     custo_caixa_unit = Decimal("0")
@@ -64,11 +70,10 @@ def calcular_precificacao(
 
     custo_costura = Decimal(str(prec.custo_costura or 0))
     custo_etiqueta = Decimal(str(config.custo_etiqueta or 0))
-    custo_embalagem = Decimal(str(config.custo_embalagem or 0))
 
     custo_base = (
-        custo_tecido + custo_costura + custo_linha
-        + custo_gasolina + custo_caixa_unit + custo_etiqueta + custo_embalagem
+        custo_tecido + custo_costura + custo_overlock + custo_reta
+        + custo_gasolina + custo_saquinho + custo_caixa_unit + custo_etiqueta
     )
 
     aliquota = Decimal(str(config.aliquota_simples))
@@ -78,11 +83,12 @@ def calcular_precificacao(
     base_result = {
         "custo_tecido": float(custo_tecido.quantize(Decimal("0.0001"))),
         "custo_costura": float(custo_costura),
-        "custo_linha": float(custo_linha.quantize(Decimal("0.0001"))),
+        "custo_overlock": float(custo_overlock.quantize(Decimal("0.0001"))),
+        "custo_reta": float(custo_reta.quantize(Decimal("0.0001"))),
         "custo_gasolina": float(custo_gasolina.quantize(Decimal("0.0001"))),
+        "custo_saquinho": float(custo_saquinho.quantize(Decimal("0.0001"))),
         "custo_caixa": float(custo_caixa_unit.quantize(Decimal("0.0001"))),
         "custo_etiqueta": float(custo_etiqueta),
-        "custo_embalagem": float(custo_embalagem),
         "custo_base": float(custo_base.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
     }
 

@@ -12,6 +12,7 @@ const TAMANHOS_DISPONIVEIS = ["PP", "P", "M", "G", "GG", "XGG"];
 
 const UPLOAD_INICIAL = {
   nomeGrupo: "",
+  codigoRef: "",
   tamanhosSelecionados: [],
   arquivo: null,
 };
@@ -170,7 +171,7 @@ export default function MoldesPage() {
     setSalvando(true);
     setErro(null);
     try {
-      await gruposApi.importar({
+      const grupo = await gruposApi.importar({
         nome_grupo: uploadForm.nomeGrupo.trim(),
         arquivo_path: previewMeta.arquivo_path,
         formato: previewMeta.formato,
@@ -186,6 +187,11 @@ export default function MoldesPage() {
           })),
         })),
       });
+
+      if (uploadForm.codigoRef.trim()) {
+        await gruposApi.renomear(grupo.id, { codigo: uploadForm.codigoRef.trim() });
+      }
+
       fecharImportacao();
       setSucesso(
         `Grupo "${uploadForm.nomeGrupo.trim()}" importado com ${partes.length} parte(s).`
@@ -305,6 +311,22 @@ export default function MoldesPage() {
                 placeholder="ex: Leg Transpassado, Frente Básica..."
                 required
               />
+            </div>
+
+            <div className={styles.campo}>
+              <label className={styles.label}>Referência (opcional)</label>
+              <input
+                className={styles.input}
+                value={uploadForm.codigoRef}
+                onChange={(e) =>
+                  setUploadForm((p) => ({ ...p, codigoRef: e.target.value.slice(0, 20) }))
+                }
+                placeholder="Ex: 300, 201, 100..."
+                maxLength={20}
+              />
+              <small style={{ color: "var(--sc-text-muted)", fontSize: "0.78rem", marginTop: "0.25rem", display: "block" }}>
+                Código usado nos pedidos de venda e tabelas de preço
+              </small>
             </div>
 
             <div className={styles.campo}>

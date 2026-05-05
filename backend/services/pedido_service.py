@@ -4,7 +4,14 @@ from datetime import date
 from sqlalchemy.orm import Session, selectinload
 
 from models.molde import Molde
-from models.pedido import Pedido, PedidoPeca, PedidoTecido
+from models.pedido import PedidoVenda as Pedido
+
+# Stubs — PedidoPeca e PedidoTecido removidos na reestruturação; router legado desativado
+class PedidoPeca:
+    pass
+
+class PedidoTecido:
+    pass
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from schemas.pedido_schema import (
     AdicionarGrupoPecaCreate,

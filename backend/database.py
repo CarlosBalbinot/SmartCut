@@ -18,3 +18,9 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+import models.venda  # noqa: E402,F401  — ensure new tables are in Base.metadata for alembic
+import models.pedido  # noqa: E402,F401
+import models.encaixe  # noqa: E402,F401
+import models.painel_vendedor  # noqa: E402,F401

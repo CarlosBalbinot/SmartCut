@@ -65,11 +65,11 @@ def renomear(db: Session, grupo_id: uuid.UUID, dados: GrupoMoldeUpdate) -> dict 
     grupo = db.get(GrupoMolde, grupo_id)
     if not grupo:
         return None
-    grupo.nome = dados.nome
+    if dados.nome is not None:
+        grupo.nome = dados.nome
+    if dados.codigo is not None:
+        grupo.codigo = dados.codigo
     db.commit()
-    db.refresh(grupo)
-    # recarrega moldes
-    db.refresh(grupo)
     return obter(db, grupo_id)
 
 
@@ -90,6 +90,7 @@ def _grupo_to_dict(grupo: GrupoMolde) -> dict:
     return {
         "id": str(grupo.id),
         "nome": grupo.nome,
+        "codigo": grupo.codigo,
         "criado_em": grupo.criado_em.isoformat(),
         "moldes": [_molde_to_dict(m) for m in grupo.moldes],
     }

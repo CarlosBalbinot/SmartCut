@@ -30,6 +30,13 @@ async function requestBlob(path) {
   return res.blob();
 }
 
+async function requestFormMethod(path, formData, method = "POST") {
+  const res = await fetch(`${BASE_URL}${path}`, { method, body: formData });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
+  return json.data;
+}
+
 // ── Nova hierarquia: Modelo → Cor → Lote ─────────────────────────────
 
 export const modelosApi = {
@@ -113,6 +120,7 @@ export const moldesApi = {
 
 export const gruposApi = {
   listar: () => request("/grupos-molde/"),
+  buscar: (search) => request(`/grupos-molde/?search=${encodeURIComponent(search)}`),
   obter: (id) => request(`/grupos-molde/${id}`),
   importar: (payload) =>
     request("/grupos-molde/importar", { method: "POST", body: JSON.stringify(payload) }),
@@ -150,4 +158,90 @@ export const encaixesApi = {
   deletar: (id) => request(`/encaixes/${id}`, { method: "DELETE" }),
   relatorio: (id) => request(`/encaixes/${id}/relatorio`),
   pdf: (pedidoId) => requestBlob(`/encaixes/${pedidoId}/pdf`),
+};
+
+export const configuracaoEmpresaApi = {
+  get: () => request("/configuracao-empresa/"),
+  update: (payload) =>
+    request("/configuracao-empresa/", { method: "PATCH", body: JSON.stringify(payload) }),
+  uploadLogo: (formData) => requestFormMethod("/configuracao-empresa/logo", formData, "PATCH"),
+};
+
+export const tabelasPrecoApi = {
+  list: () => request("/tabelas-preco/"),
+  create: (payload) =>
+    request("/tabelas-preco/", { method: "POST", body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/tabelas-preco/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  remove: (id) => request(`/tabelas-preco/${id}`, { method: "DELETE" }),
+  listItens: (id) => request(`/tabelas-preco/${id}/itens`),
+  addItem: (id, payload) =>
+    request(`/tabelas-preco/${id}/itens`, { method: "POST", body: JSON.stringify(payload) }),
+  removeItem: (id, grupoId) =>
+    request(`/tabelas-preco/${id}/itens/${grupoId}`, { method: "DELETE" }),
+};
+
+export const referenciasApi = {
+  list: () => request("/referencias/"),
+  create: (payload) =>
+    request("/referencias/", { method: "POST", body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/referencias/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  getPrecos: (id) => request(`/referencias/${id}/precos`),
+  setPreco: (id, payload) =>
+    request(`/referencias/${id}/precos`, { method: "POST", body: JSON.stringify(payload) }),
+};
+
+export const vendedoresApi = {
+  list: () => request("/vendedores/"),
+  create: (payload) =>
+    request("/vendedores/", { method: "POST", body: JSON.stringify(payload) }),
+  update: (id, payload) =>
+    request(`/vendedores/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  remove: (id) => request(`/vendedores/${id}`, { method: "DELETE" }),
+  getDashboard: (id) => request(`/vendedores/${id}/dashboard`),
+  getCredenciais: (id) => request(`/vendedores/${id}/credenciais`),
+  setCredenciais: (id, payload) =>
+    request(`/vendedores/${id}/credenciais`, { method: "POST", body: JSON.stringify(payload) }),
+  getMetas: (id) => request(`/vendedores/${id}/metas`),
+  updateMetas: (id, payload) =>
+    request(`/vendedores/${id}/metas`, { method: "PATCH", body: JSON.stringify(payload) }),
+};
+
+export const catalogosApi = {
+  list: () => request("/catalogos/"),
+  create: (formData) => requestForm("/catalogos/", formData),
+  remove: (id) => request(`/catalogos/${id}`, { method: "DELETE" }),
+  listVendedores: (catId) => request(`/catalogos/${catId}/vendedores`),
+  addVendedor: (catId, vendedorId) =>
+    request(`/catalogos/${catId}/vendedores`, { method: "POST", body: JSON.stringify({ vendedor_id: vendedorId }) }),
+  removeVendedor: (catId, vendedorId) =>
+    request(`/catalogos/${catId}/vendedores/${vendedorId}`, { method: "DELETE" }),
+};
+
+export const leadsApi = {
+  list: () => request("/leads/"),
+  create: (payload) =>
+    request("/leads/", { method: "POST", body: JSON.stringify(payload) }),
+  remove: (id) => request(`/leads/${id}`, { method: "DELETE" }),
+};
+
+export const pedidosVendaApi = {
+  list: (tipo) => request(`/pedidos-venda/${tipo ? `?tipo=${tipo}` : ""}`),
+  create: (payload) =>
+    request("/pedidos-venda/", { method: "POST", body: JSON.stringify(payload) }),
+  get: (id) => request(`/pedidos-venda/${id}`),
+  update: (id, payload) =>
+    request(`/pedidos-venda/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  remove: (id) => request(`/pedidos-venda/${id}`, { method: "DELETE" }),
+  addItem: (id, payload) =>
+    request(`/pedidos-venda/${id}/itens`, { method: "POST", body: JSON.stringify(payload) }),
+  updateItem: (id, itemId, payload) =>
+    request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  removeItem: (id, itemId) =>
+    request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "DELETE" }),
+  proximoNumero: (tipo = "venda") => request(`/pedidos-venda/proximo-numero?tipo=${tipo}`),
+  gerarEncaixe: (id) => request(`/pedidos-venda/${id}/gerar-encaixe`, { method: "POST" }),
+  pdfPedido: (id) => requestBlob(`/pedidos-venda/${id}/pdf-pedido`),
+  pdfCorte: (id) => requestBlob(`/pedidos-venda/${id}/pdf-corte`),
 };

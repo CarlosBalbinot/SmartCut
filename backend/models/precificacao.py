@@ -21,9 +21,6 @@ class ConfiguracaoEmpresa(Base):
     custo_etiqueta: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("0.00")
     )
-    custo_embalagem: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2), nullable=False, default=Decimal("0.00")
-    )
 
 
 class ConfiguracaoCustosFixos(Base):
@@ -32,8 +29,14 @@ class ConfiguracaoCustosFixos(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    valor_kg_overlock: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
-    valor_kg_reta: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
+    metros_rolo_overlock: Mapped[int] = mapped_column(Integer, nullable=False, default=5000)
+    custo_rolo_overlock: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    metros_rolo_reta: Mapped[int] = mapped_column(Integer, nullable=False, default=5000)
+    custo_rolo_reta: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    custo_saquinho_lote: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("148.00"))
+    unidades_saquinho_lote: Mapped[int] = mapped_column(Integer, nullable=False, default=500)
+    custo_caixa: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
+    pecas_por_caixa: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
     distancia_costureira_km: Mapped[Decimal] = mapped_column(
         Numeric(6, 2), nullable=False, default=Decimal("1.5")
     )
@@ -41,9 +44,7 @@ class ConfiguracaoCustosFixos(Base):
     consumo_veiculo_km_l: Mapped[Decimal] = mapped_column(
         Numeric(6, 2), nullable=False, default=Decimal("12.0")
     )
-    preco_combustivel: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
-    custo_caixa: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
-    pecas_por_caixa: Mapped[int] = mapped_column(Integer, nullable=False, default=12)
+    preco_combustivel: Mapped[Decimal] = mapped_column(Numeric(6, 2), nullable=False, default=Decimal("0.00"))
 
 
 class Precificacao(Base):

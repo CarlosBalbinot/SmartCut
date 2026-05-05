@@ -2,9 +2,20 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from routers import encaixes, grupos_molde, moldes, pedidos, tecidos
+from routers import encaixes, grupos_molde, moldes, tecidos
 from routers import modelos_tecido, cores_tecido, lotes_tecido
 from routers import precificacoes
+from routers import (
+    configuracao_empresa,
+    tabelas_preco,
+    grupos_preco,
+    vendedores,
+    pedidos_venda,
+    auth,
+    vendedor_painel,
+    catalogos,
+    leads,
+)
 
 app = FastAPI(
     title="SmartCut API",
@@ -22,7 +33,6 @@ app.add_middleware(
 
 # ── Routers legados ───────────────────────────────────────────────────
 app.include_router(tecidos.router)
-app.include_router(pedidos.router)
 app.include_router(moldes.router)
 app.include_router(grupos_molde.router)
 app.include_router(encaixes.router)
@@ -34,6 +44,23 @@ app.include_router(lotes_tecido.router)
 
 # ── Precificação ──────────────────────────────────────────────────────
 app.include_router(precificacoes.router)
+
+# ── Vendas ────────────────────────────────────────────────────────────
+app.include_router(configuracao_empresa.router)
+app.include_router(tabelas_preco.router)
+app.include_router(grupos_preco.router)
+app.include_router(vendedores.router)
+app.include_router(pedidos_venda.router)
+
+# ── Auth ──────────────────────────────────────────────────────────────
+app.include_router(auth.router)
+
+# ── Painel do vendedor ────────────────────────────────────────────────
+app.include_router(vendedor_painel.router)
+
+# ── Catálogos e Leads ─────────────────────────────────────────────────
+app.include_router(catalogos.router)
+app.include_router(leads.router)
 
 
 @app.exception_handler(Exception)

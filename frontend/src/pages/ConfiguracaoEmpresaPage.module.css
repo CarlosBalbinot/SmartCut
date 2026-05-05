@@ -1,0 +1,168 @@
+.page {
+  padding: 2rem;
+  max-width: 900px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+/* Logo */
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 1.75rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.logoPreview {
+  width: 120px;
+  height: 60px;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sc-bg-secondary);
+  flex-shrink: 0;
+}
+
+.logoImg {
+  max-width: 120px;
+  max-height: 60px;
+  object-fit: contain;
+}
+
+.logoPlaceholder {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+.logoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.logoLabel {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.logoHint {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Form grid */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.fieldLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--sc-action);
+}
+
+/* Messages */
+.msgSuccess {
+  font-size: 0.875rem;
+  color: var(--sc-success-text);
+  background: var(--sc-success-bg);
+  border: 1px solid var(--sc-success-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.msgError {
+  font-size: 0.875rem;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+/* Buttons */
+.btnPrimary {
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnPrimary:hover { background: var(--sc-action-hover); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btnSecondary:hover { background: var(--sc-surface-hover); }

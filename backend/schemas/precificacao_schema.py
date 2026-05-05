@@ -11,38 +11,44 @@ class ConfiguracaoEmpresaOut(BaseModel):
     id: UUID
     aliquota_simples: Decimal
     custo_etiqueta: Decimal
-    custo_embalagem: Decimal
 
 
 class ConfiguracaoEmpresaUpdate(BaseModel):
     aliquota_simples: Optional[Decimal] = None
     custo_etiqueta: Optional[Decimal] = None
-    custo_embalagem: Optional[Decimal] = None
 
 
 class ConfiguracaoCustosFixosOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    valor_kg_overlock: Optional[Decimal]
-    valor_kg_reta: Optional[Decimal]
+    metros_rolo_overlock: int
+    custo_rolo_overlock: Decimal
+    metros_rolo_reta: int
+    custo_rolo_reta: Decimal
+    custo_saquinho_lote: Decimal
+    unidades_saquinho_lote: int
+    custo_caixa: Decimal
+    pecas_por_caixa: int
     distancia_costureira_km: Decimal
     num_viagens: int
     consumo_veiculo_km_l: Decimal
-    preco_combustivel: Optional[Decimal]
-    custo_caixa: Optional[Decimal]
-    pecas_por_caixa: int
+    preco_combustivel: Decimal
 
 
 class ConfiguracaoCustosFixosUpdate(BaseModel):
-    valor_kg_overlock: Optional[Decimal] = None
-    valor_kg_reta: Optional[Decimal] = None
+    metros_rolo_overlock: Optional[int] = None
+    custo_rolo_overlock: Optional[Decimal] = None
+    metros_rolo_reta: Optional[int] = None
+    custo_rolo_reta: Optional[Decimal] = None
+    custo_saquinho_lote: Optional[Decimal] = None
+    unidades_saquinho_lote: Optional[int] = None
+    custo_caixa: Optional[Decimal] = None
+    pecas_por_caixa: Optional[int] = None
     distancia_costureira_km: Optional[Decimal] = None
     num_viagens: Optional[int] = None
     consumo_veiculo_km_l: Optional[Decimal] = None
     preco_combustivel: Optional[Decimal] = None
-    custo_caixa: Optional[Decimal] = None
-    pecas_por_caixa: Optional[int] = None
 
 
 class PrecificacaoCreate(BaseModel):
