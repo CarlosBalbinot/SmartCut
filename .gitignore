@@ -52,3 +52,4 @@ release/
 # Documentação interna
 docs/
 .claude/
+backend/nesting/svgnest/
