@@ -33,7 +33,7 @@ def _comissao_pedido(p: PedidoVenda, db: Session, cache: dict) -> Decimal:
     if p.tabela_preco_id not in cache:
         cache[p.tabela_preco_id] = db.get(TabelaPreco, p.tabela_preco_id)
     tabela = cache[p.tabela_preco_id]
-    return (p.total * tabela.comissao_pct) if tabela else Decimal("0")
+    return (p.total_pedido * tabela.comissao_pct) if tabela else Decimal("0")
 
 
 @router.get("/perfil")
@@ -42,7 +42,7 @@ def perfil(
     db: Session = Depends(get_db),
 ):
     v = _get_vendedor(db, vendedor_id)
-    return {"nome": v.nome, "telefone": v.telefone, "email": v.email}
+    return {"data": {"nome": v.nome, "vendedor_nome": v.nome, "name": v.nome, "telefone": v.telefone, "email": v.email}, "error": None}
 
 
 @router.get("/dashboard")
@@ -56,32 +56,32 @@ def dashboard(
     pedidos_mes = (
         db.query(PedidoVenda)
         .filter(
-            PedidoVenda.representante == v.nome,
+            PedidoVenda.vendedor_id == v.id,
             PedidoVenda.status.in_(["confirmado", "entregue"]),
-            extract("month", PedidoVenda.data) == now.month,
-            extract("year", PedidoVenda.data) == now.year,
+            extract("month", PedidoVenda.data_emissao) == now.month,
+            extract("year", PedidoVenda.data_emissao) == now.year,
         )
         .all()
     )
 
-    total_vendido_mes = sum((p.total for p in pedidos_mes), Decimal("0"))
+    total_vendido_mes = sum((p.total_pedido for p in pedidos_mes), Decimal("0"))
     num_pedidos_mes = len(pedidos_mes)
     ticket_medio = (total_vendido_mes / num_pedidos_mes) if num_pedidos_mes else Decimal("0")
 
     cache: dict = {}
     comissao_mes = sum((_comissao_pedido(p, db, cache) for p in pedidos_mes), Decimal("0"))
 
-    clientes_mes = {p.cliente for p in pedidos_mes}
+    clientes_mes = {p.cliente_razao_social for p in pedidos_mes}
     clientes_anteriores = {
-        r.cliente
-        for r in db.query(PedidoVenda.cliente)
+        r.cliente_razao_social
+        for r in db.query(PedidoVenda.cliente_razao_social)
         .filter(
             PedidoVenda.representante == v.nome,
             or_(
-                extract("year", PedidoVenda.data) < now.year,
+                extract("year", PedidoVenda.data_emissao) < now.year,
                 and_(
-                    extract("year", PedidoVenda.data) == now.year,
-                    extract("month", PedidoVenda.data) < now.month,
+                    extract("year", PedidoVenda.data_emissao) == now.year,
+                    extract("month", PedidoVenda.data_emissao) < now.month,
                 ),
             ),
         )
@@ -95,8 +95,8 @@ def dashboard(
 
     ultimos_3 = (
         db.query(PedidoVenda)
-        .filter(PedidoVenda.representante == v.nome)
-        .order_by(PedidoVenda.data.desc())
+        .filter(PedidoVenda.vendedor_id == v.id)
+        .order_by(PedidoVenda.data_emissao.desc())
         .limit(3)
         .all()
     )
@@ -121,7 +121,7 @@ def dashboard(
             else 0
         ),
         "ultimos_3_pedidos": [
-            {"numero": p.numero, "cliente": p.cliente, "total": p.total, "status": p.status}
+            {"numero": p.numero, "cliente": p.cliente_razao_social, "total": p.total_pedido, "status": p.status}
             for p in ultimos_3
         ],
     }
@@ -140,7 +140,8 @@ def listar_catalogos(
         .filter(CatalogoVendedor.vendedor_id == v.id, Catalogo.ativo == True)
         .all()
     )
-    return [
+    
+    catalogos = [
         {
             "id": str(cat.id),
             "nome": cat.nome,
@@ -149,6 +150,7 @@ def listar_catalogos(
         }
         for cat, tabela_nome in rows
     ]
+    return {"data": catalogos, "error": None}
 
 
 @router.get("/catalogos/{catalogo_id}/download")
@@ -197,22 +199,24 @@ def listar_pedidos(
     v = _get_vendedor(db, vendedor_id)
     pedidos = (
         db.query(PedidoVenda)
-        .filter(PedidoVenda.representante == v.nome)
-        .order_by(PedidoVenda.data.desc())
+        .filter(PedidoVenda.vendedor_id == v.id)
+        .order_by(PedidoVenda.data_emissao.desc())
         .all()
     )
     cache: dict = {}
-    return [
+
+    data_pedidos = [
         {
             "numero": p.numero,
-            "data": p.data,
-            "cliente": p.cliente,
-            "total": p.total,
-            "comissao": _comissao_pedido(p, db, cache),
+            "data": p.data_emissao,
+            "cliente": p.cliente_razao_social,
+            "total": float(p.total_pedido), 
+            "comissao": float(_comissao_pedido(p, db, cache)),
             "status": p.status,
         }
         for p in pedidos
     ]
+    return {"data": data_pedidos, "error": None}
 
 
 @router.get("/leads")
@@ -227,7 +231,7 @@ def listar_leads(
         .order_by(Lead.criado_em.desc())
         .all()
     )
-    return [
+    data_leads = [
         {
             "id": str(lead.id),
             "nome": lead.nome,
@@ -242,6 +246,7 @@ def listar_leads(
         }
         for lead in leads
     ]
+    return {"data": data_leads, "error": None}
 
 
 class LeadUpdate(BaseModel):

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 import styles from "./App.module.css";
+import { useLogo } from "./contexts/LogoContext";
 import TecidosPage from "./pages/TecidosPage";
 import PedidosPage from "./pages/PedidosPage";
 import PedidoDetalhePage from "./pages/PedidoDetalhePage";
@@ -15,6 +16,10 @@ import PedidosVendaPage from "./pages/PedidosVendaPage";
 import PedidoVendaDetalhePage from "./pages/PedidoVendaDetalhePage";
 import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import EncaixeRapidoPage from "./pages/EncaixeRapidoPage";
+import PainelFinanceiro from "./pages/financeiro/PainelFinanceiro";
+import FluxoCaixa from "./pages/financeiro/FluxoCaixa";
+import ComprasFinanceiro from "./pages/financeiro/ComprasFinanceiro";
+import VendasFinanceiro from "./pages/financeiro/VendasFinanceiro";
 
 /* ── Ícones SVG inline 15×15 ── */
 const IconTecidos = () => (
@@ -87,6 +92,36 @@ const IconRelampago = () => (
   </svg>
 );
 
+const IconTrendingUp = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <path d="M1 11L5 7L8 9.5L14 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M10 3H14V7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const IconCalendar = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="1.5" y="2.5" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M1.5 6.5h12" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M5 1.5v2M10 1.5v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconShoppingCart = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <path d="M1 1.5h2l2 8h7l1.5-5.5H4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="6" cy="12.5" r="1" fill="currentColor"/>
+    <circle cx="11" cy="12.5" r="1" fill="currentColor"/>
+  </svg>
+);
+
+const IconDollarSign = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <path d="M7.5 1.5v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M10 4.5C10 4.5 9 3.5 7.5 3.5C6 3.5 5 4.25 5 5.5C5 6.75 6.5 7.25 7.5 7.5C8.5 7.75 10 8.25 10 9.5C10 10.75 9 11.5 7.5 11.5C6 11.5 5 10.5 5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
 const SECTIONS = [
   {
     label: "CADASTROS",
@@ -115,6 +150,15 @@ const SECTIONS = [
       { to: "/pedidos-venda", label: "Pedidos de Venda", Icon: IconDocVenda },
     ],
   },
+  {
+    label: "FINANCEIRO",
+    items: [
+      { to: "/financeiro/painel",      label: "Painel",        Icon: IconTrendingUp  },
+      { to: "/financeiro/fluxo-caixa", label: "Fluxo de Caixa", Icon: IconCalendar   },
+      { to: "/financeiro/compras",     label: "Compras",        Icon: IconShoppingCart },
+      { to: "/financeiro/vendas",      label: "Vendas Fin.",    Icon: IconDollarSign  },
+    ],
+  },
 ];
 
 export default function App() {
@@ -123,6 +167,7 @@ export default function App() {
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const [alertas, setAlertas] = useState([]);
   const [bannerFechado, setBannerFechado] = useState(false);
+  const { logoUrl } = useLogo();
 
   useEffect(() => {
     lotesApi.listarAlertas().then(setAlertas).catch(() => {});
@@ -137,8 +182,14 @@ export default function App() {
         {/* scrollable nav content */}
         <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           <div className={styles.logoWrap}>
-            <span className={styles.logo}>SmartCut</span>
-            <span className={styles.logoSub}>Gestão de Corte</span>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo da empresa" className={styles.sidebarLogoImg} />
+            ) : (
+              <>
+                <span className={styles.logo}>SmartCut</span>
+                <span className={styles.logoSub}>Gestão de Corte</span>
+              </>
+            )}
           </div>
 
           {SECTIONS.map(({ label, items }) => (
@@ -229,6 +280,10 @@ export default function App() {
             <Route path="/pedidos-venda/:id" element={<PedidoVendaDetalhePage />} />
             <Route path="/configuracoes"     element={<ConfiguracoesPage />} />
             <Route path="/configuracoes/*"   element={<ConfiguracoesPage />} />
+            <Route path="/financeiro/painel"      element={<PainelFinanceiro />} />
+            <Route path="/financeiro/fluxo-caixa" element={<FluxoCaixa />} />
+            <Route path="/financeiro/compras"     element={<ComprasFinanceiro />} />
+            <Route path="/financeiro/vendas"      element={<VendasFinanceiro />} />
           </Routes>
         </main>
       </div>

@@ -16,7 +16,7 @@ class ConfiguracaoEmpresa(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     aliquota_simples: Mapped[Decimal] = mapped_column(
-        Numeric(5, 4), nullable=False, default=Decimal("0.0730")
+        Numeric(8, 4), nullable=False, default=Decimal("7.3000")
     )
     custo_etiqueta: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("0.00")

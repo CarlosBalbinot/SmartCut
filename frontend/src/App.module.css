@@ -23,6 +23,12 @@
   gap: 3px;
 }
 
+.sidebarLogoImg {
+  max-height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
 .logo {
   font-size: 17px;
   font-weight: 700;

@@ -35,7 +35,11 @@ def login(body: LoginInput, db: Session = Depends(get_db)):
 
     token = criar_token(str(usuario.vendedor_id), usuario.username)
     return {
-        "token": token,
-        "vendedor_id": str(usuario.vendedor_id),
-        "nome": vendedor.nome if vendedor else usuario.username,
-    }
+        "data": {
+            "token": token,
+            "vendedor_id": str(usuario.vendedor_id),
+            "nome": vendedor.nome,
+            "nome": vendedor.nome if vendedor else usuario.username,
+    },
+    "error": None    
+}

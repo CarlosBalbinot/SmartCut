@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from routers import encaixes, grupos_molde, moldes, tecidos
 from routers import modelos_tecido, cores_tecido, lotes_tecido
@@ -16,6 +19,7 @@ from routers import (
     catalogos,
     leads,
 )
+from routers import financeiro
 
 app = FastAPI(
     title="SmartCut API",
@@ -61,6 +65,13 @@ app.include_router(vendedor_painel.router)
 # ── Catálogos e Leads ─────────────────────────────────────────────────
 app.include_router(catalogos.router)
 app.include_router(leads.router)
+
+# ── Financeiro ────────────────────────────────────────────────────────────────
+app.include_router(financeiro.router)
+
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.exception_handler(Exception)

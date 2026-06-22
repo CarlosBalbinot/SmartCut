@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { configuracaoEmpresaApi } from "../services/api";
+import { useLogo } from "../contexts/LogoContext";
 import styles from "./ConfiguracaoEmpresaPage.module.css";
 
 const CAMPOS = [
@@ -9,13 +10,13 @@ const CAMPOS = [
   { name: "endereco",     label: "Endereço"      },
   { name: "cidade",       label: "Cidade"        },
   { name: "cep",          label: "CEP"           },
-  { name: "tel1",         label: "Telefone 1"    },
-  { name: "tel2",         label: "Telefone 2"    },
+  { name: "telefone1",    label: "Telefone 1"    },
+  { name: "telefone2",    label: "Telefone 2"    },
   { name: "email",        label: "E-mail"        },
   { name: "site",         label: "Site"          },
 ];
 
-const VAZIO = { razao_social: "", cnpj: "", ie: "", endereco: "", cidade: "", cep: "", tel1: "", tel2: "", email: "", site: "" };
+const VAZIO = { razao_social: "", cnpj: "", ie: "", endereco: "", cidade: "", cep: "", telefone1: "", telefone2: "", email: "", site: "" };
 
 export default function ConfiguracaoEmpresaPage() {
   const [form, setForm]       = useState(VAZIO);
@@ -23,6 +24,7 @@ export default function ConfiguracaoEmpresaPage() {
   const [saving, setSaving]   = useState(false);
   const [msg, setMsg]         = useState(null);
   const fileRef               = useRef();
+  const { setLogoUrl: setGlobalLogo } = useLogo();
 
   useEffect(() => {
     configuracaoEmpresaApi.get().then((d) => {
@@ -34,8 +36,8 @@ export default function ConfiguracaoEmpresaPage() {
         endereco:     d.endereco     || "",
         cidade:       d.cidade       || "",
         cep:          d.cep          || "",
-        tel1:         d.tel1         || "",
-        tel2:         d.tel2         || "",
+        telefone1:    d.telefone1    || "",
+        telefone2:    d.telefone2    || "",
         email:        d.email        || "",
         site:         d.site         || "",
       });
@@ -62,13 +64,20 @@ export default function ConfiguracaoEmpresaPage() {
   const handleLogoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const blobUrl = URL.createObjectURL(file);
+    setLogoUrl(blobUrl);
     const fd = new FormData();
     fd.append("logo", file);
     try {
       const d = await configuracaoEmpresaApi.uploadLogo(fd);
-      if (d?.logo_url) setLogoUrl(d.logo_url);
-    } catch (e) {
-      setMsg({ type: "error", text: e.message });
+      if (d?.logo_url) {
+        URL.revokeObjectURL(blobUrl);
+        setLogoUrl(d.logo_url);
+        setGlobalLogo(d.logo_url);
+      }
+    } catch (err) {
+      URL.revokeObjectURL(blobUrl);
+      setMsg({ type: "error", text: err.message });
     }
   };
 

@@ -1,0 +1,336 @@
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--sc-bg-secondary);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: linear-gradient(135deg, #1C1B19 0%, #3D3A36 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.saudacao {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 2px;
+  letter-spacing: -0.3px;
+}
+
+.subtitulo {
+  font-size: 13px;
+  color: #B5B2AE;
+  margin: 0;
+}
+
+.logoutBtn {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0 8px 12px;
+  min-height: 44px;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+/* ── Content ── */
+.content {
+  flex: 1;
+  padding: 16px;
+  padding-bottom: 88px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info {
+  text-align: center;
+  color: var(--sc-text-muted);
+  font-size: 14px;
+  padding: 32px 0;
+}
+
+.erro {
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  padding: 12px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ── Cards base ── */
+.card {
+  background: var(--sc-bg);
+  border-radius: var(--sc-radius-md);
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.cardMeta {
+  background: var(--sc-bg);
+}
+
+.cardMetaSuccess {
+  background: #0A2E1A;
+}
+
+.cardMetaSuccess .cardLabel,
+.cardMetaSuccess .progressMeta {
+  color: #6EE7A0;
+}
+
+.cardMetaSuccess .cardValueLarge {
+  color: #fff;
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: var(--sc-text-secondary);
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+
+.cardValueLarge {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  letter-spacing: -0.8px;
+  margin: 0 0 14px;
+}
+
+/* ── Progress bar ── */
+.progressBar {
+  height: 8px;
+  background: var(--sc-border);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--sc-action);
+  border-radius: 99px;
+  transition: width 1s ease;
+}
+
+.progressMeta {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  margin: 0 0 10px;
+}
+
+.successMsg {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1A7F37;
+  background: #E8F8E8;
+  padding: 8px 12px;
+  border-radius: var(--sc-radius-sm);
+  margin: 0;
+}
+
+.warningMsg {
+  font-size: 13px;
+  font-weight: 500;
+  color: #B45309;
+  background: #FFF8E8;
+  padding: 8px 12px;
+  border-radius: var(--sc-radius-sm);
+  margin: 0;
+}
+
+/* ── Bônus row ── */
+.bonusRow {
+  display: flex;
+  gap: 10px;
+}
+
+.bonusCard {
+  flex: 1;
+  background: var(--sc-bg);
+  border-radius: var(--sc-radius-md);
+  padding: 14px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.bonusIcon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.bonusTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.bonusStatusOk {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1A7F37;
+  margin: 0;
+}
+
+.bonusStatusPending {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bonusProgress {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.bonusValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 4px 0 0;
+  letter-spacing: -0.3px;
+}
+
+/* ── Últimos pedidos ── */
+.section {
+  background: var(--sc-bg);
+  border-radius: var(--sc-radius-md);
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0 0 12px;
+}
+
+.pedidoCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sc-border);
+  gap: 12px;
+}
+
+.pedidoCard:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.pedidoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pedidoNum {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.pedidoCliente {
+  font-size: 13px;
+  color: var(--sc-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pedidoRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.pedidoTotal {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  text-transform: capitalize;
+}
+
+/* ── Bottom nav ── */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: var(--sc-bg);
+  border-top: 1px solid var(--sc-border);
+  display: flex;
+  align-items: center;
+  padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  z-index: 100;
+}
+
+.navItem,
+.navItemActive {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 4px;
+  min-height: 44px;
+  font-family: inherit;
+  color: var(--sc-text-muted);
+  transition: color 0.15s;
+}
+
+.navItem span,
+.navItemActive span {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.navItemActive {
+  color: var(--sc-text-primary);
+}

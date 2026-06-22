@@ -24,3 +24,4 @@ import models.venda  # noqa: E402,F401  — ensure new tables are in Base.metada
 import models.pedido  # noqa: E402,F401
 import models.encaixe  # noqa: E402,F401
 import models.painel_vendedor  # noqa: E402,F401
+import models.financeiro  # noqa: E402,F401

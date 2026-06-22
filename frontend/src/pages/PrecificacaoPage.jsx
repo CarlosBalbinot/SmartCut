@@ -58,7 +58,7 @@ function calcLocal(form, config, custos) {
 
   const custo_base = custo_tecido + custo_costura + custo_overlock + custo_reta + custo_gasolina + custo_saquinho + custo_caixa + custo_etiqueta;
 
-  const aliquota = parseFloat(config?.aliquota_simples) || 0;
+  const aliquota = (parseFloat(config?.aliquota_simples) || 0) / 100;
   const margem = (parseFloat(form.margem_desejada) || 60) / 100;
   const denom = 1 - aliquota - margem;
 
@@ -577,7 +577,7 @@ export default function PrecificacaoPage() {
               </div>
               <div className={styles.previewRow}><span>Etiqueta</span><span>{R(calc.custo_etiqueta)}</span></div>
               <div className={`${styles.previewRow} ${styles.previewSubtotal}`}><span>Custo base</span><span>{R(calc.custo_base)}</span></div>
-              <div className={styles.previewRow}><span>Imposto ({Pct(config?.aliquota_simples)})</span><span>{R(calc.imposto)}</span></div>
+              <div className={styles.previewRow}><span>Imposto ({config?.aliquota_simples != null ? `${parseFloat(config.aliquota_simples).toFixed(2)}%` : "—"})</span><span>{R(calc.imposto)}</span></div>
               <div className={`${styles.previewRow} ${styles.previewTotal}`}><span>Preço sugerido</span><span>{R(calc.preco)}</span></div>
             </div>
 
@@ -589,7 +589,7 @@ export default function PrecificacaoPage() {
                 onChange={(e) => setForm((f) => ({ ...f, preco_venda_final: e.target.value, preco_final_manual: true }))} />
               {calc.lucro != null && (() => {
                 const precoFinal = form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : calc.preco;
-                const lucroFinal = precoFinal && calc.custo_base ? precoFinal - calc.custo_base - (precoFinal * (parseFloat(config?.aliquota_simples) || 0)) : calc.lucro;
+                const lucroFinal = precoFinal && calc.custo_base ? precoFinal - calc.custo_base - (precoFinal * ((parseFloat(config?.aliquota_simples) || 0) / 100)) : calc.lucro;
                 const margemFinal = precoFinal > 0 ? lucroFinal / precoFinal : null;
                 return (
                   <span className={styles.lucroInfo}>

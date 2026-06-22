@@ -76,7 +76,7 @@ def calcular_precificacao(
         + custo_gasolina + custo_saquinho + custo_caixa_unit + custo_etiqueta
     )
 
-    aliquota = Decimal(str(config.aliquota_simples))
+    aliquota = Decimal(str(config.aliquota_simples)) / Decimal("100")
     margem = Decimal(str(prec.margem_desejada))
     denominador = Decimal("1") - aliquota - margem
 

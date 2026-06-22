@@ -28,3 +28,27 @@ postgres_data/
 # Alembic
 backend/alembic/versions/*.py
 !backend/alembic/versions/.gitkeep
+
+# Uploads financeiro (boletos e NFs)
+backend/uploads/financeiro/
+
+# Logs
+*.log
+backend/logs/
+
+# SVG gerados de moldes
+backend/uploads/moldes/
+
+# Arquivos de build do Electron (quando implementar)
+electron/dist/
+release/
+*.exe
+*.dmg
+
+# Banco local de dados
+*.db
+*.sqlite
+
+# Documentação interna
+docs/
+.claude/

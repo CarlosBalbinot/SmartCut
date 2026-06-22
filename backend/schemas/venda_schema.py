@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 # ── Empresa ───────────────────────────────────────────────────────────────
@@ -23,6 +23,18 @@ class EmpresaOut(BaseModel):
     site: Optional[str]
     logo_path: Optional[str]
     criado_em: datetime
+
+    @computed_field
+    @property
+    def logo_url(self) -> Optional[str]:
+        if not self.logo_path:
+            return None
+        # Normaliza separadores e extrai a parte relativa a partir de "uploads/"
+        path = self.logo_path.replace("\\", "/")
+        if "uploads/" in path:
+            rel = path.split("uploads/")[-1]
+            return f"/uploads/{rel}"
+        return None
 
 
 class EmpresaUpdate(BaseModel):

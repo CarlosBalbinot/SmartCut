@@ -1,0 +1,102 @@
+.page {
+  min-height: 100dvh;
+  background: var(--sc-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.logoBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  min-height: 80px;
+}
+
+.logoImg {
+  height: 80px;
+  object-fit: contain;
+}
+
+.logoFallback {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+}
+
+.card {
+  background: var(--sc-bg);
+  border-radius: var(--sc-radius-lg);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+}
+
+.titulo {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0 0 24px;
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input {
+  width: 100%;
+  height: 50px;
+  padding: 0 16px;
+  border: 1.5px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-md);
+  font-size: 16px;
+  color: var(--sc-text-primary);
+  background: var(--sc-bg);
+  box-sizing: border-box;
+  outline: none;
+  font-family: inherit;
+}
+
+.input:focus {
+  border-color: var(--sc-action);
+}
+
+.erro {
+  font-size: 13px;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  padding: 10px 12px;
+  border-radius: var(--sc-radius-sm);
+  margin: 0;
+}
+
+.botao {
+  height: 50px;
+  min-height: 44px;
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-md);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+
+.botao:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.botao:active:not(:disabled) {
+  opacity: 0.8;
+}

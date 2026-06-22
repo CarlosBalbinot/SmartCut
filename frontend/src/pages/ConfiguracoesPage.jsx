@@ -79,12 +79,12 @@ const DROPDOWN_ITEM_STYLE = {
 // ── Custos estado inicial ─────────────────────────────────────────────────────
 
 const CUSTOS_VAZIO = {
-  overlock_custo_rolo: "", overlock_metros_rolo: "",
-  linha_reta_custo_rolo: "", linha_reta_metros_rolo: "",
-  saquinho_custo_pacote: "", saquinho_unidades_por_pacote: "",
-  caixa_custo: "", caixa_pecas_por_caixa: "",
-  gasolina_distancia_km: "", gasolina_num_viagens: "",
-  gasolina_consumo_kml: "", gasolina_preco_combustivel: "",
+  custo_rolo_overlock: "", metros_rolo_overlock: "",
+  custo_rolo_reta: "", metros_rolo_reta: "",
+  custo_saquinho_lote: "", unidades_saquinho_lote: "",
+  custo_caixa: "", pecas_por_caixa: "",
+  distancia_costureira_km: "", num_viagens: "",
+  consumo_veiculo_km_l: "", preco_combustivel: "",
 };
 
 // ── Componente raiz ───────────────────────────────────────────────────────────
@@ -283,13 +283,13 @@ function PanelGeral() {
     }
   };
 
-  const custoOverlock  = n(form.overlock_metros_rolo)             ? n(form.overlock_custo_rolo)   / n(form.overlock_metros_rolo)             : 0;
-  const custoLinhaReta = n(form.linha_reta_metros_rolo)           ? n(form.linha_reta_custo_rolo) / n(form.linha_reta_metros_rolo)           : 0;
-  const custoSaquinho  = n(form.saquinho_unidades_por_pacote)     ? n(form.saquinho_custo_pacote) / n(form.saquinho_unidades_por_pacote)     : 0;
-  const custoCaixa     = n(form.caixa_pecas_por_caixa)            ? n(form.caixa_custo)           / n(form.caixa_pecas_por_caixa)            : 0;
-  const custoGasolina  = n(form.gasolina_distancia_km) > 0 && n(form.gasolina_consumo_kml) > 0
-    ? (n(form.gasolina_distancia_km) / n(form.gasolina_consumo_kml)) *
-      n(form.gasolina_preco_combustivel) * n(form.gasolina_num_viagens)
+  const custoOverlock  = n(form.metros_rolo_overlock)        ? n(form.custo_rolo_overlock) / n(form.metros_rolo_overlock)        : 0;
+  const custoLinhaReta = n(form.metros_rolo_reta)            ? n(form.custo_rolo_reta)     / n(form.metros_rolo_reta)            : 0;
+  const custoSaquinho  = n(form.unidades_saquinho_lote)      ? n(form.custo_saquinho_lote) / n(form.unidades_saquinho_lote)      : 0;
+  const custoCaixa     = n(form.pecas_por_caixa)             ? n(form.custo_caixa)         / n(form.pecas_por_caixa)             : 0;
+  const custoGasolina  = n(form.distancia_costureira_km) > 0 && n(form.consumo_veiculo_km_l) > 0
+    ? (n(form.distancia_costureira_km) / n(form.consumo_veiculo_km_l)) *
+      n(form.preco_combustivel) * n(form.num_viagens)
     : 0;
 
   return (
@@ -318,16 +318,16 @@ function PanelGeral() {
         </div>
         <CustoRow
           campos={[
-            { label: "Saquinho — preço do pacote (R$)", key: "saquinho_custo_pacote",        step: "0.01" },
-            { label: "Unidades por pacote",             key: "saquinho_unidades_por_pacote", step: "1"    },
+            { label: "Saquinho — preço do pacote (R$)", key: "custo_saquinho_lote",    step: "0.01" },
+            { label: "Unidades por pacote",             key: "unidades_saquinho_lote", step: "1"    },
           ]}
           form={form} set={set} resultLabel="R$/unidade" resultado={fmtUnit(custoSaquinho)}
           style={{ marginBottom: "1rem" }}
         />
         <CustoRow
           campos={[
-            { label: "Caixa — custo (R$)", key: "caixa_custo",           step: "0.01" },
-            { label: "Peças por caixa",    key: "caixa_pecas_por_caixa", step: "1"    },
+            { label: "Caixa — custo (R$)", key: "custo_caixa",    step: "0.01" },
+            { label: "Peças por caixa",    key: "pecas_por_caixa", step: "1"    },
           ]}
           form={form} set={set} resultLabel="R$/peça" resultado={fmtUnit(custoCaixa)}
         />
@@ -337,16 +337,16 @@ function PanelGeral() {
       <ConfigSecao titulo="LOGÍSTICA" last>
         <CustoRow
           campos={[
-            { label: "Linha overlock — custo do rolo (R$)", key: "overlock_custo_rolo",  step: "0.01" },
-            { label: "Metros por rolo",                     key: "overlock_metros_rolo", step: "1"    },
+            { label: "Linha overlock — custo do rolo (R$)", key: "custo_rolo_overlock",  step: "0.01" },
+            { label: "Metros por rolo",                     key: "metros_rolo_overlock", step: "1"    },
           ]}
           form={form} set={set} resultLabel="R$/metro" resultado={fmtUnit(custoOverlock)}
           style={{ marginBottom: "1rem" }}
         />
         <CustoRow
           campos={[
-            { label: "Linha reta — custo do rolo (R$)", key: "linha_reta_custo_rolo",  step: "0.01" },
-            { label: "Metros por rolo",                 key: "linha_reta_metros_rolo", step: "1"    },
+            { label: "Linha reta — custo do rolo (R$)", key: "custo_rolo_reta",  step: "0.01" },
+            { label: "Metros por rolo",                 key: "metros_rolo_reta", step: "1"    },
           ]}
           form={form} set={set} resultLabel="R$/metro" resultado={fmtUnit(custoLinhaReta)}
           style={{ marginBottom: "1rem" }}
@@ -355,10 +355,10 @@ function PanelGeral() {
         <p className={styles.custoSubtitulo}>Gasolina</p>
         <div className={styles.gasGrid}>
           {[
-            { label: "Distância (km)",           key: "gasolina_distancia_km",      step: "0.1"  },
-            { label: "Nº de viagens",            key: "gasolina_num_viagens",       step: "1"    },
-            { label: "Consumo (km/l)",           key: "gasolina_consumo_kml",       step: "0.1"  },
-            { label: "Preço combustível (R$/l)", key: "gasolina_preco_combustivel", step: "0.01" },
+            { label: "Distância (km)",           key: "distancia_costureira_km", step: "0.1"  },
+            { label: "Nº de viagens",            key: "num_viagens",             step: "1"    },
+            { label: "Consumo (km/l)",           key: "consumo_veiculo_km_l",    step: "0.1"  },
+            { label: "Preço combustível (R$/l)", key: "preco_combustivel",       step: "0.01" },
           ].map(({ label, key, step }) => (
             <label key={key} className={styles.field}>
               <span>{label}</span>
