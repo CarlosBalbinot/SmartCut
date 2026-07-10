@@ -5,9 +5,8 @@ from typing import Optional, List
 
 from sqlalchemy import (
     Boolean, DateTime, ForeignKey, Integer, Numeric,
-    String, Text, UniqueConstraint, func,
+    String, Text, UniqueConstraint, Uuid, func,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -16,9 +15,9 @@ from database import Base
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     vendedor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), unique=True, nullable=False
+        Uuid(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     senha_hash: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -30,10 +29,10 @@ class Usuario(Base):
 class Catalogo(Base):
     __tablename__ = "catalogos"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     tabela_preco_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tabelas_preco.id", ondelete="SET NULL"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("tabelas_preco.id", ondelete="SET NULL"), nullable=True
     )
     arquivo_path: Mapped[str] = mapped_column(String(500), nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -48,12 +47,12 @@ class CatalogoVendedor(Base):
         UniqueConstraint("catalogo_id", "vendedor_id", name="uq_catalogo_vendedor"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     catalogo_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("catalogos.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("catalogos.id", ondelete="CASCADE"), nullable=False
     )
     vendedor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), nullable=False
     )
 
     catalogo: Mapped["Catalogo"] = relationship(back_populates="acessos")
@@ -62,9 +61,9 @@ class CatalogoVendedor(Base):
 class Lead(Base):
     __tablename__ = "leads"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     vendedor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), nullable=False
     )
     nome: Mapped[str] = mapped_column(String(150), nullable=False)
     segmento: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -82,9 +81,9 @@ class Lead(Base):
 class MetaVendedor(Base):
     __tablename__ = "metas_vendedor"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     vendedor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), unique=True, nullable=False
+        Uuid(as_uuid=True), ForeignKey("vendedores.id", ondelete="CASCADE"), unique=True, nullable=False
     )
     meta_ativacao: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, default=10000)
     bonus_logistica: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=300)

@@ -19,8 +19,8 @@
   --sc-text-muted: #AEAEB2;
 
   /* ── Ação primária ── */
-  --sc-action: #1D1D1F;
-  --sc-action-hover: #3D3D3F;
+  --sc-action: #2596be;
+  --sc-action-hover: #1e7fa3;
   --sc-action-text: #FFFFFF;
 
   /* ── Raios ── */
@@ -38,9 +38,9 @@
   --sc-success-text: #1A7F37;
   --sc-success-border: rgba(26,127,55,0.2);
 
-  --sc-info-bg: #E8F4FD;
-  --sc-info-text: #0071E3;
-  --sc-info-border: rgba(0,113,227,0.2);
+  --sc-info-bg: #e8f4f8;
+  --sc-info-text: #2596be;
+  --sc-info-border: rgba(37,150,190,0.2);
 
   /* ── Aliases legados → novos tokens ── */
   --sc-50: #F5F5F7;

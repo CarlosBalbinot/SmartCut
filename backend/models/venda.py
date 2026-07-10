@@ -5,9 +5,8 @@ from typing import Optional, List
 
 from sqlalchemy import (
     Boolean, DateTime, ForeignKey, Numeric,
-    String, Text, UniqueConstraint, func,
+    String, Text, UniqueConstraint, Uuid, func,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -16,7 +15,7 @@ from database import Base
 class Empresa(Base):
     __tablename__ = "empresa"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     razao_social: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     cnpj: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     ie: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
@@ -34,7 +33,7 @@ class Empresa(Base):
 class TabelaPreco(Base):
     __tablename__ = "tabelas_preco"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(50), nullable=False)
     comissao_pct: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
     ativa: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -51,12 +50,12 @@ class PrecoReferencia(Base):
         UniqueConstraint("grupo_id", "tabela_id", name="uq_preco_ref_grupo_tabela"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     grupo_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("grupos_molde.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("grupos_molde.id", ondelete="CASCADE"), nullable=False
     )
     tabela_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tabelas_preco.id", ondelete="CASCADE"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("tabelas_preco.id", ondelete="CASCADE"), nullable=False
     )
     preco_avista: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     preco_aprazo: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -68,7 +67,7 @@ class PrecoReferencia(Base):
 class Vendedor(Base):
     __tablename__ = "vendedores"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     telefone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)

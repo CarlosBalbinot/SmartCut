@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, useLocation } from "react-router-dom";
+import { HashRouter, useLocation } from "react-router-dom";
 import App from "./App";
 import AppVendedor from "./AppVendedor";
 import { ToastProvider } from "./contexts/ToastContext";
@@ -23,8 +23,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <Root />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );

@@ -8,12 +8,16 @@ from __future__ import annotations
 import json
 import math
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 from config import settings
 
-_WORKER = Path(__file__).parent / "nest_worker.js"
+if getattr(sys, 'frozen', False):
+    _WORKER = Path(sys._MEIPASS) / "nesting" / "nest_worker.js"
+else:
+    _WORKER = Path(__file__).parent / "nest_worker.js"
 
 
 def build_polygon(geometria_json: dict | None, area_cm2: float | None) -> list[list[float]]:

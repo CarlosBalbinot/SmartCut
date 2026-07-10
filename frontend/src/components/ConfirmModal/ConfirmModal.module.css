@@ -56,10 +56,10 @@
 }
 
 .btnConfirmar_neutro {
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
 }
 
 .btnConfirmar_neutro:hover {
-  background-color: #3D3D3F;
+  background-color: var(--color-primary-hover);
 }

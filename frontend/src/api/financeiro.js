@@ -1,4 +1,5 @@
-const BASE_URL = "/api/financeiro";
+import { API_BASE } from '../services/config';
+const BASE_URL = `${API_BASE}/api/financeiro`;
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {

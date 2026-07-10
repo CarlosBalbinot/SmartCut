@@ -92,7 +92,7 @@
 /* ── Botões ── */
 .btnNovo {
   padding: 9px 18px;
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
   border: none;
   border-radius: 980px;
@@ -103,13 +103,13 @@
 }
 
 .btnNovo:hover {
-  background-color: #3D3D3F;
+  background-color: var(--color-primary-hover);
   transform: scale(1.01);
 }
 
 .btnPrimary {
   padding: 9px 18px;
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
   border: none;
   border-radius: 980px;
@@ -120,7 +120,7 @@
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background-color: #3D3D3F;
+  background-color: var(--color-primary-hover);
   transform: scale(1.01);
 }
 
@@ -181,7 +181,7 @@
 
 .input:focus,
 .select:focus {
-  box-shadow: 0 0 0 3px rgba(0,125,250,0.3);
+  box-shadow: 0 0 0 3px rgba(37,150,190,0.25);
 }
 
 .fileiraDupla {
@@ -202,7 +202,7 @@
   width: 15px;
   height: 15px;
   cursor: pointer;
-  accent-color: #1D1D1F;
+  accent-color: var(--color-primary);
 }
 
 /* ── Upload de arquivo ── */
@@ -218,7 +218,7 @@
 }
 
 .fileDrop:hover {
-  border-color: #1D1D1F;
+  border-color: var(--color-primary);
   background-color: #F5F5F7;
   color: var(--sc-text-primary);
 }

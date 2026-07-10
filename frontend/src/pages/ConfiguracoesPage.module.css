@@ -517,8 +517,8 @@
 
 .tabelaBadgeAtiva {
   display: inline-block;
-  background: var(--sc-text-primary);
-  color: #fff;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
   border-radius: 4px;
   padding: 2px 7px;
   font-size: 11px;

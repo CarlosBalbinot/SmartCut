@@ -6,6 +6,8 @@
   /* ── Aliases legados → sc-tokens ── */
   --color-primary:        var(--sc-action);
   --color-primary-hover:  var(--sc-action-hover);
+  --color-primary-light:  #e8f4f8;
+  --color-primary-dark:   #1a6b8a;
   --color-bg:             var(--sc-bg-secondary);
   --color-surface:        var(--sc-surface);
   --color-border:         var(--sc-border);

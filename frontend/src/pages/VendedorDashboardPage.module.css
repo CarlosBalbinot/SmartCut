@@ -162,9 +162,9 @@
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: var(--sc-success-bg);
-  color: var(--sc-success-text);
-  border: 1px solid var(--sc-success-border);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border: 1px solid rgba(37,150,190,0.25);
 }
 
 .badgeAPagar {

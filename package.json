@@ -1,0 +1,54 @@
+{
+  "name": "smartcut",
+  "version": "1.0.0",
+  "description": "Sistema de gestão têxtil",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron-dev": "concurrently \"npm run dev --prefix frontend\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "build-frontend": "npm run build --prefix frontend",
+    "build-backend": "cd backend && python -m PyInstaller smartcut.spec --clean --distpath ../electron/bin",
+    "predist": "npm run build-frontend && npm run build-backend",
+    "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist-quick": "npm run build-frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win"
+  },
+  "build": {
+    "appId": "com.vaidosafitness.smartcut",
+    "productName": "SmartCut",
+    "copyright": "Copyright © 2026 Vaidosa Fitness",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "!electron/bin/**/*",
+      "frontend/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "electron/bin",
+        "to": "bin"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": ["pt_BR"],
+      "language": "1046",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SmartCut"
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.0.0",
+    "concurrently": "^8.0.0",
+    "wait-on": "^7.0.0",
+    "cross-env": "^7.0.0"
+  }
+}

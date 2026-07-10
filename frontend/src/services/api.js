@@ -1,4 +1,5 @@
-const BASE_URL = "/api/v1";
+import { API_BASE } from './config';
+const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -224,6 +225,26 @@ export const leadsApi = {
   create: (payload) =>
     request("/leads/", { method: "POST", body: JSON.stringify(payload) }),
   remove: (id) => request(`/leads/${id}`, { method: "DELETE" }),
+};
+
+export const clientesApi = {
+  listar: (busca = "") =>
+    request(`/clientes/${busca ? `?busca=${encodeURIComponent(busca)}` : ""}`),
+  criar: (payload) =>
+    request("/clientes/", { method: "POST", body: JSON.stringify(payload) }),
+  obter: (id) => request(`/clientes/${id}`),
+  atualizar: (id, payload) =>
+    request(`/clientes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deletar: (id) => request(`/clientes/${id}`, { method: "DELETE" }),
+  buscarCnpj: async (cnpj) => {
+    const res = await fetch(`${API_BASE}/api/v1/clientes/cnpj/${cnpj}`, {
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.status === 404) return null;
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
+    return json.data;
+  },
 };
 
 export const pedidosVendaApi = {

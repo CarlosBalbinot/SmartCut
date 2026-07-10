@@ -20,6 +20,7 @@ import PainelFinanceiro from "./pages/financeiro/PainelFinanceiro";
 import FluxoCaixa from "./pages/financeiro/FluxoCaixa";
 import ComprasFinanceiro from "./pages/financeiro/ComprasFinanceiro";
 import VendasFinanceiro from "./pages/financeiro/VendasFinanceiro";
+import ClientesPage from "./pages/ClientesPage";
 
 /* ── Ícones SVG inline 15×15 ── */
 const IconTecidos = () => (
@@ -79,6 +80,13 @@ const IconDocVenda = () => (
   </svg>
 );
 
+const IconClientes = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <circle cx="7.5" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M2 13c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
 const IconEngrenagem = () => (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
     <circle cx="7.5" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -126,8 +134,9 @@ const SECTIONS = [
   {
     label: "CADASTROS",
     items: [
-      { to: "/tecidos",  label: "Tecidos",  Icon: IconTecidos  },
-      { to: "/moldes",   label: "Moldes",   Icon: IconMoldes   },
+      { to: "/tecidos",   label: "Tecidos",   Icon: IconTecidos   },
+      { to: "/moldes",    label: "Moldes",    Icon: IconMoldes    },
+      { to: "/clientes",  label: "Clientes",  Icon: IconClientes  },
     ],
   },
   {
@@ -284,6 +293,7 @@ export default function App() {
             <Route path="/financeiro/fluxo-caixa" element={<FluxoCaixa />} />
             <Route path="/financeiro/compras"     element={<ComprasFinanceiro />} />
             <Route path="/financeiro/vendas"      element={<VendasFinanceiro />} />
+            <Route path="/clientes"               element={<ClientesPage />} />
           </Routes>
         </main>
       </div>

@@ -350,7 +350,7 @@
   transition: box-shadow 0.15s;
 }
 
-.input:focus { box-shadow: 0 0 0 3px rgba(0,125,250,0.3); }
+.input:focus { box-shadow: 0 0 0 3px rgba(37,150,190,0.25); }
 .input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .grade2 {
@@ -391,7 +391,7 @@
 /* ── Slider de margem ── */
 .slider {
   width: 100%;
-  accent-color: #1D1D1F;
+  accent-color: var(--color-primary);
   cursor: pointer;
   height: 4px;
 }
@@ -469,7 +469,7 @@
 /* ── Botões ── */
 .btnPrimario {
   padding: 9px 18px;
-  background: #1D1D1F;
+  background: var(--color-primary);
   color: #FFFFFF;
   border: none;
   border-radius: 980px;
@@ -479,7 +479,7 @@
   transition: background-color 0.15s, transform 0.1s;
 }
 
-.btnPrimario:hover:not(:disabled) { background: #3D3D3F; transform: scale(1.01); }
+.btnPrimario:hover:not(:disabled) { background: var(--color-primary-hover); transform: scale(1.01); }
 .btnPrimario:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnSecundario {

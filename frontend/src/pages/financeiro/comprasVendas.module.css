@@ -143,10 +143,10 @@
   white-space: nowrap;
 }
 
-.stQuitado  { background: var(--sc-success-bg);  color: var(--sc-success-text);  border-color: var(--sc-success-border); }
+.stQuitado  { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: rgba(37,150,190,0.25); }
 .stPendente { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
 .stParcial  { background: var(--sc-info-bg);      color: var(--sc-info-text);     border-color: var(--sc-info-border); }
-.stPAGO     { background: var(--sc-success-bg);  color: var(--sc-success-text);  border-color: var(--sc-success-border); }
+.stPAGO     { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: rgba(37,150,190,0.25); }
 .stPENDENTE { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
 .stCANCELADO{ background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
 

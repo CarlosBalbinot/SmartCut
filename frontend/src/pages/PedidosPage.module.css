@@ -57,7 +57,7 @@
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
   border: none;
   border-radius: 980px;
@@ -67,7 +67,7 @@
 }
 
 .btnAbrir:hover {
-  background-color: #3D3D3F;
+  background-color: var(--color-primary-hover);
 }
 
 /* ── Menu ⋮ ── */
@@ -176,7 +176,7 @@
   margin-top: 2px;
   flex-shrink: 0;
   cursor: pointer;
-  accent-color: #1D1D1F;
+  accent-color: var(--color-primary);
 }
 
 .checkboxLabel {

@@ -140,7 +140,7 @@
   padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
   border: none;
   border-radius: 980px;
@@ -149,7 +149,7 @@
   transition: background-color 0.12s;
 }
 
-.btnVer:hover { background-color: #3D3D3F; }
+.btnVer:hover { background-color: var(--color-primary-hover); }
 
 /* ── Botão deletar ── */
 .btnDeletar {

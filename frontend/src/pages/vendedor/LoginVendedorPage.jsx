@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LoginVendedorPage.module.css";
+import { API_BASE } from "../../services/config";
 
 export default function LoginVendedorPage() {
   const [username, setUsername] = useState("");
@@ -11,7 +12,7 @@ export default function LoginVendedorPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/api/v1/configuracao-empresa/")
+    fetch(`${API_BASE}/api/v1/configuracao-empresa/`)
       .then((r) => r.json())
       .then((j) => {
         const d = j.data ?? j;
@@ -25,7 +26,7 @@ export default function LoginVendedorPage() {
     setErro("");
     setLoading(true);
     try {
-      const res = await fetch("/api/v1/vendedor/login", {
+      const res = await fetch(`${API_BASE}/api/v1/vendedor/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, senha }),

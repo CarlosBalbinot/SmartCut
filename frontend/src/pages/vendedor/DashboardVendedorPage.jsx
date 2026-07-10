@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./DashboardVendedorPage.module.css";
+import { API_BASE } from "../../services/config";
 
 const fmt = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v ?? 0);
 
 function vendedorFetch(path, options = {}) {
   const token = localStorage.getItem("smartcut_vendedor_token");
-  return fetch(`/api/v1${path}`, {
+  return fetch(`${API_BASE}/api/v1${path}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
@@ -23,7 +24,7 @@ function vendedorFetch(path, options = {}) {
 
 function vendedorFetchRaw(path, options = {}) {
   const token = localStorage.getItem("smartcut_vendedor_token");
-  return fetch(`/api/v1${path}`, {
+  return fetch(`${API_BASE}/api/v1${path}`, {
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

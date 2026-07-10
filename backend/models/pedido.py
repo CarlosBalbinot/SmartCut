@@ -1,8 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -11,17 +10,17 @@ from database import Base
 class PedidoVenda(Base):
     __tablename__ = "pedidos_venda"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     numero: Mapped[str] = mapped_column(String(20), unique=True, nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="venda")
     data_emissao: Mapped[date] = mapped_column(Date, nullable=False)
     prazo_entrega_dias: Mapped[int | None] = mapped_column(Integer, default=20)
     condicoes: Mapped[str | None] = mapped_column(String(20))
     vendedor_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendedores.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("vendedores.id"), nullable=True
     )
     tabela_preco_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tabelas_preco.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("tabelas_preco.id"), nullable=True
     )
     cliente_razao_social: Mapped[str | None] = mapped_column(String(200))
     cliente_cnpj: Mapped[str | None] = mapped_column(String(20))
@@ -47,16 +46,16 @@ class PedidoVenda(Base):
 class ItemPedido(Base):
     __tablename__ = "itens_pedido"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pedido_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False
     )
     grupo_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=False
     )
     cor: Mapped[str | None] = mapped_column(String(50))
     lote_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=True
     )
     qtd_p: Mapped[int] = mapped_column(Integer, default=0)
     qtd_m: Mapped[int] = mapped_column(Integer, default=0)

@@ -35,7 +35,7 @@
 .checkboxItem input[type="checkbox"] {
   width: 14px;
   height: 14px;
-  accent-color: #1D1D1F;
+  accent-color: var(--color-primary);
   cursor: pointer;
 }
 

@@ -1,8 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -11,21 +10,21 @@ from database import Base
 class Encaixe(Base):
     __tablename__ = "encaixes"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pedido_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
     )
 
     # Nova FK — lote consumido neste encaixe
     lote_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("lotes_tecido.id", ondelete="SET NULL"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("lotes_tecido.id", ondelete="SET NULL"), nullable=True
     )
     # FK legada
     tecido_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tecidos.id", ondelete="SET NULL"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("tecidos.id", ondelete="SET NULL"), nullable=True
     )
 
-    mapa_json: Mapped[dict | None] = mapped_column(JSONB)
+    mapa_json: Mapped[dict | None] = mapped_column(JSON)
     comp_metros: Mapped[float | None] = mapped_column(Numeric(8, 3))
     peso_kg: Mapped[float | None] = mapped_column(Numeric(8, 3))
     custo_total: Mapped[float | None] = mapped_column(Numeric(12, 2))
@@ -43,8 +42,8 @@ class Encaixe(Base):
 class Defeito(Base):
     __tablename__ = "defeitos"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    encaixe_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("encaixes.id"), nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    encaixe_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("encaixes.id"), nullable=False)
     x_cm: Mapped[float] = mapped_column(Numeric(8, 3), nullable=False)
     y_cm: Mapped[float] = mapped_column(Numeric(8, 3), nullable=False)
     raio_cm: Mapped[float | None] = mapped_column(Numeric(6, 3))

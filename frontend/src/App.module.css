@@ -57,7 +57,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: #AEAEB2;
+  color: var(--color-primary);
   padding: 16px 16px 4px;
   line-height: 1;
 }
@@ -93,13 +93,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 12px;
+  padding: 9px 12px 9px 9px;
   margin: 1px 10px;
   border-radius: var(--sc-radius-sm);
+  border-left: 3px solid var(--color-primary);
   font-size: 14px;
   font-weight: 600;
-  color: #1D1D1F;
-  background-color: #F0F0F5;
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
   text-decoration: none;
 }
 

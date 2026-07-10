@@ -39,7 +39,7 @@
 }
 
 .nomeInput:focus {
-  box-shadow: 0 0 0 3px rgba(0,125,250,0.3);
+  box-shadow: 0 0 0 3px rgba(37,150,190,0.25);
 }
 
 /* ── Miniaturas de tamanhos ── */
@@ -200,10 +200,10 @@
 }
 
 .btnAtivo {
-  background-color: #1D1D1F !important;
+  background-color: var(--color-primary) !important;
   color: #FFFFFF !important;
 }
 
 .btnAtivo:hover {
-  background-color: #3D3D3F !important;
+  background-color: var(--color-primary-hover) !important;
 }

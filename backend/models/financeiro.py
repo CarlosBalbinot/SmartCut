@@ -4,9 +4,8 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean, Date, DateTime, ForeignKey, Integer, Numeric,
-    String, UniqueConstraint, func,
+    String, UniqueConstraint, Uuid, func,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -15,7 +14,7 @@ from database import Base
 class ContaBancaria(Base):
     __tablename__ = "contas_bancarias"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(200), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
@@ -27,7 +26,7 @@ class ContaBancaria(Base):
 class CategoriaFinanceira(Base):
     __tablename__ = "categorias_financeiras"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(200), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     cor: Mapped[str] = mapped_column(String(7), nullable=False)
@@ -38,7 +37,7 @@ class CategoriaFinanceira(Base):
 class CompraFinanceira(Base):
     __tablename__ = "compras_financeiras"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     fornecedor: Mapped[str] = mapped_column(String(200), nullable=False)
     descricao: Mapped[str | None] = mapped_column(String(500), nullable=True)
     valor_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -52,7 +51,7 @@ class CompraFinanceira(Base):
 class VendaFinanceira(Base):
     __tablename__ = "vendas_financeiras"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cliente: Mapped[str] = mapped_column(String(200), nullable=False)
     descricao: Mapped[str | None] = mapped_column(String(500), nullable=True)
     valor_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -66,7 +65,7 @@ class VendaFinanceira(Base):
 class Lancamento(Base):
     __tablename__ = "lancamentos"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     descricao: Mapped[str] = mapped_column(String(500), nullable=False)
     valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -76,20 +75,20 @@ class Lancamento(Base):
     parcela_numero: Mapped[int | None] = mapped_column(Integer, nullable=True)
     parcela_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
     conta_bancaria_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contas_bancarias.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("contas_bancarias.id"), nullable=True
     )
     categoria_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("categorias_financeiras.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("categorias_financeiras.id"), nullable=True
     )
     compra_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("compras_financeiras.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("compras_financeiras.id"), nullable=True
     )
     venda_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("vendas_financeiras.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("vendas_financeiras.id"), nullable=True
     )
     recorrente: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     recorrencia_origem_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("lancamentos.id"), nullable=True
+        Uuid(as_uuid=True), ForeignKey("lancamentos.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -114,9 +113,9 @@ class Lancamento(Base):
 class AnexoLancamento(Base):
     __tablename__ = "anexos_lancamento"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lancamento_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("lancamentos.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("lancamentos.id"), nullable=False
     )
     arquivo_path: Mapped[str] = mapped_column(String(500), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -132,9 +131,9 @@ class SaldoInicialConta(Base):
         UniqueConstraint("conta_bancaria_id", "mes", "ano", name="uq_saldo_inicial_conta_mes_ano"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conta_bancaria_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contas_bancarias.id"), nullable=False
+        Uuid(as_uuid=True), ForeignKey("contas_bancarias.id"), nullable=False
     )
     mes: Mapped[int] = mapped_column(Integer, nullable=False)
     ano: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -149,7 +148,7 @@ class MetaMensal(Base):
         UniqueConstraint("mes", "ano", "tipo", name="uq_meta_mensal_mes_ano_tipo"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     mes: Mapped[int] = mapped_column(Integer, nullable=False)
     ano: Mapped[int] = mapped_column(Integer, nullable=False)
     valor_meta: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

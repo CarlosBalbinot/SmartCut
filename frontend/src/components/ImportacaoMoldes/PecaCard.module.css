@@ -36,7 +36,7 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 6px;
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
   letter-spacing: 0.04em;
 }
@@ -79,7 +79,7 @@
 }
 
 .input:focus {
-  box-shadow: 0 0 0 3px rgba(0,125,250,0.3);
+  box-shadow: 0 0 0 3px rgba(37,150,190,0.25);
 }
 
 /* ── Dica de label ── */
@@ -169,11 +169,11 @@
 }
 
 .btnSentidoAtivo {
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
 }
 
-.btnSentidoAtivo:hover { background-color: #3D3D3F; color: #FFFFFF; }
+.btnSentidoAtivo:hover { background-color: var(--color-primary-hover); color: #FFFFFF; }
 
 /* ── Botões de tipo de corte ── */
 .btnGroupCorte {
@@ -202,8 +202,8 @@
 }
 
 .btnCorteAtivo {
-  background-color: #1D1D1F;
+  background-color: var(--color-primary);
   color: #FFFFFF;
 }
 
-.btnCorteAtivo:hover { background-color: #3D3D3F; color: #FFFFFF; }
+.btnCorteAtivo:hover { background-color: var(--color-primary-hover); color: #FFFFFF; }

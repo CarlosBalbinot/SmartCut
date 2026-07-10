@@ -1,3 +1,4 @@
+from .cliente import Cliente
 from .tecido import Tecido, ModeloTecido, CorTecido, LoteTecido, ConsumoLote
 from .grupo_molde import GrupoMolde
 from .molde import Molde
@@ -10,6 +11,7 @@ from .financeiro import (
 )
 
 __all__ = [
+    "Cliente",
     "Tecido", "ModeloTecido", "CorTecido", "LoteTecido", "ConsumoLote",
     "GrupoMolde", "Molde",
     "PedidoVenda", "ItemPedido",

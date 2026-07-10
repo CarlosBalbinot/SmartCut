@@ -2,8 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -13,7 +12,7 @@ class ConfiguracaoEmpresa(Base):
     __tablename__ = "configuracao_empresa"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     aliquota_simples: Mapped[Decimal] = mapped_column(
         Numeric(8, 4), nullable=False, default=Decimal("7.3000")
@@ -27,7 +26,7 @@ class ConfiguracaoCustosFixos(Base):
     __tablename__ = "configuracao_custos_fixos"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     metros_rolo_overlock: Mapped[int] = mapped_column(Integer, nullable=False, default=5000)
     custo_rolo_overlock: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
@@ -51,10 +50,10 @@ class Precificacao(Base):
     __tablename__ = "precificacoes"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     grupo_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        Uuid(as_uuid=True),
         ForeignKey("grupos_molde.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

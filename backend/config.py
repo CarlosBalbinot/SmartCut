@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str
-    secret_key: str
+    database_url: str = "sqlite:///./smartcut.db"
+    secret_key: str = "smartcut-default-secret-change-in-production"
     upload_dir: str = "./uploads"
     max_file_size_mb: int = 50
     nesting_timeout_sec: int = 120
