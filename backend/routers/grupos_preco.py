@@ -34,6 +34,9 @@ def criar_preco(grupo_id: uuid.UUID, payload: PrecoReferenciaCreate, db: Session
         tabela_id=payload.tabela_id,
         preco_avista=payload.preco_avista,
         preco_aprazo=payload.preco_aprazo,
+        tem_plus_size=payload.tem_plus_size or False,
+        preco_avista_plus=payload.preco_avista_plus,
+        preco_aprazo_plus=payload.preco_aprazo_plus,
     )
     db.add(ref)
     db.commit()

@@ -829,7 +829,10 @@ function ModalNovaTabela({ onClose, onCreated }) {
 function ModalAddItem({ tabelaId, grupos, onClose, onAdded }) {
   const [search, setSearch]     = useState("");
   const [grupoSel, setGrupoSel] = useState(null);
-  const [form, setForm]         = useState({ preco_avista: "", preco_aprazo: "" });
+  const [form, setForm]         = useState({
+    preco_avista: "", preco_aprazo: "",
+    tem_plus_size: false, preco_avista_plus: "", preco_aprazo_plus: "",
+  });
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState(null);
 
@@ -840,15 +843,26 @@ function ModalAddItem({ tabelaId, grupos, onClose, onAdded }) {
       ).slice(0, 10)
     : [];
 
+  const toggleTemPlusSize = (checked) => {
+    setForm((f) => ({
+      ...f,
+      tem_plus_size: checked,
+      ...(checked ? {} : { preco_avista_plus: "", preco_aprazo_plus: "" }),
+    }));
+  };
+
   const handleSave = async () => {
     if (!grupoSel)                                { setErr("Selecione um produto."); return; }
     if (!form.preco_avista || !form.preco_aprazo)  { setErr("Informe os preços."); return; }
     setSaving(true); setErr(null);
     try {
       await tabelasPrecoApi.addItem(tabelaId, {
-        grupo_id:     grupoSel.id,
-        preco_avista: parseFloat(form.preco_avista),
-        preco_aprazo: parseFloat(form.preco_aprazo),
+        grupo_id:          grupoSel.id,
+        preco_avista:      parseFloat(form.preco_avista),
+        preco_aprazo:      parseFloat(form.preco_aprazo),
+        tem_plus_size:     form.tem_plus_size,
+        preco_avista_plus: form.tem_plus_size && form.preco_avista_plus ? parseFloat(form.preco_avista_plus) : null,
+        preco_aprazo_plus: form.tem_plus_size && form.preco_aprazo_plus ? parseFloat(form.preco_aprazo_plus) : null,
       });
       onAdded();
     } catch (e) {
@@ -914,6 +928,32 @@ function ModalAddItem({ tabelaId, grupos, onClose, onAdded }) {
               onChange={(e) => setForm((f) => ({ ...f, preco_aprazo: e.target.value }))} />
           </label>
         </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 13, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={form.tem_plus_size}
+            onChange={(e) => toggleTemPlusSize(e.target.checked)}
+          />
+          Esta referência possui tamanhos Plus Size (G1, G2, G3)
+        </label>
+
+        {form.tem_plus_size && (
+          <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+            <label className={styles.field} style={{ flex: 1 }}>
+              <span>Preço à vista Plus Size (R$)</span>
+              <input type="number" step="0.01" min="0" className={styles.input}
+                value={form.preco_avista_plus}
+                onChange={(e) => setForm((f) => ({ ...f, preco_avista_plus: e.target.value }))} />
+            </label>
+            <label className={styles.field} style={{ flex: 1 }}>
+              <span>Preço a prazo Plus Size (R$)</span>
+              <input type="number" step="0.01" min="0" className={styles.input}
+                value={form.preco_aprazo_plus}
+                onChange={(e) => setForm((f) => ({ ...f, preco_aprazo_plus: e.target.value }))} />
+            </label>
+          </div>
+        )}
 
         {err && <p className={styles.msgErro} style={{ marginTop: 10 }}>{err}</p>}
 

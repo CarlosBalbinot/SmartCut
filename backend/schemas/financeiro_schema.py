@@ -176,6 +176,43 @@ class VendaComLancamentosOut(VendaFinanceiraOut):
     lancamentos: List[LancamentoOut] = []
 
 
+# ── Importação de NF-e XML ────────────────────────────────────────────────────
+
+class ParcelaImportadaOut(BaseModel):
+    numero: str
+    vencimento: date
+    valor: Decimal
+
+
+class NFeImportadaOut(BaseModel):
+    fornecedor: str
+    cnpj_fornecedor: Optional[str] = None
+    valor_total: Decimal
+    data_emissao: date
+    numero_nf: Optional[str] = None
+    parcelas: List[ParcelaImportadaOut] = []
+
+
+class ImportacaoXMLResultOut(BaseModel):
+    sucesso: bool
+    dados: Optional[NFeImportadaOut] = None
+    erro: Optional[str] = None
+
+
+class ParcelaImportarIn(BaseModel):
+    vencimento: date
+    valor: Decimal
+
+
+class CompraImportarXMLCreate(BaseModel):
+    fornecedor: str
+    descricao: Optional[str] = None
+    valor_total: Decimal
+    data_compra: date
+    categoria_id: Optional[UUID] = None
+    parcelas: List[ParcelaImportarIn]
+
+
 # ── Saldo por Conta ───────────────────────────────────────────────────────────
 
 class SaldoContaOut(BaseModel):

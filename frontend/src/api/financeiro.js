@@ -98,6 +98,21 @@ export const updateCompra = (id, dados) =>
 export const deleteCompra = (id) =>
   request(`/compras/${id}`, { method: "DELETE" });
 
+export const importarXmlCompra = (arquivo) => {
+  const fd = new FormData();
+  fd.append("arquivo", arquivo);
+  return requestForm("/compras/importar-xml", fd);
+};
+
+export const importarLoteCompras = (arquivos) => {
+  const fd = new FormData();
+  arquivos.forEach((arquivo) => fd.append("arquivos", arquivo));
+  return requestForm("/compras/importar-lote", fd);
+};
+
+export const importarCompraFinal = (dados) =>
+  request("/compras/importar", { method: "POST", body: JSON.stringify(dados) });
+
 // ── Vendas Financeiras ────────────────────────────────────────────────────────
 
 export const getVendasFinanceiras = () => request("/vendas-financeiras");

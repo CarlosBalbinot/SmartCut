@@ -58,6 +58,9 @@ def listar_itens(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
             nome=gm.nome,
             preco_avista=pr.preco_avista,
             preco_aprazo=pr.preco_aprazo,
+            tem_plus_size=pr.tem_plus_size,
+            preco_avista_plus=pr.preco_avista_plus,
+            preco_aprazo_plus=pr.preco_aprazo_plus,
         )
         for pr, gm in rows
     ]
@@ -78,12 +81,18 @@ def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Sessio
     if existing:
         existing.preco_avista = payload.preco_avista
         existing.preco_aprazo = payload.preco_aprazo
+        existing.tem_plus_size = payload.tem_plus_size or False
+        existing.preco_avista_plus = payload.preco_avista_plus
+        existing.preco_aprazo_plus = payload.preco_aprazo_plus
     else:
         db.add(PrecoReferencia(
             tabela_id=tabela_id,
             grupo_id=payload.grupo_id,
             preco_avista=payload.preco_avista,
             preco_aprazo=payload.preco_aprazo,
+            tem_plus_size=payload.tem_plus_size or False,
+            preco_avista_plus=payload.preco_avista_plus,
+            preco_aprazo_plus=payload.preco_aprazo_plus,
         ))
     db.commit()
     return {"data": None, "error": None}

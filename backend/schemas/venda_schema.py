@@ -78,12 +78,18 @@ class TabelaPrecoItemOut(BaseModel):
     nome: str
     preco_avista: Decimal
     preco_aprazo: Decimal
+    tem_plus_size: bool = False
+    preco_avista_plus: Optional[Decimal] = None
+    preco_aprazo_plus: Optional[Decimal] = None
 
 
 class TabelaPrecoItemCreate(BaseModel):
     grupo_id: UUID
     preco_avista: Decimal
     preco_aprazo: Decimal
+    tem_plus_size: Optional[bool] = False
+    preco_avista_plus: Optional[Decimal] = None
+    preco_aprazo_plus: Optional[Decimal] = None
 
 
 # ── PrecoReferencia ───────────────────────────────────────────────────────
@@ -95,6 +101,9 @@ class PrecoReferenciaOut(BaseModel):
     tabela_id: UUID
     preco_avista: Decimal
     preco_aprazo: Decimal
+    tem_plus_size: bool = False
+    preco_avista_plus: Optional[Decimal] = None
+    preco_aprazo_plus: Optional[Decimal] = None
     criado_em: datetime
 
 
@@ -102,11 +111,17 @@ class PrecoReferenciaCreate(BaseModel):
     tabela_id: UUID
     preco_avista: Decimal
     preco_aprazo: Decimal
+    tem_plus_size: Optional[bool] = False
+    preco_avista_plus: Optional[Decimal] = None
+    preco_aprazo_plus: Optional[Decimal] = None
 
 
 class PrecoReferenciaUpdate(BaseModel):
     preco_avista: Optional[Decimal] = None
     preco_aprazo: Optional[Decimal] = None
+    tem_plus_size: Optional[bool] = None
+    preco_avista_plus: Optional[Decimal] = None
+    preco_aprazo_plus: Optional[Decimal] = None
 
 
 # ── Vendedor ──────────────────────────────────────────────────────────────

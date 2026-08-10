@@ -1,9 +1,10 @@
 import os
 import shutil
 import uuid
+import xml.etree.ElementTree as ET
 from calendar import monthrange
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -26,17 +27,20 @@ from schemas.financeiro_schema import (
     CompraComLancamentosOut,
     CompraCreate,
     CompraFinanceiraOut,
+    CompraImportarXMLCreate,
     CompraUpdate,
     ConfirmarPagamento,
     ContaBancariaCreate,
     ContaBancariaOut,
     ContaBancariaUpdate,
+    ImportacaoXMLResultOut,
     LancamentoCreate,
     LancamentoOut,
     LancamentoUpdate,
     MetaMensalCreate,
     MetaMensalOut,
     MetaMensalUpdate,
+    NFeImportadaOut,
     ProjecaoMesOut,
     SaldoContaOut,
     VendaComLancamentosOut,
@@ -87,6 +91,77 @@ def _gerar_lancamentos(
             compra_id=compra_id,
             venda_id=venda_id,
         ))
+
+
+_NFE_NS = "{http://www.portalfiscal.inf.br/nfe}"
+
+
+def _nfe_text(parent, tag: str) -> Optional[str]:
+    if parent is None:
+        return None
+    node = parent.find(f"{_NFE_NS}{tag}")
+    if node is None or not node.text:
+        return None
+    return node.text.strip()
+
+
+def _parse_nfe_xml(conteudo: bytes) -> dict:
+    """Faz o parse de um XML de NF-e (padrão SEFAZ) e extrai os dados de compra."""
+    try:
+        root = ET.fromstring(conteudo)
+    except ET.ParseError as e:
+        raise ValueError(f"XML inválido: {e}")
+
+    inf_nfe = root.find(f".//{_NFE_NS}infNFe")
+    if inf_nfe is None:
+        raise ValueError("XML não é uma NF-e válida (infNFe não encontrado)")
+
+    emit = inf_nfe.find(f"{_NFE_NS}emit")
+    ide = inf_nfe.find(f"{_NFE_NS}ide")
+    total = inf_nfe.find(f"{_NFE_NS}total/{_NFE_NS}ICMSTot")
+    cobr = inf_nfe.find(f"{_NFE_NS}cobr")
+
+    fornecedor = _nfe_text(emit, "xNome")
+    cnpj_fornecedor = _nfe_text(emit, "CNPJ")
+    numero_nf = _nfe_text(ide, "nNF")
+    data_emissao_raw = _nfe_text(ide, "dEmi") or _nfe_text(ide, "dhEmi")
+    valor_total_raw = _nfe_text(total, "vNF")
+
+    if not fornecedor or not valor_total_raw or not data_emissao_raw:
+        raise ValueError(
+            "Não foi possível ler emitente, valor total ou data de emissão do XML."
+        )
+
+    try:
+        data_emissao = datetime.strptime(data_emissao_raw[:10], "%Y-%m-%d").date()
+        valor_total = Decimal(valor_total_raw)
+    except (ValueError, InvalidOperation):
+        raise ValueError("Valores de data ou valor total inválidos no XML.")
+
+    parcelas = []
+    if cobr is not None:
+        for i, dup in enumerate(cobr.findall(f"{_NFE_NS}dup"), start=1):
+            d_venc = _nfe_text(dup, "dVenc")
+            v_dup = _nfe_text(dup, "vDup")
+            if not d_venc or not v_dup:
+                continue
+            try:
+                parcelas.append({
+                    "numero": _nfe_text(dup, "nDup") or f"{i:03d}",
+                    "vencimento": datetime.strptime(d_venc[:10], "%Y-%m-%d").date(),
+                    "valor": Decimal(v_dup),
+                })
+            except (ValueError, InvalidOperation):
+                continue
+
+    return {
+        "fornecedor": fornecedor,
+        "cnpj_fornecedor": cnpj_fornecedor,
+        "valor_total": valor_total,
+        "data_emissao": data_emissao,
+        "numero_nf": numero_nf,
+        "parcelas": parcelas,
+    }
 
 
 # ── Contas Bancárias ──────────────────────────────────────────────────────────
@@ -290,6 +365,73 @@ def criar_compra(payload: CompraCreate, db: Session = Depends(get_db)):
         categoria_id=payload.categoria_id,
         compra_id=compra.id,
     )
+    db.commit()
+    db.refresh(compra)
+    return {"data": CompraFinanceiraOut.model_validate(compra), "error": None}
+
+
+@router.post("/compras/importar-xml")
+async def importar_xml_compra(arquivo: UploadFile = File(...)):
+    conteudo = await arquivo.read()
+    try:
+        dados = _parse_nfe_xml(conteudo)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"data": NFeImportadaOut(**dados), "error": None}
+
+
+@router.post("/compras/importar-lote")
+async def importar_lote_compras(arquivos: list[UploadFile] = File(...)):
+    resultados = []
+    for arquivo in arquivos:
+        try:
+            conteudo = await arquivo.read()
+            dados = _parse_nfe_xml(conteudo)
+            resultados.append(
+                ImportacaoXMLResultOut(sucesso=True, dados=NFeImportadaOut(**dados), erro=None)
+            )
+        except ValueError as e:
+            resultados.append(ImportacaoXMLResultOut(sucesso=False, dados=None, erro=str(e)))
+        except Exception:
+            resultados.append(
+                ImportacaoXMLResultOut(
+                    sucesso=False, dados=None,
+                    erro=f"Falha ao processar '{arquivo.filename}'.",
+                )
+            )
+    return {"data": resultados, "error": None}
+
+
+@router.post("/compras/importar")
+def criar_compra_importada(payload: CompraImportarXMLCreate, db: Session = Depends(get_db)):
+    if not payload.parcelas:
+        raise HTTPException(status_code=400, detail="Informe ao menos uma parcela.")
+
+    compra = CompraFinanceira(
+        fornecedor=payload.fornecedor,
+        descricao=payload.descricao,
+        valor_total=payload.valor_total,
+        data_compra=payload.data_compra,
+    )
+    db.add(compra)
+    db.flush()
+
+    total = len(payload.parcelas)
+    descricao_base = payload.descricao or payload.fornecedor
+    for i, parcela in enumerate(payload.parcelas, start=1):
+        desc = descricao_base if total == 1 else f"{descricao_base} ({i}/{total})"
+        db.add(Lancamento(
+            tipo="PAGAR",
+            descricao=desc,
+            valor=parcela.valor,
+            data_vencimento=parcela.vencimento,
+            status="PENDENTE",
+            parcela_numero=i if total > 1 else None,
+            parcela_total=total if total > 1 else None,
+            categoria_id=payload.categoria_id,
+            compra_id=compra.id,
+        ))
+
     db.commit()
     db.refresh(compra)
     return {"data": CompraFinanceiraOut.model_validate(compra), "error": None}

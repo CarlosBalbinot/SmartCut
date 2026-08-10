@@ -17,6 +17,12 @@
   color: var(--sc-text-primary);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 /* ── Card / Table ── */
 .card {
   background: var(--sc-surface);
@@ -375,3 +381,122 @@
   font-size: 0.82rem;
   color: var(--sc-danger-text);
 }
+
+/* ── Importação de XML ── */
+.importResultMsg {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--sc-info-bg);
+  border: 1px solid var(--sc-info-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.85rem;
+  color: var(--sc-info-text);
+}
+
+.modalLarge {
+  width: 760px;
+}
+
+.folderLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  color: var(--sc-action);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  margin-bottom: 1rem;
+}
+.folderLink:hover { text-decoration: underline; }
+
+.importList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.importCard {
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-surface);
+  overflow: hidden;
+}
+
+.importErrorCard {
+  border-color: var(--sc-danger-border);
+  background: var(--sc-danger-bg);
+}
+
+.importErrorText {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+}
+
+.importCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+.importCardHeader:hover { background: var(--sc-surface-hover); }
+
+.importCheckbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.importSummary {
+  flex: 1;
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+}
+
+.importCardBody {
+  padding: 1rem 1rem 1.125rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.parcelaEditRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.parcelaEditRow .input { flex: 1; }
+
+.btnRemoveParcela {
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--sc-radius-sm);
+  flex-shrink: 0;
+}
+.btnRemoveParcela:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+
+.btnAddParcela {
+  background: none;
+  border: 1px dashed var(--sc-border-strong);
+  color: var(--sc-text-secondary);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+.btnAddParcela:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }

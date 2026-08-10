@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getCompras, createCompra, getCompra, uploadAnexo,
   updateCompra, deleteCompra,
 } from "../../api/financeiro";
 import FormularioCompraVenda from "./FormularioCompraVenda";
+import ImportarXMLModal from "./ImportarXMLModal";
 import styles from "./comprasVendas.module.css";
 
 const moeda = (v) =>
@@ -60,13 +61,42 @@ export default function ComprasFinanceiro() {
   const [deleting,        setDeleting]        = useState(false);
   const [erroExcluir,     setErroExcluir]     = useState(null);
 
-  useEffect(() => {
+  // Importar XML
+  const fileInputRef = useRef(null);
+  const [arquivosXml,    setArquivosXml]    = useState(null);
+  const [modalImportar,  setModalImportar]  = useState(false);
+  const [resultadoImport, setResultadoImport] = useState(null);
+
+  const recarregarCompras = () => {
     setLoading(true);
     getCompras()
       .then((c) => setCompras(c || []))
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    recarregarCompras();
   }, []);
+
+  // ── Importar XML ──────────────────────────────────────────────────────────
+  const handleAbrirSeletorXml = () => fileInputRef.current?.click();
+
+  const handleArquivosSelecionados = (e) => {
+    const arquivos = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (arquivos.length === 0) return;
+    setArquivosXml(arquivos);
+    setResultadoImport(null);
+    setModalImportar(true);
+  };
+
+  const handleConcluirImportacao = (sucesso, falhas) => {
+    setModalImportar(false);
+    setArquivosXml(null);
+    setResultadoImport({ sucesso, falhas });
+    if (sucesso > 0) recarregarCompras();
+  };
 
   // ── Expand row ────────────────────────────────────────────────────────────
   const handleExpand = async (id) => {
@@ -183,10 +213,30 @@ export default function ComprasFinanceiro() {
 
       <div className={styles.header}>
         <h1 className={styles.title}>Compras</h1>
-        <button className={styles.btnPrimary} onClick={() => { setModal(true); setErro(null); }}>
-          + Nova Compra
-        </button>
+        <div className={styles.headerActions}>
+          <button className={styles.btnSecondary} onClick={handleAbrirSeletorXml}>
+            Importar XMLs
+          </button>
+          <button className={styles.btnPrimary} onClick={() => { setModal(true); setErro(null); }}>
+            + Nova Compra
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xml"
+          multiple
+          style={{ display: "none" }}
+          onChange={handleArquivosSelecionados}
+        />
       </div>
+
+      {resultadoImport && (
+        <p className={styles.importResultMsg}>
+          {resultadoImport.sucesso} compra(s) importada(s) com sucesso.
+          {resultadoImport.falhas > 0 && ` ${resultadoImport.falhas} falharam.`}
+        </p>
+      )}
 
       <div className={styles.card}>
         <table className={styles.table}>
@@ -443,6 +493,15 @@ export default function ComprasFinanceiro() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Modal: Importar XMLs ── */}
+      {modalImportar && arquivosXml && (
+        <ImportarXMLModal
+          arquivos={arquivosXml}
+          onFechar={() => { setModalImportar(false); setArquivosXml(null); }}
+          onConcluido={handleConcluirImportacao}
+        />
       )}
     </div>
   );

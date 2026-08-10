@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { pedidosVendaApi, vendedoresApi, tabelasPrecoApi } from "../services/api";
+import { pedidosVendaApi, vendedoresApi, tabelasPrecoApi, clientesApi } from "../services/api";
 import styles from "./PedidosVendaPage.module.css";
 
 const STATUS_LABELS = {
@@ -56,7 +56,14 @@ export default function PedidosVendaPage() {
   const [menuPos, setMenuPos]                     = useState({ top: 0, left: 0 });
   const [pedidoParaDeletar, setPedidoParaDeletar] = useState(null);
   const [editStatusModal, setEditStatusModal]     = useState(null);
+  const [clienteBusca, setClienteBusca]           = useState(null);
+  const [modalCliente, setModalCliente]           = useState(false);
+  const [buscaCliente, setBuscaCliente]           = useState("");
+  const [resultadosCliente, setResultadosCliente] = useState([]);
+  const [carregandoClientes, setCarregandoClientes] = useState(false);
   const navigate                                  = useNavigate();
+  const overlayMouseDownNode                      = useRef(null);
+  const buscaOverlayMouseDownNode                 = useRef(null);
 
   useEffect(() => {
     Promise.all([
@@ -77,15 +84,80 @@ export default function PedidosVendaPage() {
     return () => document.removeEventListener("click", close);
   }, [menuAberto]);
 
+  useEffect(() => {
+    if (!modalCliente) return;
+    setCarregandoClientes(true);
+    const t = setTimeout(() => {
+      clientesApi.listar(buscaCliente)
+        .then((lista) => setResultadosCliente(lista || []))
+        .catch(() => setResultadosCliente([]))
+        .finally(() => setCarregandoClientes(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [modalCliente, buscaCliente]);
+
   const abrirModal = async () => {
     const numero = await pedidosVendaApi.proximoNumero("venda").catch(() => "");
     setModal({ ...MODAL_VAZIO, data_emissao: hojeISO(), numero: String(numero).padStart(6, "0") });
     setErro(null);
+    setClienteBusca(null);
+    setModalCliente(false);
   };
 
-  const fecharModal = () => { setModal(null); setErro(null); };
+  const fecharModal = () => { setModal(null); setErro(null); setClienteBusca(null); setModalCliente(false); };
 
   const set = (key) => (e) => setModal((m) => ({ ...m, [key]: e.target.value }));
+
+  const abrirBuscaCliente = () => {
+    setBuscaCliente("");
+    setResultadosCliente([]);
+    setModalCliente(true);
+  };
+
+  const fecharBuscaCliente = () => setModalCliente(false);
+
+  const selecionarCliente = (cliente) => {
+    setModal((m) => ({
+      ...m,
+      cliente_razao_social: cliente.razao_social || "",
+      cliente_cnpj:         cliente.cnpj || cliente.cpf || "",
+      cliente_ie:           cliente.ie || "",
+      cliente_endereco:     cliente.endereco || "",
+      cliente_cidade:       cliente.cidade || "",
+      cliente_cep:          cliente.cep || "",
+      cliente_telefone:     cliente.telefone || "",
+      cliente_email:        cliente.email || "",
+    }));
+    setClienteBusca("selecionado");
+    setModalCliente(false);
+  };
+
+  const buscarClientePorCnpj = async () => {
+    const digits = (modal.cliente_cnpj || "").replace(/\D/g, "");
+    if (digits.length !== 11 && digits.length !== 14) return;
+
+    setClienteBusca("buscando");
+    try {
+      const cliente = await clientesApi.buscarCnpj(digits);
+      if (cliente) {
+        setModal((m) => ({
+          ...m,
+          cliente_razao_social: cliente.razao_social || m.cliente_razao_social,
+          cliente_ie:           cliente.ie            || m.cliente_ie,
+          cliente_endereco:     cliente.endereco       || m.cliente_endereco,
+          cliente_cidade:       cliente.cidade         || m.cliente_cidade,
+          cliente_cep:          cliente.cep            || m.cliente_cep,
+          cliente_telefone:     cliente.telefone       || m.cliente_telefone,
+          cliente_email:        cliente.email          || m.cliente_email,
+        }));
+        setClienteBusca("encontrado");
+      } else {
+        setClienteBusca("nao_cadastrado");
+      }
+    } catch {
+      setClienteBusca(null);
+    }
+  };
 
   const tabelaSel = modal?.tabela_preco_id
     ? tabelas.find((t) => t.id === modal.tabela_preco_id)
@@ -296,7 +368,15 @@ export default function PedidosVendaPage() {
       )}
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div
+          className={styles.overlay}
+          onMouseDown={(e) => { overlayMouseDownNode.current = e.target; }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && overlayMouseDownNode.current === e.currentTarget) {
+              fecharModal();
+            }
+          }}
+        >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Novo Pedido de Venda</h2>
@@ -364,12 +444,49 @@ export default function PedidosVendaPage() {
 
               <p className={styles.secLabel} style={{ marginTop: "1.5rem" }}>Cliente</p>
               <div className={styles.grid2}>
-                {CAMPOS_CLIENTE.map(({ k, l }) => (
-                  <label key={k} className={styles.field}>
-                    <span>{l}</span>
-                    <input className={styles.input} value={modal[k]} onChange={set(k)} />
-                  </label>
-                ))}
+                {CAMPOS_CLIENTE.map(({ k, l }) =>
+                  k === "cliente_cnpj" ? (
+                    <label key={k} className={styles.field}>
+                      <span>{l}</span>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <input
+                          className={styles.input}
+                          style={{ flex: 1 }}
+                          value={modal.cliente_cnpj}
+                          onChange={(e) => { set("cliente_cnpj")(e); setClienteBusca(null); }}
+                          onBlur={buscarClientePorCnpj}
+                        />
+                        <button
+                          type="button"
+                          className={styles.btnSecondary}
+                          style={{ padding: "0 0.6rem", flexShrink: 0 }}
+                          onClick={abrirBuscaCliente}
+                          title="Buscar cliente cadastrado"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="11" cy="11" r="7" />
+                            <line x1="21" y1="21" x2="16.3" y2="16.3" />
+                          </svg>
+                        </button>
+                      </div>
+                      {(clienteBusca === "encontrado" || clienteBusca === "selecionado") && (
+                        <span style={{ fontSize: "0.78rem", color: "var(--sc-success-text)", marginTop: "0.15rem" }}>
+                          {clienteBusca === "selecionado" ? "Cliente selecionado" : "Cliente encontrado e preenchido"}
+                        </span>
+                      )}
+                      {clienteBusca === "nao_cadastrado" && (
+                        <span style={{ fontSize: "0.78rem", color: "var(--sc-text-muted)", marginTop: "0.15rem" }}>
+                          Cliente não cadastrado — preencha manualmente
+                        </span>
+                      )}
+                    </label>
+                  ) : (
+                    <label key={k} className={styles.field}>
+                      <span>{l}</span>
+                      <input className={styles.input} value={modal[k]} onChange={set(k)} />
+                    </label>
+                  )
+                )}
               </div>
             </div>
 
@@ -380,6 +497,81 @@ export default function PedidosVendaPage() {
               <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
                 {saving ? "Criando…" : "Criar Pedido →"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalCliente && (
+        <div
+          className={styles.overlay}
+          onMouseDown={(e) => { buscaOverlayMouseDownNode.current = e.target; }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && buscaOverlayMouseDownNode.current === e.currentTarget) {
+              fecharBuscaCliente();
+            }
+          }}
+        >
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2 className={styles.modalTitle}>Selecionar Cliente</h2>
+              <button className={styles.btnClose} onClick={fecharBuscaCliente}>×</button>
+            </div>
+
+            <div className={styles.modalScroll}>
+              <input
+                className={styles.input}
+                style={{ width: "100%", marginBottom: "1rem" }}
+                placeholder="Buscar por nome ou CNPJ..."
+                value={buscaCliente}
+                onChange={(e) => setBuscaCliente(e.target.value)}
+                autoFocus
+              />
+
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "0.5rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--sc-text-secondary)", borderBottom: "1px solid var(--sc-border)" }}>Razão Social</th>
+                    <th style={{ textAlign: "left", padding: "0.5rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--sc-text-secondary)", borderBottom: "1px solid var(--sc-border)" }}>CNPJ</th>
+                    <th style={{ textAlign: "left", padding: "0.5rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--sc-text-secondary)", borderBottom: "1px solid var(--sc-border)" }}>Cidade</th>
+                    <th style={{ textAlign: "left", padding: "0.5rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--sc-text-secondary)", borderBottom: "1px solid var(--sc-border)" }}>Telefone</th>
+                    <th style={{ borderBottom: "1px solid var(--sc-border)" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {carregandoClientes ? (
+                    <tr><td colSpan={5} className={styles.empty}>Buscando…</td></tr>
+                  ) : resultadosCliente.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className={styles.empty}>
+                        Nenhum cliente encontrado.{" "}
+                        <a
+                          href="/clientes"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "var(--sc-action)" }}
+                        >
+                          Cadastrar novo cliente
+                        </a>
+                      </td>
+                    </tr>
+                  ) : resultadosCliente.map((c) => (
+                    <tr key={c.id} style={{ borderBottom: "1px solid var(--sc-border)" }}>
+                      <td style={{ padding: "0.55rem 0.6rem", color: "var(--sc-text-primary)" }}>{c.razao_social}</td>
+                      <td style={{ padding: "0.55rem 0.6rem", color: "var(--sc-text-primary)" }}>{c.cnpj || c.cpf || "—"}</td>
+                      <td style={{ padding: "0.55rem 0.6rem", color: "var(--sc-text-primary)" }}>{c.cidade || "—"}</td>
+                      <td style={{ padding: "0.55rem 0.6rem", color: "var(--sc-text-primary)" }}>{c.telefone || "—"}</td>
+                      <td style={{ padding: "0.55rem 0.6rem", textAlign: "right" }}>
+                        <button className={styles.btnLink} onClick={() => selecionarCliente(c)}>Selecionar</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button className={styles.btnSecondary} onClick={fecharBuscaCliente}>Cancelar</button>
             </div>
           </div>
         </div>

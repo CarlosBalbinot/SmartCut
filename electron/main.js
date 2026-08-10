@@ -7,6 +7,17 @@ const isDev = process.env.NODE_ENV === 'development';
 
 let mainWindow = null;
 let logPath = null;
+let comprasPath = null;
+
+function ensureComprasFolder() {
+  comprasPath = path.join(app.getPath('userData'), 'Compras');
+  try {
+    fs.mkdirSync(comprasPath, { recursive: true });
+  } catch (e) {
+    log(`erro ao criar pasta Compras: ${e.message}`);
+  }
+  return comprasPath;
+}
 
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}\n`;
@@ -69,9 +80,13 @@ function createWindow() {
 }
 
 ipcMain.handle('get-version', () => app.getVersion());
+ipcMain.handle('get-compras-path', () => comprasPath || ensureComprasFolder());
+ipcMain.handle('open-compras-folder', () => shell.openPath(comprasPath || ensureComprasFolder()));
 
 app.whenReady().then(async () => {
   initLog();
+  ensureComprasFolder();
+  log(`pasta Compras: ${comprasPath}`);
   const win = createWindow();
 
   // ── Passo 1: mostrar loading enquanto o backend sobe ───────────────────

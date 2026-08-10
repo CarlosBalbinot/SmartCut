@@ -10,11 +10,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from models.pedido import ItemPedido, PedidoVenda
+from models.venda import PrecoReferencia
 from schemas.venda_schema import (
     ItemPedidoVendaCreate, ItemPedidoVendaOut,
     PedidoVendaCreate, PedidoVendaOut, PedidoVendaUpdate,
 )
-from services.pdf_venda_service import gerar_pdf_corte, gerar_pdf_pedido
+from services.pdf_venda_service import (
+    gerar_pdf_corte, gerar_pdf_pedido, nome_arquivo_corte, nome_arquivo_pedido,
+)
 from services.venda_service import (
     get_ou_criar_empresa, get_preco, proximo_numero, recalcular_pedido,
 )
@@ -241,11 +244,24 @@ def pdf_pedido(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     itens = _itens_com_grupo(db, pedido_id)
     empresa = get_ou_criar_empresa(db)
-    pdf_bytes = gerar_pdf_pedido(pedido, itens, empresa)
+
+    precos_ref = {}
+    if pedido.tabela_preco_id and itens:
+        grupo_ids = {item.grupo_id for item in itens}
+        refs = db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.tabela_id == pedido.tabela_preco_id,
+                PrecoReferencia.grupo_id.in_(grupo_ids),
+            )
+        ).scalars().all()
+        precos_ref = {str(r.grupo_id): r for r in refs}
+
+    pdf_bytes = gerar_pdf_pedido(pedido, itens, empresa, precos_ref)
+    filename = nome_arquivo_pedido(pedido)
     return StreamingResponse(
         iter([pdf_bytes]),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=pedido_{pedido.numero}.pdf"},
+        headers={"Content-Disposition": f"inline; filename={filename}"},
     )
 
 
@@ -256,10 +272,11 @@ def pdf_corte(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     itens = _itens_com_grupo(db, pedido_id)
     pdf_bytes = gerar_pdf_corte(pedido, itens)
+    filename = nome_arquivo_corte(pedido)
     return StreamingResponse(
         iter([pdf_bytes]),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename=corte_{pedido.numero}.pdf"},
+        headers={"Content-Disposition": f"inline; filename={filename}"},
     )
 
 

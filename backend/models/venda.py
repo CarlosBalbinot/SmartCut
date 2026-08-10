@@ -59,6 +59,9 @@ class PrecoReferencia(Base):
     )
     preco_avista: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     preco_aprazo: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    tem_plus_size: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    preco_avista_plus: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    preco_aprazo_plus: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     tabela: Mapped["TabelaPreco"] = relationship(back_populates="precos_referencia")

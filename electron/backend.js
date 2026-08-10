@@ -17,7 +17,7 @@ function log(msg) {
 }
 
 function findPython() {
-  const probeCmds = ['py -3.11', 'python3.11', 'python3', 'python'];
+  const probeCmds = ['py -3.12', 'python3.12', 'python3', 'python'];
   for (const cmd of probeCmds) {
     try {
       const exe = execSync(
@@ -47,7 +47,7 @@ function findPython() {
 
   throw new Error(
     'Python não encontrado no sistema.\n' +
-    'Instale Python 3.11 (python.org) e reinicie o app.'
+    'Instale Python 3.12 (python.org) e reinicie o app.'
   );
 }
 
