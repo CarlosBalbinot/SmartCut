@@ -39,7 +39,7 @@
 
 .table th {
   text-align: left;
-  padding: 0.7rem 0.875rem;
+  padding: 12px 0.875rem;
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -51,7 +51,7 @@
 }
 
 .table td {
-  padding: 0.8rem 0.875rem;
+  padding: 12px 0.875rem;
   font-size: 0.875rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
@@ -67,13 +67,49 @@
 
 /* Column widths */
 .table th:nth-child(1) { width: auto; }
-.table th:nth-child(2) { width: 100px; }
+.table th:nth-child(2) { width: 130px; }
 .table th:nth-child(3) { width: 110px; }
 .table th:nth-child(4) { width: 80px; }
 .table th:nth-child(5) { width: 110px; }
-.table th:nth-child(6) { width: 90px; }
+.table th:nth-child(6) { width: 190px; }
 
-.tdValor { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tdValor { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.dataCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.dataCellSub {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
+.fornecedorCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  white-space: normal;
+}
+
+.fornecedorNome {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fornecedorSub {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .empty {
   text-align: center;
@@ -85,12 +121,12 @@
 /* ── Expand row ── */
 .expandRow td {
   padding: 0;
-  background: var(--sc-bg-tertiary);
+  background: var(--sc-bg-secondary);
   border-bottom: 2px solid var(--sc-border);
 }
 
 .expandCell {
-  padding: 0.875rem 1.5rem !important;
+  padding: 1rem 1.5rem !important;
 }
 
 .parcelasTitle {
@@ -99,7 +135,7 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--sc-text-secondary);
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.6rem;
 }
 
 .parcelasTable {
@@ -109,11 +145,12 @@
   border: 1px solid var(--sc-border);
   border-radius: var(--sc-radius-sm);
   overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
 }
 
 .parcelasTable th {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.85rem;
   font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -124,7 +161,7 @@
 }
 
 .parcelasTable td {
-  padding: 0.55rem 0.75rem;
+  padding: 0.65rem 0.85rem;
   font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
@@ -149,18 +186,19 @@
   white-space: nowrap;
 }
 
-.stQuitado  { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: rgba(37,150,190,0.25); }
+.stQuitado  { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
 .stPendente { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
 .stParcial  { background: var(--sc-info-bg);      color: var(--sc-info-text);     border-color: var(--sc-info-border); }
-.stPAGO     { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: rgba(37,150,190,0.25); }
+.stPAGO     { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
 .stPENDENTE { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
+.stATRASADO { background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
 .stCANCELADO{ background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
 
 /* ── Row actions ── */
 .rowActions {
   display: flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.5rem;
 }
 
 .btnExpand {
@@ -176,16 +214,22 @@
 .btnExpand:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
 .btnExpandOpen { transform: rotate(90deg); color: var(--sc-text-primary); }
 
-.btnIconEdit {
-  background: none;
-  border: none;
-  color: var(--sc-text-muted);
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.25rem 0.4rem;
+.btnEditar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--sc-surface);
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.3rem 0.65rem;
   border-radius: var(--sc-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btnIconEdit:hover { background: var(--sc-surface-hover); color: var(--sc-action); }
+.btnEditar:hover { background: var(--sc-surface-hover); border-color: var(--sc-action); color: var(--sc-action); }
 
 .btnIconDelete {
   background: none;
@@ -500,3 +544,61 @@
   margin-top: 0.25rem;
 }
 .btnAddParcela:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+
+/* ── Editar Compra: parcelas e anexos ── */
+.parcelasEditHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.parcelaEditNum {
+  flex-shrink: 0;
+  width: 1.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  text-align: center;
+}
+
+.anexoRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+}
+.anexoRow:last-child { border-bottom: none; }
+
+.anexoRowLabel {
+  flex-shrink: 0;
+  min-width: 72px;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.anexoRowNome {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btnLinkSmall {
+  background: none;
+  border: none;
+  color: var(--sc-action);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  white-space: nowrap;
+}
+.btnLinkSmall:hover { text-decoration: underline; }
+
+.inputFileHidden {
+  display: none;
+}

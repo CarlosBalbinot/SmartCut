@@ -122,6 +122,27 @@ export const createVendaFinanceira = (dados) =>
 
 export const getVendaFinanceira = (id) => request(`/vendas-financeiras/${id}`);
 
+export const updateVendaFinanceira = (id, dados) =>
+  request(`/vendas-financeiras/${id}`, { method: "PUT", body: JSON.stringify(dados) });
+
+export const deleteVendaFinanceira = (id) =>
+  request(`/vendas-financeiras/${id}`, { method: "DELETE" });
+
+export const importarXmlVenda = (arquivo) => {
+  const fd = new FormData();
+  fd.append("arquivo", arquivo);
+  return requestForm("/vendas-financeiras/importar-xml", fd);
+};
+
+export const importarLoteVendas = (arquivos) => {
+  const fd = new FormData();
+  arquivos.forEach((arquivo) => fd.append("arquivos", arquivo));
+  return requestForm("/vendas-financeiras/importar-lote", fd);
+};
+
+export const importarVendaFinal = (dados) =>
+  request("/vendas-financeiras/importar", { method: "POST", body: JSON.stringify(dados) });
+
 // ── Anexos ────────────────────────────────────────────────────────────────────
 
 export const uploadAnexo = (lancamentoId, arquivo, tipo) => {
@@ -136,6 +157,9 @@ export const getAnexos = (lancamentoId) =>
 
 export const downloadAnexo = (anexoId) =>
   requestBlob(`/anexos/${anexoId}/download`);
+
+export const deleteAnexo = (anexoId) =>
+  request(`/anexos/${anexoId}`, { method: "DELETE" });
 
 // ── Projeção ──────────────────────────────────────────────────────────────────
 

@@ -69,6 +69,7 @@ class Lancamento(Base):
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     descricao: Mapped[str] = mapped_column(String(500), nullable=False)
     valor: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    valor_original: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     data_vencimento: Mapped[date] = mapped_column(Date, nullable=False)
     data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDENTE")

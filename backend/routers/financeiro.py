@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import uuid
@@ -46,9 +47,12 @@ from schemas.financeiro_schema import (
     VendaComLancamentosOut,
     VendaCreate,
     VendaFinanceiraOut,
+    VendaImportarXMLCreate,
+    VendaUpdate,
 )
 
 router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
+logger = logging.getLogger(__name__)
 
 _UPLOAD_DIR = "uploads/financeiro"
 
@@ -83,6 +87,7 @@ def _gerar_lancamentos(
             tipo=tipo,
             descricao=desc,
             valor=valor_parcela,
+            valor_original=valor_parcela,
             data_vencimento=_add_meses(primeiro_vencimento, i),
             status="PENDENTE",
             parcela_numero=i + 1 if parcelas > 1 else None,
@@ -105,8 +110,26 @@ def _nfe_text(parent, tag: str) -> Optional[str]:
     return node.text.strip()
 
 
-def _parse_nfe_xml(conteudo: bytes) -> dict:
-    """Faz o parse de um XML de NF-e (padrão SEFAZ) e extrai os dados de compra."""
+def _find_text_any_ns(parent, tag: str) -> Optional[str]:
+    """Busca `tag` dentro de `parent`, com e sem o namespace da NF-e."""
+    if parent is None:
+        return None
+    node = parent.find(f"{_NFE_NS}{tag}")
+    if node is None:
+        node = parent.find(tag)
+    if node is None or not node.text:
+        return None
+    return node.text.strip()
+
+
+def _parse_nfe_xml(conteudo: bytes, party_tag: str = "emit") -> dict:
+    """Faz o parse de um XML de NF-e (padrão SEFAZ) e extrai os dados da compra/venda.
+
+    `party_tag` seleciona de qual parte da NF-e ler razão social/documento:
+    "emit" (emitente → fornecedor, usado em compras) ou "dest" (destinatário
+    → cliente, usado em vendas). O restante do XML (totais, datas, duplicatas)
+    é lido da mesma forma em ambos os casos.
+    """
     try:
         root = ET.fromstring(conteudo)
     except ET.ParseError as e:
@@ -116,20 +139,19 @@ def _parse_nfe_xml(conteudo: bytes) -> dict:
     if inf_nfe is None:
         raise ValueError("XML não é uma NF-e válida (infNFe não encontrado)")
 
-    emit = inf_nfe.find(f"{_NFE_NS}emit")
+    party = inf_nfe.find(f"{_NFE_NS}{party_tag}")
     ide = inf_nfe.find(f"{_NFE_NS}ide")
     total = inf_nfe.find(f"{_NFE_NS}total/{_NFE_NS}ICMSTot")
-    cobr = inf_nfe.find(f"{_NFE_NS}cobr")
 
-    fornecedor = _nfe_text(emit, "xNome")
-    cnpj_fornecedor = _nfe_text(emit, "CNPJ")
+    fornecedor = _nfe_text(party, "xNome")
+    cnpj_fornecedor = _nfe_text(party, "CNPJ") or _nfe_text(party, "CPF")
     numero_nf = _nfe_text(ide, "nNF")
     data_emissao_raw = _nfe_text(ide, "dEmi") or _nfe_text(ide, "dhEmi")
     valor_total_raw = _nfe_text(total, "vNF")
 
     if not fornecedor or not valor_total_raw or not data_emissao_raw:
         raise ValueError(
-            "Não foi possível ler emitente, valor total ou data de emissão do XML."
+            "Não foi possível ler o nome da contraparte, valor total ou data de emissão do XML."
         )
 
     try:
@@ -138,21 +160,29 @@ def _parse_nfe_xml(conteudo: bytes) -> dict:
     except (ValueError, InvalidOperation):
         raise ValueError("Valores de data ou valor total inválidos no XML.")
 
+    # Duplicatas (parcelas): tenta com o namespace da NF-e; se não achar, tenta sem namespace
+    dups = root.findall(f".//{_NFE_NS}dup")
+    if not dups:
+        dups = root.findall(".//dup")
+    logger.info("Importação NF-e: %d duplicata(s) encontrada(s) no XML", len(dups))
+
     parcelas = []
-    if cobr is not None:
-        for i, dup in enumerate(cobr.findall(f"{_NFE_NS}dup"), start=1):
-            d_venc = _nfe_text(dup, "dVenc")
-            v_dup = _nfe_text(dup, "vDup")
-            if not d_venc or not v_dup:
-                continue
-            try:
-                parcelas.append({
-                    "numero": _nfe_text(dup, "nDup") or f"{i:03d}",
-                    "vencimento": datetime.strptime(d_venc[:10], "%Y-%m-%d").date(),
-                    "valor": Decimal(v_dup),
-                })
-            except (ValueError, InvalidOperation):
-                continue
+    for i, dup in enumerate(dups, start=1):
+        d_venc = _find_text_any_ns(dup, "dVenc")
+        v_dup = _find_text_any_ns(dup, "vDup")
+        if not d_venc or not v_dup:
+            continue
+        try:
+            parcelas.append({
+                "numero": _find_text_any_ns(dup, "nDup") or f"{i:03d}",
+                "vencimento": datetime.strptime(d_venc[:10], "%Y-%m-%d").date(),
+                "valor": Decimal(v_dup),
+            })
+        except (ValueError, InvalidOperation):
+            continue
+
+    if not parcelas:
+        parcelas.append({"numero": "001", "vencimento": None, "valor": valor_total})
 
     return {
         "fornecedor": fornecedor,
@@ -162,6 +192,29 @@ def _parse_nfe_xml(conteudo: bytes) -> dict:
         "numero_nf": numero_nf,
         "parcelas": parcelas,
     }
+
+
+async def _processar_lote_xml(
+    arquivos: list[UploadFile], party_tag: str
+) -> list[ImportacaoXMLResultOut]:
+    resultados = []
+    for arquivo in arquivos:
+        try:
+            conteudo = await arquivo.read()
+            dados = _parse_nfe_xml(conteudo, party_tag=party_tag)
+            resultados.append(
+                ImportacaoXMLResultOut(sucesso=True, dados=NFeImportadaOut(**dados), erro=None)
+            )
+        except ValueError as e:
+            resultados.append(ImportacaoXMLResultOut(sucesso=False, dados=None, erro=str(e)))
+        except Exception:
+            resultados.append(
+                ImportacaoXMLResultOut(
+                    sucesso=False, dados=None,
+                    erro=f"Falha ao processar '{arquivo.filename}'.",
+                )
+            )
+    return resultados
 
 
 # ── Contas Bancárias ──────────────────────────────────────────────────────────
@@ -286,7 +339,7 @@ def listar_lancamentos(
 
 @router.post("/lancamentos")
 def criar_lancamento(payload: LancamentoCreate, db: Session = Depends(get_db)):
-    lancamento = Lancamento(**payload.model_dump())
+    lancamento = Lancamento(**payload.model_dump(), valor_original=payload.valor)
     db.add(lancamento)
     db.commit()
     db.refresh(lancamento)
@@ -341,7 +394,31 @@ def listar_compras(db: Session = Depends(get_db)):
     rows = db.execute(
         select(CompraFinanceira).order_by(CompraFinanceira.data_compra.desc())
     ).scalars().all()
-    return {"data": [CompraFinanceiraOut.model_validate(r) for r in rows], "error": None}
+
+    resultado = []
+    for r in rows:
+        total_parcelas = db.execute(
+            select(func.count(Lancamento.id)).where(Lancamento.compra_id == r.id)
+        ).scalar() or 0
+        parcelas_pagas = db.execute(
+            select(func.count(Lancamento.id)).where(
+                Lancamento.compra_id == r.id,
+                Lancamento.status == "PAGO",
+            )
+        ).scalar() or 0
+        resultado.append(CompraFinanceiraOut(
+            id=r.id,
+            fornecedor=r.fornecedor,
+            descricao=r.descricao,
+            valor_total=r.valor_total,
+            data_compra=r.data_compra,
+            nf_pdf_path=r.nf_pdf_path,
+            created_at=r.created_at,
+            total_parcelas=total_parcelas,
+            parcelas_pagas=parcelas_pagas,
+        ))
+
+    return {"data": resultado, "error": None}
 
 
 @router.post("/compras")
@@ -374,7 +451,7 @@ def criar_compra(payload: CompraCreate, db: Session = Depends(get_db)):
 async def importar_xml_compra(arquivo: UploadFile = File(...)):
     conteudo = await arquivo.read()
     try:
-        dados = _parse_nfe_xml(conteudo)
+        dados = _parse_nfe_xml(conteudo, party_tag="emit")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"data": NFeImportadaOut(**dados), "error": None}
@@ -382,23 +459,7 @@ async def importar_xml_compra(arquivo: UploadFile = File(...)):
 
 @router.post("/compras/importar-lote")
 async def importar_lote_compras(arquivos: list[UploadFile] = File(...)):
-    resultados = []
-    for arquivo in arquivos:
-        try:
-            conteudo = await arquivo.read()
-            dados = _parse_nfe_xml(conteudo)
-            resultados.append(
-                ImportacaoXMLResultOut(sucesso=True, dados=NFeImportadaOut(**dados), erro=None)
-            )
-        except ValueError as e:
-            resultados.append(ImportacaoXMLResultOut(sucesso=False, dados=None, erro=str(e)))
-        except Exception:
-            resultados.append(
-                ImportacaoXMLResultOut(
-                    sucesso=False, dados=None,
-                    erro=f"Falha ao processar '{arquivo.filename}'.",
-                )
-            )
+    resultados = await _processar_lote_xml(arquivos, party_tag="emit")
     return {"data": resultados, "error": None}
 
 
@@ -424,6 +485,7 @@ def criar_compra_importada(payload: CompraImportarXMLCreate, db: Session = Depen
             tipo="PAGAR",
             descricao=desc,
             valor=parcela.valor,
+            valor_original=parcela.valor,
             data_vencimento=parcela.vencimento,
             status="PENDENTE",
             parcela_numero=i if total > 1 else None,
@@ -523,7 +585,31 @@ def listar_vendas(db: Session = Depends(get_db)):
     rows = db.execute(
         select(VendaFinanceira).order_by(VendaFinanceira.data_venda.desc())
     ).scalars().all()
-    return {"data": [VendaFinanceiraOut.model_validate(r) for r in rows], "error": None}
+
+    resultado = []
+    for r in rows:
+        total_parcelas = db.execute(
+            select(func.count(Lancamento.id)).where(Lancamento.venda_id == r.id)
+        ).scalar() or 0
+        parcelas_pagas = db.execute(
+            select(func.count(Lancamento.id)).where(
+                Lancamento.venda_id == r.id,
+                Lancamento.status == "PAGO",
+            )
+        ).scalar() or 0
+        resultado.append(VendaFinanceiraOut(
+            id=r.id,
+            cliente=r.cliente,
+            descricao=r.descricao,
+            valor_total=r.valor_total,
+            data_venda=r.data_venda,
+            nf_pdf_path=r.nf_pdf_path,
+            created_at=r.created_at,
+            total_parcelas=total_parcelas,
+            parcelas_pagas=parcelas_pagas,
+        ))
+
+    return {"data": resultado, "error": None}
 
 
 @router.post("/vendas-financeiras")
@@ -552,6 +638,58 @@ def criar_venda(payload: VendaCreate, db: Session = Depends(get_db)):
     return {"data": VendaFinanceiraOut.model_validate(venda), "error": None}
 
 
+@router.post("/vendas-financeiras/importar-xml")
+async def importar_xml_venda(arquivo: UploadFile = File(...)):
+    conteudo = await arquivo.read()
+    try:
+        dados = _parse_nfe_xml(conteudo, party_tag="dest")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"data": NFeImportadaOut(**dados), "error": None}
+
+
+@router.post("/vendas-financeiras/importar-lote")
+async def importar_lote_vendas(arquivos: list[UploadFile] = File(...)):
+    resultados = await _processar_lote_xml(arquivos, party_tag="dest")
+    return {"data": resultados, "error": None}
+
+
+@router.post("/vendas-financeiras/importar")
+def criar_venda_importada(payload: VendaImportarXMLCreate, db: Session = Depends(get_db)):
+    if not payload.parcelas:
+        raise HTTPException(status_code=400, detail="Informe ao menos uma parcela.")
+
+    venda = VendaFinanceira(
+        cliente=payload.cliente,
+        descricao=payload.descricao,
+        valor_total=payload.valor_total,
+        data_venda=payload.data_venda,
+    )
+    db.add(venda)
+    db.flush()
+
+    total = len(payload.parcelas)
+    descricao_base = payload.descricao or payload.cliente
+    for i, parcela in enumerate(payload.parcelas, start=1):
+        desc = descricao_base if total == 1 else f"{descricao_base} ({i}/{total})"
+        db.add(Lancamento(
+            tipo="RECEBER",
+            descricao=desc,
+            valor=parcela.valor,
+            valor_original=parcela.valor,
+            data_vencimento=parcela.vencimento,
+            status="PENDENTE",
+            parcela_numero=i if total > 1 else None,
+            parcela_total=total if total > 1 else None,
+            categoria_id=payload.categoria_id,
+            venda_id=venda.id,
+        ))
+
+    db.commit()
+    db.refresh(venda)
+    return {"data": VendaFinanceiraOut.model_validate(venda), "error": None}
+
+
 @router.get("/vendas-financeiras/{venda_id}")
 def get_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
     venda = db.execute(
@@ -564,6 +702,71 @@ def get_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
     return {"data": VendaComLancamentosOut.model_validate(venda), "error": None}
+
+
+@router.put("/vendas-financeiras/{venda_id}")
+def atualizar_venda(
+    venda_id: uuid.UUID, payload: VendaUpdate, db: Session = Depends(get_db)
+):
+    venda = db.execute(
+        select(VendaFinanceira)
+        .where(VendaFinanceira.id == venda_id)
+        .options(selectinload(VendaFinanceira.lancamentos))
+    ).scalars().first()
+    if not venda:
+        raise HTTPException(status_code=404, detail="Venda não encontrada")
+
+    novo_valor = payload.valor_total
+    valor_mudou = novo_valor is not None and novo_valor != venda.valor_total
+
+    for field, val in payload.model_dump(exclude_unset=True).items():
+        setattr(venda, field, val)
+
+    if valor_mudou and venda.lancamentos:
+        total = venda.lancamentos[0].parcela_total or len(venda.lancamentos) or 1
+        novo_por_parcela = (novo_valor / Decimal(total)).quantize(Decimal("0.01"))
+        for lanc in venda.lancamentos:
+            if lanc.status != "PAGO":
+                lanc.valor = novo_por_parcela
+
+    db.commit()
+    db.refresh(venda)
+    return {"data": VendaFinanceiraOut.model_validate(venda), "error": None}
+
+
+@router.delete("/vendas-financeiras/{venda_id}")
+def deletar_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
+    venda = db.execute(
+        select(VendaFinanceira)
+        .where(VendaFinanceira.id == venda_id)
+        .options(
+            selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos)
+        )
+    ).scalars().first()
+    if not venda:
+        raise HTTPException(status_code=404, detail="Venda não encontrada")
+
+    pagas = [l for l in venda.lancamentos if l.status == "PAGO"]
+    if pagas:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Não é possível excluir: {len(pagas)} parcela(s) já foram recebidas.",
+        )
+
+    for lanc in venda.lancamentos:
+        for anexo in lanc.anexos:
+            if os.path.exists(anexo.arquivo_path):
+                try:
+                    os.remove(anexo.arquivo_path)
+                except OSError:
+                    pass
+
+    for lanc in venda.lancamentos:
+        db.delete(lanc)
+
+    db.delete(venda)
+    db.commit()
+    return {"data": None, "error": None}
 
 
 # ── Upload de Anexos ──────────────────────────────────────────────────────────
@@ -627,6 +830,21 @@ def download_anexo(anexo_id: uuid.UUID, db: Session = Depends(get_db)):
         filename=anexo.nome_original,
         media_type="application/octet-stream",
     )
+
+
+@router.delete("/anexos/{anexo_id}")
+def deletar_anexo(anexo_id: uuid.UUID, db: Session = Depends(get_db)):
+    anexo = db.get(AnexoLancamento, anexo_id)
+    if not anexo:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    if os.path.exists(anexo.arquivo_path):
+        try:
+            os.remove(anexo.arquivo_path)
+        except OSError:
+            pass
+    db.delete(anexo)
+    db.commit()
+    return {"data": None, "error": None}
 
 
 # ── Projeção em Cascata ───────────────────────────────────────────────────────

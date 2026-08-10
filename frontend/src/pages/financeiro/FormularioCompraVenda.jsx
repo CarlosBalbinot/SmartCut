@@ -47,7 +47,7 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
       ...(isCompra ? { fornecedor: parceiro } : { cliente: parceiro }),
       descricao:           form.descricao.trim() || null,
       valor_total:         parseFloat(form.valor_total),
-      data_compra:         hojeISO(),
+      ...(isCompra ? { data_compra: hojeISO() } : { data_venda: hojeISO() }),
       parcelas:            numParcelas,
       primeiro_vencimento: form.primeiro_vencimento,
     };

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { importarLoteCompras, importarCompraFinal } from "../../api/financeiro";
 import styles from "./comprasVendas.module.css";
 
 const hojeISO = () => new Date().toISOString().split("T")[0];
@@ -37,22 +36,32 @@ function toItem(resultado, idx) {
 
 /*
  * Props:
- *   arquivos    — File[] (XMLs selecionados)
- *   onFechar    — () => void
- *   onConcluido — (sucesso: number, falhas: number) => void
+ *   arquivos      — File[] (XMLs selecionados)
+ *   tipo          — "compra" | "venda" (default "compra")
+ *   importarLote  — (arquivos: File[]) => Promise<ImportacaoXMLResultOut[]>
+ *   importarFinal — (dados) => Promise (cria a compra/venda com as parcelas revisadas)
+ *   onFechar      — () => void
+ *   onConcluido   — (sucesso: number, falhas: number) => void
  */
-export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
+export default function ImportarXMLModal({
+  arquivos, tipo = "compra", importarLote, importarFinal, onFechar, onConcluido,
+}) {
+  const isCompra = tipo === "compra";
+  const parceiroLabel = isCompra ? "Fornecedor" : "Cliente";
+  const campoParceiro = isCompra ? "fornecedor" : "cliente";
+  const campoData     = isCompra ? "data_compra" : "data_venda";
+
   const [carregando, setCarregando] = useState(true);
   const [erroGeral,  setErroGeral]  = useState(null);
   const [itens,      setItens]      = useState([]);
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
-    importarLoteCompras(arquivos)
+    importarLote(arquivos)
       .then((resultados) => setItens((resultados || []).map(toItem)))
       .catch((e) => setErroGeral(e.message || "Erro ao importar XMLs."))
       .finally(() => setCarregando(false));
-  }, [arquivos]);
+  }, [arquivos, importarLote]);
 
   const toggleIncluir = (key) => (e) => {
     e.stopPropagation();
@@ -96,8 +105,15 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
 
   const handleConfirmar = async () => {
     const selecionados = itens.filter((it) => it.sucesso && it.incluir);
-    if (selecionados.some((it) => it.parcelas.length === 0)) {
-      setErroGeral("Existe uma NF selecionada sem parcelas. Adicione ao menos uma parcela ou desmarque-a.");
+    const invalido = selecionados.some((it) =>
+      it.parcelas.length === 0 ||
+      it.parcelas.some((p) => !p.vencimento || !p.valor || isNaN(parseFloat(p.valor)))
+    );
+    if (invalido) {
+      setErroGeral(
+        "Existe uma NF selecionada com parcela sem data de vencimento ou valor. " +
+        "Preencha os campos ou desmarque a NF."
+      );
       return;
     }
 
@@ -107,11 +123,11 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
     let falhas = 0;
     for (const it of selecionados) {
       try {
-        await importarCompraFinal({
-          fornecedor: it.fornecedor.trim(),
+        await importarFinal({
+          [campoParceiro]: it.fornecedor.trim(),
           descricao: it.numero_nf ? `NF ${it.numero_nf}` : null,
           valor_total: parseFloat(it.valor_total) || 0,
-          data_compra: it.data_emissao,
+          [campoData]: it.data_emissao,
           parcelas: it.parcelas.map((p) => ({
             vencimento: p.vencimento,
             valor: parseFloat(p.valor) || 0,
@@ -130,7 +146,9 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
     <div className={styles.overlay} onClick={() => !importando && onFechar()}>
       <div className={`${styles.modal} ${styles.modalLarge}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <h2 className={styles.modalTitle}>Revisar Importação de NFs</h2>
+          <h2 className={styles.modalTitle}>
+            Revisar Importação de NFs {isCompra ? "— Compras" : "— Vendas"}
+          </h2>
           <button className={styles.btnClose} onClick={onFechar} disabled={importando}>×</button>
         </div>
 
@@ -139,7 +157,7 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
             <p className={styles.expandLoading}>Lendo XMLs…</p>
           ) : (
             <>
-              {!!window.electronAPI?.openComprasFolder && (
+              {isCompra && !!window.electronAPI?.openComprasFolder && (
                 <button
                   type="button"
                   className={styles.folderLink}
@@ -169,7 +187,7 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div className={styles.importSummary}>
-                          <span><strong>Fornecedor:</strong> {it.fornecedor || "—"}</span>
+                          <span><strong>{parceiroLabel}:</strong> {it.fornecedor || "—"}</span>
                           <span><strong>NF:</strong> {it.numero_nf || "—"}</span>
                           <span><strong>Data:</strong> {dataFmt(it.data_emissao)}</span>
                           <span><strong>Total:</strong> {moeda(it.valor_total)}</span>
@@ -186,7 +204,7 @@ export default function ImportarXMLModal({ arquivos, onFechar, onConcluido }) {
                         <div className={styles.importCardBody}>
                           <div className={styles.fieldGrid}>
                             <label className={`${styles.field} ${styles.fieldFull}`}>
-                              <span>Fornecedor</span>
+                              <span>{parceiroLabel}</span>
                               <input
                                 className={styles.input}
                                 value={it.fornecedor}

@@ -1,6 +1,7 @@
 .page {
   padding: 2rem;
-  max-width: 1400px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Header ── */
@@ -102,38 +103,32 @@
   padding: 0.5rem 0;
 }
 
-/* ── Resumo cards ── */
+/* ── Resumo cards ──────────────────────────────────────────────────────────
+ * Sempre em linha (flex-wrap cuida do encaixe em telas estreitas). Fundo
+ * branco + sombra suave + borda esquerda colorida indicando o tipo. */
 .resumoGrid {
   display: flex;
-  gap: 0.75rem;
   flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 1.5rem;
 }
 
 .resumoCard {
+  background: var(--sc-surface);
   border-radius: var(--sc-radius-md);
-  padding: 0.875rem 1.125rem;
+  border-left: 4px solid var(--sc-border-strong);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  border: 1px solid transparent;
-  min-width: 160px;
+  gap: 0.3rem;
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
-.resumoPerigo {
-  background: var(--sc-danger-bg);
-  border-color: var(--sc-danger-border);
-}
-
-.resumoSucesso {
-  background: var(--sc-success-bg);
-  border-color: var(--sc-success-border);
-}
-
-.resumoNeutro {
-  background: var(--sc-bg-secondary);
-  border-color: var(--sc-border);
-}
+.resumoBorderPerigo  { border-left-color: var(--sc-danger-text); }
+.resumoBorderSucesso { border-left-color: var(--sc-success-text); }
+.resumoBorderNeutro  { border-left-color: var(--sc-text-muted); }
 
 .resumoLabel {
   font-size: 0.7rem;
@@ -144,66 +139,92 @@
 }
 
 .resumoValor {
-  font-size: 1.15rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: var(--sc-text-primary);
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Tables grid ── */
-.tablesGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+.resumoSub {
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
 }
 
-@media (max-width: 1080px) {
-  .tablesGrid { grid-template-columns: 1fr; }
+/* ── Tables grid ───────────────────────────────────────────────────────────
+ * > 1400px: blocos lado a lado (grid 1fr 1fr); ≤ 1400px: empilhados. */
+.tablesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+  .tablesGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tableSection {
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  width: 100%;
+  min-width: 0;
 }
 
-.tableTitle {
-  font-size: 0.72rem;
+/* ── Cabeçalho do bloco (título + contagem + total) ── */
+.blockHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  padding-bottom: 0.6rem;
+}
+
+.blockHeaderTitle {
+  font-size: 0.85rem;
   font-weight: 700;
+  color: var(--sc-text-primary);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
+}
+
+.blockHeaderMeta {
+  font-size: 0.78rem;
   color: var(--sc-text-secondary);
-  margin: 0;
+}
+
+.blockDivider {
+  height: 1px;
+  background: var(--sc-border);
+  margin-bottom: 0.5rem;
 }
 
 .card {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-md);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .table th {
   text-align: left;
-  padding: 0.6rem 0.7rem;
-  font-size: 0.68rem;
-  font-weight: 600;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.66rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--sc-text-secondary);
-  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
   border-bottom: 1px solid var(--sc-border);
-  white-space: nowrap;
 }
 
 .table td {
-  padding: 0.65rem 0.7rem;
+  padding: 0.65rem 0.6rem;
   font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
@@ -212,33 +233,171 @@
   text-overflow: ellipsis;
 }
 
-.table tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td { border-bottom: none; }
 
-/* Column widths */
+.table tbody tr:nth-child(odd)  td { background: var(--sc-surface); }
+.table tbody tr:nth-child(even) td { background: #fafafa; }
+.table tbody tr:hover td { background: #f0f7fb; }
+
+/* DESCRIÇÃO ocupa o espaço restante; as demais têm largura fixa em px. */
 .table th:nth-child(1) { width: auto; }
-.table th:nth-child(2) { width: 100px; }
-.table th:nth-child(3) { width: 82px; }
-.table th:nth-child(4) { width: 88px; }
-.table th:nth-child(5) { width: 58px; }
-.table th:nth-child(6) { width: 74px; }
-.table th:nth-child(7) { width: 90px; }
+.table th:nth-child(2) { width: 60px; }
+.table th:nth-child(3) { width: 100px; }
+.table th:nth-child(4) { width: 50px; }
+.table th:nth-child(5) { width: 100px; }
+.table th:nth-child(6) { width: 150px; }
 
-/* ── Row status colors ── */
-.rowPago td     { background: var(--sc-success-bg); }
-.rowAtrasado td { background: var(--sc-danger-bg); }
-.rowAlerta td   { background: #FFFBEB; }
+/* Ações precisa exibir o dropdown sem cortar, em qualquer largura de tela. */
+.table td:nth-child(6) {
+  white-space: normal;
+  overflow: visible;
+}
 
-.tdValor {
+/* Descrição: telas grandes mostram o texto completo, sem truncar. */
+.table td:nth-child(1) {
+  white-space: normal;
+}
+
+.descricaoTitulo,
+.descricaoSub {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* Telas médias/pequenas: volta a truncar com ellipsis para não estourar o layout. */
+@media (max-width: 1200px) {
+  .table td:nth-child(1) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .descricaoTitulo,
+  .descricaoSub {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ── Row status ── */
+.rowPago td {
+  opacity: 0.65;
+}
+
+.rowAtrasado td:first-child {
+  box-shadow: inset 3px 0 0 var(--sc-danger-text);
+}
+
+/* ── Descrição (fornecedor/cliente + NF) ── */
+.descricaoCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.descricaoTitulo {
   font-weight: 600;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.descricaoSub {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/* ── Vencimento colorido ── */
+.vencAtrasado { color: var(--sc-danger-text); font-weight: 600; }
+.vencAlerta   { color: #B45309; font-weight: 600; }
+.vencNormal   { color: var(--sc-text-secondary); }
+
+/* ── Valor ── */
+.tdValor {
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.empty {
-  text-align: center;
-  padding: 2rem;
-  color: var(--sc-text-muted);
-  font-size: 0.875rem;
+.valorAlteradoWrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
 }
+
+.valorAlteradoAtual {
+  color: #B45309;
+  font-weight: 700;
+}
+
+.valorOriginalRiscado {
+  font-size: 0.7rem;
+  color: var(--sc-text-muted);
+  text-decoration: line-through;
+  font-weight: 400;
+}
+
+/* ── Parcela ── */
+.tdParcela {
+  text-align: center;
+}
+
+.parcelaBadge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ── Estado vazio do bloco ── */
+.emptyCell {
+  padding: 0 !important;
+  border-bottom: none !important;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 1.8rem;
+  opacity: 0.6;
+}
+
+.emptyText {
+  font-size: 0.85rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.btnEmptyAdd {
+  background: none;
+  border: 1px dashed var(--sc-border-strong);
+  color: var(--sc-action);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+.btnEmptyAdd:hover { background: var(--sc-surface-hover); }
 
 /* ── Status badge ── */
 .badge {
@@ -251,17 +410,100 @@
   white-space: nowrap;
 }
 
-.stPAGO      { background: var(--color-primary-light); color: var(--color-primary-dark); border-color: rgba(37,150,190,0.25); }
+.stPAGO      { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
 .stPENDENTE  { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
-.stCANCELADO { background: var(--sc-danger-bg);    color: var(--sc-danger-text);    border-color: var(--sc-danger-border); }
+.stATRASADO  { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
+.stCANCELADO { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
 
-/* ── Row actions ── */
-.rowActions {
+/* ── Ações: botão principal + menu "···" ── */
+.actionsMenu {
   display: flex;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.4rem;
 }
 
+.btnAcaoPrimaria {
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.28rem 0.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnAcaoPrimaria:hover { background: var(--sc-action-hover); }
+
+.btnAcaoSecundaria {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.26rem 0.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btnAcaoSecundaria:hover { background: var(--sc-surface-hover); }
+
+.dropdownWrap {
+  position: relative;
+}
+
+.btnDots {
+  background: none;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  color: var(--sc-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.24rem 0.5rem;
+  cursor: pointer;
+}
+.btnDots:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  min-width: 175px;
+  z-index: 20;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdownItem {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--sc-text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+.dropdownItem:hover { background: var(--sc-surface-hover); }
+
+.dropdownItemIcon {
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.dropdownItemDanger { color: var(--sc-danger-text); }
+.dropdownItemDanger:hover { background: var(--sc-danger-bg); }
+
+/* Ícones legados (mantidos para o modal de anexos, "↓ Download") */
 .btnSmall {
   background: none;
   border: 1px solid var(--sc-border-strong);
@@ -274,18 +516,6 @@
   white-space: nowrap;
 }
 .btnSmall:hover { background: var(--sc-surface-hover); }
-
-.btnIcon {
-  background: none;
-  border: none;
-  color: var(--sc-text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  padding: 0.2rem 0.3rem;
-  border-radius: 6px;
-  line-height: 1;
-}
-.btnIcon:hover { background: var(--sc-surface-hover); }
 
 /* ── Buttons ── */
 .btnPrimary {
@@ -314,6 +544,19 @@
   cursor: pointer;
 }
 .btnSecondary:hover { background: var(--sc-surface-hover); }
+
+.btnDanger {
+  background: var(--sc-danger-text);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnDanger:hover    { opacity: 0.85; }
+.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnClose {
   background: none;
@@ -400,6 +643,95 @@
   box-sizing: border-box;
 }
 .input:focus { border-color: var(--sc-action); }
+
+.inputReadonly {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  cursor: not-allowed;
+}
+
+.textarea {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+.textarea:focus { border-color: var(--sc-action); }
+
+/* ── Opções de recebimento (total / parcial) ── */
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+}
+
+.radioOption input[type="radio"] {
+  cursor: pointer;
+}
+
+.radioDetalhe {
+  margin: 0.6rem 0 0 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.valorRestanteInfo {
+  font-size: 0.82rem;
+  color: var(--sc-text-secondary);
+}
+.valorRestanteInfo strong {
+  color: var(--sc-text-primary);
+}
+
+.modalActionsSplit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.75rem 1.5rem;
+  border-top: 1px solid var(--sc-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.modalActionsSplitRight {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* ── Aviso de sucesso ── */
+.avisoSucesso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  background: var(--sc-success-bg);
+  border: 1px solid var(--sc-success-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.85rem;
+  color: var(--sc-success-text);
+  margin-bottom: 1rem;
+}
 
 .fieldGrid {
   display: grid;

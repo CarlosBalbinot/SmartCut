@@ -69,6 +69,7 @@ class LancamentoOut(BaseModel):
     tipo: str
     descricao: str
     valor: Decimal
+    valor_original: Optional[Decimal] = None
     data_vencimento: date
     data_pagamento: Optional[date]
     status: str
@@ -126,6 +127,8 @@ class CompraFinanceiraOut(BaseModel):
     data_compra: date
     nf_pdf_path: Optional[str]
     created_at: datetime
+    total_parcelas: int = 0
+    parcelas_pagas: int = 0
 
 
 class CompraCreate(BaseModel):
@@ -160,6 +163,8 @@ class VendaFinanceiraOut(BaseModel):
     data_venda: date
     nf_pdf_path: Optional[str]
     created_at: datetime
+    total_parcelas: int = 0
+    parcelas_pagas: int = 0
 
 
 class VendaCreate(BaseModel):
@@ -176,11 +181,18 @@ class VendaComLancamentosOut(VendaFinanceiraOut):
     lancamentos: List[LancamentoOut] = []
 
 
+class VendaUpdate(BaseModel):
+    cliente: Optional[str] = None
+    descricao: Optional[str] = None
+    valor_total: Optional[Decimal] = None
+    data_venda: Optional[date] = None
+
+
 # ── Importação de NF-e XML ────────────────────────────────────────────────────
 
 class ParcelaImportadaOut(BaseModel):
     numero: str
-    vencimento: date
+    vencimento: Optional[date] = None
     valor: Decimal
 
 
@@ -209,6 +221,15 @@ class CompraImportarXMLCreate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Decimal
     data_compra: date
+    categoria_id: Optional[UUID] = None
+    parcelas: List[ParcelaImportarIn]
+
+
+class VendaImportarXMLCreate(BaseModel):
+    cliente: str
+    descricao: Optional[str] = None
+    valor_total: Decimal
+    data_venda: date
     categoria_id: Optional[UUID] = None
     parcelas: List[ParcelaImportarIn]
 
