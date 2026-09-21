@@ -4,24 +4,30 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from schemas.encaixe_schema import EncaixeCreate, EncaixeOut
 from services import encaixe_service, nesting_service, pedido_service, report_service
 
 router = APIRouter(prefix="/api/v1/encaixes", tags=["encaixes"])
 
+_MOD = "encaixes"
 
-@router.get("/", response_model=dict)
+
+@router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_encaixes(pedido_id: uuid.UUID | None = None, db: Session = Depends(get_db)):
     encaixes = encaixe_service.listar(db, pedido_id=pedido_id)
     return {"data": encaixes, "error": None}
 
 
 # ── Rota fixa deve vir ANTES das rotas com parâmetro ─────────────────────────
+# Geração automática — é a ação do módulo "Encaixe Rápido", distinta da
+# gestão manual de encaixes abaixo.
 
 @router.post(
     "/gerar/{pedido_id}",
     response_model=dict,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission("encaixe_rapido", "criar"))],
 )
 def gerar_encaixe_automatico(
     pedido_id: uuid.UUID, db: Session = Depends(get_db)
@@ -38,7 +44,7 @@ def gerar_encaixe_automatico(
         )
 
 
-@router.get("/{encaixe_id}", response_model=dict)
+@router.get("/{encaixe_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def obter_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     encaixe = encaixe_service.obter(db, encaixe_id)
     if not encaixe:
@@ -46,13 +52,19 @@ def obter_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": encaixe, "error": None}
 
 
-@router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(_MOD, "criar"))],
+)
 def gerar_encaixe(payload: EncaixeCreate, db: Session = Depends(get_db)):
     encaixe = encaixe_service.gerar(db, payload)
     return {"data": encaixe, "error": None}
 
 
-@router.delete("/{encaixe_id}", status_code=status.HTTP_200_OK)
+@router.delete(
+    "/{encaixe_id}", status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_permission(_MOD, "excluir"))],
+)
 def deletar_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     """Soft-delete: marca o encaixe como deletado."""
     ok = encaixe_service.deletar(db, encaixe_id)
@@ -61,7 +73,10 @@ def deletar_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": {"id": str(encaixe_id)}, "error": None}
 
 
-@router.get("/{encaixe_id}/relatorio", response_model=dict)
+@router.get(
+    "/{encaixe_id}/relatorio", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "ver"))],
+)
 def gerar_relatorio(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     resultado = encaixe_service.gerar_relatorio(db, encaixe_id)
     if not resultado:
@@ -69,7 +84,7 @@ def gerar_relatorio(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": resultado, "error": None}
 
 
-@router.get("/{pedido_id}/pdf")
+@router.get("/{pedido_id}/pdf", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def pdf_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     """Gera PDF de relatório de corte com mapa visual de todos os enfestos do pedido."""
     encaixes = encaixe_service.listar(db, pedido_id=pedido_id)

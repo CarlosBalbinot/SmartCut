@@ -288,16 +288,27 @@ export default function PrecificacaoPage() {
     })
   );
 
-  if (loading) return <p className={styles.loading}>Carregando…</p>;
-  if (erro) return <p className={styles.erro}>{erro}</p>;
+  if (loading) return (
+    <div className="sc-page">
+      <div className="sc-page-header"><h1>Precificação</h1></div>
+      <p className={styles.loading}>Carregando…</p>
+    </div>
+  );
+  if (erro) return (
+    <div className="sc-page">
+      <div className="sc-page-header"><h1>Precificação</h1></div>
+      <p className={styles.erro}>{erro}</p>
+    </div>
+  );
 
   const tipoTecidoAtivo = form.usar_kg ? "kg" : form.usar_custo_encaixe ? "encaixe" : "manual";
 
   return (
-    <div className={styles.pagina}>
+    <div className={`sc-page ${styles.pagina}`}>
+      <div className="sc-page-header"><h1>Precificação</h1></div>
 
       {/* ══ Seção — Accordion por grupo ══ */}
-      <div className={styles.secao}>
+      <div className={`sc-card ${styles.secao}`}>
         <div className={styles.secaoHeader}>
           <h2 className={styles.secaoTitulo}>Precificação por grupo</h2>
         </div>
@@ -387,7 +398,7 @@ export default function PrecificacaoPage() {
 
       {/* ══ Resumo ══ */}
       {resumo.length > 0 && (
-        <div className={styles.secao}>
+        <div className={`sc-card ${styles.secao}`}>
           <div className={styles.secaoHeader}>
             <h2 className={styles.secaoTitulo}>Resumo</h2>
             <button className={styles.btnSecundario} onClick={exportarCSV}>Exportar CSV</button>

@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiUrl: process.env.NODE_ENV === 'development' ? '' : 'http://127.0.0.1:8000',
   getComprasPath: () => ipcRenderer.invoke('get-compras-path'),
   openComprasFolder: () => ipcRenderer.invoke('open-compras-folder'),
+  openPdfBlob: (base64, filename) => ipcRenderer.invoke('open-pdf-blob', base64, filename),
 });

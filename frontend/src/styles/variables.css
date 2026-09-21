@@ -24,10 +24,10 @@
   --sc-action-text: #FFFFFF;
 
   /* ── Raios ── */
-  --sc-radius-sm: 10px;
-  --sc-radius-md: 14px;
-  --sc-radius-lg: 20px;
-  --sc-radius-xl: 28px;
+  --sc-radius-sm: 6px;
+  --sc-radius-md: 8px;
+  --sc-radius-lg: 10px;
+  --sc-radius-xl: 12px;
 
   /* ── Status semânticos ── */
   --sc-danger-bg: #FFF0EF;
@@ -53,4 +53,38 @@
   --sc-800: #2C2C2E;
   --sc-900: #1D1D1F;
   --sc-surface-raised: #F5F5F7;
+
+  /* ── Tipografia ── */
+  --sc-font-size-page-title: 1.5rem;    /* h1 de página */
+  --sc-font-size-section-title: 0.9rem; /* h2/label de seção */
+  --sc-font-size-label: 0.78rem;        /* labels de campo */
+  --sc-font-size-input: 0.875rem;       /* texto dentro do input */
+  --sc-font-size-body: 0.875rem;        /* corpo geral */
+  --sc-font-size-small: 0.75rem;        /* textos auxiliares */
+
+  --sc-font-weight-title: 600;
+  --sc-font-weight-label: 500;
+  --sc-font-weight-section: 700;
+
+  /* ── Inputs ── */
+  --sc-input-padding: 0.5rem 0.7rem;
+  --sc-input-border: 1px solid var(--sc-border-strong);
+  --sc-input-radius: var(--sc-radius-sm);
+  --sc-input-bg: var(--sc-surface);
+  --sc-input-font-size: var(--sc-font-size-input);
+
+  /* ── Espaçamento ── */
+  --sc-space-xs: 0.5rem;
+  --sc-space-sm: 0.75rem;
+  --sc-space-md: 1rem;
+  --sc-space-lg: 1.5rem;
+  --sc-space-xl: 2rem;
+
+  /* ── Layout / cartões (Nuvemshop style) ── */
+  --sc-sidebar-width: 220px;
+  --sc-content-bg: #F7F8FA;
+  --sc-card-bg: #FFFFFF;
+  --sc-card-shadow: var(--shadow);
+  --sc-card-radius: var(--sc-radius-md);
+  --sc-card-border: 1px solid var(--sc-border);
 }

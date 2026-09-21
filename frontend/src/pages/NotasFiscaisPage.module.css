@@ -1,0 +1,313 @@
+/* ── Barra de filtros — acima do card ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.select {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+/* ── Badges de status — pill compacto ── */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge_rascunho   { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.badge_aguardando { background: var(--sc-bg-warning, #fef9c3); color: var(--sc-text-warning, #854d0e); }
+.badge_autorizada { background: var(--sc-success-bg); color: var(--sc-success-text); }
+.badge_rejeitada  { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.badge_cancelada  { background: var(--sc-danger-bg); color: var(--sc-danger-text); opacity: 0.6; }
+.badge_denegada   { background: var(--sc-bg-purple, #f3e8ff); color: var(--sc-text-purple, #7c3aed); }
+
+/* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--sc-bg-secondary); }
+
+.tdMono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+.empty {
+  padding: 2.5rem;
+  text-align: center;
+  color: var(--sc-text-muted);
+  font-size: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+/* ── Botão de ação do cabeçalho (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Buttons (usados também dentro dos modais — não alterados) ── */
+.btnPrimary {
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.btnPrimary:hover    { background: var(--sc-action-hover); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnSecondary:hover    { background: var(--sc-surface-hover); }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnDangerFilled {
+  background: var(--sc-danger-text);
+  color: #fff;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnDangerFilled:hover    { opacity: 0.9; }
+.btnDangerFilled:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnLink {
+  background: none;
+  border: none;
+  color: var(--sc-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--sc-radius-sm);
+}
+.btnLink:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnDanger:hover { color: var(--sc-danger-text) !important; }
+
+/* ── Overlay / Modal ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  width: 520px;
+  max-width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.btnClose:hover { color: var(--sc-text-primary); }
+
+.modalBody {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-secondary);
+}
+
+.fieldFull { grid-column: span 2; }
+
+.input, .textarea {
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  padding: var(--sc-input-padding);
+  font-size: var(--sc-input-font-size);
+  color: var(--sc-text-primary);
+  background: var(--sc-input-bg);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.input:focus, .textarea:focus { border-color: var(--sc-action); }
+.textarea { resize: vertical; min-height: 90px; }
+
+.contador {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  text-align: right;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.aviso {
+  font-size: 0.82rem;
+  color: var(--sc-text-secondary);
+  background: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.6rem 0.8rem;
+}
+
+.avisoDanger {
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.6rem 0.8rem;
+}
+
+.resultado {
+  font-size: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--sc-radius-sm);
+}
+.resultadoSucesso { background: var(--sc-success-bg); color: var(--sc-success-text); }
+.resultadoErro    { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+
+.detalheLinha {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--sc-border);
+}
+.detalheLinha:last-child { border-bottom: none; }
+.detalheLabel { color: var(--sc-text-secondary); }
+.detalheValor { color: var(--sc-text-primary); font-weight: 500; text-align: right; word-break: break-all; }
+
+.erro {
+  font-size: 0.8rem;
+  color: var(--sc-danger-text);
+  margin: 0;
+}

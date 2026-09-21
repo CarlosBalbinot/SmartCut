@@ -1,0 +1,238 @@
+/* Sem padding próprio: o wrapper .content (App.module.css) já aplica
+   28px ao redor de toda rota — um padding aqui duplicaria a margem. */
+.page {
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Saudação ── */
+.saudacao {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 1.25rem;
+}
+
+.saudacaoTitulo {
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.saudacaoPeriodo {
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+/* ── Linha 1: cards de métricas ── */
+.metricasGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.metricaCard {
+  background: var(--sc-card-bg);
+  border: 1px solid var(--sc-border);
+  border-top: 3px solid var(--color-primary);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metricaLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+}
+
+.metricaValor {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.metricaSub {
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+}
+
+/* ── Linha 2: painéis de gráficos ── */
+.graficosGrid {
+  display: grid;
+  grid-template-columns: 55fr 45fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.painelEsquerdo,
+.painelDireito {
+  background: var(--sc-card-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.painelTitulo {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.semDadosGrafico {
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.semDados {
+  color: var(--sc-text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0;
+  padding: 1.5rem 0;
+}
+
+/* ── Linha 3: tabela ── */
+.tabelaCard {
+  width: 100%;
+  background: var(--sc-card-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 8px 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tabela td {
+  padding: 8px 0.75rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
+
+.linhaDestaque td {
+  background: var(--sc-bg-secondary);
+  font-weight: 500;
+}
+
+.colPos {
+  width: 40px;
+}
+
+.colCentro {
+  width: 80px;
+  text-align: center;
+}
+
+.colValor {
+  width: 120px;
+  text-align: right;
+}
+
+/* ── Estado de erro ── */
+.estadoErro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 60vh;
+  color: var(--sc-text-secondary);
+  font-size: 0.95rem;
+}
+
+.btnTentarNovamente {
+  padding: 0.5rem 1.25rem;
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btnTentarNovamente:hover {
+  filter: brightness(0.92);
+}
+
+/* ── Skeleton loader ── */
+@keyframes pulse {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
+.skeleton {
+  background: var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonTitulo {
+  width: 200px;
+  height: 1.4rem;
+}
+
+.skeletonSubtitulo {
+  width: 130px;
+  height: 0.9rem;
+}
+
+.skeletonCard {
+  height: 80px;
+  border-radius: var(--sc-radius-md);
+}
+
+.skeletonPainel {
+  height: 260px;
+  border-radius: var(--sc-radius-md);
+}
+
+.skeletonTabela {
+  height: 220px;
+  border-radius: var(--sc-radius-md);
+}

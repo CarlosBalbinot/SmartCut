@@ -1,3 +1,161 @@
+/* ── Botão de ação do cabeçalho (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+
+/* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabela th,
+.tabela td {
+  text-align: left;
+}
+
+.tabela th {
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tabela tbody tr:last-child td { border-bottom: none; }
+
+.tabela tbody tr:hover { background-color: var(--sc-bg-secondary); }
+
+.vazio {
+  text-align: center;
+  color: var(--sc-text-muted);
+  padding: 32px 0;
+  font-size: 14px;
+}
+
+/* ── Formulário (migrado de Page.module.css) ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.erroForm {
+  color: var(--sc-danger-text);
+  padding: 10px 14px;
+  background-color: var(--sc-danger-bg);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+}
+
+.fileiraDupla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-label);
+  color: var(--sc-text-primary);
+}
+
+.input {
+  width: 100%;
+  padding: var(--sc-input-padding);
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-input-font-size);
+  color: var(--sc-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--color-primary); }
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.btnSecondary {
+  padding: 9px 18px;
+  background-color: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btnSecondary:hover {
+  background-color: var(--sc-border-strong);
+}
+
+.btnPrimary {
+  padding: 9px 18px;
+  background-color: var(--color-primary);
+  color: var(--sc-surface);
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  transform: scale(1.01);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .numPedido {
   font-weight: 600;
   font-family: monospace;
@@ -15,23 +173,19 @@
   cursor: default;
 }
 
-.linhaTabela:hover {
-  background-color: #FBFBFD;
-}
-
-/* ── Badges de status ── */
+/* ── Badges de status — pill compacto ── */
 .badge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
   font-weight: 500;
   white-space: nowrap;
 }
 
 .badge_cinza {
-  background-color: #F5F5F7;
-  color: #6E6E73;
+  background-color: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
 }
 
 .badge_azul {
@@ -58,7 +212,7 @@
   font-size: 12px;
   font-weight: 500;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: var(--sc-surface);
   border: none;
   border-radius: 980px;
   cursor: pointer;
@@ -92,14 +246,14 @@
 }
 
 .btnMenu:hover {
-  background-color: #F5F5F7;
+  background-color: var(--sc-bg-secondary);
   color: var(--sc-text-primary);
 }
 
 .dropdown {
   position: fixed;
   z-index: 9999;
-  background-color: #FFFFFF;
+  background-color: var(--sc-surface);
   border-radius: var(--sc-radius-md);
   box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
   min-width: 170px;
@@ -127,7 +281,7 @@
 }
 
 .dropdownItem:hover {
-  background-color: #F5F5F7;
+  background-color: var(--sc-bg-secondary);
 }
 
 .dropdownItemPerigo {
@@ -153,7 +307,7 @@
   overflow-y: auto;
   border-radius: var(--sc-radius-sm);
   padding: 8px;
-  background-color: #F5F5F7;
+  background-color: var(--sc-bg-secondary);
 }
 
 .checkboxItem {
@@ -167,7 +321,7 @@
 }
 
 .checkboxItem:hover {
-  background-color: #E5E5EA;
+  background-color: var(--sc-border-strong);
 }
 
 .checkbox {

@@ -125,6 +125,7 @@ class CompraFinanceiraOut(BaseModel):
     descricao: Optional[str]
     valor_total: Decimal
     data_compra: date
+    numero_nf: Optional[str] = None
     nf_pdf_path: Optional[str]
     created_at: datetime
     total_parcelas: int = 0
@@ -136,6 +137,7 @@ class CompraCreate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Decimal
     data_compra: date
+    numero_nf: Optional[str] = None
     parcelas: int = 1
     primeiro_vencimento: date
     categoria_id: Optional[UUID] = None
@@ -150,6 +152,7 @@ class CompraUpdate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Optional[Decimal] = None
     data_compra: Optional[date] = None
+    numero_nf: Optional[str] = None
 
 
 # ── VendaFinanceira ───────────────────────────────────────────────────────────
@@ -161,6 +164,7 @@ class VendaFinanceiraOut(BaseModel):
     descricao: Optional[str]
     valor_total: Decimal
     data_venda: date
+    numero_nf: Optional[str] = None
     nf_pdf_path: Optional[str]
     created_at: datetime
     total_parcelas: int = 0
@@ -172,6 +176,7 @@ class VendaCreate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Decimal
     data_venda: date
+    numero_nf: Optional[str] = None
     parcelas: int = 1
     primeiro_vencimento: date
     categoria_id: Optional[UUID] = None
@@ -186,6 +191,7 @@ class VendaUpdate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Optional[Decimal] = None
     data_venda: Optional[date] = None
+    numero_nf: Optional[str] = None
 
 
 # ── Importação de NF-e XML ────────────────────────────────────────────────────
@@ -221,6 +227,7 @@ class CompraImportarXMLCreate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Decimal
     data_compra: date
+    numero_nf: Optional[str] = None
     categoria_id: Optional[UUID] = None
     parcelas: List[ParcelaImportarIn]
 
@@ -230,6 +237,7 @@ class VendaImportarXMLCreate(BaseModel):
     descricao: Optional[str] = None
     valor_total: Decimal
     data_venda: date
+    numero_nf: Optional[str] = None
     categoria_id: Optional[UUID] = None
     parcelas: List[ParcelaImportarIn]
 
@@ -239,10 +247,39 @@ class VendaImportarXMLCreate(BaseModel):
 class SaldoContaOut(BaseModel):
     conta_id: UUID
     conta_nome: str
+    conta_tipo: str
     saldo_inicial: Decimal
     total_entradas: Decimal
     total_saidas: Decimal
     saldo_atual: Decimal
+
+
+class SaldoInicialUpsert(BaseModel):
+    conta_bancaria_id: UUID
+    mes: int
+    ano: int
+    valor: Decimal
+
+
+# ── Transferências entre contas ───────────────────────────────────────────────
+
+class TransferenciaCreate(BaseModel):
+    conta_origem_id: UUID
+    conta_destino_id: UUID
+    valor: Decimal
+    data: date
+    descricao: Optional[str] = None
+
+
+class TransferenciaOut(BaseModel):
+    transferencia_id: UUID
+    data: date
+    conta_origem_id: UUID
+    conta_origem_nome: str
+    conta_destino_id: UUID
+    conta_destino_nome: str
+    valor: Decimal
+    descricao: Optional[str] = None
 
 
 # ── Projeção ──────────────────────────────────────────────────────────────────
@@ -280,3 +317,53 @@ class MetaMensalCreate(BaseModel):
 class MetaMensalUpdate(BaseModel):
     valor_meta: Optional[Decimal] = None
     descricao: Optional[str] = None
+
+
+# ── Contabilidade ─────────────────────────────────────────────────────────────
+
+class NotaVendaContabilOut(BaseModel):
+    id: UUID
+    cliente: str
+    numero_nf: Optional[str] = None
+    data_venda: date
+    valor_total: Decimal
+    nf_pdf_path: Optional[str] = None
+    nf_nome: Optional[str] = None
+
+
+class NotaCompraContabilOut(BaseModel):
+    id: UUID
+    fornecedor: str
+    numero_nf: Optional[str] = None
+    data_compra: date
+    valor_total: Decimal
+    nf_pdf_path: Optional[str] = None
+    nf_nome: Optional[str] = None
+
+
+class BoletoPagoContabilOut(BaseModel):
+    lancamento_id: UUID
+    descricao: str
+    fornecedor_cliente: str
+    numero_nf: Optional[str] = None
+    data_pagamento: date
+    valor: Decimal
+    parcela_numero: Optional[int] = None
+    parcela_total: Optional[int] = None
+    boleto_pdf_path: Optional[str] = None
+    boleto_nome: Optional[str] = None
+    nf_pdf_path: Optional[str] = None
+    nf_nome: Optional[str] = None
+
+
+class ContabilidadeMesOut(BaseModel):
+    mes: int
+    ano: int
+    notas_venda: List[NotaVendaContabilOut] = []
+    notas_compra: List[NotaCompraContabilOut] = []
+    boletos_pagos: List[BoletoPagoContabilOut] = []
+
+
+class ContabilidadeGerarPacoteIn(BaseModel):
+    mes: int
+    ano: int

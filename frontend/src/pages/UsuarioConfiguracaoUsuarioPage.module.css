@@ -1,0 +1,114 @@
+.page {
+  width: 100%;
+  max-width: 640px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.btnBack {
+  display: inline-block;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+.btnBack:hover { background: var(--sc-bg-secondary); color: var(--sc-text-primary); }
+
+.title {
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  margin: 0 0 1.5rem;
+}
+
+.card {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 1.5rem;
+}
+
+.secLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sc-text-secondary);
+  margin: 0 0 0.75rem;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--sc-action); }
+
+.erro {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+}
+
+.sucesso {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--sc-success-bg);
+  border: 1px solid var(--sc-success-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-success-text);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }

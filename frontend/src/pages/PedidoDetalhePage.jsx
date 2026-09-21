@@ -4,7 +4,6 @@ import { coresApi, encaixesApi, gruposApi, modelosApi, pedidosApi } from "../ser
 import Modal from "../components/Modal/Modal";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
 import { useToast } from "../contexts/ToastContext";
-import styles from "./Page.module.css";
 import ds from "./PedidoDetalhePage.module.css";
 
 // ── Constantes ───────────────────────────────────────────────────────
@@ -350,7 +349,7 @@ export default function PedidoDetalhePage() {
     setGerandoEncaixe(true);
     try {
       await encaixesApi.gerarAutomatico(id);
-      navigate(`/encaixes/${id}`);
+      navigate(`/producao/encaixes/${id}`);
     } catch (ex) {
       addToast(ex.message, "erro");
     } finally {
@@ -365,7 +364,7 @@ export default function PedidoDetalhePage() {
     try {
       await pedidosApi.deletar(id);
       addToast(`Pedido ${pedido.num_pedido} excluído.`, "sucesso");
-      navigate("/pedidos");
+      navigate("/producao/pedidos");
     } catch (ex) {
       addToast(ex.message, "erro");
     }
@@ -373,10 +372,10 @@ export default function PedidoDetalhePage() {
 
   // ── Render: loading ─────────────────────────────────────────────────
 
-  if (carregando) return <div className={ds.loading}>Carregando pedido…</div>;
+  if (carregando) return <div className="sc-page"><div className={ds.loading}>Carregando pedido…</div></div>;
   if (!pedido) return (
-    <div>
-      <button className={styles.btnSecondary} onClick={() => navigate("/pedidos")}>← Voltar</button>
+    <div className="sc-page">
+      <button className={ds.btnSecondary} onClick={() => navigate("/producao/pedidos")}>← Voltar</button>
     </div>
   );
 
@@ -393,11 +392,11 @@ export default function PedidoDetalhePage() {
   // ── Render principal ─────────────────────────────────────────────────
 
   return (
-    <div className={ds.pagina}>
+    <div className={`sc-page ${ds.pagina}`}>
 
       {/* ── Breadcrumb + modo ── */}
       <div className={ds.topBar}>
-        <button className={ds.voltar} onClick={() => navigate("/pedidos")}>← Pedidos</button>
+        <button className={ds.voltar} onClick={() => navigate("/producao/pedidos")}>← Pedidos</button>
         {modoEditar ? (
           <div className={ds.modoEditarBanner}>
             <span className={ds.modoEditarLabel}>✏ Modo edição</span>
@@ -409,32 +408,34 @@ export default function PedidoDetalhePage() {
       </div>
 
       {/* ══ CABEÇALHO DO PEDIDO ══ */}
-      <div className={ds.cabecalho}>
+      <div className={`sc-card ${ds.cabecalho}`}>
         <div className={ds.cabecalhoTopo}>
           <div>
             <h1 className={ds.tituloPedido}>Pedido {pedido.num_pedido}</h1>
             {pedido.cliente && <p className={ds.cliente}>{pedido.cliente}</p>}
+            <div className={ds.statusLine}>
+              {modoEditar ? (
+                <div className={ds.statusSelectWrapper}>
+                  <select
+                    className={`${ds.statusSelect} ${ds[`statusSelect_${statusAtual.cor}`]}`}
+                    value={pedido.status}
+                    onChange={mudarStatus}
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <span className={`${ds.badge} ${ds[`badge_${statusAtual.cor}`]}`}>
+                  {statusAtual.label}
+                </span>
+              )}
+            </div>
           </div>
           <div className={ds.cabecalhoAcoes}>
-            {modoEditar ? (
-              <div className={ds.statusSelectWrapper}>
-                <select
-                  className={`${ds.statusSelect} ${ds[`statusSelect_${statusAtual.cor}`]}`}
-                  value={pedido.status}
-                  onChange={mudarStatus}
-                >
-                  {STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <span className={`${ds.badge} ${ds[`badge_${statusAtual.cor}`]}`}>
-                {statusAtual.label}
-              </span>
-            )}
             {modoEditar && (
-              <button className={styles.btnSecondary} onClick={abrirEdicao}>Editar dados</button>
+              <button className={ds.btnSecondary} onClick={abrirEdicao}>Editar dados</button>
             )}
           </div>
         </div>
@@ -460,11 +461,11 @@ export default function PedidoDetalhePage() {
       </div>
 
       {/* ══ TECIDOS DO PEDIDO ══ */}
-      <section className={ds.secao}>
+      <section className={`sc-card ${ds.secao}`}>
         <div className={ds.secaoHeader}>
           <h2 className={ds.secaoTitulo}>Tecidos do Pedido</h2>
           {modoEditar && (
-            <button className={styles.btnNovo} onClick={abrirModalTecido}>+ Adicionar Tecido</button>
+            <button className={ds.btnNovo} onClick={abrirModalTecido}>+ Adicionar Tecido</button>
           )}
         </div>
         {pedido.tecidos.length === 0 ? (
@@ -496,17 +497,17 @@ export default function PedidoDetalhePage() {
       </section>
 
       {/* ══ PEÇAS DO PEDIDO ══ */}
-      <section className={ds.secao}>
+      <section className={`sc-card ${ds.secao}`}>
         <div className={ds.secaoHeader}>
           <h2 className={ds.secaoTitulo}>Peças do Pedido</h2>
           {modoEditar && (
-            <button className={styles.btnNovo} onClick={abrirModalPeca}>+ Adicionar Peça</button>
+            <button className={ds.btnNovo} onClick={abrirModalPeca}>+ Adicionar Peça</button>
           )}
         </div>
         {pedido.grupos_pecas.length === 0 ? (
           <p className={ds.vazio}>Nenhuma peça adicionada.{modoEditar ? " Clique em \"+Adicionar Peça\"." : ""}</p>
         ) : (
-          <table className={styles.tabela}>
+          <table className={ds.tabela}>
             <thead>
               <tr>
                 <th>Grupo</th>
@@ -525,14 +526,14 @@ export default function PedidoDetalhePage() {
 
       {/* ══ RESUMO DO CORTE ══ */}
       {resumo && (
-        <section className={ds.secao}>
+        <section className={`sc-card ${ds.secao}`}>
           <h2 className={ds.secaoTitulo}>Resumo do Corte</h2>
 
           {resumo.itens.length === 0 ? (
             <p className={ds.vazio}>Adicione peças ao pedido para ver o resumo.</p>
           ) : (
             <>
-              <table className={`${styles.tabela} ${ds.tabelaResumo}`}>
+              <table className={`${ds.tabela} ${ds.tabelaResumo}`}>
                 <thead>
                   <tr>
                     <th>Grupo</th>
@@ -670,21 +671,21 @@ export default function PedidoDetalhePage() {
 
       {editando && (
         <Modal titulo="Editar Pedido" onClose={() => setEditando(false)}>
-          <form className={styles.form} onSubmit={salvarEdicao}>
-            {erroEdit && <p className={styles.erroForm}>{erroEdit}</p>}
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Cliente</label>
+          <form className={ds.form} onSubmit={salvarEdicao}>
+            {erroEdit && <p className={ds.erroForm}>{erroEdit}</p>}
+            <div className={ds.fileiraDupla}>
+              <div className={ds.campo}>
+                <label className={ds.label}>Cliente</label>
                 <input
-                  className={styles.input}
+                  className={ds.input}
                   value={editForm.cliente}
                   onChange={(e) => setEditForm((p) => ({ ...p, cliente: e.target.value }))}
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Data *</label>
+              <div className={ds.campo}>
+                <label className={ds.label}>Data *</label>
                 <input
-                  className={styles.input}
+                  className={ds.input}
                   type="date"
                   value={editForm.data_pedido}
                   onChange={(e) => setEditForm((p) => ({ ...p, data_pedido: e.target.value }))}
@@ -692,9 +693,9 @@ export default function PedidoDetalhePage() {
                 />
               </div>
             </div>
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setEditando(false)}>Cancelar</button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoEdit}>
+            <div className={ds.formActions}>
+              <button type="button" className={ds.btnSecondary} onClick={() => setEditando(false)}>Cancelar</button>
+              <button type="submit" className={ds.btnPrimary} disabled={salvandoEdit}>
                 {salvandoEdit ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -704,13 +705,13 @@ export default function PedidoDetalhePage() {
 
       {modalTecido && (
         <Modal titulo="Adicionar Tecido ao Pedido" onClose={() => setModalTecido(false)}>
-          <form className={styles.form} onSubmit={confirmarAdicionarTecido}>
-            {erroTecido && <p className={styles.erroForm}>{erroTecido}</p>}
+          <form className={ds.form} onSubmit={confirmarAdicionarTecido}>
+            {erroTecido && <p className={ds.erroForm}>{erroTecido}</p>}
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Modelo *</label>
+            <div className={ds.campo}>
+              <label className={ds.label}>Modelo *</label>
               <select
-                className={styles.select}
+                className={ds.select}
                 value={modeloSelecionado}
                 onChange={(e) => selecionarModelo(e.target.value)}
                 autoFocus
@@ -725,10 +726,10 @@ export default function PedidoDetalhePage() {
             </div>
 
             {modeloSelecionado && (
-              <div className={styles.campo}>
-                <label className={styles.label}>Cor *</label>
+              <div className={ds.campo}>
+                <label className={ds.label}>Cor *</label>
                 <select
-                  className={styles.select}
+                  className={ds.select}
                   value={corSelecionada}
                   onChange={(e) => selecionarCor(e.target.value)}
                 >
@@ -743,15 +744,15 @@ export default function PedidoDetalhePage() {
             )}
 
             {corSelecionada && lotesDisponiveis.length > 0 && (
-              <div className={styles.campo}>
-                <label className={styles.label}>Lote *</label>
+              <div className={ds.campo}>
+                <label className={ds.label}>Lote *</label>
                 {recomendacaoLote && (
                   <p className={ds.recomendacaoMsg}>
                     Recomendado: {recomendacaoLote.codigo_lote} — {Number(recomendacaoLote.peso_disponivel_kg).toFixed(1)} kg disponíveis
                   </p>
                 )}
                 <select
-                  className={styles.select}
+                  className={ds.select}
                   value={loteSelecionado}
                   onChange={(e) => setLoteSelecionado(e.target.value)}
                 >
@@ -769,9 +770,9 @@ export default function PedidoDetalhePage() {
               <p className={ds.avisoVazio}>Nenhum lote disponível para esta cor.</p>
             )}
 
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setModalTecido(false)}>Cancelar</button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoTecido || !loteSelecionado}>
+            <div className={ds.formActions}>
+              <button type="button" className={ds.btnSecondary} onClick={() => setModalTecido(false)}>Cancelar</button>
+              <button type="submit" className={ds.btnPrimary} disabled={salvandoTecido || !loteSelecionado}>
                 {salvandoTecido ? "Adicionando..." : "Adicionar"}
               </button>
             </div>
@@ -781,13 +782,13 @@ export default function PedidoDetalhePage() {
 
       {modalPeca && (
         <Modal titulo="Adicionar Peça ao Pedido" onClose={() => setModalPeca(false)}>
-          <form className={styles.form} onSubmit={confirmarPeca}>
-            {erroPeca && <p className={styles.erroForm}>{erroPeca}</p>}
+          <form className={ds.form} onSubmit={confirmarPeca}>
+            {erroPeca && <p className={ds.erroForm}>{erroPeca}</p>}
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Grupo de molde *</label>
+            <div className={ds.campo}>
+              <label className={ds.label}>Grupo de molde *</label>
               <select
-                className={styles.select}
+                className={ds.select}
                 value={grupoSelecionado?.id ?? ""}
                 onChange={(e) => selecionarGrupo(e.target.value)}
                 required
@@ -799,10 +800,10 @@ export default function PedidoDetalhePage() {
               </select>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Tecido desta peça</label>
+            <div className={ds.campo}>
+              <label className={ds.label}>Tecido desta peça</label>
               <select
-                className={styles.select}
+                className={ds.select}
                 value={tecidoPeca}
                 onChange={(e) => setTecidoPeca(e.target.value)}
               >
@@ -819,8 +820,8 @@ export default function PedidoDetalhePage() {
             </div>
 
             {grupoSelecionado && tamanhosPorGrupo.length > 0 && (
-              <div className={styles.campo}>
-                <label className={styles.label}>Quantidades por tamanho</label>
+              <div className={ds.campo}>
+                <label className={ds.label}>Quantidades por tamanho</label>
                 <table className={ds.tabelaQtd}>
                   <thead>
                     <tr><th>Tamanho</th><th>Quantidade</th></tr>
@@ -831,7 +832,7 @@ export default function PedidoDetalhePage() {
                         <td><span className={ds.tamanhoTag}>{t}</span></td>
                         <td>
                           <input
-                            className={`${styles.input} ${ds.inputQtd}`}
+                            className={`${ds.input} ${ds.inputQtd}`}
                             type="number"
                             min={0}
                             value={quantidades[t] ?? 0}
@@ -851,9 +852,9 @@ export default function PedidoDetalhePage() {
               <p className={ds.avisoVazio}>Este grupo não possui moldes com tamanhos cadastrados.</p>
             )}
 
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setModalPeca(false)}>Cancelar</button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoPeca || !grupoSelecionado}>
+            <div className={ds.formActions}>
+              <button type="button" className={ds.btnSecondary} onClick={() => setModalPeca(false)}>Cancelar</button>
+              <button type="submit" className={ds.btnPrimary} disabled={salvandoPeca || !grupoSelecionado}>
                 {salvandoPeca ? "Salvando..." : "Confirmar"}
               </button>
             </div>
@@ -863,16 +864,16 @@ export default function PedidoDetalhePage() {
 
       {modalEditarQtd && linhaEditando && (
         <Modal titulo="Editar Quantidade" onClose={() => setModalEditarQtd(false)}>
-          <form className={styles.form} onSubmit={confirmarEditarQtd}>
-            {erroQtd && <p className={styles.erroForm}>{erroQtd}</p>}
+          <form className={ds.form} onSubmit={confirmarEditarQtd}>
+            {erroQtd && <p className={ds.erroForm}>{erroQtd}</p>}
             <p className={ds.editarQtdInfo}>
               <strong>{linhaEditando.grupo_nome}</strong> — tamanho{" "}
               <span className={ds.tamanhoTag}>{linhaEditando.tamanho}</span>
             </p>
-            <div className={styles.campo}>
-              <label className={styles.label}>Quantidade de produção *</label>
+            <div className={ds.campo}>
+              <label className={ds.label}>Quantidade de produção *</label>
               <input
-                className={styles.input}
+                className={ds.input}
                 type="number"
                 min={1}
                 value={novaQtd}
@@ -881,9 +882,9 @@ export default function PedidoDetalhePage() {
                 autoFocus
               />
             </div>
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setModalEditarQtd(false)}>Cancelar</button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoQtd}>
+            <div className={ds.formActions}>
+              <button type="button" className={ds.btnSecondary} onClick={() => setModalEditarQtd(false)}>Cancelar</button>
+              <button type="submit" className={ds.btnPrimary} disabled={salvandoQtd}>
                 {salvandoQtd ? "Salvando..." : "Salvar"}
               </button>
             </div>

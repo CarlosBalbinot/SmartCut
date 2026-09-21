@@ -196,14 +196,25 @@ export default function ProjecaoPage() {
     { name: "Etiqueta", value: parseFloat((linhasOk.reduce((s, r) => s + (r.breakdown.custo_etiqueta + r.breakdown.custo_embalagem) * r.quantidade, 0)).toFixed(2)) },
   ].filter((d) => d.value > 0) : [];
 
-  if (loading) return <p className={styles.loading}>Carregando…</p>;
-  if (erro) return <p className={styles.erro}>{erro}</p>;
+  if (loading) return (
+    <div className="sc-page">
+      <div className="sc-page-header"><h1>Projeção</h1></div>
+      <p className={styles.loading}>Carregando…</p>
+    </div>
+  );
+  if (erro) return (
+    <div className="sc-page">
+      <div className="sc-page-header"><h1>Projeção</h1></div>
+      <p className={styles.erro}>{erro}</p>
+    </div>
+  );
 
   return (
-    <div className={styles.pagina}>
+    <div className={`sc-page ${styles.pagina}`}>
+      <div className="sc-page-header"><h1>Projeção</h1></div>
 
       {/* ── Formulário de projeção ── */}
-      <div className={styles.card}>
+      <div className={`sc-card ${styles.card}`}>
         <div className={styles.cardHeader}>
           <span className={styles.cardTitulo}>Projeção de produção</span>
         </div>
@@ -351,7 +362,7 @@ export default function ProjecaoPage() {
           </div>
 
           {/* Tabela detalhada */}
-          <div className={styles.secao}>
+          <div className={`sc-card ${styles.secao}`}>
             <div className={styles.secaoHeader}>
               <h2 className={styles.secaoTitulo}>Detalhamento por item</h2>
             </div>

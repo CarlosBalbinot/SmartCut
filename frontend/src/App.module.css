@@ -7,31 +7,92 @@
 
 /* ══ SIDEBAR ══════════════════════════════════════════════════ */
 .sidebar {
-  width: 220px;
-  background-color: #FFFFFF;
+  position: relative;
+  width: var(--sc-sidebar-width);
+  background-color: var(--sc-surface);
   border-right: 1px solid var(--sc-border);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: width 0.2s ease;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebarCollapsed {
+  width: 56px;
+  overflow: hidden;
+}
+
+.sidebarToggle {
+  position: absolute;
+  top: 18px;
+  right: 12px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--sc-radius-sm);
+}
+.sidebarToggle:hover { background: var(--sc-bg-secondary); }
+
+/* Recolhido: sai do posicionamento absoluto e entra no fluxo normal,
+   centralizado acima do logo — evita sobrepor o ícone da logo, que
+   ocuparia o mesmo canto em uma faixa de 56px. */
+.sidebarCollapsed .sidebarToggle {
+  position: static;
+  display: block;
+  margin: 12px auto 8px;
+  text-align: center;
+  line-height: 24px;
 }
 
 .logoWrap {
-  padding: 28px 20px 20px;
+  padding: 16px 16px 12px;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
+/* align-items:center só no modo recolhido — no modo expandido a logo
+   fica alinhada à esquerda (column flex, então isso é align-items,
+   não justify-content). */
+.sidebarCollapsed .logoWrap {
+  padding: 12px 0;
+  align-items: center;
+}
+
 .sidebarLogoImg {
-  max-height: 48px;
+  max-height: 32px;
   width: auto;
   object-fit: contain;
 }
+.sidebarCollapsed .sidebarLogoImg {
+  max-height: 28px;
+  max-width: 100%;
+}
+
+.sidebarLogoIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+.sidebarCollapsed .sidebarLogoIcon {
+  width: 28px;
+  height: 28px;
+}
 
 .logo {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 600;
   color: #1D1D1F;
   letter-spacing: -0.5px;
   line-height: 1.2;
@@ -48,18 +109,86 @@
 
 /* ── Seções ── */
 .section {
-  padding-top: 4px;
+  border-radius: 6px;
+  margin: 1px 8px 4px;
+  overflow: hidden;
+}
+
+/* Grupo expandido: bloco inteiro fica destacado — fundo azul claro
+   (rgba direto na cor da marca; não há token de opacity para cor
+   primária) + borda esquerda. */
+.sectionExpanded {
+  background: rgba(37, 150, 190, 0.08);
+  border-left: 3px solid var(--color-primary);
+}
+
+/* Botão de clique — o padding visual real fica em .sectionLabel, que
+   é o filho único aqui (permite manter a mesma área clicável sem
+   duplicar padding). */
+.sectionHeader {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  text-align: left;
 }
 
 .sectionLabel {
-  display: block;
-  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 0.75rem;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--color-primary);
-  padding: 16px 16px 4px;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
   line-height: 1;
+  position: relative;
+}
+/* Compensa a borda esquerda de 3px do bloco expandido, mantendo o
+   ícone alinhado visualmente com os demais grupos. */
+.sectionExpanded .sectionLabel {
+  padding-left: 13px;
+}
+
+.sectionLabelExpanded {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sectionIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  color: inherit;
+}
+.sectionIcon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Colapso via grid-template-rows (0fr → 1fr): anima por fração do
+   conteúdo real, não por um valor de altura fixo/estimado — evita o
+   efeito de "cauda longa" do easing em max-height quando o valor é
+   grande (era o caso de CADASTROS, a seção com mais itens). */
+.navListOuter {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 180ms ease;
+}
+
+.navListOpen {
+  grid-template-rows: 1fr;
+}
+
+.navListInner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .navList {
@@ -68,39 +197,40 @@
   margin: 0;
 }
 
-/* ── Links de navegação ── */
+/* ── Links de navegação (itens dentro de um grupo) ── */
+/* Sem ícone — apenas a categoria-mãe tem ícone — então sem gap e com
+   indentação levemente reduzida em relação à versão anterior (era 40px). */
 .navLink {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  margin: 1px 10px;
-  border-radius: var(--sc-radius-sm);
-  font-size: 14px;
+  display: block;
+  padding: 7px 16px 7px 28px;
+  margin: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.83rem;
   font-weight: 400;
-  color: #6E6E73;
-  transition: background 0.12s, color 0.12s;
+  color: var(--sc-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s, color 0.15s;
   text-decoration: none;
 }
 
 .navLink:hover {
-  background-color: #F5F5F7;
-  color: #1D1D1F;
+  background-color: var(--sc-bg-secondary);
   text-decoration: none;
 }
 
 .navLinkActive {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px 9px 9px;
-  margin: 1px 10px;
-  border-radius: var(--sc-radius-sm);
-  border-left: 3px solid var(--color-primary);
-  font-size: 14px;
-  font-weight: 600;
+  display: block;
+  padding: 7px 16px 7px 28px;
+  margin: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.83rem;
+  font-weight: 500;
   color: var(--color-primary);
-  background-color: var(--color-primary-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-decoration: none;
 }
 
@@ -110,7 +240,174 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  color: inherit;
+  font-size: 14px;
+  color: var(--sc-text-muted);
+}
+/* Os ícones do menu são SVGs com width/height fixos em px (definidos
+   no JSX, fora do escopo deste ajuste) — font-size no wrapper não os
+   redimensiona sozinho, então sobrescrevemos o próprio <svg> aqui. */
+.navIcon svg {
+  width: 14px;
+  height: 14px;
+}
+.navIconActive {
+  color: var(--color-primary);
+}
+
+/* ── Item de topo (Dashboard) — fora de qualquer seção ── */
+.navLinkTopWrap {
+  padding: 4px 8px;
+  margin-bottom: 8px;
+}
+
+.navLinkTop {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.navLinkTop:hover {
+  background-color: var(--sc-bg-secondary);
+  text-decoration: none;
+}
+
+/* Dashboard segue o mesmo padrão dos grupos: bloco inteiro com fundo
+   azul claro quando ativo, sem indentação (não pertence a um grupo). */
+.navLinkTopActive {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 8px 13px;
+  border-radius: 6px;
+  border-left: 3px solid var(--color-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background-color: rgba(37, 150, 190, 0.08);
+  text-decoration: none;
+}
+
+.navLinkTopActive:hover { text-decoration: none; }
+
+/* Texto que some quando o sidebar é recolhido para modo ícone. */
+.labelText {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebarCollapsed .labelText {
+  display: none;
+}
+
+/* Modo recolhido: só ícones dos grupos ficam visíveis, centralizados;
+   os itens dentro do grupo ficam ocultos (grupos não expandem nesse
+   modo — o JS já garante isso, isto aqui é reforço/defesa em CSS) e
+   o realce de "grupo expandido" também some. */
+.sidebarCollapsed .navLink {
+  display: none;
+}
+
+.sidebarCollapsed .sectionExpanded {
+  background: none;
+  border-left: none;
+}
+
+.sidebarCollapsed .sectionLabel {
+  justify-content: center;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.sidebarCollapsed .navLinkTopWrap .navLinkTop,
+.sidebarCollapsed .navLinkTopWrap .navLinkTopActive {
+  justify-content: center;
+}
+
+.sidebarCollapsed .sidebarVersion {
+  display: none;
+}
+
+/* ── Tooltip do Dashboard no modo recolhido (item único, sem submenu —
+   CSS puro via data-tooltip) ── */
+.sidebarCollapsed .navLinkTop::after,
+.sidebarCollapsed .navLinkTopActive::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 60px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--sc-text-primary);
+  color: white;
+  padding: 4px 10px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 1000;
+}
+
+.sidebarCollapsed .navLinkTop:hover::after,
+.sidebarCollapsed .navLinkTopActive:hover::after {
+  opacity: 1;
+}
+
+/* ── Tooltip das categorias no modo recolhido — popover com a lista de
+   submenus. Renderizado fora da <nav> (ver App.jsx) e posicionado via
+   position:fixed + top calculado em JS (getBoundingClientRect), porque
+   .sidebarCollapsed usa overflow:hidden (ajuste do scroll lateral) e
+   isso cortaria um popover posicionado dentro da árvore da sidebar. A
+   visibilidade é controlada pela renderização condicional do React, não
+   por :hover em CSS. */
+.tooltipWrapper {
+  position: relative;
+}
+
+.tooltipMenu {
+  position: fixed;
+  left: 64px;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 8px 0;
+  min-width: 180px;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+.tooltipTitle {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--sc-border);
+  margin: 0 0 4px;
+}
+
+.tooltipMenu a {
+  display: block;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.tooltipMenu a:hover {
+  background: var(--sc-bg-secondary);
 }
 
 /* ── Badge contador ── */
@@ -122,6 +419,96 @@
   font-weight: 600;
   border-radius: 20px;
   padding: 1px 7px;
+}
+
+/* ── Rodapé sidebar — usuário logado ── */
+.sidebarUserItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.sidebarUserClickable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  border-radius: var(--sc-radius-sm);
+  padding: 4px 6px;
+  margin: -4px -6px;
+  transition: background 0.12s;
+  outline: none;
+}
+.sidebarUserClickable:hover,
+.sidebarUserClickableActive {
+  background: var(--sc-surface-hover);
+}
+
+.sidebarUserAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sidebarUserName {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--sc-text-primary, #1D1D1F);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarLogoutBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: var(--sc-radius-sm);
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: background 0.12s, color 0.12s, opacity 0.15s;
+}
+.sidebarLogoutBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sidebarLogoutBtn:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-danger-text, #D33);
+  opacity: 1;
+}
+
+/* Modo recolhido: só o avatar fica visível no rodapé, centralizado. */
+.sidebarCollapsed .sidebarUserItem {
+  justify-content: center;
+}
+.sidebarCollapsed .sidebarUserClickable {
+  flex: 0 1 auto;
+  justify-content: center;
+}
+.sidebarCollapsed .sidebarLogoutBtn {
+  display: none;
 }
 
 /* ── Rodapé sidebar — item Configurações ── */
@@ -146,6 +533,16 @@
   background: var(--sc-surface-hover);
 }
 
+/* ── Rodapé sidebar — versão do sistema ── */
+.sidebarVersion {
+  flex-shrink: 0;
+  padding: 8px 16px 12px;
+  font-size: 11px;
+  color: var(--sc-text-muted);
+  opacity: 0.6;
+  text-align: center;
+}
+
 /* ══ ÁREA PRINCIPAL ════════════════════════════════════════════ */
 .mainArea {
   flex: 1;
@@ -153,7 +550,7 @@
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  background-color: var(--sc-bg-secondary);
+  background-color: var(--sc-content-bg);
 }
 
 .content {

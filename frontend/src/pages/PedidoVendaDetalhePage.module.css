@@ -1,8 +1,3 @@
-.page {
-  padding: 2rem;
-  max-width: 1200px;
-}
-
 .stateMsg {
   padding: 2rem 0;
   color: var(--sc-text-muted);
@@ -10,78 +5,182 @@
 }
 
 .btnBack {
-  background: none;
-  border: none;
-  color: var(--sc-text-secondary);
-  font-size: 0.8rem;
-  cursor: pointer;
-  padding: 0 0 0.5rem;
   display: inline-block;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
 }
-.btnBack:hover { color: var(--sc-text-primary); }
+.btnBack:hover { background: #f5f5f5; color: var(--sc-text-primary); }
 
 /* ── Cabeçalho ── */
-.headRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 1.75rem;
-  gap: 1rem;
+
+/* Linha de status abaixo do título (dentro do sc-page-header) */
+.statusLine {
+  margin-top: 0.35rem;
 }
 
-.headLeft { flex: 1; }
-
-.headTitulo {
+/* Botões de ação do cabeçalho (topo da página) */
+.headerActions {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
-  margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.title {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: var(--sc-text-primary);
-  margin: 0;
-}
+.stCancelado { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
 
-/* Status select styled as badge */
-.statusSelect {
-  appearance: none;
+/* Badge de status (somente leitura — troca é feita pelos botões de ação) */
+.statusBadge {
+  display: inline-block;
   border: 1px solid transparent;
   border-radius: 999px;
   padding: 0.3rem 0.85rem;
   font-size: 0.78rem;
   font-weight: 600;
-  cursor: pointer;
-  outline: none;
-  transition: opacity 0.15s;
 }
-.statusSelect:hover { opacity: 0.85; }
+.stAberto  { background: var(--color-primary); color: #FFF; }
+.stFechado { background: var(--sc-success-text); color: #FFF; }
 
-.stRascunho  { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
-.stConfirmado{ background: var(--sc-800);           color: #FFF;                     border-color: transparent; }
-.stProducao  { background: #78350F;                 color: #FFF;                     border-color: transparent; }
-.stEntregue  { background: var(--sc-900);           color: #FFF;                     border-color: transparent; }
-.stCancelado { background: var(--sc-danger-bg);     color: var(--sc-danger-text);    border-color: var(--sc-danger-border); }
+/* Linha de informações do pedido, em cards/chips. */
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+}
 
-.headMeta {
+.infoCard {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
-  font-size: 0.875rem;
-  color: var(--sc-text-secondary);
+  flex-direction: column;
+  gap: 2px;
+  background: var(--sc-card-bg);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-card-radius);
+  padding: 12px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
-.headMeta strong { color: var(--sc-text-primary); }
+
+.infoLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-muted);
+}
+
+.infoValor {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erroInline {
+  margin: -0.75rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+}
+
+/* ── Abas (CSS puro) ── */
+.tabBar {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--sc-border);
+  margin-bottom: 1.5rem;
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.tabBtn:hover { color: var(--sc-text-primary); }
+
+.tabBtnActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 500;
+}
+
+.tabPanel { margin-bottom: 1.5rem; }
+
+/* Labels de campo dentro das abas — mais discretos que o padrão de
+   modal (.field é compartilhado com os 3 modais desta página, então
+   o ajuste fica restrito a este escopo via seletor descendente). */
+.tabPanel .field {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-muted);
+}
+
+/* Barra "Salvar Alterações" do cabeçalho (Dados/Transporte/Outros) */
+.headerSaveBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.msgSalvo {
+  font-size: 0.82rem;
+  color: var(--sc-success-text);
+}
+
+/* Linha de desconto geral, abaixo da grid de itens */
+.descontoGeralRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--sc-border);
+  flex-wrap: wrap;
+}
+
+.tesSelectInline {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.78rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+}
+.tesSelectInline:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+
+.textarea {
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.5;
+}
 
 /* ── Seção itens ── */
-.section { margin-bottom: 1.5rem; }
-
 .sectionHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--sc-border);
 }
 
 .sectionTitle {
@@ -91,11 +190,9 @@
   margin: 0;
 }
 
-/* ── Card / Table ── */
-.card {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-md);
+/* ── Card / Table — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
   overflow: hidden;
 }
 
@@ -109,12 +206,12 @@
 
 .table th {
   text-align: left;
-  padding: 0.65rem 0.875rem;
-  font-size: 0.7rem;
-  font-weight: 700;
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sc-text-secondary);
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
   background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
   white-space: nowrap;
@@ -124,8 +221,8 @@
 .thPreco { text-align: right; }
 
 .table td {
-  padding: 0.75rem 0.875rem;
-  font-size: 0.875rem;
+  padding: 12px 16px;
+  font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
   vertical-align: middle;
@@ -136,6 +233,7 @@
 .trFirst:first-child td { border-top: none; }
 
 .table tr:last-child td { border-bottom: none; }
+.table tbody tr:hover td { background: var(--sc-bg-secondary); }
 
 .tdRef {
   white-space: nowrap;
@@ -203,33 +301,6 @@
   border-top: 1px solid var(--sc-border);
 }
 
-/* ── Ações rodapé ── */
-.acoesSection {
-  padding-top: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-}
-
-.acoes {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.notaInfo {
-  font-size: 0.82rem;
-  color: var(--sc-text-secondary);
-  background: var(--sc-bg-secondary);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-sm);
-  padding: 0.6rem 0.875rem;
-  margin: 0;
-  line-height: 1.5;
-  max-width: 600px;
-}
-
 .btnExcluir {
   background: none;
   border: none;
@@ -242,7 +313,23 @@
 }
 .btnExcluir:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
 
-/* ── Buttons ── */
+/* ── Botão de ação do cabeçalho — primário (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Buttons (.btnPrimary também usado dentro dos modais — não alterado) ── */
 .btnPrimary {
   background: var(--sc-action);
   color: var(--sc-action-text);
@@ -257,8 +344,13 @@
 .btnPrimary:hover    { background: var(--sc-action-hover); }
 .btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Secundário — branco, usado no cabeçalho (Reabrir Pedido) e também
+   dentro dos modais (Cancelar/Voltar/Fechar); background explícito
+   var(--sc-surface) fica idêntico ao "transparent" anterior dentro
+   dos modais (já brancos), mas corrige o cabeçalho, que fica sobre
+   var(--sc-content-bg) e não branco puro. */
 .btnSecondary {
-  background: transparent;
+  background: var(--sc-surface);
   color: var(--sc-text-primary);
   border: 1px solid var(--sc-border-strong);
   padding: 0.45rem 1rem;
@@ -282,10 +374,12 @@
 }
 .btnDownload:hover { background: var(--sc-200); }
 
+/* Destrutivo — branco, borda e texto na cor de perigo. Compartilhado
+   com o botão de confirmação do modal de cancelamento. */
 .btnDanger {
-  background: transparent;
+  background: var(--sc-surface);
   color: var(--sc-danger-text);
-  border: 1px solid var(--sc-danger-border);
+  border: 1px solid var(--sc-danger-text);
   padding: 0.5rem 1rem;
   border-radius: var(--sc-radius-sm);
   font-size: 0.875rem;
@@ -316,18 +410,6 @@
   align-items: center;
   justify-content: center;
   z-index: 200;
-}
-
-/* Large modal — editar dados */
-.modalLg {
-  background: var(--sc-surface);
-  border-radius: var(--sc-radius-lg);
-  width: 700px;
-  max-width: 95vw;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
 }
 
 /* Medium modal — adicionar item */
@@ -365,12 +447,6 @@
   font-weight: 600;
   color: var(--sc-text-primary);
   margin: 0;
-}
-
-.modalScroll {
-  overflow-y: auto;
-  padding: 1.25rem 1.75rem;
-  flex: 1;
 }
 
 .modalBody {

@@ -4,13 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from schemas.tecido_schema import CorOut, CorUpdate, LoteCreate, LoteOut
 from services import cor_service, lote_service
 
 router = APIRouter(prefix="/api/v1/cores-tecido", tags=["cores-tecido"])
 
+_MOD = "tecidos"
 
-@router.get("/{cor_id}", response_model=dict)
+
+@router.get("/{cor_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def obter_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
     cor = cor_service.obter(db, cor_id)
     if not cor:
@@ -18,7 +21,10 @@ def obter_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": cor, "error": None}
 
 
-@router.patch("/{cor_id}", response_model=dict)
+@router.patch(
+    "/{cor_id}", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "editar"))],
+)
 def atualizar_cor(cor_id: uuid.UUID, payload: CorUpdate, db: Session = Depends(get_db)):
     cor = cor_service.atualizar(db, cor_id, payload)
     if not cor:
@@ -26,7 +32,10 @@ def atualizar_cor(cor_id: uuid.UUID, payload: CorUpdate, db: Session = Depends(g
     return {"data": cor, "error": None}
 
 
-@router.delete("/{cor_id}", response_model=dict)
+@router.delete(
+    "/{cor_id}", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "excluir"))],
+)
 def deletar_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
     ok = cor_service.deletar(db, cor_id)
     if not ok:
@@ -36,19 +45,28 @@ def deletar_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Lotes de uma cor ──────────────────────────────────────────────────
 
-@router.get("/{cor_id}/lotes", response_model=dict)
+@router.get(
+    "/{cor_id}/lotes", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "ver"))],
+)
 def listar_lotes(cor_id: uuid.UUID, db: Session = Depends(get_db)):
     lotes = lote_service.listar_por_cor(db, cor_id)
     return {"data": lotes, "error": None}
 
 
-@router.post("/{cor_id}/lotes", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{cor_id}/lotes", response_model=dict, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(_MOD, "criar"))],
+)
 def criar_lote(cor_id: uuid.UUID, payload: LoteCreate, db: Session = Depends(get_db)):
     lote = lote_service.criar(db, cor_id, payload)
     return {"data": lote, "error": None}
 
 
-@router.get("/{cor_id}/recomendar-lote", response_model=dict)
+@router.get(
+    "/{cor_id}/recomendar-lote", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "ver"))],
+)
 def recomendar_lote(cor_id: uuid.UUID, db: Session = Depends(get_db)):
     lote = cor_service.recomendar_lote(db, cor_id)
     return {"data": lote, "error": None}

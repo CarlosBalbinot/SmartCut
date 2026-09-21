@@ -1,34 +1,20 @@
-.page {
-  padding: 2rem;
-  max-width: 1200px;
-}
-
-/* ── Header ── */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--sc-text-primary);
-}
-
+/* ── Header actions (botões à direita do sc-page-header) ── */
 .headerActions {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-left: auto;
 }
 
-/* ── Card / Table ── */
-.card {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-md);
+/* ── Card / Table — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
   overflow: hidden;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .table {
@@ -39,20 +25,20 @@
 
 .table th {
   text-align: left;
-  padding: 12px 0.875rem;
+  padding: 10px 16px;
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sc-text-secondary);
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
   background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
   white-space: nowrap;
 }
 
 .table td {
-  padding: 12px 0.875rem;
-  font-size: 0.875rem;
+  padding: 12px 16px;
+  font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
   white-space: nowrap;
@@ -63,7 +49,35 @@
 .table tr:last-child td { border-bottom: none; }
 
 .trClickable { cursor: pointer; }
-.trClickable:hover td { background: var(--sc-surface-hover); }
+.trClickable:hover td { background: var(--sc-bg-secondary); }
+
+/* ── Agrupamento por mês ── */
+.monthHeaderRow td {
+  padding: 0;
+}
+
+.monthHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--sc-bg-secondary);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  border-left: 3px solid var(--color-primary, #2596be);
+  cursor: pointer;
+  user-select: none;
+}
+.monthHeader:hover { background: var(--sc-border); }
+
+.monthHeaderChevron {
+  display: inline-flex;
+  font-size: 0.65rem;
+  color: var(--sc-text-muted);
+  flex-shrink: 0;
+}
 
 /* Column widths */
 .table th:nth-child(1) { width: auto; }
@@ -71,13 +85,14 @@
 .table th:nth-child(3) { width: 110px; }
 .table th:nth-child(4) { width: 80px; }
 .table th:nth-child(5) { width: 110px; }
-.table th:nth-child(6) { width: 190px; }
+.table th:nth-child(6) { width: 180px; }
 
 .tdValor { font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .dataCell {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.3rem;
   line-height: 1.35;
   white-space: normal;
@@ -150,18 +165,18 @@
 
 .parcelasTable th {
   text-align: left;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.68rem;
+  padding: 10px 16px;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
   background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
 }
 
 .parcelasTable td {
-  padding: 0.65rem 0.85rem;
+  padding: 12px 16px;
   font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
@@ -178,10 +193,10 @@
 /* ── Status badges ── */
 .badge {
   display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
   border: 1px solid transparent;
   white-space: nowrap;
 }
@@ -195,10 +210,23 @@
 .stCANCELADO{ background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
 
 /* ── Row actions ── */
+.acoesCell {
+  width: 180px;
+  min-width: 180px;
+  max-width: 180px;
+  overflow: hidden;
+  text-align: center;
+}
+
 .rowActions {
   display: flex;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  gap: 0.5rem;
+  gap: 6px;
+  width: 100%;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .btnExpand {
@@ -242,9 +270,23 @@
 }
 .btnIconDelete:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
 
+.btnIconAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--sc-radius-sm);
+}
+.btnIconAction:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+
 .btnDanger {
   background: var(--sc-danger-text);
-  color: #fff;
+  color: var(--sc-surface);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: var(--sc-radius-sm);
@@ -262,7 +304,23 @@
   margin: 0;
 }
 
-/* ── Buttons ── */
+/* ── Botão de ação do cabeçalho (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Buttons (.btnPrimary também usado nos modais — não alterado) ── */
 .btnPrimary {
   background: var(--sc-action);
   color: var(--sc-action-text);
@@ -601,4 +659,127 @@
 
 .inputFileHidden {
   display: none;
+}
+
+/* ── Card de Documentos Fiscais (popover) ── */
+.docCardBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+}
+
+.docCard {
+  position: fixed;
+  z-index: 251;
+  width: 280px;
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-md);
+  border: 1px solid var(--sc-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.docCardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.85rem 0.9rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.docCardTitulo {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.docCardSubtitulo {
+  margin: 0.15rem 0 0;
+  max-width: 210px;
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docCardBody {
+  padding: 0.35rem 0;
+}
+
+.docCardLoading {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+}
+
+.docCardOption {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--sc-border);
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.docCardOption:last-child { border-bottom: none; }
+.docCardOption:hover { background: var(--sc-bg-secondary); }
+
+.docCardEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.5rem 1.25rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+}
+
+.docCardEmptyTitulo {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.docCardEmptyTexto {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.docCardEmpty .btnSecondary {
+  margin-top: 0.6rem;
+}
+
+/* ── Responsividade da tabela ── */
+@media (max-width: 767px) {
+  /* Colunas menos essenciais em telas pequenas: Import. (sub-linha da Data)
+     e a coluna Parcelas inteira (4ª coluna: Cliente/Fornecedor, Data, Valor
+     Total, Parcelas, Status, Ações). */
+  .dataCellSub {
+    display: none;
+  }
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (min-width: 1400px) {
+  /* Espaço de sobra: não força truncamento do nome do cliente/fornecedor. */
+  .fornecedorNome,
+  .fornecedorSub {
+    white-space: normal;
+    text-overflow: clip;
+  }
 }

@@ -57,6 +57,11 @@ function findFrontend() {
 }
 
 function createWindow() {
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', 'favicon.ico')
+    : path.join(__dirname, '..', 'assets', 'favicon.ico');
+  log(`iconPath: ${iconPath} → ${fs.existsSync(iconPath) ? 'OK' : 'NOT FOUND'}`);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -64,6 +69,8 @@ function createWindow() {
     minHeight: 600,
     show: false,
     backgroundColor: '#F5F5F7',
+    icon: iconPath,
+    title: 'SmartCut',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -82,6 +89,21 @@ function createWindow() {
 ipcMain.handle('get-version', () => app.getVersion());
 ipcMain.handle('get-compras-path', () => comprasPath || ensureComprasFolder());
 ipcMain.handle('open-compras-folder', () => shell.openPath(comprasPath || ensureComprasFolder()));
+
+// Electron não sabe abrir URLs blob: (usadas para PDFs gerados no renderer,
+// ex.: DANFE Simplificada) — não existe arquivo real por trás delas fora do
+// contexto do renderer. Por isso o PDF chega aqui em base64, é salvo num
+// arquivo temporário e aberto com o aplicativo padrão do sistema.
+ipcMain.handle('open-pdf-blob', async (event, base64Data, filename) => {
+  const tempDir = path.join(app.getPath('temp'), 'smartcut');
+  fs.mkdirSync(tempDir, { recursive: true });
+  const safeName = (filename || 'documento.pdf').replace(/[\\/:*?"<>|]/g, '_');
+  const filePath = path.join(tempDir, `${Date.now()}-${safeName}`);
+  fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+  const erro = await shell.openPath(filePath);
+  if (erro) log(`erro ao abrir PDF temporário (${filePath}): ${erro}`);
+  return filePath;
+});
 
 app.whenReady().then(async () => {
   initLog();

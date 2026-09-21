@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { gruposApi, moldesApi } from "../services/api";
+import { getGrupos, importarGrupoMolde, renomearGrupo, deleteGrupo, previewMolde, updateMolde } from "../api/moldes";
 import Modal from "../components/Modal/Modal";
 import GrupoAccordion from "../components/MoldesGrupo/GrupoAccordion";
 import ParteCard from "../components/ImportacaoMoldes/ParteCard";
-import styles from "./Page.module.css";
+import { useAuth } from "../auth/useAuth";
 import ms from "./MoldesPage.module.css";
+
+const MODULO = "moldes";
 
 // ── Constantes ───────────────────────────────────────────────────────
 
@@ -56,6 +58,7 @@ function agruparEmPartes(polylines, tamanhos) {
 // ── Componente principal ─────────────────────────────────────────────
 
 export default function MoldesPage() {
+  const { hasPermission } = useAuth();
   const [grupos, setGrupos] = useState([]);
   const [erro, setErro] = useState(null);
   const [sucesso, setSucesso] = useState(null);
@@ -78,8 +81,7 @@ export default function MoldesPage() {
   const [salvandoEdit, setSalvandoEdit] = useState(false);
 
   function carregarGrupos() {
-    gruposApi
-      .listar()
+    getGrupos()
       .then(setGrupos)
       .catch((e) => setErro(e.message));
   }
@@ -136,7 +138,7 @@ export default function MoldesPage() {
     try {
       const fd = new FormData();
       fd.append("arquivo", arquivo);
-      const data = await moldesApi.preview(fd);
+      const data = await previewMolde(fd);
       // data.pecas já vêm ordenadas por área (backend ordena)
       const partesGeradas = agruparEmPartes(data.pecas, tamanhosSelecionados);
       const usadas = partesGeradas.length * tamanhosSelecionados.length;
@@ -171,7 +173,7 @@ export default function MoldesPage() {
     setSalvando(true);
     setErro(null);
     try {
-      const grupo = await gruposApi.importar({
+      const grupo = await importarGrupoMolde({
         nome_grupo: uploadForm.nomeGrupo.trim(),
         arquivo_path: previewMeta.arquivo_path,
         formato: previewMeta.formato,
@@ -189,7 +191,7 @@ export default function MoldesPage() {
       });
 
       if (uploadForm.codigoRef.trim()) {
-        await gruposApi.renomear(grupo.id, { codigo: uploadForm.codigoRef.trim() });
+        await renomearGrupo(grupo.id, { codigo: uploadForm.codigoRef.trim() });
       }
 
       fecharImportacao();
@@ -210,7 +212,7 @@ export default function MoldesPage() {
   async function deletarGrupo(id, nome) {
     if (!confirm(`Excluir o grupo "${nome}"? Os moldes ficarão sem grupo.`)) return;
     try {
-      await gruposApi.deletar(id);
+      await deleteGrupo(id);
       setSucesso(`Grupo "${nome}" excluído.`);
       carregarGrupos();
       setTimeout(() => setSucesso(null), 4000);
@@ -242,7 +244,7 @@ export default function MoldesPage() {
     setSalvandoEdit(true);
     setErroEdit(null);
     try {
-      await moldesApi.atualizar(editando.id, {
+      await updateMolde(editando.id, {
         nome: editForm.nome.trim(),
         peca: editForm.peca.trim() || null,
         tamanho: editForm.tamanho.trim() || null,
@@ -266,21 +268,23 @@ export default function MoldesPage() {
   const totalPolylines = partes.length * nTamanhos;
 
   return (
-    <div>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Moldes</h1>
-        <button className={styles.btnNovo} onClick={abrirUpload}>
-          + Importar Molde
-        </button>
+    <div className="sc-page">
+      <div className="sc-page-header">
+        <h1>Moldes</h1>
+        {hasPermission(MODULO, "criar") && (
+          <button className={ms.btnNovo} onClick={abrirUpload}>
+            + Importar Molde
+          </button>
+        )}
       </div>
 
-      {erro && <p className={styles.erro}>{erro}</p>}
-      {sucesso && <p className={styles.sucesso}>{sucesso}</p>}
+      {erro && <p className={ms.erro}>{erro}</p>}
+      {sucesso && <p className={ms.sucesso}>{sucesso}</p>}
 
       {/* ── Lista de grupos (accordion) ── */}
       <div className={ms.listaGrupos}>
         {grupos.length === 0 && (
-          <p className={styles.vazio} style={{ textAlign: "center", padding: "32px 0" }}>
+          <p className={ms.vazio} style={{ textAlign: "center", padding: "32px 0" }}>
             Nenhum molde importado ainda.
           </p>
         )}
@@ -288,6 +292,8 @@ export default function MoldesPage() {
           <GrupoAccordion
             key={g.id}
             grupo={g}
+            podeEditar={hasPermission(MODULO, "editar")}
+            podeExcluir={hasPermission(MODULO, "excluir")}
             onEditarMolde={abrirEdicao}
             onDeletarGrupo={deletarGrupo}
           />
@@ -297,13 +303,13 @@ export default function MoldesPage() {
       {/* ══ MODAL: Passo 1 — Upload ══════════════════════════════════════ */}
       {fase === "upload" && (
         <Modal titulo="Importar Molde" onClose={fecharImportacao}>
-          <form className={styles.form} onSubmit={extrairPecas}>
-            {erroUpload && <p className={styles.erroForm}>{erroUpload}</p>}
+          <form className={ms.form} onSubmit={extrairPecas}>
+            {erroUpload && <p className={ms.erroForm}>{erroUpload}</p>}
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Nome da peça *</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Nome da peça *</label>
               <input
-                className={styles.input}
+                className={ms.input}
                 value={uploadForm.nomeGrupo}
                 onChange={(e) =>
                   setUploadForm((p) => ({ ...p, nomeGrupo: e.target.value }))
@@ -313,10 +319,10 @@ export default function MoldesPage() {
               />
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Referência (opcional)</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Referência (opcional)</label>
               <input
-                className={styles.input}
+                className={ms.input}
                 value={uploadForm.codigoRef}
                 onChange={(e) =>
                   setUploadForm((p) => ({ ...p, codigoRef: e.target.value.slice(0, 20) }))
@@ -329,8 +335,8 @@ export default function MoldesPage() {
               </small>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Tamanhos disponíveis no arquivo *</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Tamanhos disponíveis no arquivo *</label>
               <div className={ms.checkboxGrid}>
                 {TAMANHOS_DISPONIVEIS.map((t) => (
                   <label key={t} className={ms.checkboxItem}>
@@ -345,14 +351,14 @@ export default function MoldesPage() {
               </div>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Arquivo (DXF, PLT ou ADS) *</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Arquivo (DXF, PLT ou ADS) *</label>
               <div
-                className={styles.fileDrop}
+                className={ms.fileDrop}
                 onClick={() => inputFileRef.current.click()}
               >
                 {uploadForm.arquivo ? (
-                  <span className={styles.fileNome}>{uploadForm.arquivo.name}</span>
+                  <span className={ms.fileNome}>{uploadForm.arquivo.name}</span>
                 ) : (
                   "Clique para selecionar um arquivo .dxf, .plt ou .ads"
                 )}
@@ -369,11 +375,11 @@ export default function MoldesPage() {
               />
             </div>
 
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={fecharImportacao}>
+            <div className={ms.formActions}>
+              <button type="button" className={ms.btnSecondary} onClick={fecharImportacao}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={extraindo}>
+              <button type="submit" className={ms.btnPrimary} disabled={extraindo}>
                 {extraindo ? "Extraindo peças..." : "Extrair Peças →"}
               </button>
             </div>
@@ -389,7 +395,7 @@ export default function MoldesPage() {
           largura="960px"
         >
           <div className={ms.previewContainer}>
-            {erro && <p className={styles.erroForm}>{erro}</p>}
+            {erro && <p className={ms.erroForm}>{erro}</p>}
 
             {sobra.length > 0 && (
               <p className={ms.avisoSobra}>
@@ -410,12 +416,12 @@ export default function MoldesPage() {
               ))}
             </div>
 
-            <div className={styles.formActions}>
-              <button className={styles.btnSecondary} onClick={fecharImportacao}>
+            <div className={ms.formActions}>
+              <button className={ms.btnSecondary} onClick={fecharImportacao}>
                 Cancelar
               </button>
               <button
-                className={styles.btnPrimary}
+                className={ms.btnPrimary}
                 onClick={confirmarImportacao}
                 disabled={salvando || partes.length === 0}
               >
@@ -431,33 +437,33 @@ export default function MoldesPage() {
       {/* ══ MODAL: Edição de molde individual ════════════════════════════ */}
       {editando && (
         <Modal titulo="Editar Molde" onClose={fecharEdicao}>
-          <form className={styles.form} onSubmit={salvarEdicao}>
-            {erroEdit && <p className={styles.erroForm}>{erroEdit}</p>}
+          <form className={ms.form} onSubmit={salvarEdicao}>
+            {erroEdit && <p className={ms.erroForm}>{erroEdit}</p>}
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Nome *</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Nome *</label>
               <input
-                className={styles.input}
+                className={ms.input}
                 value={editForm.nome}
                 onChange={(e) => setEditForm((p) => ({ ...p, nome: e.target.value }))}
                 required
               />
             </div>
 
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Parte</label>
+            <div className={ms.fileiraDupla}>
+              <div className={ms.campo}>
+                <label className={ms.label}>Parte</label>
                 <input
-                  className={styles.input}
+                  className={ms.input}
                   value={editForm.peca}
                   onChange={(e) => setEditForm((p) => ({ ...p, peca: e.target.value }))}
                   placeholder="Frente, Costa, Manga..."
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Tamanho</label>
+              <div className={ms.campo}>
+                <label className={ms.label}>Tamanho</label>
                 <select
-                  className={styles.select}
+                  className={ms.select}
                   value={editForm.tamanho}
                   onChange={(e) => setEditForm((p) => ({ ...p, tamanho: e.target.value }))}
                 >
@@ -471,10 +477,10 @@ export default function MoldesPage() {
               </div>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Sentido do fio</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Sentido do fio</label>
               <select
-                className={styles.select}
+                className={ms.select}
                 value={editForm.sentido_fio}
                 onChange={(e) => setEditForm((p) => ({ ...p, sentido_fio: e.target.value }))}
               >
@@ -484,10 +490,10 @@ export default function MoldesPage() {
               </select>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Tipo de corte</label>
+            <div className={ms.campo}>
+              <label className={ms.label}>Tipo de corte</label>
               <select
-                className={styles.select}
+                className={ms.select}
                 value={editForm.tipo_corte}
                 onChange={(e) => setEditForm((p) => ({ ...p, tipo_corte: e.target.value }))}
               >
@@ -497,11 +503,11 @@ export default function MoldesPage() {
               </select>
             </div>
 
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={fecharEdicao}>
+            <div className={ms.formActions}>
+              <button type="button" className={ms.btnSecondary} onClick={fecharEdicao}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoEdit}>
+              <button type="submit" className={ms.btnPrimary} disabled={salvandoEdit}>
                 {salvandoEdit ? "Salvando..." : "Salvar"}
               </button>
             </div>

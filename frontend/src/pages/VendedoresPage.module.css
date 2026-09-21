@@ -1,25 +1,80 @@
-.page {
-  padding: 2rem;
-  max-width: 960px;
-}
-
-.header {
+/* ── Barra de busca/filtro — acima do card ── */
+.toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
 }
 
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
+.searchWrap {
+  position: relative;
+  display: inline-block;
+}
+.searchWrap::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 11px;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--sc-text-muted);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.searchWrap::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: 21px;
+  width: 6px;
+  height: 1.5px;
+  background: var(--sc-text-muted);
+  transform: rotate(45deg);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.busca {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  height: 34px;
+  padding: 0 12px 0 32px;
+  font-size: 0.82rem;
   color: var(--sc-text-primary);
-}
-
-.card {
   background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-md);
+  outline: none;
+  width: 280px;
+}
+.busca:focus { border-color: var(--color-primary); }
+
+.select {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  height: 34px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  width: 160px;
+}
+.select:focus { border-color: var(--color-primary); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.badgeAtivo { background: var(--sc-success-bg); color: var(--sc-success-text); }
+.badgeInativo { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+
+/* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
   overflow: hidden;
 }
 
@@ -30,36 +85,32 @@
 
 .table th {
   text-align: left;
-  padding: 0.75rem 1rem;
+  padding: 10px 16px;
   font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sc-text-secondary);
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
   background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
 }
 
 .table td {
-  padding: 0.875rem 1rem;
-  font-size: 0.9rem;
+  padding: 12px 16px;
+  font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
 }
 
-.table tr:last-child td {
-  border-bottom: none;
-}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--sc-bg-secondary); }
 
-.table tr:hover td {
-  background: var(--sc-surface-hover);
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+.tdMono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 
 .empty {
   padding: 2.5rem;
@@ -68,32 +119,31 @@
   font-size: 0.875rem;
 }
 
-/* Badges */
-.badgeAtivo {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: var(--color-primary-light);
-  color: var(--color-primary-dark);
-  border: 1px solid rgba(37,150,190,0.25);
+.actions {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
 }
 
-.badgeInativo {
-  display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-muted);
-  border: 1px solid var(--sc-border);
+/* ── Botão de ação do cabeçalho (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
 }
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Buttons */
+/* ── Buttons (usados também dentro do modal — não alterados) ── */
 .btnPrimary {
-  background: var(--sc-action);
+  background: var(--color-primary);
   color: var(--sc-action-text);
   border: none;
   padding: 0.5rem 1rem;
@@ -101,10 +151,10 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s;
 }
-
-.btnPrimary:hover { background: var(--sc-action-hover); }
+.btnPrimary:hover    { background: var(--color-primary-hover); }
 .btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnSecondary {
@@ -117,8 +167,8 @@
   font-weight: 500;
   cursor: pointer;
 }
-
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover    { background: var(--sc-surface-hover); }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btnLink {
   background: none;
@@ -129,27 +179,11 @@
   padding: 0.25rem 0.5rem;
   border-radius: var(--sc-radius-sm);
 }
+.btnLink:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
 
-.btnLink:hover {
-  background: var(--sc-surface-hover);
-  color: var(--sc-text-primary);
-}
+.btnDanger:hover { color: var(--sc-danger-text) !important; }
 
-.btnDash {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-primary);
-  border: 1px solid var(--sc-border-strong);
-  padding: 0.3rem 0.75rem;
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btnDash:hover { background: var(--sc-200); }
-
-/* Modal */
+/* ── Overlay / Modal ── */
 .overlay {
   position: fixed;
   inset: 0;
@@ -158,57 +192,388 @@
   align-items: center;
   justify-content: center;
   z-index: 200;
+  padding: 1rem;
 }
 
 .modal {
   background: var(--sc-surface);
   border-radius: var(--sc-radius-lg);
-  padding: 2rem;
-  width: 380px;
-  max-width: 90vw;
+  width: 700px;
+  max-width: 100%;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  flex-shrink: 0;
 }
 
 .modalTitle {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: var(--sc-text-primary);
   margin: 0;
 }
 
-.field {
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+.btnClose:hover { color: var(--sc-text-primary); }
+
+.modalBody {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--sc-text-secondary);
-}
-
-.input {
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: var(--sc-text-primary);
-  background: var(--sc-surface);
-  outline: none;
-}
-
-.input:focus { border-color: var(--sc-action); }
-
-.erro {
-  font-size: 0.8rem;
-  color: var(--sc-danger-text);
-  margin: 0;
+  gap: 0.25rem;
 }
 
 .modalActions {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
-  margin-top: 0.25rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+/* ── Abas do modal ── */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: 0.8rem 0.25rem;
+  margin-right: 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab:hover { color: var(--sc-text-primary); }
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.tabErro { color: var(--sc-danger-text) !important; }
+
+.tabInner {
+  padding: 1.25rem 1.5rem;
+}
+
+/* ── Credenciais ── */
+.credInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  margin-bottom: 4px;
+}
+
+.credLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+}
+
+.credValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  font-family: monospace;
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+/* ── Catálogos ── */
+.catalogosList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.catalogoItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.catalogoItem input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.catalogoLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  flex: 1;
+}
+
+.catalogoNome {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+}
+
+.catalogoTabela {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+/* ── Leads ── */
+.leadsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.leadItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sc-border);
+  gap: 8px;
+}
+
+.leadInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.leadNome {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+}
+
+.leadSub {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.leadStatus {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 2px 7px;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 4px;
+  color: var(--sc-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Mensagens ── */
+.msgOk {
+  font-size: 0.82rem;
+  color: var(--sc-success-text);
+  background: var(--sc-success-bg);
+  border: 1px solid var(--sc-success-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.msgErro {
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Botões pill (sub-modais dentro da aba) ── */
+.btnPill {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: 20px;
+  padding: 0.3rem 0.875rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPill:hover { background: var(--color-primary-hover); }
+
+.modalPillOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.modalPill {
+  background: var(--sc-surface);
+  border-radius: 16px;
+  padding: 28px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modalPillWide { width: 480px; }
+
+.modalPillTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 1.25rem;
+}
+
+.modalPillActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding-top: 1.25rem;
+}
+
+.btnPillPrimary {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPillPrimary:hover    { background: var(--color-primary-hover); }
+.btnPillPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnPillSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 20px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPillSecondary:hover { background: var(--sc-surface-hover); }
+
+/* ── Section labels ── */
+.sectionLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--sc-text-secondary);
+  margin: 0.5rem 0 0.75rem;
+}
+.sectionLabelMt { margin-top: 1.25rem; }
+
+/* ── Field grid ── */
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-secondary);
+}
+
+.fieldFull { grid-column: span 2; }
+
+/* ── Inputs ── */
+.input {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  height: 34px;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.input:focus { border-color: var(--color-primary); }
+.input:disabled, .input:read-only { background: var(--sc-bg-secondary); color: var(--sc-text-muted); cursor: not-allowed; }
+
+.textarea {
+  height: auto;
+  min-height: 56px;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+}
+
+/* ── Endereço inline (Endereço + Número na mesma linha) ── */
+.endRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.endRow .input { flex: 1; }
+
+.inputNumero {
+  width: 90px !important;
+  flex: 0 0 90px !important;
+}
+
+/* ── Error ── */
+.erro {
+  font-size: 0.8rem;
+  color: var(--sc-danger-text);
+  margin: 0.5rem 0 0;
 }

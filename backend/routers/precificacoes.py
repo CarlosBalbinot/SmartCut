@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.precificacao import ConfiguracaoEmpresa, ConfiguracaoCustosFixos, Precificacao
 from schemas.precificacao_schema import (
     ConfiguracaoEmpresaOut,
@@ -24,16 +25,33 @@ from services.precificacao_service import (
 
 router = APIRouter(prefix="/api/v1", tags=["precificacao"])
 
+# /configuracao-precificacao e /configuracao-custos-fixos alimentam o
+# painel "Configurações Gerais" da tela de Configurações (alíquota do
+# Simples Nacional, custo de etiqueta, custos fixos de produção — nada
+# aqui é dado cadastral da empresa; isso é /configuracao-empresa/, servido
+# só por routers/configuracao_empresa.py). Este path já se chamou
+# /configuracao-empresa/, mas colidia com o path real de dados da empresa
+# (mesmo prefixo, registrado depois em main.py) e deixava o painel "Dados
+# da Empresa" com os campos sempre em branco — corrigido separando os
+# paths.
+# configuracoes_ver/configuracoes_editar são módulos próprios em
+# MODULOS_VALIDOS (mesmo padrão de pedidos_ver/pedidos_criar/...), não um
+# módulo "configuracoes" com ação variável — por isso a ação passada é
+# sempre "ver" (única ação hoje verificada em todo o sistema).
+_MOD_CONFIG_VER = "configuracoes_ver"
+_MOD_CONFIG_EDITAR = "configuracoes_editar"
+_MOD_PRECO = "precificacao"
 
-# ── Configuração da empresa ──────────────────────────────────────────────
 
-@router.get("/configuracao-empresa/")
+# ── Configuração fiscal/precificação (alíquota, custo de etiqueta) ───────
+
+@router.get("/configuracao-precificacao/", dependencies=[Depends(require_permission(_MOD_CONFIG_VER, "ver"))])
 def get_config(db: Session = Depends(get_db)):
     config = get_ou_criar_config(db)
     return {"data": ConfiguracaoEmpresaOut.model_validate(config), "error": None}
 
 
-@router.patch("/configuracao-empresa/")
+@router.patch("/configuracao-precificacao/", dependencies=[Depends(require_permission(_MOD_CONFIG_EDITAR, "ver"))])
 def update_config(payload: ConfiguracaoEmpresaUpdate, db: Session = Depends(get_db)):
     config = get_ou_criar_config(db)
     for field, val in payload.model_dump(exclude_unset=True).items():
@@ -45,13 +63,19 @@ def update_config(payload: ConfiguracaoEmpresaUpdate, db: Session = Depends(get_
 
 # ── Custos fixos ─────────────────────────────────────────────────────────
 
-@router.get("/configuracao-custos-fixos/")
+@router.get(
+    "/configuracao-custos-fixos/",
+    dependencies=[Depends(require_permission(_MOD_CONFIG_VER, "ver"))],
+)
 def get_custos(db: Session = Depends(get_db)):
     custos = get_ou_criar_custos(db)
     return {"data": ConfiguracaoCustosFixosOut.model_validate(custos), "error": None}
 
 
-@router.patch("/configuracao-custos-fixos/")
+@router.patch(
+    "/configuracao-custos-fixos/",
+    dependencies=[Depends(require_permission(_MOD_CONFIG_EDITAR, "ver"))],
+)
 def update_custos(payload: ConfiguracaoCustosFixosUpdate, db: Session = Depends(get_db)):
     custos = get_ou_criar_custos(db)
     for field, val in payload.model_dump(exclude_unset=True).items():
@@ -63,7 +87,7 @@ def update_custos(payload: ConfiguracaoCustosFixosUpdate, db: Session = Depends(
 
 # ── Precificações ────────────────────────────────────────────────────────
 
-@router.get("/precificacoes/")
+@router.get("/precificacoes/", dependencies=[Depends(require_permission(_MOD_PRECO, "ver"))])
 def listar(grupo_id: str | None = None, db: Session = Depends(get_db)):
     q = select(Precificacao).where(Precificacao.ativo == True)
     if grupo_id:
@@ -72,7 +96,7 @@ def listar(grupo_id: str | None = None, db: Session = Depends(get_db)):
     return {"data": [PrecificacaoOut.model_validate(r) for r in rows], "error": None}
 
 
-@router.post("/precificacoes/")
+@router.post("/precificacoes/", dependencies=[Depends(require_permission(_MOD_PRECO, "criar"))])
 def upsert(payload: PrecificacaoCreate, db: Session = Depends(get_db)):
     existing = db.execute(
         select(Precificacao).where(
@@ -100,7 +124,10 @@ def upsert(payload: PrecificacaoCreate, db: Session = Depends(get_db)):
     return {"data": PrecificacaoOut.model_validate(prec), "error": None}
 
 
-@router.get("/precificacoes/{grupo_id}/calcular")
+@router.get(
+    "/precificacoes/{grupo_id}/calcular",
+    dependencies=[Depends(require_permission(_MOD_PRECO, "ver"))],
+)
 def calcular(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     config = get_ou_criar_config(db)
     custos = get_ou_criar_custos(db)
@@ -125,7 +152,10 @@ def calcular(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": resultado, "error": None}
 
 
-@router.patch("/precificacoes/{precificacao_id}")
+@router.patch(
+    "/precificacoes/{precificacao_id}",
+    dependencies=[Depends(require_permission(_MOD_PRECO, "editar"))],
+)
 def update(
     precificacao_id: uuid.UUID,
     payload: PrecificacaoUpdate,
@@ -146,7 +176,10 @@ def update(
     return {"data": PrecificacaoOut.model_validate(prec), "error": None}
 
 
-@router.delete("/precificacoes/{precificacao_id}")
+@router.delete(
+    "/precificacoes/{precificacao_id}",
+    dependencies=[Depends(require_permission(_MOD_PRECO, "excluir"))],
+)
 def deletar(precificacao_id: uuid.UUID, db: Session = Depends(get_db)):
     prec = db.get(Precificacao, precificacao_id)
     if not prec:

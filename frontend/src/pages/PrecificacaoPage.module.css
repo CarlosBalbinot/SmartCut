@@ -19,12 +19,8 @@
   font-size: 13px;
 }
 
-/* ── Seções ── */
+/* ── Seções — sc-card cuida de fundo/borda/sombra/padding ── */
 .secao {
-  background: #FFFFFF;
-  border-radius: var(--sc-radius-lg);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
-  padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -37,10 +33,11 @@
 }
 
 .secaoTitulo {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--sc-text-primary);
-  letter-spacing: -0.2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
 }
 
 .vazio {
@@ -58,10 +55,10 @@
 
 .grupoCard {
   border: none;
-  border-radius: var(--sc-radius-md);
+  border-radius: var(--sc-card-radius);
   overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
-  background: #FFFFFF;
+  box-shadow: var(--sc-card-shadow);
+  background: var(--sc-card-bg);
 }
 
 .grupoHeader {
@@ -77,7 +74,7 @@
   transition: background-color 0.12s;
 }
 
-.grupoHeader:hover { background-color: #FBFBFD; }
+.grupoHeader:hover { background-color: var(--sc-surface); }
 
 .seta {
   font-size: 1.1rem;
@@ -127,7 +124,7 @@
 /* ── Faixa tags ── */
 .faixaPadrao {
   display: inline-block;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   color: var(--sc-text-secondary);
   font-size: 11px;
   font-weight: 600;
@@ -183,7 +180,7 @@
 .btnDeletarNao {
   padding: 2px 8px;
   font-size: 12px;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   color: var(--sc-text-secondary);
   border: none;
   border-radius: 6px;
@@ -207,28 +204,30 @@
 }
 
 .tabelaPrec th {
-  padding: 6px 10px;
+  padding: 10px 16px;
   text-align: left;
-  font-size: 11px;
-  font-weight: 500;
-  color: #AEAEB2;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sc-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  letter-spacing: 0.05em;
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
 }
 
 .tabelaPrec td {
-  padding: 10px 10px;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sc-border);
   color: var(--sc-text-primary);
 }
 
 .tabelaPrec tbody tr:last-child td { border-bottom: none; }
-.tabelaPrec tbody tr:hover td { background-color: #FBFBFD; }
+.tabelaPrec tbody tr:hover td { background-color: var(--sc-bg-secondary); }
 
 .tamanhoTag {
   display: inline-block;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   color: var(--sc-text-secondary);
   font-size: 11px;
   font-weight: 700;
@@ -253,7 +252,7 @@
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   color: var(--sc-text-primary);
   border: none;
   border-radius: 980px;
@@ -262,14 +261,14 @@
   transition: background-color 0.1s;
 }
 
-.btnEditar:hover { background: #E5E5EA; }
+.btnEditar:hover { background: var(--sc-border-strong); }
 
 .btnNovaTamanho {
   align-self: flex-start;
   padding: 7px 14px;
   font-size: 13px;
   font-weight: 500;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   color: var(--sc-text-secondary);
   border: none;
   border-radius: 980px;
@@ -277,7 +276,7 @@
   transition: background-color 0.12s, color 0.12s;
 }
 
-.btnNovaTamanho:hover { background: #E5E5EA; color: var(--sc-text-primary); }
+.btnNovaTamanho:hover { background: var(--sc-border-strong); color: var(--sc-text-primary); }
 
 /* ── Tabela resumo ── */
 .tabelaResumo {
@@ -287,30 +286,31 @@
 }
 
 .tabelaResumo th {
-  padding: 8px 12px;
+  padding: 10px 16px;
   text-align: left;
-  font-size: 11px;
-  font-weight: 500;
-  color: #AEAEB2;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sc-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: #FBFBFD;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  letter-spacing: 0.05em;
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
 }
 
 .tabelaResumo td {
-  padding: 12px 12px;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sc-border);
   color: var(--sc-text-primary);
 }
 
 .tabelaResumo tbody tr:last-child td { border-bottom: none; }
-.tabelaResumo tbody tr:hover td { background: #FBFBFD; }
+.tabelaResumo tbody tr:hover td { background: var(--sc-bg-secondary); }
 
 .precoDestaque { font-weight: 700; }
 
 .margemBoa   { background: var(--sc-success-bg); color: var(--sc-success-text); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-.margemMedia { background: #F5F5F7; color: #6E6E73; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.margemMedia { background: var(--sc-bg-secondary); color: #6E6E73; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
 .margemBaixa { background: var(--sc-danger-bg); color: var(--sc-danger-text); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
 
 /* ── Formulário compartilhado ── */
@@ -339,18 +339,20 @@
 }
 
 .input {
-  padding: 10px 14px;
-  border: none;
-  border-radius: var(--sc-radius-sm);
-  font-size: 14px;
-  background: #F5F5F7;
+  width: 100%;
+  padding: var(--sc-input-padding);
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-input-font-size);
   color: var(--sc-text-primary);
   outline: none;
   font-family: inherit;
-  transition: box-shadow 0.15s;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
 }
 
-.input:focus { box-shadow: 0 0 0 3px rgba(37,150,190,0.25); }
+.input:focus { border-color: var(--color-primary); }
 .input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .grade2 {
@@ -363,7 +365,7 @@
 .toggle {
   display: flex;
   gap: 4px;
-  background: #F5F5F7;
+  background: var(--sc-bg-secondary);
   border-radius: var(--sc-radius-sm);
   padding: 3px;
   margin-bottom: 8px;
@@ -411,7 +413,7 @@
 
 /* ── Preview em tempo real ── */
 .preview {
-  background: #FBFBFD;
+  background: var(--sc-surface);
   border-radius: var(--sc-radius-sm);
   padding: 14px 16px;
   display: flex;
@@ -484,8 +486,8 @@
 
 .btnSecundario {
   padding: 9px 18px;
-  background: #F5F5F7;
-  color: #1D1D1F;
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
   border: none;
   border-radius: 980px;
   font-size: 14px;
@@ -494,4 +496,4 @@
   transition: background-color 0.15s;
 }
 
-.btnSecundario:hover { background: #E5E5EA; }
+.btnSecundario:hover { background: var(--sc-border-strong); }

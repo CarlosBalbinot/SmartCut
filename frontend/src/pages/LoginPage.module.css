@@ -1,0 +1,230 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+}
+
+/* ── Coluna esquerda: painel visual ── */
+.leftPanel {
+  flex: 1 1 50%;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a6d8f 0%, #2596be 100%);
+}
+
+.circleLarge,
+.circleSmall {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  opacity: 0.08;
+}
+
+.circleLarge {
+  width: 400px;
+  height: 400px;
+  bottom: -160px;
+  left: -140px;
+}
+
+.circleSmall {
+  width: 280px;
+  height: 280px;
+  bottom: -60px;
+  left: 40px;
+}
+
+.leftContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logoImg {
+  width: 200px;
+  height: auto;
+  filter: brightness(0) invert(1) drop-shadow(0 8px 32px rgba(255, 255, 255, 0.15));
+}
+
+.brandName {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 1.5rem;
+}
+
+/* ── Coluna direita: formulário ── */
+.rightPanel {
+  flex: 1 1 50%;
+  background: var(--sc-surface);
+  padding: 3rem;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.formWrap {
+  width: 100%;
+  max-width: 360px;
+}
+
+.greeting {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.greetingSub {
+  font-size: 0.875rem;
+  color: var(--sc-text-muted);
+  margin: 0 0 2.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 1.25rem;
+}
+
+.label {
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-label);
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: var(--sc-input-padding);
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  font-size: 14px;
+  color: var(--sc-text-primary);
+  background: var(--sc-input-bg);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 37,150,190), .15);
+}
+
+.passwordRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordRow .input {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.toggleBtn {
+  position: absolute;
+  right: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--sc-radius-sm);
+}
+
+.toggleBtn:hover {
+  color: var(--sc-text-primary);
+}
+
+.error {
+  font-size: 12.5px;
+  color: var(--sc-danger-text, #D33);
+  margin-bottom: 14px;
+}
+
+.submitBtn {
+  width: 100%;
+  height: 42px;
+  margin-top: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.submitBtn:hover {
+  filter: brightness(0.92);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.footer {
+  color: var(--sc-text-muted);
+  font-size: 0.72rem;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+/* ── Estado de verificação inicial ── */
+.checkingWrap {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--sc-action-hover) 0%, var(--color-primary) 50%, #1a6d8f 100%);
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--sc-surface);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsividade ── */
+@media (max-width: 768px) {
+  .leftPanel {
+    display: none;
+  }
+
+  .rightPanel {
+    flex: 1 1 100%;
+  }
+
+  .page {
+    background: var(--sc-bg-secondary);
+  }
+}

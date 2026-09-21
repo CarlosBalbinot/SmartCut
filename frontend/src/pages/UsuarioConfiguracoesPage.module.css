@@ -1,0 +1,93 @@
+.page {
+  width: 100%;
+  max-width: 860px;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  margin: 0 0 1.5rem;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--sc-card-shadow);
+}
+
+.cardTitulo {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.cardDescricao {
+  font-size: 0.8rem;
+  color: var(--sc-text-secondary);
+}
+
+.section {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 1.25rem 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0 0 1rem;
+}
+
+.updateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.updateItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--sc-text-secondary);
+}
+
+.updateBadge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 4px;
+  padding: 0.1rem 0.45rem;
+}
+
+.updateTexto {
+  color: var(--sc-text-primary);
+}

@@ -62,7 +62,7 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--sc-bg-secondary);
+  background-color: var(--sc-content-bg);
   color: var(--sc-text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -74,3 +74,78 @@ a:hover { text-decoration: underline; }
 
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; }
+
+/* ── Scrollbar minimalista ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d0d0d0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b0b0b0;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d0d0d0 transparent;
+}
+
+/* ── Utilitários do design system — base para os .module.css ── */
+.sc-input {
+  width: 100%;
+  padding: var(--sc-input-padding);
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-input-font-size);
+  font-family: var(--sc-font-sans, inherit);
+  color: var(--sc-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.sc-input:focus {
+  border-color: var(--color-primary);
+}
+.sc-input::placeholder {
+  color: var(--sc-text-muted);
+}
+
+.sc-page-title {
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  margin: 0 0 var(--sc-space-lg);
+}
+
+.sc-card {
+  background: var(--sc-card-bg);
+  border: var(--sc-card-border);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Sem padding próprio: o wrapper .content (App.module.css) já aplica
+   28px de padding ao redor de toda rota — um padding aqui duplicaria
+   a margem em todas as páginas que usam esta classe. */
+.sc-page {
+  max-width: 1280px;
+}
+
+.sc-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.sc-page-header h1 {
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  margin: 0;
+}

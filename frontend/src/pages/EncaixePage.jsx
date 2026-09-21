@@ -92,7 +92,7 @@ export default function EncaixePage() {
   if (erro) {
     return (
       <div className={styles.pagina}>
-        <button className={styles.voltar} onClick={() => navigate(`/pedidos/${id}`)}>
+        <button className={styles.voltar} onClick={() => navigate(`/producao/pedidos/${id}`)}>
           ← Pedido
         </button>
         <p className={styles.erroMsg}>{erro}</p>
@@ -103,7 +103,7 @@ export default function EncaixePage() {
   if (encaixes.length === 0) {
     return (
       <div className={styles.pagina}>
-        <button className={styles.voltar} onClick={() => navigate(`/pedidos/${id}`)}>
+        <button className={styles.voltar} onClick={() => navigate(`/producao/pedidos/${id}`)}>
           ← Pedido
         </button>
         <p className={styles.vazio}>Nenhum encaixe gerado para este pedido.</p>
@@ -125,7 +125,7 @@ export default function EncaixePage() {
       <div className={styles.topBar}>
         <button
           className={styles.voltar}
-          onClick={() => navigate(`/pedidos/${id}`)}
+          onClick={() => navigate(`/producao/pedidos/${id}`)}
         >
           ← Pedido
         </button>

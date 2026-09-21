@@ -1,3 +1,173 @@
+/* ── Botão de ação do cabeçalho (fora do modal) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+
+/* ── Feedback (migrado de Page.module.css) ── */
+.erro {
+  color: var(--sc-danger-text);
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background-color: var(--sc-danger-bg);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+}
+
+.sucesso {
+  color: var(--sc-success-text);
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background-color: var(--sc-success-bg);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+}
+
+.vazio {
+  text-align: center;
+  color: var(--sc-text-muted);
+  padding: 32px 0;
+  font-size: 14px;
+}
+
+/* ── Formulário (migrado de Page.module.css) ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.erroForm {
+  color: var(--sc-danger-text);
+  padding: 10px 14px;
+  background-color: var(--sc-danger-bg);
+  border-radius: var(--sc-radius-sm);
+  font-size: 13px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-label);
+  color: var(--sc-text-primary);
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: var(--sc-input-padding);
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-input-font-size);
+  color: var(--sc-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.input::placeholder { color: var(--sc-text-muted); }
+
+.input:focus,
+.select:focus {
+  border-color: var(--color-primary);
+}
+
+.fileiraDupla {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* ── Upload de arquivo (migrado de Page.module.css) ── */
+.fileDrop {
+  border: 2px dashed rgba(0,0,0,0.15);
+  border-radius: var(--sc-radius-sm);
+  padding: 20px 16px;
+  text-align: center;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fileDrop:hover {
+  border-color: var(--color-primary);
+  background-color: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
+
+.fileNome {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.btnSecondary {
+  padding: 9px 18px;
+  background-color: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btnSecondary:hover {
+  background-color: var(--sc-border-strong);
+}
+
+.btnPrimary {
+  padding: 9px 18px;
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.1s;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  transform: scale(1.01);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Lista de grupos ── */
 .listaGrupos {
   display: flex;
@@ -22,14 +192,14 @@
   font-size: 13px;
   font-weight: 600;
   transition: background-color 0.12s;
-  background-color: #F5F5F7;
+  background-color: var(--sc-bg-secondary);
   color: var(--sc-text-primary);
   user-select: none;
   border: none;
 }
 
 .checkboxItem:hover {
-  background-color: #E5E5EA;
+  background-color: var(--sc-border-strong);
 }
 
 .checkboxItem input[type="checkbox"] {
@@ -48,7 +218,7 @@
 
 .avisoSobra {
   padding: 10px 14px;
-  background-color: #F5F5F7;
+  background-color: var(--sc-bg-secondary);
   border-radius: var(--sc-radius-sm);
   font-size: 13px;
   color: var(--sc-text-secondary);

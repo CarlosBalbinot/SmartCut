@@ -4,7 +4,6 @@ import { pedidosApi } from "../services/api";
 import Modal from "../components/Modal/Modal";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
 import { useToast } from "../contexts/ToastContext";
-import styles from "./Page.module.css";
 import ps from "./PedidosPage.module.css";
 
 const STATUS = {
@@ -79,7 +78,7 @@ export default function PedidosPage() {
         tecido_ids: [],
       });
       setModalAberto(false);
-      navigate(`/pedidos/${novo.id}?modo=editar`);
+      navigate(`/producao/pedidos/${novo.id}?modo=editar`);
     } catch (ex) {
       const match = ex.message.match(/Sugerimos o número: (\S+)/);
       if (match) {
@@ -101,7 +100,7 @@ export default function PedidosPage() {
     try {
       const novo = await pedidosApi.duplicar(p.id);
       addToast(`Pedido ${novo.num_pedido} criado como cópia de ${p.num_pedido}.`, "sucesso");
-      navigate(`/pedidos/${novo.id}?modo=editar`);
+      navigate(`/producao/pedidos/${novo.id}?modo=editar`);
     } catch (ex) {
       addToast(ex.message, "erro");
     }
@@ -127,15 +126,16 @@ export default function PedidosPage() {
   // ── Render ────────────────────────────────────────────────────────
 
   return (
-    <div>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Pedidos</h1>
-        <button className={styles.btnNovo} onClick={abrirModal}>
+    <div className="sc-page">
+      <div className="sc-page-header">
+        <h1>Pedidos de Corte</h1>
+        <button className={ps.btnNovo} onClick={abrirModal}>
           + Novo Pedido
         </button>
       </div>
 
-      <table className={styles.tabela}>
+      <div className={`sc-card ${ps.tableCard}`}>
+      <table className={ps.tabela}>
         <thead>
           <tr>
             <th>Nº Pedido</th>
@@ -152,7 +152,7 @@ export default function PedidosPage() {
             return (
               <tr
                 key={p.id}
-                onDoubleClick={() => navigate(`/pedidos/${p.id}`)}
+                onDoubleClick={() => navigate(`/producao/pedidos/${p.id}`)}
                 className={ps.linhaTabela}
               >
                 <td className={ps.numPedido}>{p.num_pedido}</td>
@@ -171,7 +171,7 @@ export default function PedidosPage() {
                 <td className={ps.acoesCell}>
                   <button
                     className={ps.btnAbrir}
-                    onClick={() => navigate(`/pedidos/${p.id}`)}
+                    onClick={() => navigate(`/producao/pedidos/${p.id}`)}
                   >
                     Abrir →
                   </button>
@@ -204,35 +204,36 @@ export default function PedidosPage() {
           })}
           {pedidos.length === 0 && (
             <tr>
-              <td colSpan={6} className={styles.vazio}>
+              <td colSpan={6} className={ps.vazio}>
                 Nenhum pedido cadastrado.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+      </div>
 
       {/* ── Modal: Novo Pedido ── */}
       {modalAberto && (
         <Modal titulo="Novo Pedido" onClose={() => setModalAberto(false)}>
-          <form className={styles.form} onSubmit={handleSubmit}>
-            {erroForm && <p className={styles.erroForm}>{erroForm}</p>}
+          <form className={ps.form} onSubmit={handleSubmit}>
+            {erroForm && <p className={ps.erroForm}>{erroForm}</p>}
 
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Nº Pedido *</label>
+            <div className={ps.fileiraDupla}>
+              <div className={ps.campo}>
+                <label className={ps.label}>Nº Pedido *</label>
                 <input
-                  className={styles.input}
+                  className={ps.input}
                   value={form.num_pedido}
                   onChange={(e) => setForm((p) => ({ ...p, num_pedido: e.target.value }))}
                   required
                   autoFocus
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Data *</label>
+              <div className={ps.campo}>
+                <label className={ps.label}>Data *</label>
                 <input
-                  className={styles.input}
+                  className={ps.input}
                   type="date"
                   value={form.data_pedido}
                   onChange={(e) => setForm((p) => ({ ...p, data_pedido: e.target.value }))}
@@ -241,25 +242,25 @@ export default function PedidosPage() {
               </div>
             </div>
 
-            <div className={styles.campo}>
-              <label className={styles.label}>Cliente</label>
+            <div className={ps.campo}>
+              <label className={ps.label}>Cliente</label>
               <input
-                className={styles.input}
+                className={ps.input}
                 value={form.cliente}
                 onChange={(e) => setForm((p) => ({ ...p, cliente: e.target.value }))}
                 placeholder="Nome do cliente (opcional)"
               />
             </div>
 
-            <div className={styles.formActions}>
+            <div className={ps.formActions}>
               <button
                 type="button"
-                className={styles.btnSecondary}
+                className={ps.btnSecondary}
                 onClick={() => setModalAberto(false)}
               >
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvando}>
+              <button type="submit" className={ps.btnPrimary} disabled={salvando}>
                 {salvando ? "Criando..." : "Criar Pedido"}
               </button>
             </div>
@@ -289,7 +290,7 @@ export default function PedidosPage() {
             <div key={p.id}>
               <button
                 className={ps.dropdownItem}
-                onClick={() => { setMenuAberto(null); navigate(`/pedidos/${p.id}?modo=editar`); }}
+                onClick={() => { setMenuAberto(null); navigate(`/producao/pedidos/${p.id}?modo=editar`); }}
               >
                 ✏ Editar
               </button>

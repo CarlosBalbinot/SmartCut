@@ -1,14 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
+import { FileText } from "lucide-react";
 import {
   getVendasFinanceiras, createVendaFinanceira, getVendaFinanceira, uploadAnexo,
   updateVendaFinanceira, deleteVendaFinanceira,
   createLancamento, updateLancamento, deleteLancamento,
   downloadAnexo, deleteAnexo,
   importarLoteVendas, importarVendaFinal,
+  gerarDanfeSimplificada,
 } from "../../api/financeiro";
 import FormularioCompraVenda from "./FormularioCompraVenda";
 import ImportarXMLModal from "./ImportarXMLModal";
+import DocumentosFiscaisCard from "./DocumentosFiscaisCard";
+import { useAuth } from "../../auth/useAuth";
 import styles from "./comprasVendas.module.css";
+
+const MODULO = "financeiro_vendas";
 
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
@@ -30,6 +36,51 @@ function statusGeralInfo(total, pagas) {
 
 function extractParcelas(obj) {
   return obj.parcelas || obj.lancamentos || [];
+}
+
+// Decide o tipo do anexo de nota fiscal pela extensão do arquivo: XML (dados
+// estruturados, usado para gerar a DANFE Simplificada) ou NF (PDF).
+function tipoAnexoPorArquivo(arquivo) {
+  return (arquivo?.name || "").toLowerCase().endsWith(".xml") ? "XML" : "NF";
+}
+
+// Um anexo é "XML" se foi marcado como tal OU se o nome do arquivo termina em
+// .xml (cobre anexos antigos, salvos com tipo='NF' antes dessa distinção
+// existir). "PDF da NF" é tipo='NF' que NÃO seja, na prática, um XML.
+function ehAnexoXml(a) {
+  return a?.tipo === "XML" || (a?.nome_original || "").toLowerCase().endsWith(".xml");
+}
+function ehAnexoNfPdf(a) {
+  return a?.tipo === "NF" && !(a?.nome_original || "").toLowerCase().endsWith(".xml");
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Abre um PDF gerado no cliente (Blob) com o visualizador padrão do sistema.
+// window.open com URL blob: não funciona no Electron (não há app para "abrir"
+// um link blob) — por isso, quando disponível, salva em arquivo temporário
+// via IPC e abre com o app padrão; fora do Electron (browser/dev), cai no
+// window.open tradicional.
+async function abrirPdfBlob(blob, filename) {
+  if (window.electronAPI?.openPdfBlob) {
+    const base64 = await blobToBase64(blob);
+    await window.electronAPI.openPdfBlob(base64, filename);
+  } else {
+    const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
+    window.open(url, "_blank");
+  }
+}
+
+function truncarNome(nome) {
+  if (!nome) return "";
+  return nome.length > 40 ? nome.substring(0, 37) + "..." : nome;
 }
 
 // Resolve total/pagas na melhor fonte disponível: parcelas já carregadas no
@@ -57,7 +108,34 @@ function parcelaStatusInfo(p) {
   return { label: "Pendente", cls: "stPENDENTE" };
 }
 
+// Agrupa por mês/ano do campo de data informado (ex.: "data_venda").
+// Datas são strings "AAAA-MM-DD" e são parseadas manualmente (em vez de
+// `new Date(string)`) para evitar o parse como UTC do JS deslocar o dia 1º
+// de cada mês para o mês anterior em fusos horários negativos (ex.: BRT).
+function agruparPorMes(itens, campoData) {
+  const grupos = {};
+  itens.forEach((item) => {
+    const dataStr = (item[campoData] || "").split("T")[0];
+    if (!dataStr) return;
+    const [ano, mes] = dataStr.split("-").map(Number);
+    if (!ano || !mes) return;
+    const chave = `${ano}-${String(mes).padStart(2, "0")}`;
+    if (!grupos[chave]) {
+      const label = new Date(ano, mes - 1, 1)
+        .toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+        .replace(/^\w/, (c) => c.toUpperCase());
+      grupos[chave] = { label, chave, itens: [] };
+    }
+    grupos[chave].itens.push(item);
+  });
+  return Object.values(grupos).sort((a, b) => b.chave.localeCompare(a.chave));
+}
+
+const totalGrupo = (itens) =>
+  itens.reduce((acc, item) => acc + (parseFloat(item.valor_total) || 0), 0);
+
 export default function VendasFinanceiro() {
+  const { hasPermission } = useAuth();
   const [vendas,        setVendas]        = useState([]);
   const [loading,       setLoading]       = useState(false);
   const [expandedId,    setExpandedId]    = useState(null);
@@ -91,6 +169,15 @@ export default function VendasFinanceiro() {
   const [modalImportar,  setModalImportar]  = useState(false);
   const [resultadoImport, setResultadoImport] = useState(null);
 
+  // Gerar DANFE avulsa (a partir de um XML solto, sem importar a nota)
+  const danfeInputRef = useRef(null);
+  const [gerandoDanfeAvulsa, setGerandoDanfeAvulsa] = useState(false);
+
+  // Agrupamento por mês — chave do mês → true quando aberto (default: fechado)
+  const [mesesAbertos, setMesesAbertos] = useState({});
+  const toggleColapso = (chave) =>
+    setMesesAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
+
   const recarregarVendas = () => {
     setLoading(true);
     getVendasFinanceiras()
@@ -120,6 +207,24 @@ export default function VendasFinanceiro() {
     setArquivosXml(null);
     setResultadoImport({ sucesso, falhas });
     if (sucesso > 0) recarregarVendas();
+  };
+
+  // ── Gerar DANFE avulsa (sem importar a nota) ────────────────────────────────
+  const handleAbrirSeletorDanfe = () => danfeInputRef.current?.click();
+
+  const handleArquivoDanfeSelecionado = async (e) => {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!arquivo) return;
+    setGerandoDanfeAvulsa(true);
+    try {
+      const blob = await gerarDanfeSimplificada(arquivo);
+      const nomeBase = arquivo.name.replace(/\.xml$/i, "");
+      await abrirPdfBlob(blob, `DANFE-${nomeBase}.pdf`);
+    } catch (err) {
+      window.alert("Erro ao gerar DANFE: " + (err.message || ""));
+    }
+    setGerandoDanfeAvulsa(false);
   };
 
   // ── Expand row ────────────────────────────────────────────────────────────
@@ -155,8 +260,9 @@ export default function VendasFinanceiro() {
       const parcelas = extractParcelas(full);
 
       if (nfFile && parcelas.length > 0) {
+        const tipoNf = tipoAnexoPorArquivo(nfFile);
         await Promise.all(
-          parcelas.map((p) => uploadAnexo(p.id, nfFile, "NF").catch(() => {}))
+          parcelas.map((p) => uploadAnexo(p.id, nfFile, tipoNf).catch(() => {}))
         );
       }
 
@@ -325,6 +431,65 @@ export default function VendasFinanceiro() {
     setSavingEdit(false);
   };
 
+  // ── Documentos Fiscais (card) ─────────────────────────────────────────────
+  const [docCard, setDocCard] = useState(null); // { venda, anchor, full, carregando }
+
+  const handleAbrirDocCard = async (e, venda) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const anchor = {
+      x: Math.min(rect.left, window.innerWidth - 296),
+      y: rect.bottom + 6,
+    };
+    const cache = expandedData[venda.id];
+    setDocCard({ venda, anchor, full: cache || null, carregando: !cache });
+    if (!cache) {
+      try {
+        const full = await getVendaFinanceira(venda.id);
+        setExpandedData((prev) => ({ ...prev, [venda.id]: full }));
+        setDocCard((prev) => (prev && prev.venda.id === venda.id ? { ...prev, full, carregando: false } : prev));
+      } catch {
+        setDocCard((prev) => (prev && prev.venda.id === venda.id ? { ...prev, carregando: false } : prev));
+      }
+    }
+  };
+
+  const handleFecharDocCard = () => setDocCard(null);
+
+  const docCardAnexos = docCard?.full ? extractParcelas(docCard.full).flatMap((p) => p.anexos || []) : [];
+  const docCardAnexoXml = docCardAnexos.find(ehAnexoXml);
+  const docCardAnexoNf  = docCardAnexos.find(ehAnexoNfPdf);
+
+  const handleGerarDanfeCard = async () => {
+    if (!docCardAnexoXml) return;
+    try {
+      const xmlBlob = await downloadAnexo(docCardAnexoXml.id);
+      const xmlFile = new File([xmlBlob], docCardAnexoXml.nome_original, { type: "text/xml" });
+      const blob = await gerarDanfeSimplificada(xmlFile);
+      const nomeCliente = (docCard?.venda?.cliente || "documento").replace(/\s+/g, "_");
+      await abrirPdfBlob(blob, `DANFE-${nomeCliente}.pdf`);
+    } catch (err) {
+      window.alert("Erro ao gerar DANFE: " + (err.message || ""));
+    }
+    setDocCard(null);
+  };
+
+  const handleDownloadXmlCard = () => {
+    if (docCardAnexoXml) handleDownloadAnexo(docCardAnexoXml);
+    setDocCard(null);
+  };
+
+  const handleDownloadNfCard = () => {
+    if (docCardAnexoNf) handleDownloadAnexo(docCardAnexoNf);
+    setDocCard(null);
+  };
+
+  const handleAnexarDocumentoCard = () => {
+    const venda = docCard?.venda;
+    setDocCard(null);
+    if (venda) handleAbrirEditar({ stopPropagation: () => {} }, venda);
+  };
+
   // ── Excluir venda ─────────────────────────────────────────────────────────
   const handleAbrirExcluir = (e, venda) => {
     e.stopPropagation();
@@ -348,17 +513,30 @@ export default function VendasFinanceiro() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className={styles.page}>
+    <div className="sc-page">
 
-      <div className={styles.header}>
-        <h1 className={styles.title}>Vendas — Contas a Receber</h1>
+      <div className="sc-page-header">
+        <h1>Vendas</h1>
         <div className={styles.headerActions}>
-          <button className={styles.btnSecondary} onClick={handleAbrirSeletorXml}>
-            Importar XMLs
-          </button>
-          <button className={styles.btnPrimary} onClick={() => { setModal(true); setErro(null); }}>
-            + Nova Venda
-          </button>
+          {hasPermission(MODULO, "criar") && (
+            <>
+              <button className={styles.btnSecondary} onClick={handleAbrirSeletorXml}>
+                Importar XMLs
+              </button>
+              <button className={styles.btnNovo} onClick={() => { setModal(true); setErro(null); }}>
+                + Nova Venda
+              </button>
+            </>
+          )}
+          {hasPermission(MODULO, "gerar") && (
+            <button
+              className={styles.btnSecondary}
+              onClick={handleAbrirSeletorDanfe}
+              disabled={gerandoDanfeAvulsa}
+            >
+              {gerandoDanfeAvulsa ? "Gerando…" : "Gerar DANFE"}
+            </button>
+          )}
         </div>
         <input
           ref={fileInputRef}
@@ -367,6 +545,13 @@ export default function VendasFinanceiro() {
           multiple
           style={{ display: "none" }}
           onChange={handleArquivosSelecionados}
+        />
+        <input
+          ref={danfeInputRef}
+          type="file"
+          accept=".xml"
+          style={{ display: "none" }}
+          onChange={handleArquivoDanfeSelecionado}
         />
       </div>
 
@@ -377,123 +562,173 @@ export default function VendasFinanceiro() {
         </p>
       )}
 
-      <div className={styles.card}>
+      <div className={`sc-card ${styles.tableCard}`}>
+        <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
               <th>Cliente</th>
-              <th>Data</th>
-              <th>Valor Total</th>
-              <th>Parcelas</th>
-              <th>Status Geral</th>
-              <th>Ações</th>
+              <th style={{ textAlign: "center" }}>Data</th>
+              <th style={{ textAlign: "center" }}>Valor Total</th>
+              <th style={{ textAlign: "center" }}>Parcelas</th>
+              <th style={{ textAlign: "center" }}>Status</th>
+              <th
+                className={styles.acoesCell}
+                style={{ width: "180px", minWidth: "180px", maxWidth: "180px", textAlign: "center" }}
+              >
+                Ações
+              </th>
             </tr>
           </thead>
           <tbody>
-            {vendas.map((v) => {
-              const isOpen  = expandedId === v.id;
-              const cached  = expandedData[v.id];
-              const parcelas = cached ? extractParcelas(cached) : [];
-              const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(v, cached);
-              const st = statusGeralInfo(totalParcelas, parcelasPagas);
-
-              return [
-                <tr
-                  key={v.id}
-                  className={styles.trClickable}
-                  onClick={() => handleExpand(v.id)}
-                >
-                  <td title={v.cliente}>
-                    <div className={styles.fornecedorCell}>
-                      <span className={styles.fornecedorNome}>{v.cliente || "—"}</span>
-                      {v.descricao && <span className={styles.fornecedorSub}>{v.descricao}</span>}
-                    </div>
-                  </td>
-                  <td>
-                    <div className={styles.dataCell}>
-                      <span>NF: {dataFmt(v.data_venda)}</span>
-                      <span className={styles.dataCellSub}>Import.: {dataFmt(v.created_at)}</span>
-                    </div>
-                  </td>
-                  <td className={styles.tdValor}>{moeda(v.valor_total)}</td>
-                  <td>{totalParcelas > 0 ? `${totalParcelas}x` : "—"}</td>
-                  <td>
-                    <span className={`${styles.badge} ${styles[st.cls]}`}>{st.label}</span>
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <div className={styles.rowActions}>
-                      <button
-                        className={`${styles.btnExpand} ${isOpen ? styles.btnExpandOpen : ""}`}
-                        onClick={() => handleExpand(v.id)}
-                        title={isOpen ? "Recolher" : "Ver parcelas"}
-                      >
-                        ▶
-                      </button>
-                      <button
-                        className={styles.btnEditar}
-                        onClick={(e) => handleAbrirEditar(e, v)}
-                        title="Editar"
-                      >
-                        <span aria-hidden="true">✎</span> Editar
-                      </button>
-                      <button
-                        className={styles.btnIconDelete}
-                        onClick={(e) => handleAbrirExcluir(e, v)}
-                        title="Excluir"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </td>
-                </tr>,
-
-                isOpen && (
-                  <tr key={`expand-${v.id}`} className={styles.expandRow}>
+            {agruparPorMes(vendas, "data_venda").map((grupo) => {
+              const colapsado = !mesesAbertos[grupo.chave];
+              return (
+                <Fragment key={grupo.chave}>
+                  <tr className={styles.monthHeaderRow}>
                     <td colSpan={6}>
-                      <div className={styles.expandCell}>
-                        {loadingExpand && !cached ? (
-                          <p className={styles.expandLoading}>Carregando parcelas…</p>
-                        ) : parcelas.length === 0 ? (
-                          <p className={styles.expandLoading}>Nenhuma parcela encontrada.</p>
-                        ) : (
-                          <>
-                            <p className={styles.parcelasTitle}>Parcelas</p>
-                            <table className={styles.parcelasTable}>
-                              <thead>
-                                <tr>
-                                  <th>#</th>
-                                  <th>Vencimento</th>
-                                  <th>Valor</th>
-                                  <th>Status</th>
-                                  <th>Recebido em</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {parcelas.map((p, idx) => {
-                                  const pst = parcelaStatusInfo(p);
-                                  return (
-                                    <tr key={p.id}>
-                                      <td>{p.parcela_numero ?? idx + 1}</td>
-                                      <td>{dataFmt(p.data_vencimento)}</td>
-                                      <td>{moeda(p.valor)}</td>
-                                      <td>
-                                        <span className={`${styles.badge} ${styles[pst.cls]}`}>
-                                          {pst.label}
-                                        </span>
-                                      </td>
-                                      <td>{dataFmt(p.data_pagamento)}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </>
-                        )}
+                      <div
+                        className={styles.monthHeader}
+                        onClick={() => toggleColapso(grupo.chave)}
+                      >
+                        <span className={styles.monthHeaderChevron}>{colapsado ? "▶" : "▼"}</span>
+                        <span>
+                          {grupo.label} &nbsp;•&nbsp; {grupo.itens.length} nota{grupo.itens.length !== 1 ? "s" : ""} &nbsp;•&nbsp; Total: {moeda(totalGrupo(grupo.itens))}
+                        </span>
                       </div>
                     </td>
                   </tr>
-                ),
-              ];
+
+                  {!colapsado && grupo.itens.map((v) => {
+                    const isOpen  = expandedId === v.id;
+                    const cached  = expandedData[v.id];
+                    const parcelas = cached ? extractParcelas(cached) : [];
+                    const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(v, cached);
+                    const st = statusGeralInfo(totalParcelas, parcelasPagas);
+
+                    return (
+                      <Fragment key={v.id}>
+                        <tr
+                          className={styles.trClickable}
+                          onClick={() => handleExpand(v.id)}
+                        >
+                          <td title={v.cliente}>
+                            <div className={styles.fornecedorCell}>
+                              <span className={styles.fornecedorNome}>{v.cliente || "—"}</span>
+                              {v.descricao && <span className={styles.fornecedorSub}>{v.descricao}</span>}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <div className={styles.dataCell}>
+                              <span>NF: {dataFmt(v.data_venda)}</span>
+                              <span className={styles.dataCellSub}>Import.: {dataFmt(v.created_at)}</span>
+                            </div>
+                          </td>
+                          <td className={styles.tdValor} style={{ textAlign: "center" }}>{moeda(v.valor_total)}</td>
+                          <td style={{ textAlign: "center" }}>{totalParcelas > 0 ? `${totalParcelas}x` : "—"}</td>
+                          <td style={{ textAlign: "center" }}>
+                            <span className={`${styles.badge} ${styles[st.cls]}`}>{st.label}</span>
+                          </td>
+                          <td
+                            className={styles.acoesCell}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}
+                          >
+                            <div
+                              className={styles.rowActions}
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                width: "100%",
+                                flexWrap: "nowrap",
+                              }}
+                            >
+                              {hasPermission(MODULO, "editar") && (
+                                <button
+                                  className={styles.btnEditar}
+                                  onClick={(e) => handleAbrirEditar(e, v)}
+                                  title="Editar"
+                                  style={{ height: "30px", padding: "0 10px", fontSize: "13px", flexShrink: 0 }}
+                                >
+                                  Editar
+                                </button>
+                              )}
+                              <button
+                                className={styles.btnIconAction}
+                                onClick={(e) => handleAbrirDocCard(e, v)}
+                                title="Documentos Fiscais"
+                                style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                              >
+                                <FileText size={15} strokeWidth={1.75} />
+                              </button>
+                              {hasPermission(MODULO, "excluir") && (
+                                <button
+                                  className={styles.btnIconDelete}
+                                  onClick={(e) => handleAbrirExcluir(e, v)}
+                                  title="Excluir"
+                                  style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+
+                        {isOpen && (
+                          <tr className={styles.expandRow}>
+                            <td colSpan={6}>
+                              <div className={styles.expandCell}>
+                                {loadingExpand && !cached ? (
+                                  <p className={styles.expandLoading}>Carregando parcelas…</p>
+                                ) : parcelas.length === 0 ? (
+                                  <p className={styles.expandLoading}>Nenhuma parcela encontrada.</p>
+                                ) : (
+                                  <>
+                                    <p className={styles.parcelasTitle}>Parcelas</p>
+                                    <table className={styles.parcelasTable}>
+                                      <thead>
+                                        <tr>
+                                          <th>#</th>
+                                          <th>Vencimento</th>
+                                          <th>Valor</th>
+                                          <th>Status</th>
+                                          <th>Recebido em</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {parcelas.map((p, idx) => {
+                                          const pst = parcelaStatusInfo(p);
+                                          return (
+                                            <tr key={p.id}>
+                                              <td>{p.parcela_numero ?? idx + 1}</td>
+                                              <td>{dataFmt(p.data_vencimento)}</td>
+                                              <td>{moeda(p.valor)}</td>
+                                              <td>
+                                                <span className={`${styles.badge} ${styles[pst.cls]}`}>
+                                                  {pst.label}
+                                                </span>
+                                              </td>
+                                              <td>{dataFmt(p.data_pagamento)}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </Fragment>
+              );
             })}
 
             {vendas.length === 0 && (
@@ -505,6 +740,7 @@ export default function VendasFinanceiro() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* ── Modal: Nova Venda ── */}
@@ -638,7 +874,9 @@ export default function VendasFinanceiro() {
                         <span className={styles.anexoRowLabel}>Parcela {p.parcela_numero ?? idx + 1}</span>
                         {boleto ? (
                           <>
-                            <span className={styles.anexoRowNome}>{boleto.nome_original}</span>
+                            <span className={styles.anexoRowNome} title={boleto.nome_original}>
+                              {truncarNome(boleto.nome_original)}
+                            </span>
                             <button
                               type="button"
                               className={styles.btnLinkSmall}
@@ -677,27 +915,29 @@ export default function VendasFinanceiro() {
                 )}
               </div>
 
-              {/* ── Nota Fiscal ── */}
+              {/* ── Nota Fiscal — XML ── */}
               <div className={styles.uploadSection}>
-                <p className={styles.uploadSectionLabel}>Nota Fiscal</p>
+                <p className={styles.uploadSectionLabel}>Nota Fiscal — XML</p>
                 {(() => {
                   const primeiraParcela = editParcelas[0];
-                  const nfAnexo = primeiraParcela?.anexos?.find((a) => a.tipo === "NF");
-                  if (nfAnexo) {
+                  const xmlAnexo = primeiraParcela?.anexos?.find(ehAnexoXml);
+                  if (xmlAnexo) {
                     return (
                       <div className={styles.anexoRow}>
-                        <span className={styles.anexoRowNome}>{nfAnexo.nome_original}</span>
+                        <span className={styles.anexoRowNome} title={xmlAnexo.nome_original}>
+                          {truncarNome(xmlAnexo.nome_original)}
+                        </span>
                         <button
                           type="button"
                           className={styles.btnLinkSmall}
-                          onClick={() => handleDownloadAnexo(nfAnexo)}
+                          onClick={() => handleDownloadAnexo(xmlAnexo)}
                         >
                           Download
                         </button>
                         <button
                           type="button"
                           className={styles.btnLinkSmall}
-                          onClick={() => handleRemoverAnexo(primeiraParcela, nfAnexo)}
+                          onClick={() => handleRemoverAnexo(primeiraParcela, xmlAnexo)}
                         >
                           Remover
                         </button>
@@ -707,7 +947,57 @@ export default function VendasFinanceiro() {
                   if (primeiraParcela?.id) {
                     return (
                       <label className={styles.btnLinkSmall}>
-                        Anexar NF PDF
+                        Anexar XML
+                        <input
+                          type="file"
+                          accept=".xml,text/xml,application/xml"
+                          className={styles.inputFileHidden}
+                          onChange={(e) => {
+                            const f = e.target.files[0];
+                            if (f) handleUploadAnexoParcela(primeiraParcela, f, "XML");
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    );
+                  }
+                  return <p className={styles.expandLoading}>Salve a venda para anexar o XML.</p>;
+                })()}
+              </div>
+
+              {/* ── Nota Fiscal — DANFE (PDF) ── */}
+              <div className={styles.uploadSection}>
+                <p className={styles.uploadSectionLabel}>Nota Fiscal — DANFE (PDF)</p>
+                {(() => {
+                  const primeiraParcela = editParcelas[0];
+                  const pdfAnexo = primeiraParcela?.anexos?.find(ehAnexoNfPdf);
+                  if (pdfAnexo) {
+                    return (
+                      <div className={styles.anexoRow}>
+                        <span className={styles.anexoRowNome} title={pdfAnexo.nome_original}>
+                          {truncarNome(pdfAnexo.nome_original)}
+                        </span>
+                        <button
+                          type="button"
+                          className={styles.btnLinkSmall}
+                          onClick={() => handleDownloadAnexo(pdfAnexo)}
+                        >
+                          Download
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.btnLinkSmall}
+                          onClick={() => handleRemoverAnexo(primeiraParcela, pdfAnexo)}
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    );
+                  }
+                  if (primeiraParcela?.id) {
+                    return (
+                      <label className={styles.btnLinkSmall}>
+                        Anexar DANFE PDF
                         <input
                           type="file"
                           accept=".pdf,application/pdf"
@@ -721,7 +1011,7 @@ export default function VendasFinanceiro() {
                       </label>
                     );
                   }
-                  return <p className={styles.expandLoading}>Salve a venda para anexar a Nota Fiscal.</p>;
+                  return <p className={styles.expandLoading}>Salve a venda para anexar o DANFE.</p>;
                 })()}
               </div>
 
@@ -801,6 +1091,24 @@ export default function VendasFinanceiro() {
           importarFinal={importarVendaFinal}
           onFechar={() => { setModalImportar(false); setArquivosXml(null); }}
           onConcluido={handleConcluirImportacao}
+        />
+      )}
+
+      {/* ── Card: Documentos Fiscais ── */}
+      {docCard && (
+        <DocumentosFiscaisCard
+          anchor={docCard.anchor}
+          titulo="Documentos Fiscais"
+          subtitulo={`${docCard.venda.descricao || "Documento"} — ${docCard.venda.cliente || ""}`}
+          carregando={docCard.carregando}
+          anexoXml={docCardAnexoXml}
+          anexoNf={docCardAnexoNf}
+          mostrarGerarDanfe={hasPermission(MODULO, "gerar")}
+          onGerarDanfe={handleGerarDanfeCard}
+          onDownloadXml={handleDownloadXmlCard}
+          onDownloadNf={handleDownloadNfCard}
+          onAnexarDocumento={handleAnexarDocumentoCard}
+          onFechar={handleFecharDocCard}
         />
       )}
     </div>

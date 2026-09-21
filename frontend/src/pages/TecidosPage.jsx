@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { coresApi, lotesApi, modelosApi } from "../services/api";
+import {
+  getModelos, createModelo, updateModelo, deleteModelo, createCorDoModelo,
+  updateCor, deleteCor, createLoteDaCor,
+  arquivarLote, getHistoricoLotes, getProximoCodigoLote,
+} from "../api/tecidos";
 import Modal from "../components/Modal/Modal";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
-import styles from "./Page.module.css";
+import { useAuth } from "../auth/useAuth";
 import ts from "./TecidosPage.module.css";
+
+const MODULO = "tecidos";
 
 // ─────────────────────────────────────────────────────────────────────
 //  Helpers
@@ -26,6 +32,7 @@ function badgeLote(lote) {
 // ─────────────────────────────────────────────────────────────────────
 
 export default function TecidosPage() {
+  const { hasPermission } = useAuth();
   const [modelos, setModelos] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
@@ -67,7 +74,7 @@ export default function TecidosPage() {
   async function carregar() {
     setCarregando(true);
     try {
-      const lista = await modelosApi.listar();
+      const lista = await getModelos();
       setModelos(lista);
     } catch (e) {
       console.error(e);
@@ -100,7 +107,7 @@ export default function TecidosPage() {
 
   async function abrirHistorico() {
     try {
-      const h = await lotesApi.listarHistorico();
+      const h = await getHistoricoLotes();
       setHistorico(h);
       setModalHistorico(true);
     } catch (e) {
@@ -135,9 +142,9 @@ export default function TecidosPage() {
     };
     try {
       if (editandoModelo) {
-        await modelosApi.atualizar(editandoModelo.id, payload);
+        await updateModelo(editandoModelo.id, payload);
       } else {
-        await modelosApi.criar(payload);
+        await createModelo(payload);
       }
       setModalModelo(false);
       await carregar();
@@ -152,7 +159,7 @@ export default function TecidosPage() {
     const m = confirmModelo;
     setConfirmModelo(null);
     try {
-      await modelosApi.deletar(m.id);
+      await deleteModelo(m.id);
       await carregar();
     } catch (e) {
       console.error(e);
@@ -192,9 +199,9 @@ export default function TecidosPage() {
     };
     try {
       if (editandoCor) {
-        await coresApi.atualizar(editandoCor.cor.id, payload);
+        await updateCor(editandoCor.cor.id, payload);
       } else {
-        await modelosApi.criarCor(modalCor, payload);
+        await createCorDoModelo(modalCor, payload);
       }
       setModalCor(null);
       setEditandoCor(null);
@@ -210,7 +217,7 @@ export default function TecidosPage() {
     const c = confirmCor;
     setConfirmCor(null);
     try {
-      await coresApi.deletar(c.id);
+      await deleteCor(c.id);
       await carregar();
     } catch (e) {
       console.error(e);
@@ -222,7 +229,7 @@ export default function TecidosPage() {
   async function abrirNovoLote(corId) {
     setErroLote(null);
     setSalvandoLote(false);
-    const codigo = await lotesApi.proximoCodigo().catch(() => "LT001");
+    const codigo = await getProximoCodigoLote().catch(() => "LT001");
     setFormLote({ codigo_lote: codigo, peso_inicial_kg: "", valor_kg: "", data_compra: hojeISO() });
     setModalLote(corId);
   }
@@ -238,7 +245,7 @@ export default function TecidosPage() {
       data_compra: formLote.data_compra,
     };
     try {
-      await coresApi.criarLote(modalLote, payload);
+      await createLoteDaCor(modalLote, payload);
       setModalLote(null);
       await carregar();
     } catch (ex) {
@@ -252,7 +259,7 @@ export default function TecidosPage() {
     const lote = confirmArquivar;
     setConfirmArquivar(null);
     try {
-      await lotesApi.arquivar(lote.id);
+      await arquivarLote(lote.id);
       await carregar();
     } catch (e) {
       console.error(e);
@@ -265,27 +272,29 @@ export default function TecidosPage() {
 
   if (carregando) {
     return (
-      <div>
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Tecidos</h1>
+      <div className="sc-page">
+        <div className="sc-page-header">
+          <h1>Tecidos</h1>
         </div>
-        <p className={styles.vazio}>Carregando...</p>
+        <p className={ts.carregando}>Carregando...</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="sc-page">
       {/* ── Cabeçalho ── */}
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Tecidos</h1>
+      <div className="sc-page-header">
+        <h1>Tecidos</h1>
         <div className={ts.headerAcoes}>
           <button className={ts.btnHistorico} onClick={abrirHistorico}>
             Ver Histórico
           </button>
-          <button className={styles.btnNovo} onClick={abrirNovoModelo}>
-            + Novo Modelo
-          </button>
+          {hasPermission(MODULO, "criar") && (
+            <button className={ts.btnNovo} onClick={abrirNovoModelo}>
+              + Novo Modelo
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,9 +302,11 @@ export default function TecidosPage() {
       {modelos.length === 0 ? (
         <div className={ts.vazio}>
           <p>Nenhum modelo de tecido cadastrado.</p>
-          <button className={styles.btnNovo} onClick={abrirNovoModelo}>
-            Cadastrar primeiro modelo
-          </button>
+          {hasPermission(MODULO, "criar") && (
+            <button className={ts.btnNovo} onClick={abrirNovoModelo}>
+              Cadastrar primeiro modelo
+            </button>
+          )}
         </div>
       ) : (
         <div className={ts.lista}>
@@ -307,6 +318,9 @@ export default function TecidosPage() {
               onToggle={() => toggleModelo(modelo.id)}
               coresAbertas={coresAbertas}
               onToggleCor={toggleCor}
+              podeCriar={hasPermission(MODULO, "criar")}
+              podeEditar={hasPermission(MODULO, "editar")}
+              podeExcluir={hasPermission(MODULO, "excluir")}
               onEditarModelo={() => abrirEditarModelo(modelo)}
               onExcluirModelo={() => setConfirmModelo(modelo)}
               onNovaCor={() => abrirNovaCor(modelo.id)}
@@ -325,12 +339,12 @@ export default function TecidosPage() {
           titulo={editandoModelo ? "Editar Modelo" : "Novo Modelo"}
           onClose={() => setModalModelo(false)}
         >
-          <form className={styles.form} onSubmit={salvarModelo}>
-            {erroModelo && <p className={styles.erroForm}>{erroModelo}</p>}
-            <div className={styles.campo}>
-              <label className={styles.label}>Nome do modelo *</label>
+          <form className={ts.form} onSubmit={salvarModelo}>
+            {erroModelo && <p className={ts.erroForm}>{erroModelo}</p>}
+            <div className={ts.campo}>
+              <label className={ts.label}>Nome do modelo *</label>
               <input
-                className={styles.input}
+                className={ts.input}
                 value={formModelo.nome}
                 onChange={(e) => setFormModelo((p) => ({ ...p, nome: e.target.value }))}
                 required
@@ -338,20 +352,20 @@ export default function TecidosPage() {
                 placeholder="ex: Maxxi, Wish, Suplex"
               />
             </div>
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Tipo</label>
+            <div className={ts.fileiraDupla}>
+              <div className={ts.campo}>
+                <label className={ts.label}>Tipo</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   value={formModelo.tipo}
                   onChange={(e) => setFormModelo((p) => ({ ...p, tipo: e.target.value }))}
                   placeholder="ex: Compressão, Canelado"
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Máx. camadas</label>
+              <div className={ts.campo}>
+                <label className={ts.label}>Máx. camadas</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   type="number"
                   min="1"
                   max="500"
@@ -360,11 +374,11 @@ export default function TecidosPage() {
                 />
               </div>
             </div>
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setModalModelo(false)}>
+            <div className={ts.formActions}>
+              <button type="button" className={ts.btnSecondary} onClick={() => setModalModelo(false)}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoModelo}>
+              <button type="submit" className={ts.btnPrimary} disabled={salvandoModelo}>
                 {salvandoModelo ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -378,12 +392,12 @@ export default function TecidosPage() {
           titulo={editandoCor ? "Editar Cor" : "Nova Cor"}
           onClose={() => { setModalCor(null); setEditandoCor(null); }}
         >
-          <form className={styles.form} onSubmit={salvarCor}>
-            {erroCor && <p className={styles.erroForm}>{erroCor}</p>}
-            <div className={styles.campo}>
-              <label className={styles.label}>Nome da cor *</label>
+          <form className={ts.form} onSubmit={salvarCor}>
+            {erroCor && <p className={ts.erroForm}>{erroCor}</p>}
+            <div className={ts.campo}>
+              <label className={ts.label}>Nome da cor *</label>
               <input
-                className={styles.input}
+                className={ts.input}
                 value={formCor.nome_cor}
                 onChange={(e) => setFormCor((p) => ({ ...p, nome_cor: e.target.value }))}
                 required
@@ -391,11 +405,11 @@ export default function TecidosPage() {
                 placeholder="ex: Preto, Marrom, Azul Royal"
               />
             </div>
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Largura útil (cm) *</label>
+            <div className={ts.fileiraDupla}>
+              <div className={ts.campo}>
+                <label className={ts.label}>Largura útil (cm) *</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   type="number"
                   step="0.01"
                   min="0"
@@ -404,10 +418,10 @@ export default function TecidosPage() {
                   required
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Gramatura (g/m²) *</label>
+              <div className={ts.campo}>
+                <label className={ts.label}>Gramatura (g/m²) *</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   type="number"
                   step="0.01"
                   min="0"
@@ -417,10 +431,10 @@ export default function TecidosPage() {
                 />
               </div>
             </div>
-            <div className={styles.campo}>
-              <label className={styles.label}>Encolhimento (%)</label>
+            <div className={ts.campo}>
+              <label className={ts.label}>Encolhimento (%)</label>
               <input
-                className={styles.input}
+                className={ts.input}
                 type="number"
                 step="0.01"
                 min="0"
@@ -429,11 +443,11 @@ export default function TecidosPage() {
                 onChange={(e) => setFormCor((p) => ({ ...p, encolhimento_pct: e.target.value }))}
               />
             </div>
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => { setModalCor(null); setEditandoCor(null); }}>
+            <div className={ts.formActions}>
+              <button type="button" className={ts.btnSecondary} onClick={() => { setModalCor(null); setEditandoCor(null); }}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoCor}>
+              <button type="submit" className={ts.btnPrimary} disabled={salvandoCor}>
                 {salvandoCor ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -444,12 +458,12 @@ export default function TecidosPage() {
       {/* ── Modal: Novo Lote ── */}
       {modalLote && (
         <Modal titulo="Novo Lote" onClose={() => setModalLote(null)}>
-          <form className={styles.form} onSubmit={salvarLote}>
-            {erroLote && <p className={styles.erroForm}>{erroLote}</p>}
-            <div className={styles.campo}>
-              <label className={styles.label}>Código do lote *</label>
+          <form className={ts.form} onSubmit={salvarLote}>
+            {erroLote && <p className={ts.erroForm}>{erroLote}</p>}
+            <div className={ts.campo}>
+              <label className={ts.label}>Código do lote *</label>
               <input
-                className={styles.input}
+                className={ts.input}
                 value={formLote.codigo_lote}
                 onChange={(e) => setFormLote((p) => ({ ...p, codigo_lote: e.target.value }))}
                 required
@@ -457,11 +471,11 @@ export default function TecidosPage() {
                 placeholder="ex: LT001"
               />
             </div>
-            <div className={styles.fileiraDupla}>
-              <div className={styles.campo}>
-                <label className={styles.label}>Peso inicial (kg) *</label>
+            <div className={ts.fileiraDupla}>
+              <div className={ts.campo}>
+                <label className={ts.label}>Peso inicial (kg) *</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   type="number"
                   step="0.001"
                   min="0.001"
@@ -470,10 +484,10 @@ export default function TecidosPage() {
                   required
                 />
               </div>
-              <div className={styles.campo}>
-                <label className={styles.label}>Valor por kg (R$) *</label>
+              <div className={ts.campo}>
+                <label className={ts.label}>Valor por kg (R$) *</label>
                 <input
-                  className={styles.input}
+                  className={ts.input}
                   type="number"
                   step="0.01"
                   min="0.01"
@@ -483,21 +497,21 @@ export default function TecidosPage() {
                 />
               </div>
             </div>
-            <div className={styles.campo}>
-              <label className={styles.label}>Data de compra *</label>
+            <div className={ts.campo}>
+              <label className={ts.label}>Data de compra *</label>
               <input
-                className={styles.input}
+                className={ts.input}
                 type="date"
                 value={formLote.data_compra}
                 onChange={(e) => setFormLote((p) => ({ ...p, data_compra: e.target.value }))}
                 required
               />
             </div>
-            <div className={styles.formActions}>
-              <button type="button" className={styles.btnSecondary} onClick={() => setModalLote(null)}>
+            <div className={ts.formActions}>
+              <button type="button" className={ts.btnSecondary} onClick={() => setModalLote(null)}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.btnPrimary} disabled={salvandoLote}>
+              <button type="submit" className={ts.btnPrimary} disabled={salvandoLote}>
                 {salvandoLote ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -564,6 +578,7 @@ export default function TecidosPage() {
 
 function ModeloAccordion({
   modelo, aberto, onToggle, coresAbertas, onToggleCor,
+  podeCriar, podeEditar, podeExcluir,
   onEditarModelo, onExcluirModelo, onNovaCor,
   onEditarCor, onExcluirCor, onNovoLote, onArquivar,
 }) {
@@ -578,9 +593,9 @@ function ModeloAccordion({
           <span className={ts.modeloCores}>{modelo.cores.length} {modelo.cores.length === 1 ? "cor" : "cores"}</span>
         </div>
         <div className={ts.modeloAcoes} onClick={(e) => e.stopPropagation()}>
-          <button className={ts.btnAcao} onClick={onNovaCor}>+ Nova Cor</button>
-          <button className={ts.btnAcao} onClick={onEditarModelo}>Editar</button>
-          <button className={`${ts.btnAcao} ${ts.btnPerigo}`} onClick={onExcluirModelo}>Excluir</button>
+          {podeCriar && <button className={ts.btnAcao} onClick={onNovaCor}>+ Nova Cor</button>}
+          {podeEditar && <button className={ts.btnAcao} onClick={onEditarModelo}>Editar</button>}
+          {podeExcluir && <button className={`${ts.btnAcao} ${ts.btnPerigo}`} onClick={onExcluirModelo}>Excluir</button>}
         </div>
       </div>
 
@@ -588,7 +603,10 @@ function ModeloAccordion({
       {aberto && (
         <div className={ts.coresList}>
           {modelo.cores.length === 0 ? (
-            <p className={ts.semCores}>Nenhuma cor cadastrada. <button className={ts.btnLink} onClick={onNovaCor}>Adicionar cor</button></p>
+            <p className={ts.semCores}>
+              Nenhuma cor cadastrada.{" "}
+              {podeCriar && <button className={ts.btnLink} onClick={onNovaCor}>Adicionar cor</button>}
+            </p>
           ) : (
             modelo.cores.map((cor) => (
               <CorAccordion
@@ -596,6 +614,9 @@ function ModeloAccordion({
                 cor={cor}
                 aberto={coresAbertas.has(cor.id)}
                 onToggle={() => onToggleCor(cor.id)}
+                podeCriar={podeCriar}
+                podeEditar={podeEditar}
+                podeExcluir={podeExcluir}
                 onEditarCor={() => onEditarCor(cor)}
                 onExcluirCor={() => onExcluirCor(cor)}
                 onNovoLote={() => onNovoLote(cor.id)}
@@ -613,7 +634,7 @@ function ModeloAccordion({
 //  CorAccordion
 // ─────────────────────────────────────────────────────────────────────
 
-function CorAccordion({ cor, aberto, onToggle, onEditarCor, onExcluirCor, onNovoLote, onArquivar }) {
+function CorAccordion({ cor, aberto, onToggle, podeCriar, podeEditar, podeExcluir, onEditarCor, onExcluirCor, onNovoLote, onArquivar }) {
   const lotesAtivos = cor.lotes.filter((l) => l.status !== "arquivado");
 
   return (
@@ -630,9 +651,9 @@ function CorAccordion({ cor, aberto, onToggle, onEditarCor, onExcluirCor, onNovo
           <span className={ts.corLotes}>{lotesAtivos.length} {lotesAtivos.length === 1 ? "lote" : "lotes"}</span>
         </div>
         <div className={ts.corAcoes} onClick={(e) => e.stopPropagation()}>
-          <button className={ts.btnAcaoSm} onClick={onNovoLote}>+ Novo Lote</button>
-          <button className={ts.btnAcaoSm} onClick={onEditarCor}>Editar</button>
-          <button className={`${ts.btnAcaoSm} ${ts.btnPerigo}`} onClick={onExcluirCor}>Excluir</button>
+          {podeCriar && <button className={ts.btnAcaoSm} onClick={onNovoLote}>+ Novo Lote</button>}
+          {podeEditar && <button className={ts.btnAcaoSm} onClick={onEditarCor}>Editar</button>}
+          {podeExcluir && <button className={`${ts.btnAcaoSm} ${ts.btnPerigo}`} onClick={onExcluirCor}>Excluir</button>}
         </div>
       </div>
 
@@ -640,10 +661,13 @@ function CorAccordion({ cor, aberto, onToggle, onEditarCor, onExcluirCor, onNovo
       {aberto && (
         <div className={ts.lotesList}>
           {lotesAtivos.length === 0 ? (
-            <p className={ts.semLotes}>Nenhum lote ativo. <button className={ts.btnLink} onClick={onNovoLote}>Adicionar lote</button></p>
+            <p className={ts.semLotes}>
+              Nenhum lote ativo.{" "}
+              {podeCriar && <button className={ts.btnLink} onClick={onNovoLote}>Adicionar lote</button>}
+            </p>
           ) : (
             lotesAtivos.map((lote) => (
-              <LoteRow key={lote.id} lote={lote} onArquivar={() => onArquivar(lote)} />
+              <LoteRow key={lote.id} lote={lote} podeEditar={podeEditar} onArquivar={() => onArquivar(lote)} />
             ))
           )}
         </div>
@@ -656,7 +680,7 @@ function CorAccordion({ cor, aberto, onToggle, onEditarCor, onExcluirCor, onNovo
 //  LoteRow
 // ─────────────────────────────────────────────────────────────────────
 
-function LoteRow({ lote, onArquivar }) {
+function LoteRow({ lote, podeEditar, onArquivar }) {
   const badge = badgeLote(lote);
   const kg = Number(lote.peso_disponivel_kg);
   const dataCompra = new Date(lote.data_compra).toLocaleDateString("pt-BR");
@@ -676,7 +700,7 @@ function LoteRow({ lote, onArquivar }) {
         </span>
       </div>
       <div className={ts.loteAcoes}>
-        <button className={ts.btnArquivar} onClick={onArquivar}>Arquivar</button>
+        {podeEditar && <button className={ts.btnArquivar} onClick={onArquivar}>Arquivar</button>}
       </div>
     </div>
   );

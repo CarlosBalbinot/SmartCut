@@ -13,7 +13,7 @@ const SENTIDO_LABEL = {
   "45graus": "↗",
 };
 
-export default function GrupoAccordion({ grupo, onEditarMolde, onDeletarGrupo }) {
+export default function GrupoAccordion({ grupo, podeEditar, podeExcluir, onEditarMolde, onDeletarGrupo }) {
   const [aberto, setAberto] = useState(false);
 
   // Agrupa moldes por peca (parte)
@@ -33,16 +33,18 @@ export default function GrupoAccordion({ grupo, onEditarMolde, onDeletarGrupo })
           {" · "}
           {totalMoldes} molde{totalMoldes !== 1 ? "s" : ""}
         </span>
-        <button
-          className={styles.btnDeletar}
-          title="Excluir grupo"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeletarGrupo(grupo.id, grupo.nome);
-          }}
-        >
-          ✕
-        </button>
+        {podeExcluir && (
+          <button
+            className={styles.btnDeletar}
+            title="Excluir grupo"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeletarGrupo(grupo.id, grupo.nome);
+            }}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* ── Conteúdo expandido ── */}
@@ -81,12 +83,14 @@ export default function GrupoAccordion({ grupo, onEditarMolde, onDeletarGrupo })
                     <span className={styles.moldeArea}>
                       {m.area_cm2 != null ? `${Number(m.area_cm2).toFixed(1)} cm²` : "—"}
                     </span>
-                    <button
-                      className={styles.btnEditar}
-                      onClick={() => onEditarMolde(m)}
-                    >
-                      Editar
-                    </button>
+                    {podeEditar && (
+                      <button
+                        className={styles.btnEditar}
+                        onClick={() => onEditarMolde(m)}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

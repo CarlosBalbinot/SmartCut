@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { modelosApi, coresApi, gruposApi, pedidosVendaApi, encaixesApi } from "../services/api";
+import { modelosApi, coresApi, gruposApi, encaixesApi } from "../services/api";
+import { getProximoNumeroPedidoVenda, createPedidoVenda, addItemPedidoVenda } from "../api/pedidos";
 import styles from "./EncaixeRapidoPage.module.css";
 
 const TAMANHOS_BASE = ["P", "M", "G", "GG"];
@@ -164,20 +165,19 @@ export default function EncaixeRapidoPage() {
     setGerando(true); setErroGeral(null); setResultado(null);
 
     try {
-      const numero = await pedidosVendaApi.proximoNumero("encaixe_rapido").catch(() => "001");
-      const pedido = await pedidosVendaApi.create({
-        numero,
-        tipo:                 "encaixe_rapido",
-        data_emissao:         new Date().toISOString().split("T")[0],
-        prazo_entrega_dias:   0,
-        condicoes:            "avista",
-        observacoes:          nome || null,
-        cliente_razao_social: nome || "Encaixe Rápido",
+      await getProximoNumeroPedidoVenda("encaixe_rapido").catch(() => "001");
+      const pedido = await createPedidoVenda({
+        tipo:                  "encaixe_rapido",
+        data_emissao:          new Date().toISOString().split("T")[0],
+        prazo_entrega_dias:    0,
+        condicoes:             "avista",
+        observacoes_internas:  nome || null,
+        cliente_razao_social:  nome || "Encaixe Rápido",
       });
 
       for (const peca of pecas) {
         const tecido = tecidos.find((t) => t._id === peca.tecido_id);
-        await pedidosVendaApi.addItem(pedido.id, {
+        await addItemPedidoVenda(pedido.id, {
           grupo_id:       peca.grupo_id,
           cor:            peca.cor,
           lote_id:        tecido?.lote_id ?? null,
@@ -205,7 +205,7 @@ export default function EncaixeRapidoPage() {
           custo:          encaixe.custo_estimado,
         });
       } else {
-        navigate("/encaixes");
+        navigate("/producao/encaixes");
       }
     } catch (e) {
       setErroGeral(e.message || "Erro ao gerar encaixe.");
@@ -219,16 +219,13 @@ export default function EncaixeRapidoPage() {
   const tmCor   = tecidoModal?.tmCores.find((c) => c.id === tecidoModal.tmCorId);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.head}>
-        <h1 className={styles.title}>Encaixe Rápido</h1>
-      </div>
-
+    <div className="sc-page">
+      <div className="sc-page-header"><h1>Encaixe Rápido</h1></div>
       <div className={styles.cols}>
         {/* ── Coluna esquerda ── */}
         <div className={styles.colLeft}>
 
-          <div className={styles.card}>
+          <div className="sc-card">
             <p className={styles.cardTitle}>Configuração do Encaixe</p>
             <label className={styles.field}>
               <span>Nome / identificação (opcional)</span>
@@ -242,7 +239,7 @@ export default function EncaixeRapidoPage() {
           </div>
 
           {/* ── Card Tecidos ── */}
-          <div className={styles.card}>
+          <div className="sc-card">
             <p className={styles.cardTitle}>Tecidos do Encaixe</p>
 
             {tecidos.length === 0 ? (
@@ -277,7 +274,7 @@ export default function EncaixeRapidoPage() {
           </div>
 
           {/* ── Card Peças ── */}
-          <div className={styles.card}>
+          <div className="sc-card">
             <p className={styles.cardTitle}>Peças a encaixar</p>
 
             {pecas.length > 0 && (
@@ -376,7 +373,7 @@ export default function EncaixeRapidoPage() {
               <div className={styles.resultActions}>
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => navigate(`/encaixes/${resultado.encaixe_id}`)}
+                  onClick={() => navigate(`/producao/encaixes/${resultado.encaixe_id}`)}
                 >
                   Ver encaixe completo →
                 </button>

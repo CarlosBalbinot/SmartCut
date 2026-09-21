@@ -1,8 +1,28 @@
 import { API_BASE } from './config';
 const BASE_URL = `${API_BASE}/api/v1`;
 
+export const ADMIN_TOKEN_KEY = 'smartcut_admin_token';
+
+// Substituto direto de fetch() para chamadas autenticadas do sistema admin:
+// injeta o Bearer token salvo no login e, se a resposta vier 401 (token
+// ausente/expirado/inválido), limpa a sessão e redireciona para /login.
+export async function apiFetch(url, options = {}) {
+  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+  const headers = { ...options.headers };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    window.location.hash = '/login';
+  }
+
+  return res;
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await apiFetch(`${BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
@@ -14,7 +34,7 @@ async function request(path, options = {}) {
 }
 
 async function requestForm(path, formData) {
-  const res = await fetch(`${BASE_URL}${path}`, { method: "POST", body: formData });
+  const res = await apiFetch(`${BASE_URL}${path}`, { method: "POST", body: formData });
   const json = await res.json();
   if (!res.ok) {
     throw new Error(json.error || json.detail || `Erro ${res.status}`);
@@ -23,7 +43,7 @@ async function requestForm(path, formData) {
 }
 
 async function requestBlob(path) {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const res = await apiFetch(`${BASE_URL}${path}`);
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
     throw new Error(json.error || json.detail || `Erro ${res.status}`);
@@ -32,7 +52,7 @@ async function requestBlob(path) {
 }
 
 async function requestFormMethod(path, formData, method = "POST") {
-  const res = await fetch(`${BASE_URL}${path}`, { method, body: formData });
+  const res = await apiFetch(`${BASE_URL}${path}`, { method, body: formData });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
   return json.data;
@@ -106,6 +126,13 @@ export const pedidosApi = {
     request(`/pedidos/${id}/pecas/${grupo_id}/${tamanho}`, { method: "DELETE" }),
   resumoCorte: (id) => request(`/pedidos/${id}/resumo-corte`),
   relatorioPdf: (id) => requestBlob(`/pedidos/${id}/relatorio-pdf`),
+  metricas: (dataInicio, dataFim) => {
+    const params = new URLSearchParams();
+    if (dataInicio) params.set("data_inicio", dataInicio);
+    if (dataFim) params.set("data_fim", dataFim);
+    const qs = params.toString();
+    return request(`/pedidos/metricas${qs ? `?${qs}` : ""}`);
+  },
 };
 
 export const moldesApi = {
@@ -131,9 +158,9 @@ export const gruposApi = {
 };
 
 export const precificacoesApi = {
-  getConfig: () => request("/configuracao-empresa/"),
+  getConfig: () => request("/configuracao-precificacao/"),
   updateConfig: (payload) =>
-    request("/configuracao-empresa/", { method: "PATCH", body: JSON.stringify(payload) }),
+    request("/configuracao-precificacao/", { method: "PATCH", body: JSON.stringify(payload) }),
   getCustos: () => request("/configuracao-custos-fixos/"),
   updateCustos: (payload) =>
     request("/configuracao-custos-fixos/", { method: "PATCH", body: JSON.stringify(payload) }),
@@ -194,7 +221,13 @@ export const referenciasApi = {
 };
 
 export const vendedoresApi = {
-  list: () => request("/vendedores/"),
+  list: (busca = "", status = "") => {
+    const params = new URLSearchParams();
+    if (busca) params.set("busca", busca);
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return request(`/vendedores/${qs ? `?${qs}` : ""}`);
+  },
   create: (payload) =>
     request("/vendedores/", { method: "POST", body: JSON.stringify(payload) }),
   update: (id, payload) =>
@@ -228,8 +261,13 @@ export const leadsApi = {
 };
 
 export const clientesApi = {
-  listar: (busca = "") =>
-    request(`/clientes/${busca ? `?busca=${encodeURIComponent(busca)}` : ""}`),
+  listar: (busca = "", tipo = "") => {
+    const params = new URLSearchParams();
+    if (busca) params.set("busca", busca);
+    if (tipo) params.set("tipo", tipo);
+    const qs = params.toString();
+    return request(`/clientes/${qs ? `?${qs}` : ""}`);
+  },
   criar: (payload) =>
     request("/clientes/", { method: "POST", body: JSON.stringify(payload) }),
   obter: (id) => request(`/clientes/${id}`),
@@ -237,7 +275,7 @@ export const clientesApi = {
     request(`/clientes/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletar: (id) => request(`/clientes/${id}`, { method: "DELETE" }),
   buscarCnpj: async (cnpj) => {
-    const res = await fetch(`${API_BASE}/api/v1/clientes/cnpj/${cnpj}`, {
+    const res = await apiFetch(`${API_BASE}/api/v1/clientes/cnpj/${cnpj}`, {
       headers: { "Content-Type": "application/json" },
     });
     if (res.status === 404) return null;
@@ -247,22 +285,5 @@ export const clientesApi = {
   },
 };
 
-export const pedidosVendaApi = {
-  list: (tipo) => request(`/pedidos-venda/${tipo ? `?tipo=${tipo}` : ""}`),
-  create: (payload) =>
-    request("/pedidos-venda/", { method: "POST", body: JSON.stringify(payload) }),
-  get: (id) => request(`/pedidos-venda/${id}`),
-  update: (id, payload) =>
-    request(`/pedidos-venda/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
-  remove: (id) => request(`/pedidos-venda/${id}`, { method: "DELETE" }),
-  addItem: (id, payload) =>
-    request(`/pedidos-venda/${id}/itens`, { method: "POST", body: JSON.stringify(payload) }),
-  updateItem: (id, itemId, payload) =>
-    request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) }),
-  removeItem: (id, itemId) =>
-    request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "DELETE" }),
-  proximoNumero: (tipo = "venda") => request(`/pedidos-venda/proximo-numero?tipo=${tipo}`),
-  gerarEncaixe: (id) => request(`/pedidos-venda/${id}/gerar-encaixe`, { method: "POST" }),
-  pdfPedido: (id) => requestBlob(`/pedidos-venda/${id}/pdf-pedido`),
-  pdfCorte: (id) => requestBlob(`/pedidos-venda/${id}/pdf-corte`),
-};
+// pedidosVendaApi foi removido daqui — unificado em src/api/pedidos.js
+// (que já usa apiFetch, autenticado; este arquivo usa fetch() puro).

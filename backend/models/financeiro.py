@@ -42,6 +42,7 @@ class CompraFinanceira(Base):
     descricao: Mapped[str | None] = mapped_column(String(500), nullable=True)
     valor_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     data_compra: Mapped[date] = mapped_column(Date, nullable=False)
+    numero_nf: Mapped[str | None] = mapped_column(String(50), nullable=True)
     nf_pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -56,6 +57,7 @@ class VendaFinanceira(Base):
     descricao: Mapped[str | None] = mapped_column(String(500), nullable=True)
     valor_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     data_venda: Mapped[date] = mapped_column(Date, nullable=False)
+    numero_nf: Mapped[str | None] = mapped_column(String(50), nullable=True)
     nf_pdf_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -91,6 +93,7 @@ class Lancamento(Base):
     recorrencia_origem_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("lancamentos.id"), nullable=True
     )
+    transferencia_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     conta_bancaria: Mapped["ContaBancaria | None"] = relationship(back_populates="lancamentos")

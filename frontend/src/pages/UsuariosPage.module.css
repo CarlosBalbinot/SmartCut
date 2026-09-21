@@ -1,0 +1,433 @@
+.page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* height: 100% trocado por flex: 1 — agora .layout é filho de .page
+   (flex column), então precisa disputar espaço com o título acima
+   em vez de herdar 100% da altura do pai e transbordar. */
+.layout {
+  display: flex;
+  flex: 1;
+  min-height: 480px;
+}
+
+/* ── Lista esquerda ── */
+
+.listWrap {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--sc-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1rem 0.875rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.listTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--sc-text-muted);
+}
+
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover { filter: brightness(0.92); }
+
+.empty {
+  padding: 1.25rem 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--sc-border);
+  gap: 8px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.12s;
+}
+
+.item:hover { background: var(--sc-bg-secondary); }
+
+.itemSel {
+  background: var(--sc-bg-secondary);
+  border-left-color: var(--sc-action);
+}
+
+.itemInativo { opacity: 0.55; }
+
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.itemNome {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemSub {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.itemBadges {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.badgeAdmin {
+  display: inline-block;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badgeInativo {
+  display: inline-block;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-muted);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ── Drawer direito ── */
+
+.drawer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emptyRight {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--sc-text-muted);
+  font-size: 0.875rem;
+}
+
+.drawerHeader {
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.drawerNomeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawerNome {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+}
+
+.drawerSub {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+}
+
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid var(--sc-border);
+  padding: 0 0.75rem;
+  flex-shrink: 0;
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  margin-bottom: -1px;
+}
+
+.tabBtn:hover:not(:disabled) { color: var(--sc-text-primary); }
+.tabBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.tabBtnActive {
+  color: var(--sc-text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--sc-action);
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tabInner {
+  padding: 1.25rem 1.5rem;
+  max-width: 420px;
+}
+
+/* ── Form ── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--sc-action); }
+.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+.checkboxRow input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--sc-action);
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
+.permGrupo {
+  margin-bottom: 1.1rem;
+}
+
+.permGrupoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0.4rem;
+}
+
+.permGrupoTitulo {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.permSelecionarTudo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.permSelecionarTudo input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: var(--sc-action);
+}
+
+.permRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.permRow:last-child {
+  border-bottom: none;
+}
+
+.permModulo {
+  flex: 0 0 170px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+}
+
+.permAcoes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  flex: 1;
+}
+
+.permAcaoItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.permAcaoItem input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--sc-action);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.btnPrimary {
+  background: var(--sc-action);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPrimary:hover    { background: var(--sc-action-hover); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.4rem 0.875rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnSecondary:hover { background: var(--sc-surface-hover); }
+
+.msgErro {
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+}
+
+/* ── Modal ── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: 16px;
+  padding: 28px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modalTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 1.25rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding-top: 1.25rem;
+}

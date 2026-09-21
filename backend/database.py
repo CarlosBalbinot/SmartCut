@@ -41,3 +41,8 @@ import models.pedido         # noqa: E402,F401
 import models.encaixe        # noqa: E402,F401
 import models.painel_vendedor  # noqa: E402,F401
 import models.financeiro     # noqa: E402,F401
+import models.produto        # noqa: E402,F401
+import models.transportadora  # noqa: E402,F401
+import models.usuario         # noqa: E402,F401
+import models.tes             # noqa: E402,F401
+import models.nfe             # noqa: E402,F401

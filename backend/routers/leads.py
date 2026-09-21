@@ -7,12 +7,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.painel_vendedor import Lead
 
 router = APIRouter(prefix="/api/v1/leads", tags=["leads"])
 
+# Leads são geridos a partir da página Vendedores (aba "Leads"), por isso
+# usam a mesma permissão de cadastros_vendedores.
+_MOD = "cadastros_vendedores"
 
-@router.get("/")
+
+@router.get("/", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar(db: Session = Depends(get_db)):
     rows = db.execute(select(Lead).order_by(Lead.criado_em.desc())).scalars().all()
     return {
@@ -45,7 +50,7 @@ class LeadCreate(BaseModel):
     observacao: Optional[str] = None
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(require_permission(_MOD, "criar"))])
 def criar(payload: LeadCreate, db: Session = Depends(get_db)):
     lead = Lead(**payload.model_dump())
     db.add(lead)
@@ -54,7 +59,7 @@ def criar(payload: LeadCreate, db: Session = Depends(get_db)):
     return {"data": {"id": str(lead.id), "nome": lead.nome, "status": lead.status}, "error": None}
 
 
-@router.delete("/{lead_id}")
+@router.delete("/{lead_id}", dependencies=[Depends(require_permission(_MOD, "excluir"))])
 def deletar(lead_id: uuid.UUID, db: Session = Depends(get_db)):
     lead = db.get(Lead, lead_id)
     if not lead:

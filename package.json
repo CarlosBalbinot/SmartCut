@@ -1,6 +1,6 @@
 {
   "name": "smartcut",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sistema de gestão têxtil",
   "main": "electron/main.js",
   "scripts": {
@@ -28,11 +28,15 @@
       {
         "from": "electron/bin",
         "to": "bin"
+      },
+      {
+        "from": "assets",
+        "to": "assets"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.png"
+      "icon": "assets/favicon.ico"
     },
     "nsis": {
       "oneClick": false,

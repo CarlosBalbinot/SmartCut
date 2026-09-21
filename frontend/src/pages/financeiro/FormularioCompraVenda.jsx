@@ -6,6 +6,7 @@ const hojeISO = () => new Date().toISOString().split("T")[0];
 const FORM_VAZIO = {
   parceiro: "",
   descricao: "",
+  numero_nf: "",
   valor_total: "",
   num_parcelas: "1",
   primeiro_vencimento: hojeISO(),
@@ -46,6 +47,7 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
     const formData = {
       ...(isCompra ? { fornecedor: parceiro } : { cliente: parceiro }),
       descricao:           form.descricao.trim() || null,
+      numero_nf:           form.numero_nf.trim() || null,
       valor_total:         parseFloat(form.valor_total),
       ...(isCompra ? { data_compra: hojeISO() } : { data_venda: hojeISO() }),
       parcelas:            numParcelas,
@@ -98,6 +100,16 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
               value={form.valor_total}
               onChange={setF("valor_total")}
               placeholder="0,00"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>Nº da NF</span>
+            <input
+              className={styles.input}
+              value={form.numero_nf}
+              onChange={setF("numero_nf")}
+              placeholder="Opcional"
             />
           </label>
 

@@ -1,32 +1,3 @@
-.page {
-  padding: 2rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* ── Header ── */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.headerLeft {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--sc-text-primary);
-  white-space: nowrap;
-}
-
 /* ── Month navigation ── */
 .navMes {
   display: flex;
@@ -59,48 +30,293 @@
   padding: 0.1rem 0;
 }
 
-/* ── Saldo das contas ── */
-.saldoGrid {
+/* ── Header actions (navegação de mês + engrenagem + botão primário) ── */
+.headerActions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.saldoCard {
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-md);
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 140px;
-}
-
-.saldoNome {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.055em;
+.btnSettings {
+  background: none;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
   color: var(--sc-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  cursor: pointer;
 }
-
-.saldoValor {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--sc-text-primary);
-  font-variant-numeric: tabular-nums;
-}
+.btnSettings:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
 
 .negativo {
-  color: var(--sc-danger-text);
+  color: #dc2626;
 }
 
 .semContas {
   font-size: 0.875rem;
   color: var(--sc-text-muted);
   padding: 0.5rem 0;
+  display: block;
+}
+
+/* ── Resumo por Conta (card colapsável) ── */
+.resumoContaCard {
+  background: var(--sc-card-bg);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.resumoContaHeader {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+}
+.resumoContaHeader:hover { background: #fafafa; }
+
+.resumoContaTitulo {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6e6e73;
+  font-weight: 600;
+}
+
+.resumoContaHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resumoContaSaldoTotal {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.resumoContaChevron {
+  color: #6e6e73;
+  transition: transform 0.15s ease;
+}
+.resumoContaChevronAberto {
+  transform: rotate(180deg);
+}
+
+.resumoContaBody {
+  padding: 0 20px 16px;
+  overflow-x: auto;
+}
+
+.resumoContaTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.resumoContaTable th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  text-align: center;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.resumoContaTable td {
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.resumoContaTable tbody tr:hover td { background: #fafafa; }
+
+.rctConta {
+  text-align: left !important;
+  white-space: normal !important;
+}
+
+.rctSaidas { color: #dc2626; }
+.rctEntradas { color: #16a34a; }
+.rctSaldoInicial { color: #6e6e73; }
+.rctSaldoAtual { font-weight: 700; color: #1a1a1a; }
+
+.rctSaldoInicialBtn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 13px;
+  color: #6e6e73;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.rctSaldoInicialBtn:hover { color: #1a1a1a; }
+
+.rctSaldoInicialInput {
+  width: 100px;
+  font-size: 13px;
+  text-align: center;
+  padding: 3px 6px;
+  border: 1px solid var(--sc-action, #2596be);
+  border-radius: 6px;
+  outline: none;
+}
+
+.rctTotalRow td {
+  font-weight: 600;
+  background: #f9f9f9;
+  border-top: 1px solid var(--sc-border-strong);
+  border-bottom: none;
+}
+
+/* ── Drawer: Configurações de Contas ── */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 150;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: 400px;
+  max-width: 92vw;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: -4px 0 16px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.drawerTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.drawerTabs {
+  display: flex;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0 20px;
+}
+
+.drawerTab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 4px;
+  margin-right: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6e6e73;
+  cursor: pointer;
+}
+.drawerTabAtivo {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.drawerBody {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drawerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drawerSectionTitulo {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 4px 0 0;
+}
+
+.drawerTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.drawerTable th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #999999;
+  text-align: center;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.drawerTable td {
+  font-size: 0.8rem;
+  text-align: center;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.drawerRowActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.linkBtn:hover { text-decoration: underline; }
+.linkBtnDanger { color: #dc2626; }
+
+.saldoInicialLista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.saldoInicialLinha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: var(--sc-text-primary);
+}
+.saldoInicialLinha .input {
+  width: 140px;
 }
 
 /* ── Resumo cards ──────────────────────────────────────────────────────────
@@ -114,11 +330,11 @@
 }
 
 .resumoCard {
-  background: var(--sc-surface);
-  border-radius: var(--sc-radius-md);
-  border-left: 4px solid var(--sc-border-strong);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  padding: 1rem 1.25rem;
+  background: var(--sc-card-bg);
+  border-radius: var(--sc-card-radius);
+  border-left: 4px solid #cccccc;
+  box-shadow: var(--sc-card-shadow);
+  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -126,28 +342,28 @@
   min-width: 220px;
 }
 
-.resumoBorderPerigo  { border-left-color: var(--sc-danger-text); }
-.resumoBorderSucesso { border-left-color: var(--sc-success-text); }
-.resumoBorderNeutro  { border-left-color: var(--sc-text-muted); }
+.resumoBorderPerigo  { border-left-color: #dc2626; }
+.resumoBorderSucesso { border-left-color: #16a34a; }
+.resumoBorderNeutro  { border-left-color: #9ca3af; }
 
 .resumoLabel {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--sc-text-secondary);
+  letter-spacing: 0.5px;
+  color: #6e6e73;
 }
 
 .resumoValor {
-  font-size: 1.3rem;
+  font-size: 28px;
   font-weight: 700;
-  color: var(--sc-text-primary);
+  color: #1a1a1a;
   font-variant-numeric: tabular-nums;
 }
 
 .resumoSub {
-  font-size: 0.75rem;
-  color: var(--sc-text-muted);
+  font-size: 12px;
+  color: #999999;
 }
 
 /* ── Tables grid ───────────────────────────────────────────────────────────
@@ -173,37 +389,39 @@
   min-width: 0;
 }
 
-/* ── Cabeçalho do bloco (título + contagem + total) ── */
+/* ── Cabeçalho de grupo (dentro do sc-card, acima da tabela) ── */
 .blockHeader {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.75rem;
-  padding-bottom: 0.6rem;
+  gap: 0.75rem;
+  padding: 8px 16px;
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
 }
 
 .blockHeaderTitle {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--sc-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .blockHeaderMeta {
-  font-size: 0.78rem;
-  color: var(--sc-text-secondary);
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
 }
 
-.blockDivider {
-  height: 1px;
-  background: var(--sc-border);
-  margin-bottom: 0.5rem;
-}
-
-.card {
+/* sc-card sem padding; overflow VISIBLE (não hidden) — o menu "···" de
+   cada linha é um dropdown position:absolute que precisa extravasar o
+   card, então aqui não seguimos o .tableCard padrão (overflow:hidden)
+   usado nas outras páginas. */
+.tableCard {
+  padding: 0;
   overflow: visible;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .table {
@@ -214,17 +432,18 @@
 
 .table th {
   text-align: left;
-  padding: 0.5rem 0.6rem;
-  font-size: 0.66rem;
-  font-weight: 700;
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
 }
 
 .table td {
-  padding: 0.65rem 0.6rem;
+  padding: 12px 16px;
   font-size: 0.82rem;
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
@@ -235,17 +454,22 @@
 
 .table tbody tr:last-child td { border-bottom: none; }
 
-.table tbody tr:nth-child(odd)  td { background: var(--sc-surface); }
-.table tbody tr:nth-child(even) td { background: #fafafa; }
-.table tbody tr:hover td { background: #f0f7fb; }
+.table tbody tr td { background: var(--sc-surface); }
+.table tbody tr:hover td { background: var(--sc-bg-secondary); }
 
-/* DESCRIÇÃO ocupa o espaço restante; as demais têm largura fixa em px. */
+/* DESCRIÇÃO ocupa o espaço restante e fica à esquerda; as demais colunas
+   (Venc./Valor/Parcela/Status/Ações) têm largura fixa e ficam centralizadas. */
 .table th:nth-child(1) { width: auto; }
 .table th:nth-child(2) { width: 60px; }
 .table th:nth-child(3) { width: 100px; }
 .table th:nth-child(4) { width: 50px; }
 .table th:nth-child(5) { width: 100px; }
 .table th:nth-child(6) { width: 150px; }
+
+.table th:nth-child(n+2),
+.table td:nth-child(n+2) {
+  text-align: center;
+}
 
 /* Ações precisa exibir o dropdown sem cortar, em qualquer largura de tela. */
 .table td:nth-child(6) {
@@ -281,13 +505,13 @@
   }
 }
 
-/* ── Row status ── */
+/* ── Row status — sem fundo colorido, apenas borda esquerda / opacidade ── */
 .rowPago td {
-  opacity: 0.65;
+  opacity: 0.6;
 }
 
 .rowAtrasado td:first-child {
-  box-shadow: inset 3px 0 0 var(--sc-danger-text);
+  box-shadow: inset 3px 0 0 #dc2626;
 }
 
 /* ── Descrição (fornecedor/cliente + NF) ── */
@@ -299,8 +523,9 @@
 }
 
 .descricaoTitulo {
-  font-weight: 600;
-  color: var(--sc-text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -308,8 +533,9 @@
 }
 
 .descricaoSub {
-  font-size: 0.72rem;
-  color: var(--sc-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  color: #999999;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -317,9 +543,9 @@
 }
 
 /* ── Vencimento colorido ── */
-.vencAtrasado { color: var(--sc-danger-text); font-weight: 600; }
-.vencAlerta   { color: #B45309; font-weight: 600; }
-.vencNormal   { color: var(--sc-text-secondary); }
+.vencAtrasado { color: #dc2626; font-weight: 600; }
+.vencAlerta   { color: #f59e0b; font-weight: 600; }
+.vencNormal   { color: #555555; }
 
 /* ── Valor ── */
 .tdValor {
@@ -327,22 +553,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-.valorAlteradoWrap {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-}
-
-.valorAlteradoAtual {
-  color: #B45309;
-  font-weight: 700;
-}
-
-.valorOriginalRiscado {
-  font-size: 0.7rem;
-  color: var(--sc-text-muted);
-  text-decoration: line-through;
-  font-weight: 400;
+.valorAlterado {
+  color: #f59e0b;
 }
 
 /* ── Parcela ── */
@@ -352,11 +564,11 @@
 
 .parcelaBadge {
   display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-secondary);
-  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #666666;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -373,11 +585,6 @@
   gap: 0.5rem;
   padding: 2.5rem 1rem;
   text-align: center;
-}
-
-.emptyIcon {
-  font-size: 1.8rem;
-  opacity: 0.6;
 }
 
 .emptyText {
@@ -399,54 +606,59 @@
 }
 .btnEmptyAdd:hover { background: var(--sc-surface-hover); }
 
-/* ── Status badge ── */
+/* ── Status badge (pill) ── */
+.tdStatus {
+  text-align: center;
+}
+
 .badge {
   display: inline-block;
-  padding: 0.18rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
   border: 1px solid transparent;
   white-space: nowrap;
 }
 
-.stPAGO      { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
-.stPENDENTE  { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
-.stATRASADO  { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
-.stCANCELADO { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
+.stPAGO      { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
+.stPENDENTE  { background: #f5f5f5; color: #666666; border-color: #dddddd; }
+.stATRASADO  { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.stCANCELADO { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
 
 /* ── Ações: botão principal + menu "···" ── */
 .actionsMenu {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
 }
 
 .btnAcaoPrimaria {
-  background: var(--sc-action);
-  color: var(--sc-action-text);
+  background: var(--color-primary);
+  color: var(--sc-surface);
   border: none;
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.72rem;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 0.28rem 0.55rem;
+  padding: 5px 14px;
   cursor: pointer;
   white-space: nowrap;
 }
 .btnAcaoPrimaria:hover { background: var(--sc-action-hover); }
 
 .btnAcaoSecundaria {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-secondary);
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.72rem;
+  background: #f5f5f5;
+  color: #666666;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 0.26rem 0.55rem;
+  padding: 5px 14px;
   cursor: pointer;
   white-space: nowrap;
 }
-.btnAcaoSecundaria:hover { background: var(--sc-surface-hover); }
+.btnAcaoSecundaria:hover { background: #ebebeb; }
 
 .dropdownWrap {
   position: relative;
@@ -455,27 +667,28 @@
 .btnDots {
   background: none;
   border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
+  border-radius: 20px;
   color: var(--sc-text-secondary);
   font-size: 0.85rem;
   font-weight: 700;
   line-height: 1;
-  padding: 0.24rem 0.5rem;
+  padding: 0.24rem 0.6rem;
   cursor: pointer;
 }
 .btnDots:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
 
+/* ── Dropdown "···" — card flutuante limpo, sem ícones ── */
 .dropdownMenu {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-sm);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
-  min-width: 175px;
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 180px;
   z-index: 20;
-  padding: 0.35rem;
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
 }
@@ -484,24 +697,22 @@
   background: none;
   border: none;
   text-align: left;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.8rem;
-  color: var(--sc-text-primary);
-  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #333333;
   cursor: pointer;
   white-space: nowrap;
-  display: flex;
-  align-items: center;
 }
-.dropdownItem:hover { background: var(--sc-surface-hover); }
+.dropdownItem:hover { background: #f8f8f8; }
 
-.dropdownItemIcon {
-  margin-right: 6px;
-  flex-shrink: 0;
+.dropdownDivider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 4px 0;
 }
 
-.dropdownItemDanger { color: var(--sc-danger-text); }
-.dropdownItemDanger:hover { background: var(--sc-danger-bg); }
+.dropdownItemDanger { color: #dc2626; }
+.dropdownItemDanger:hover { background: #f8f8f8; }
 
 /* Ícones legados (mantidos para o modal de anexos, "↓ Download") */
 .btnSmall {
@@ -517,7 +728,24 @@
 }
 .btnSmall:hover { background: var(--sc-surface-hover); }
 
-/* ── Buttons ── */
+/* ── Botão de ação do cabeçalho (fora do modal/drawer) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Buttons (.btnPrimary também usado em modais e no drawer de
+   Configurações de Contas — não alterado) ── */
 .btnPrimary {
   background: var(--sc-action);
   color: var(--sc-action-text);
@@ -784,11 +1012,6 @@
   background: var(--sc-bg-secondary);
   border: 1px solid var(--sc-border);
   border-radius: var(--sc-radius-sm);
-}
-
-.attachIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
 }
 
 .attachNome {

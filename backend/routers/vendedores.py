@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.painel_vendedor import MetaVendedor, Usuario
 from models.pedido import PedidoVenda
 from models.venda import Vendedor
@@ -19,23 +20,47 @@ from services.auth_service import hash_senha
 
 router = APIRouter(prefix="/api/v1/vendedores", tags=["vendedores"])
 
+_MOD = "cadastros_vendedores"
 
-@router.get("/")
-def listar(db: Session = Depends(get_db)):
-    rows = db.execute(select(Vendedor).order_by(Vendedor.nome)).scalars().all()
+
+def _proximo_codigo(db: Session) -> str:
+    codigos = [
+        row[0] for row in
+        db.execute(select(Vendedor.codigo).where(Vendedor.codigo.isnot(None))).all()
+    ]
+    max_val = 0
+    for codigo in codigos:
+        try:
+            n = int(codigo)
+            if n > max_val:
+                max_val = n
+        except (ValueError, TypeError):
+            pass
+    return str(max_val + 1).zfill(4)
+
+
+@router.get("/", dependencies=[Depends(require_permission(_MOD, "ver"))])
+def listar(busca: str = "", status: str | None = None, db: Session = Depends(get_db)):
+    q = select(Vendedor)
+    if status:
+        q = q.where(Vendedor.status == status)
+    if busca:
+        termo = f"%{busca}%"
+        q = q.where(Vendedor.nome.ilike(termo) | Vendedor.cpf_cnpj.ilike(termo))
+    rows = db.execute(q.order_by(Vendedor.nome)).scalars().all()
     return {"data": [VendedorOut.model_validate(r) for r in rows], "error": None}
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(require_permission(_MOD, "criar"))])
 def criar(payload: VendedorCreate, db: Session = Depends(get_db)):
-    v = Vendedor(**payload.model_dump())
+    v = Vendedor(codigo=_proximo_codigo(db), **payload.model_dump())
     db.add(v)
     db.commit()
     db.refresh(v)
     return {"data": VendedorOut.model_validate(v), "error": None}
 
 
-@router.get("/{vendedor_id}")
+@router.get("/{vendedor_id}", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def get_one(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -43,7 +68,7 @@ def get_one(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": VendedorOut.model_validate(v), "error": None}
 
 
-@router.patch("/{vendedor_id}")
+@router.patch("/{vendedor_id}", dependencies=[Depends(require_permission(_MOD, "editar"))])
 def atualizar(vendedor_id: uuid.UUID, payload: VendedorUpdate, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -55,7 +80,7 @@ def atualizar(vendedor_id: uuid.UUID, payload: VendedorUpdate, db: Session = Dep
     return {"data": VendedorOut.model_validate(v), "error": None}
 
 
-@router.delete("/{vendedor_id}")
+@router.delete("/{vendedor_id}", dependencies=[Depends(require_permission(_MOD, "excluir"))])
 def deletar(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -78,7 +103,7 @@ class MetasInput(BaseModel):
     pedido_minimo: Optional[float] = None
 
 
-@router.get("/{vendedor_id}/credenciais")
+@router.get("/{vendedor_id}/credenciais", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def get_credenciais(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -90,7 +115,7 @@ def get_credenciais(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/{vendedor_id}/credenciais")
+@router.post("/{vendedor_id}/credenciais", dependencies=[Depends(require_permission(_MOD, "editar"))])
 def set_credenciais(vendedor_id: uuid.UUID, payload: CredenciaisInput, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -110,7 +135,7 @@ def set_credenciais(vendedor_id: uuid.UUID, payload: CredenciaisInput, db: Sessi
     return {"data": {"username": usuario.username}, "error": None}
 
 
-@router.get("/{vendedor_id}/metas")
+@router.get("/{vendedor_id}/metas", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def get_metas(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -133,7 +158,7 @@ def get_metas(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     }
 
 
-@router.patch("/{vendedor_id}/metas")
+@router.patch("/{vendedor_id}/metas", dependencies=[Depends(require_permission(_MOD, "editar"))])
 def update_metas(vendedor_id: uuid.UUID, payload: MetasInput, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -159,7 +184,7 @@ def update_metas(vendedor_id: uuid.UUID, payload: MetasInput, db: Session = Depe
     }
 
 
-@router.get("/{vendedor_id}/dashboard")
+@router.get("/{vendedor_id}/dashboard", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def dashboard(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     v = db.get(Vendedor, vendedor_id)
     if not v:

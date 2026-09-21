@@ -89,8 +89,12 @@ function attachLogs(proc) {
   proc.stderr && proc.stderr.on('data', (d) => {
     d.toString().split('\n').filter(Boolean).forEach(l => log(`[stderr] ${l}`));
   });
-  proc.on('error', (err) => log(`ERRO ao iniciar: ${err.message}`));
-  proc.on('exit', (code, signal) => log(`encerrou — código=${code} sinal=${signal}`));
+  proc.on('error', (err) => {
+    log(`ERRO ao spawnar: ${err.message}`);
+    log(`Stack: ${err.stack}`);
+  });
+  proc.on('exit', (code, signal) => log(`encerrou (exit) — código=${code} sinal=${signal}`));
+  proc.on('close', (code, signal) => log(`processo encerrou (close) — code: ${code} signal: ${signal}`));
 }
 
 async function spawnBackend() {
@@ -135,13 +139,17 @@ async function spawnBackend() {
     log(`spawning exe...`);
 
     backendProcess = spawn(exePath, [], {
+      cwd: userData,
       env: {
         ...process.env,
         SMARTCUT_DB_PATH: dbPath,
         UPLOAD_DIR: uploadDir,
       },
+      shell: false,
       windowsHide: true,
     });
+
+    log(`spawn retornou — PID: ${backendProcess.pid}`);
 
   } else {
     // ── Desenvolvimento: Python + uvicorn ─────────────────────────────────
@@ -166,13 +174,22 @@ async function spawnBackend() {
 
 function killBackend() {
   if (!backendProcess) return;
-  log('encerrando processo...');
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/PID', String(backendProcess.pid), '/T', '/F'], { shell: true });
-  } else {
-    backendProcess.kill('SIGTERM');
-  }
+  const pid = backendProcess.pid;
   backendProcess = null;
+  log(`encerrando processo (PID ${pid})...`);
+  if (process.platform === 'win32') {
+    // execSync bloqueia até o taskkill terminar de fato — spawn assíncrono
+    // aqui deixava o smartcut-backend.exe órfão, pois o Electron encerrava
+    // antes do taskkill concluir.
+    try {
+      execSync(`taskkill /PID ${pid} /T /F`, { windowsHide: true });
+      log(`processo ${pid} encerrado via taskkill`);
+    } catch (e) {
+      log(`taskkill falhou (PID ${pid}): ${e.message}`);
+    }
+  } else {
+    try { process.kill(pid, 'SIGTERM'); } catch (e) { log(`SIGTERM falhou: ${e.message}`); }
+  }
 }
 
 module.exports = { spawnBackend, killBackend };

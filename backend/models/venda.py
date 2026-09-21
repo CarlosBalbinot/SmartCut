@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Numeric,
+    Boolean, Date, DateTime, ForeignKey, Integer, Numeric,
     String, Text, UniqueConstraint, Uuid, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,6 +20,10 @@ class Empresa(Base):
     cnpj: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     ie: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     endereco: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    endereco_numero: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    endereco_bairro: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    codigo_ibge_municipio: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)
+    codigo_pais: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default="1058")
     cidade: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     cep: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     telefone1: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -28,6 +32,17 @@ class Empresa(Base):
     site: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    # Fiscal
+    regime_tributario: Mapped[str] = mapped_column(String(30), nullable=False, default="Simples Nacional")
+    uf_emitente: Mapped[str] = mapped_column(String(2), nullable=False, default="RS")
+    ambiente_sefaz: Mapped[str] = mapped_column(String(20), nullable=False, default="Homologacao")
+    certificado_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    certificado_senha: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    nfe_serie_padrao: Mapped[str] = mapped_column(String(10), nullable=False, default="001")
+    nfe_numero_atual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    nfce_serie_padrao: Mapped[str] = mapped_column(String(10), nullable=False, default="002")
+    nfce_numero_atual: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class TabelaPreco(Base):
@@ -71,9 +86,32 @@ class Vendedor(Base):
     __tablename__ = "vendedores"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    codigo: Mapped[Optional[str]] = mapped_column(String(20), unique=True, nullable=True)
+    tipo_pessoa: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
+    nome_fantasia: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    endereco: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    numero: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    complemento: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    bairro: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    municipio: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    estado: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+    cep: Mapped[Optional[str]] = mapped_column(String(9), nullable=True)
     telefone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    celular: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    fax: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    cpf_cnpj: Mapped[Optional[str]] = mapped_column(String(18), nullable=True)
+    rg_ie: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    inscricao_municipal: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    descricao: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    comissao_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
+    dia_pagto: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pct_pago_emissao: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=100)
+    pct_pago_baixa: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    email_nfe: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    data_cadastro: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="ativo")
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { encaixesApi, pedidosApi } from "../services/api";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
-import styles from "./Page.module.css";
+import { useAuth } from "../auth/useAuth";
 import es from "./EncaixesPage.module.css";
+
+const MODULO = "encaixes";
 
 function badgeAproveitamento(desperdicio_pct) {
   const aprov = 100 - (desperdicio_pct ?? 0);
@@ -13,6 +15,7 @@ function badgeAproveitamento(desperdicio_pct) {
 }
 
 export default function EncaixesPage() {
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const [pedidos, setPedidos] = useState([]);
   const [encaixes, setEncaixes] = useState([]);
@@ -58,22 +61,22 @@ export default function EncaixesPage() {
   const totalEncaixes = encaixes.length;
 
   return (
-    <div>
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Encaixes</h1>
+    <div className="sc-page">
+      <div className="sc-page-header">
+        <h1>Encaixes</h1>
         {totalEncaixes > 0 && (
           <span className={es.countBadge}>{totalEncaixes} encaixe{totalEncaixes !== 1 ? "s" : ""}</span>
         )}
       </div>
 
-      {erro && <p className={styles.erro}>{erro}</p>}
+      {erro && <p className={es.erro}>{erro}</p>}
 
       {carregando && (
         <p className={es.loading}>Carregando encaixes…</p>
       )}
 
       {!carregando && pedidosComEncaixe.length === 0 && (
-        <p className={styles.vazio}>Nenhum encaixe gerado ainda.</p>
+        <p className={es.vazio}>Nenhum encaixe gerado ainda.</p>
       )}
 
       {pedidosComEncaixe.map((ped) => {
@@ -93,7 +96,7 @@ export default function EncaixesPage() {
               </div>
               <button
                 className={es.btnVerPedido}
-                onClick={() => navigate(`/pedidos/${ped.id}`)}
+                onClick={() => navigate(`/producao/pedidos/${ped.id}`)}
               >
                 Ver pedido →
               </button>
@@ -139,17 +142,19 @@ export default function EncaixesPage() {
                       )}
                       <button
                         className={es.btnVer}
-                        onClick={() => navigate(`/encaixes/${ped.id}`)}
+                        onClick={() => navigate(`/producao/encaixes/${ped.id}`)}
                       >
                         Ver encaixe
                       </button>
-                      <button
-                        className={es.btnDeletar}
-                        onClick={() => setExcluindo(enc)}
-                        title="Excluir encaixe"
-                      >
-                        ✕
-                      </button>
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={es.btnDeletar}
+                          onClick={() => setExcluindo(enc)}
+                          title="Excluir encaixe"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

@@ -4,19 +4,22 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from schemas.molde_schema import BulkImportCreate, MoldeUpdate
 from services import molde_service
 
 router = APIRouter(prefix="/api/v1/moldes", tags=["moldes"])
 
+_MOD = "moldes"
 
-@router.get("/", response_model=dict)
+
+@router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_moldes(db: Session = Depends(get_db)):
     moldes = molde_service.listar(db)
     return {"data": moldes, "error": None}
 
 
-@router.get("/{molde_id}", response_model=dict)
+@router.get("/{molde_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def obter_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
     molde = molde_service.obter(db, molde_id)
     if not molde:
@@ -24,7 +27,10 @@ def obter_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": molde, "error": None}
 
 
-@router.post("/preview", response_model=dict)
+@router.post(
+    "/preview", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "criar"))],
+)
 async def preview_molde(arquivo: UploadFile = File(...)):
     """Recebe o arquivo, extrai as peças e retorna o preview sem salvar no banco."""
     try:
@@ -34,14 +40,20 @@ async def preview_molde(arquivo: UploadFile = File(...)):
     return {"data": resultado, "error": None}
 
 
-@router.post("/bulk", response_model=dict, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/bulk", response_model=dict, status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_permission(_MOD, "criar"))],
+)
 def importar_bulk(payload: BulkImportCreate, db: Session = Depends(get_db)):
     """Salva no banco todas as peças confirmadas pelo usuário."""
     moldes = molde_service.importar_bulk(db, payload)
     return {"data": moldes, "error": None}
 
 
-@router.patch("/{molde_id}", response_model=dict)
+@router.patch(
+    "/{molde_id}", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "editar"))],
+)
 def atualizar_molde(
     molde_id: uuid.UUID,
     dados: MoldeUpdate,
@@ -53,7 +65,10 @@ def atualizar_molde(
     return {"data": molde, "error": None}
 
 
-@router.delete("/{molde_id}", response_model=dict)
+@router.delete(
+    "/{molde_id}", response_model=dict,
+    dependencies=[Depends(require_permission(_MOD, "excluir"))],
+)
 def deletar_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
     ok = molde_service.deletar(db, molde_id)
     if not ok:

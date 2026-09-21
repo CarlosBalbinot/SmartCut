@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.grupo_molde import GrupoMolde
 from models.venda import PrecoReferencia, TabelaPreco
 from schemas.venda_schema import (
@@ -14,8 +15,15 @@ from schemas.venda_schema import (
 
 router = APIRouter(prefix="/api/v1/tabelas-preco", tags=["tabelas_preco"])
 
+# Tabelas de preço são geridas no painel de Configurações.
+# configuracoes_ver/configuracoes_editar são módulos próprios em
+# MODULOS_VALIDOS — a ação passada é sempre "ver" (única ação hoje
+# verificada em todo o sistema).
+_MOD_VER = "configuracoes_ver"
+_MOD_EDITAR = "configuracoes_editar"
 
-@router.get("/")
+
+@router.get("/", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar(db: Session = Depends(get_db)):
     rows = db.execute(select(TabelaPreco).order_by(TabelaPreco.nome)).scalars().all()
     counts_raw = db.execute(
@@ -31,7 +39,7 @@ def listar(db: Session = Depends(get_db)):
     return {"data": result, "error": None}
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def criar(payload: TabelaPrecoCreate, db: Session = Depends(get_db)):
     tabela = TabelaPreco(**payload.model_dump())
     db.add(tabela)
@@ -40,7 +48,7 @@ def criar(payload: TabelaPrecoCreate, db: Session = Depends(get_db)):
     return {"data": TabelaPrecoOut.model_validate(tabela), "error": None}
 
 
-@router.get("/{tabela_id}/itens")
+@router.get("/{tabela_id}/itens", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar_itens(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:
@@ -67,7 +75,7 @@ def listar_itens(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": result, "error": None}
 
 
-@router.post("/{tabela_id}/itens")
+@router.post("/{tabela_id}/itens", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Session = Depends(get_db)):
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:
@@ -98,7 +106,10 @@ def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Sessio
     return {"data": None, "error": None}
 
 
-@router.delete("/{tabela_id}/itens/{grupo_id}")
+@router.delete(
+    "/{tabela_id}/itens/{grupo_id}",
+    dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
+)
 def remover_item(tabela_id: uuid.UUID, grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     existing = db.execute(
         select(PrecoReferencia).where(
@@ -113,7 +124,7 @@ def remover_item(tabela_id: uuid.UUID, grupo_id: uuid.UUID, db: Session = Depend
     return {"data": None, "error": None}
 
 
-@router.get("/{tabela_id}")
+@router.get("/{tabela_id}", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def get_one(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:
@@ -121,7 +132,7 @@ def get_one(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": TabelaPrecoOut.model_validate(tabela), "error": None}
 
 
-@router.patch("/{tabela_id}")
+@router.patch("/{tabela_id}", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def atualizar(tabela_id: uuid.UUID, payload: TabelaPrecoUpdate, db: Session = Depends(get_db)):
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:
@@ -133,7 +144,7 @@ def atualizar(tabela_id: uuid.UUID, payload: TabelaPrecoUpdate, db: Session = De
     return {"data": TabelaPrecoOut.model_validate(tabela), "error": None}
 
 
-@router.delete("/{tabela_id}")
+@router.delete("/{tabela_id}", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def deletar(tabela_id: uuid.UUID, db: Session = Depends(get_db)):
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:

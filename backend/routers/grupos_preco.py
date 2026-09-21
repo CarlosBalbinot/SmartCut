@@ -5,13 +5,21 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.venda import PrecoReferencia
 from schemas.venda_schema import PrecoReferenciaCreate, PrecoReferenciaOut, PrecoReferenciaUpdate
 
 router = APIRouter(prefix="/api/v1/grupos-molde", tags=["grupos_preco"])
 
+# Preços de referência por grupo pertencem ao mesmo domínio de tabelas de
+# preço, gerido no painel de Configurações. configuracoes_ver/
+# configuracoes_editar são módulos próprios em MODULOS_VALIDOS — a ação
+# passada é sempre "ver" (única ação hoje verificada em todo o sistema).
+_MOD_VER = "configuracoes_ver"
+_MOD_EDITAR = "configuracoes_editar"
 
-@router.get("/{grupo_id}/precos")
+
+@router.get("/{grupo_id}/precos", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar_precos(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     rows = db.execute(
         select(PrecoReferencia).where(PrecoReferencia.grupo_id == grupo_id)
@@ -19,7 +27,7 @@ def listar_precos(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": [PrecoReferenciaOut.model_validate(r) for r in rows], "error": None}
 
 
-@router.post("/{grupo_id}/precos")
+@router.post("/{grupo_id}/precos", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def criar_preco(grupo_id: uuid.UUID, payload: PrecoReferenciaCreate, db: Session = Depends(get_db)):
     existing = db.execute(
         select(PrecoReferencia).where(
@@ -44,7 +52,10 @@ def criar_preco(grupo_id: uuid.UUID, payload: PrecoReferenciaCreate, db: Session
     return {"data": PrecoReferenciaOut.model_validate(ref), "error": None}
 
 
-@router.patch("/{grupo_id}/precos/{tabela_id}")
+@router.patch(
+    "/{grupo_id}/precos/{tabela_id}",
+    dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
+)
 def atualizar_preco(
     grupo_id: uuid.UUID,
     tabela_id: uuid.UUID,

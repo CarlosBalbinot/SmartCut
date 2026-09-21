@@ -9,15 +9,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db
+from middleware.permissions import require_permission
 from models.painel_vendedor import Catalogo, CatalogoVendedor
 from models.venda import TabelaPreco
 
 router = APIRouter(prefix="/api/v1/catalogos", tags=["catalogos"])
 
 _UPLOAD_DIR = "uploads/catalogos"
+# Catálogos são geridos a partir da página Vendedores (aba "Catálogos"),
+# por isso usam a mesma permissão de cadastros_vendedores.
+_MOD = "cadastros_vendedores"
 
 
-@router.get("/")
+@router.get("/", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar(db: Session = Depends(get_db)):
     rows = db.execute(select(Catalogo).where(Catalogo.ativo == True)).scalars().all()
     result = []
@@ -36,7 +40,7 @@ def listar(db: Session = Depends(get_db)):
     return {"data": result, "error": None}
 
 
-@router.post("/")
+@router.post("/", dependencies=[Depends(require_permission(_MOD, "criar"))])
 async def criar(
     nome: str = Form(...),
     tabela_preco_id: Optional[str] = Form(None),
@@ -68,7 +72,7 @@ async def criar(
     }
 
 
-@router.delete("/{catalogo_id}")
+@router.delete("/{catalogo_id}", dependencies=[Depends(require_permission(_MOD, "excluir"))])
 def deletar(catalogo_id: uuid.UUID, db: Session = Depends(get_db)):
     cat = db.get(Catalogo, catalogo_id)
     if not cat:
@@ -78,7 +82,7 @@ def deletar(catalogo_id: uuid.UUID, db: Session = Depends(get_db)):
     return {"data": None, "error": None}
 
 
-@router.get("/{catalogo_id}/vendedores")
+@router.get("/{catalogo_id}/vendedores", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_vendedores(catalogo_id: uuid.UUID, db: Session = Depends(get_db)):
     acessos = (
         db.execute(select(CatalogoVendedor).where(CatalogoVendedor.catalogo_id == catalogo_id))
@@ -92,7 +96,7 @@ class VendedorAcessoInput(BaseModel):
     vendedor_id: uuid.UUID
 
 
-@router.post("/{catalogo_id}/vendedores")
+@router.post("/{catalogo_id}/vendedores", dependencies=[Depends(require_permission(_MOD, "editar"))])
 def add_vendedor(catalogo_id: uuid.UUID, payload: VendedorAcessoInput, db: Session = Depends(get_db)):
     exists = (
         db.query(CatalogoVendedor)
@@ -108,7 +112,10 @@ def add_vendedor(catalogo_id: uuid.UUID, payload: VendedorAcessoInput, db: Sessi
     return {"data": None, "error": None}
 
 
-@router.delete("/{catalogo_id}/vendedores/{vendedor_id}")
+@router.delete(
+    "/{catalogo_id}/vendedores/{vendedor_id}",
+    dependencies=[Depends(require_permission(_MOD, "editar"))],
+)
 def remove_vendedor(catalogo_id: uuid.UUID, vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     acesso = (
         db.query(CatalogoVendedor)

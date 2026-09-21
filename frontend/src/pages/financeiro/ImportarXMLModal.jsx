@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getCompra, getVendaFinanceira, uploadAnexo } from "../../api/financeiro";
 import styles from "./comprasVendas.module.css";
 
 const hojeISO = () => new Date().toISOString().split("T")[0];
@@ -123,9 +124,10 @@ export default function ImportarXMLModal({
     let falhas = 0;
     for (const it of selecionados) {
       try {
-        await importarFinal({
+        const criada = await importarFinal({
           [campoParceiro]: it.fornecedor.trim(),
           descricao: it.numero_nf ? `NF ${it.numero_nf}` : null,
+          numero_nf: it.numero_nf || null,
           valor_total: parseFloat(it.valor_total) || 0,
           [campoData]: it.data_emissao,
           parcelas: it.parcelas.map((p) => ({
@@ -134,6 +136,21 @@ export default function ImportarXMLModal({
           })),
         });
         sucesso += 1;
+
+        // Guarda o XML original como anexo (tipo='XML') na primeira parcela,
+        // para que ele possa ser recuperado depois sem precisar reimportar.
+        const arquivoOriginal = arquivos[it.key];
+        if (arquivoOriginal && criada?.id) {
+          try {
+            const full = isCompra
+              ? await getCompra(criada.id)
+              : await getVendaFinanceira(criada.id);
+            const primeiraParcela = (full.lancamentos || full.parcelas || [])[0];
+            if (primeiraParcela) {
+              await uploadAnexo(primeiraParcela.id, arquivoOriginal, "XML");
+            }
+          } catch {}
+        }
       } catch {
         falhas += 1;
       }

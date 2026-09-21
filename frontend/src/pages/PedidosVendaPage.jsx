@@ -1,23 +1,47 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { pedidosVendaApi, vendedoresApi, tabelasPrecoApi, clientesApi } from "../services/api";
+import { MoreHorizontal } from "lucide-react";
+import { tabelasPrecoApi } from "../services/api";
+import {
+  getPedidosVenda, createPedidoVenda, getPedidoVenda, updateStatusPedidoVenda,
+  getProximoNumeroPedidoVenda, getPdfPedidoVenda,
+} from "../api/pedidos";
+import { getVendedores } from "../api/vendedores";
+import { getClientes, getClienteByCnpj } from "../api/clientes";
+import { useAuth } from "../auth/useAuth";
 import styles from "./PedidosVendaPage.module.css";
 
+const TAMANHOS_BASE = ["P", "M", "G", "GG"];
+const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
+const TAM_KEY = { P: "qtd_p", M: "qtd_m", G: "qtd_g", GG: "qtd_gg", G1: "qtd_g1", G2: "qtd_g2", G3: "qtd_g3" };
+
+async function downloadBlob(promiseFn, filename) {
+  const blob = await promiseFn();
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
 const STATUS_LABELS = {
-  rascunho:   "Rascunho",
-  confirmado: "Confirmado",
-  producao:   "Em produção",
-  entregue:   "Entregue",
-  cancelado:  "Cancelado",
+  Aberto:    "Aberto",
+  Fechado:   "Fechado",
+  Cancelado: "Cancelado",
 };
 
 const STATUS_CLS = {
-  rascunho:   "stRascunho",
-  confirmado: "stConfirmado",
-  producao:   "stProducao",
-  entregue:   "stEntregue",
-  cancelado:  "stCancelado",
+  Aberto:    "stAberto",
+  Fechado:   "stFechado",
+  Cancelado: "stCancelado",
 };
+
+const STATUS_FILTRO_OPCOES = [
+  { value: "",          label: "Todos" },
+  { value: "Aberto",    label: "Aberto" },
+  { value: "Fechado",   label: "Fechado" },
+  { value: "Cancelado", label: "Cancelado" },
+];
 
 const CONDICOES_LABEL = { avista: "À Vista", aprazo: "A Prazo" };
 
@@ -46,6 +70,7 @@ const CAMPOS_CLIENTE = [
 ];
 
 export default function PedidosVendaPage() {
+  const { hasPermission } = useAuth();
   const [pedidos, setPedidos]                     = useState([]);
   const [vendedores, setVendedores]               = useState([]);
   const [tabelas, setTabelas]                     = useState([]);
@@ -54,8 +79,12 @@ export default function PedidosVendaPage() {
   const [erro, setErro]                           = useState(null);
   const [menuAberto, setMenuAberto]               = useState(null);
   const [menuPos, setMenuPos]                     = useState({ top: 0, left: 0 });
-  const [pedidoParaDeletar, setPedidoParaDeletar] = useState(null);
-  const [editStatusModal, setEditStatusModal]     = useState(null);
+  const [modalView, setModalView]                 = useState(null);
+  const [cancelandoPedido, setCancelandoPedido]   = useState(null);
+  const [cancelando, setCancelando]               = useState(false);
+  const [erroCancelar, setErroCancelar]           = useState(null);
+  const [busca, setBusca]                         = useState("");
+  const [statusFiltro, setStatusFiltro]           = useState("");
   const [clienteBusca, setClienteBusca]           = useState(null);
   const [modalCliente, setModalCliente]           = useState(false);
   const [buscaCliente, setBuscaCliente]           = useState("");
@@ -67,8 +96,8 @@ export default function PedidosVendaPage() {
 
   useEffect(() => {
     Promise.all([
-      pedidosVendaApi.list("venda"),
-      vendedoresApi.list(),
+      getPedidosVenda("venda"),
+      getVendedores(),
       tabelasPrecoApi.list(),
     ]).then(([p, v, t]) => {
       setPedidos(p || []);
@@ -88,7 +117,7 @@ export default function PedidosVendaPage() {
     if (!modalCliente) return;
     setCarregandoClientes(true);
     const t = setTimeout(() => {
-      clientesApi.listar(buscaCliente)
+      getClientes(buscaCliente)
         .then((lista) => setResultadosCliente(lista || []))
         .catch(() => setResultadosCliente([]))
         .finally(() => setCarregandoClientes(false));
@@ -97,7 +126,7 @@ export default function PedidosVendaPage() {
   }, [modalCliente, buscaCliente]);
 
   const abrirModal = async () => {
-    const numero = await pedidosVendaApi.proximoNumero("venda").catch(() => "");
+    const numero = await getProximoNumeroPedidoVenda("venda").catch(() => "");
     setModal({ ...MODAL_VAZIO, data_emissao: hojeISO(), numero: String(numero).padStart(6, "0") });
     setErro(null);
     setClienteBusca(null);
@@ -138,7 +167,7 @@ export default function PedidosVendaPage() {
 
     setClienteBusca("buscando");
     try {
-      const cliente = await clientesApi.buscarCnpj(digits);
+      const cliente = await getClienteByCnpj(digits);
       if (cliente) {
         setModal((m) => ({
           ...m,
@@ -163,31 +192,60 @@ export default function PedidosVendaPage() {
     ? tabelas.find((t) => t.id === modal.tabela_preco_id)
     : null;
 
-  const handleSalvarStatus = async () => {
-    if (!editStatusModal) return;
+  // ── Menu de ações da linha (···) ──────────────────────────────────────────────
+  const handleImprimirResumo = async (p) => {
     try {
-      await pedidosVendaApi.update(editStatusModal.id, { status: editStatusModal.status });
-      setPedidos((ps) =>
-        ps.map((p) => p.id === editStatusModal.id ? { ...p, status: editStatusModal.status } : p)
-      );
-      setEditStatusModal(null);
-    } catch {}
+      await downloadBlob(() => getPdfPedidoVenda(p.id), `pedido-${p.numero}.pdf`);
+    } catch (e) {
+      alert(e.message || "Erro ao gerar PDF.");
+    }
   };
 
-  const handleDeletar = async () => {
-    if (!pedidoParaDeletar) return;
+  // ── Modal de visualização (somente leitura) ───────────────────────────────────
+  const abrirVisualizacao = async (p) => {
+    setModalView({ numero: p.numero, loading: true });
     try {
-      await pedidosVendaApi.remove(pedidoParaDeletar.id);
-      setPedidos((ps) => ps.filter((p) => p.id !== pedidoParaDeletar.id));
-      setPedidoParaDeletar(null);
-    } catch {}
+      const full = await getPedidoVenda(p.id);
+      setModalView(full);
+    } catch {
+      setModalView(null);
+    }
   };
+
+  const fecharVisualizacao = () => setModalView(null);
+
+  // ── Cancelar pedido (soft-delete: muda status para Cancelado, não remove) ────
+  const fecharCancelar = () => { setCancelandoPedido(null); setErroCancelar(null); };
+
+  const handleConfirmarCancelamento = async () => {
+    if (!cancelandoPedido) return;
+    setCancelando(true);
+    setErroCancelar(null);
+    try {
+      const atualizado = await updateStatusPedidoVenda(cancelandoPedido.id, "Cancelado");
+      setPedidos((ps) => ps.map((p) => (p.id === atualizado.id ? atualizado : p)));
+      setCancelandoPedido(null);
+    } catch (e) {
+      setErroCancelar(e.message || "Erro ao cancelar pedido.");
+    }
+    setCancelando(false);
+  };
+
+  const pedidosFiltrados = pedidos.filter((p) => {
+    if (statusFiltro && p.status !== statusFiltro) return false;
+    if (busca.trim()) {
+      const q = busca.trim().toLowerCase();
+      const alvo = `${p.numero || ""} ${p.cliente_razao_social || ""}`.toLowerCase();
+      if (!alvo.includes(q)) return false;
+    }
+    return true;
+  });
 
   const handleSalvar = async () => {
     if (!modal.cliente_razao_social.trim()) { setErro("Razão social é obrigatória."); return; }
     setSaving(true); setErro(null);
     try {
-      const criado = await pedidosVendaApi.create({
+      const criado = await createPedidoVenda({
         numero:               modal.numero,
         tipo:                 "venda",
         data_emissao:         modal.data_emissao,
@@ -205,7 +263,7 @@ export default function PedidosVendaPage() {
         cliente_email:        modal.cliente_email,
         representante:        modal.representante,
       });
-      navigate(`/pedidos-venda/${criado.id}`);
+      navigate(`/vendas/pedidos/${criado.id}`);
     } catch (e) {
       setErro(e.message);
       setSaving(false);
@@ -213,13 +271,36 @@ export default function PedidosVendaPage() {
   };
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Pedidos de Venda</h1>
-        <button className={styles.btnPrimary} onClick={abrirModal}>+ Novo Pedido</button>
+    <div className="sc-page">
+      <div className="sc-page-header">
+        <h1>Pedidos de Venda</h1>
+        {hasPermission("pedidos_criar", "ver") && (
+          <button className={styles.btnNovo} onClick={abrirModal}>+ Novo Pedido</button>
+        )}
       </div>
 
-      <div className={styles.card}>
+      <div className={styles.toolbar}>
+        <div className={styles.searchWrap}>
+          <input
+            className={styles.busca}
+            placeholder="Buscar por cliente ou número…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+        <select
+          className={styles.statusFiltro}
+          value={statusFiltro}
+          onChange={(e) => setStatusFiltro(e.target.value)}
+        >
+          {STATUS_FILTRO_OPCOES.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className={`sc-card ${styles.tableCard}`}>
+        <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -232,12 +313,12 @@ export default function PedidosVendaPage() {
               <th>Total</th>
               <th>Comissão</th>
               <th>Status</th>
-              <th>Ações</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {pedidos.map((p) => (
-              <tr key={p.id}>
+            {pedidosFiltrados.map((p) => (
+              <tr key={p.id} onDoubleClick={() => abrirVisualizacao(p)}>
                 <td><code className={styles.num}>{p.numero}</code></td>
                 <td>{p.data_emissao ? new Date(p.data_emissao).toLocaleDateString("pt-BR") : "—"}</td>
                 <td>{p.cliente_razao_social || "—"}</td>
@@ -247,120 +328,212 @@ export default function PedidosVendaPage() {
                 <td>{moeda(p.total_pedido)}</td>
                 <td>{moeda(p.comissao_valor)}</td>
                 <td>
-                  <span className={`${styles.badge} ${styles[STATUS_CLS[p.status] || "stRascunho"]}`}>
+                  <span className={`${styles.badge} ${styles[STATUS_CLS[p.status] || "stAberto"]}`}>
                     {STATUS_LABELS[p.status] || p.status || "—"}
                   </span>
                 </td>
-                <td>
-                  <div className={styles.rowActions}>
+                <td onDoubleClick={(e) => e.stopPropagation()}>
+                  <div className={styles.menuWrap}>
                     <button
-                      className={styles.btnAbrir}
-                      onClick={() => navigate(`/pedidos-venda/${p.id}`)}
+                      className={styles.btnMenu}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (menuAberto !== p.id) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 });
+                        }
+                        setMenuAberto(menuAberto === p.id ? null : p.id);
+                      }}
+                      title="Mais ações"
                     >
-                      Abrir →
+                      <MoreHorizontal size={16} />
                     </button>
-                    <div className={styles.menuWrap}>
-                      <button
-                        className={styles.btnMenu}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (menuAberto !== p.id) {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 158 });
-                          }
-                          setMenuAberto(menuAberto === p.id ? null : p.id);
-                        }}
-                      >
-                        ···
-                      </button>
-                      {menuAberto === p.id && (
-                        <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
+                    {menuAberto === p.id && (
+                      <div className={styles.dropdown} style={{ top: menuPos.top, left: menuPos.left }} onClick={(e) => e.stopPropagation()}>
+                        {hasPermission("pedidos_editar", "ver") && (
                           <button
                             className={styles.dropItem}
-                            onClick={() => navigate(`/pedidos-venda/${p.id}`)}
+                            onClick={() => { setMenuAberto(null); navigate(`/vendas/pedidos/${p.id}`); }}
                           >
-                            Abrir →
+                            Editar
                           </button>
-                          <button
-                            className={styles.dropItem}
-                            onClick={() => {
-                              setMenuAberto(null);
-                              setEditStatusModal({ id: p.id, numero: p.numero, status: p.status || "rascunho" });
-                            }}
-                          >
-                            Editar status
-                          </button>
+                        )}
+                        <button
+                          className={styles.dropItem}
+                          onClick={() => { setMenuAberto(null); handleImprimirResumo(p); }}
+                        >
+                          Imprimir Resumo
+                        </button>
+                        {hasPermission("pedidos_excluir", "ver") && p.status === "Aberto" && (
                           <button
                             className={`${styles.dropItem} ${styles.dropItemDanger}`}
-                            onClick={() => { setMenuAberto(null); setPedidoParaDeletar(p); }}
+                            onClick={() => { setMenuAberto(null); setCancelandoPedido(p); }}
                           >
-                            Excluir
+                            Cancelar Pedido
                           </button>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
-            {pedidos.length === 0 && (
+            {pedidosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={10} className={styles.empty}>Nenhum pedido de venda cadastrado.</td>
+                <td colSpan={10} className={styles.empty}>
+                  {pedidos.length === 0 ? "Nenhum pedido de venda cadastrado." : "Nenhum pedido encontrado para o filtro atual."}
+                </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
-      {pedidoParaDeletar && (
-        <div className={styles.overlay} onClick={() => setPedidoParaDeletar(null)}>
-          <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Excluir pedido?</h2>
-            <p className={styles.confirmText}>
-              Esta ação é irreversível. O pedido{" "}
-              <strong>{pedidoParaDeletar.numero}</strong> de{" "}
-              <strong>{pedidoParaDeletar.cliente_razao_social || "—"}</strong> e todos
-              os seus itens serão excluídos permanentemente.
-            </p>
-            <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setPedidoParaDeletar(null)}>
-                Cancelar
-              </button>
-              <button className={styles.btnDanger} onClick={handleDeletar}>
-                Excluir
-              </button>
+      {/* ══ MODAL — Visualização (somente leitura) ══ */}
+      {modalView && (
+        <div className={styles.overlay} onClick={fecharVisualizacao}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2 className={styles.modalTitle}>Pedido Nº {modalView.numero}</h2>
+              <button className={styles.btnClose} onClick={fecharVisualizacao}>×</button>
             </div>
+
+            {modalView.loading ? (
+              <div className={styles.modalScroll}>
+                <p className={styles.empty}>Carregando…</p>
+              </div>
+            ) : (
+              <>
+                <div className={styles.modalScroll}>
+                  <p className={styles.secLabel}>Dados do pedido</p>
+                  <div className={styles.viewGrid}>
+                    <span><strong>Cliente:</strong> {modalView.cliente_razao_social || "—"}</span>
+                    <span>
+                      <strong>Data:</strong>{" "}
+                      {modalView.data_emissao ? new Date(modalView.data_emissao).toLocaleDateString("pt-BR") : "—"}
+                    </span>
+                    <span><strong>Vendedor:</strong> {modalView.vendedor_nome || "—"}</span>
+                    <span><strong>Tabela de Preço:</strong> {modalView.tabela_nome || "—"}</span>
+                    <span>
+                      <strong>Condição:</strong>{" "}
+                      {CONDICOES_LABEL[modalView.condicoes] || modalView.condicoes || "—"}
+                    </span>
+                  </div>
+
+                  <p className={styles.secLabel} style={{ marginTop: "1.25rem" }}>Itens</p>
+                  {(() => {
+                    const itensView = modalView.itens || [];
+                    if (itensView.length === 0) {
+                      return <p className={styles.empty}>Nenhum item.</p>;
+                    }
+                    const temPlusView = itensView.some(
+                      (i) => (i.qtd_g1 || 0) + (i.qtd_g2 || 0) + (i.qtd_g3 || 0) > 0
+                    );
+                    const tamColsView = temPlusView ? TAMANHOS_PLUS : TAMANHOS_BASE;
+                    const gruposOrdemView = [];
+                    const grupoMapView = {};
+                    itensView.forEach((item) => {
+                      if (!grupoMapView[item.grupo_id]) {
+                        grupoMapView[item.grupo_id] = [];
+                        gruposOrdemView.push(item.grupo_id);
+                      }
+                      grupoMapView[item.grupo_id].push(item);
+                    });
+                    const th = { textAlign: "left", padding: "0.5rem 0.6rem", fontSize: "0.72rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--sc-text-secondary)", borderBottom: "1px solid var(--sc-border)" };
+                    const td = { padding: "0.5rem 0.6rem", color: "var(--sc-text-primary)" };
+                    return (
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                        <thead>
+                          <tr>
+                            <th style={th}>REF</th>
+                            <th style={th}>Nome</th>
+                            <th style={th}>Cor</th>
+                            {tamColsView.map((t) => (
+                              <th key={t} style={{ ...th, textAlign: "center" }}>{t}</th>
+                            ))}
+                            <th style={{ ...th, textAlign: "right" }}>P. Unit.</th>
+                            <th style={{ ...th, textAlign: "right" }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gruposOrdemView.map((gid) => {
+                            const grupo_itens = grupoMapView[gid];
+                            return grupo_itens.map((item, idx) => (
+                              <tr key={item.id} style={{ borderBottom: "1px solid var(--sc-border)" }}>
+                                {idx === 0 && (
+                                  <>
+                                    <td rowSpan={grupo_itens.length} style={td}>
+                                      <code>{item.grupo_codigo || "—"}</code>
+                                    </td>
+                                    <td rowSpan={grupo_itens.length} style={td}>{item.grupo_nome || "—"}</td>
+                                  </>
+                                )}
+                                <td style={td}>{item.cor || "—"}</td>
+                                {tamColsView.map((t) => (
+                                  <td key={t} style={{ ...td, textAlign: "center" }}>
+                                    {(item[TAM_KEY[t]] || 0) > 0 ? item[TAM_KEY[t]] : ""}
+                                  </td>
+                                ))}
+                                <td style={{ ...td, textAlign: "right" }}>{moeda(item.preco_unitario)}</td>
+                                <td style={{ ...td, textAlign: "right" }}>{moeda(item.preco_total)}</td>
+                              </tr>
+                            ));
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+
+                  <div className={styles.viewFooter}>
+                    <div className={styles.totaisLinha}>
+                      <span>Comissão</span>
+                      <span>{moeda(modalView.comissao_valor)}</span>
+                    </div>
+                    <div className={`${styles.totaisLinha} ${styles.totaisTotal}`}>
+                      <span>Total Geral</span>
+                      <strong>{moeda(modalView.total_pedido)}</strong>
+                    </div>
+                    <div className={styles.totaisLinha}>
+                      <span>Status</span>
+                      <span className={`${styles.badge} ${styles[STATUS_CLS[modalView.status] || "stAberto"]}`}>
+                        {STATUS_LABELS[modalView.status] || modalView.status || "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.modalActions}>
+                  <button className={styles.btnSecondary} onClick={fecharVisualizacao}>Fechar</button>
+                  <button className={styles.btnPrimary} onClick={() => handleImprimirResumo(modalView)}>
+                    Imprimir PDF
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {editStatusModal && (
-        <div className={styles.overlay} onClick={() => setEditStatusModal(null)}>
+      {/* ══ MODAL — Confirmar cancelamento ══ */}
+      {cancelandoPedido && (
+        <div className={styles.overlay} onClick={() => !cancelando && fecharCancelar()}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
-            <h2 className={styles.modalTitle}>Editar status</h2>
+            <h2 className={styles.modalTitle} style={{ marginBottom: "0.75rem" }}>
+              Cancelar Pedido
+            </h2>
             <p className={styles.confirmText}>
-              Pedido <strong>{editStatusModal.numero}</strong>
+              Tem certeza que deseja cancelar o Pedido Nº <strong>{cancelandoPedido.numero}</strong>{" "}
+              de <strong>{cancelandoPedido.cliente_razao_social || "—"}</strong>? Esta ação não pode
+              ser desfeita.
             </p>
-            <label className={styles.field} style={{ marginBottom: "1.5rem" }}>
-              <span>Novo status</span>
-              <select
-                className={styles.input}
-                value={editStatusModal.status}
-                onChange={(e) => setEditStatusModal((m) => ({ ...m, status: e.target.value }))}
-              >
-                <option value="rascunho">Rascunho</option>
-                <option value="confirmado">Confirmado</option>
-                <option value="producao">Em produção</option>
-                <option value="entregue">Entregue</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </label>
+            {erroCancelar && <p className={styles.erro}>{erroCancelar}</p>}
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setEditStatusModal(null)}>
-                Cancelar
+              <button className={styles.btnSecondary} onClick={fecharCancelar} disabled={cancelando}>
+                Voltar
               </button>
-              <button className={styles.btnPrimary} onClick={handleSalvarStatus}>
-                Salvar
+              <button className={styles.btnDanger} onClick={handleConfirmarCancelamento} disabled={cancelando}>
+                {cancelando ? "Cancelando…" : "Cancelar Pedido"}
               </button>
             </div>
           </div>
@@ -546,7 +719,7 @@ export default function PedidosVendaPage() {
                       <td colSpan={5} className={styles.empty}>
                         Nenhum cliente encontrado.{" "}
                         <a
-                          href="/clientes"
+                          href="/cadastros/clientes"
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ color: "var(--sc-action)" }}

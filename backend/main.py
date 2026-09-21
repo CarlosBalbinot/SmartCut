@@ -30,7 +30,13 @@ from routers import (
     leads,
 )
 from routers import financeiro
+from routers import dashboard
 from routers import clientes
+from routers import produtos
+from routers import transportadoras
+from routers import usuarios
+from routers import tes
+from routers import nfe
 
 app = FastAPI(
     title="SmartCut API",
@@ -81,8 +87,28 @@ app.include_router(leads.router)
 # ── Financeiro ────────────────────────────────────────────────────────────────
 app.include_router(financeiro.router)
 
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+app.include_router(dashboard.router)
+
 # ── Clientes ──────────────────────────────────────────────────────────────────
 app.include_router(clientes.router)
+
+# ── Produtos ──────────────────────────────────────────────────────────────────
+app.include_router(produtos.router)
+app.include_router(produtos.grupos_router)
+app.include_router(produtos.linhas_grade_router)
+app.include_router(produtos.colunas_grade_router)
+
+# ── Transportadoras ─────────────────────────────────────────────────────────
+app.include_router(transportadoras.router)
+
+# ── Auth administrativo e Usuários ───────────────────────────────────────────
+app.include_router(auth.router_admin)
+app.include_router(usuarios.router)
+
+# ── Fiscal ────────────────────────────────────────────────────────────────────
+app.include_router(tes.router)
+app.include_router(nfe.router)
 
 
 os.makedirs(settings.upload_dir, exist_ok=True)

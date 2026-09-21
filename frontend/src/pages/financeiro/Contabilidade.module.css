@@ -1,0 +1,211 @@
+.navMes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btnNav {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-primary);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.btnNav:hover { background: var(--sc-surface-hover); }
+
+.mesLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  min-width: 130px;
+  text-align: center;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Botão de ação do cabeçalho (esta página não tem modais) ── */
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  padding: 7px 16px;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover    { filter: brightness(0.92); }
+.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnSecondary:hover    { background: var(--sc-surface-hover); }
+.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.erro {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.85rem;
+  color: var(--sc-danger-text);
+}
+
+/* ── Resumo ── */
+.resumoGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.resumoCard {
+  background: var(--sc-card-bg);
+  border: 1px solid var(--sc-border);
+  border-left: 3px solid var(--sc-border-strong);
+  border-radius: var(--sc-card-radius);
+  box-shadow: var(--sc-card-shadow);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.resumoBorderSucesso { border-left-color: var(--sc-success-text); }
+.resumoBorderPerigo  { border-left-color: var(--sc-danger-text); }
+.resumoBorderNeutro  { border-left-color: var(--sc-action); }
+
+.resumoLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-secondary);
+}
+
+.resumoValor {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.resumoSub {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
+/* ── Seções ── */
+.section {
+  margin-bottom: 1.75rem;
+}
+
+/* ── Cabeçalho de grupo (dentro do sc-card, acima da tabela) ── */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.sectionTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-primary);
+}
+
+.sectionMeta {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
+/* ── Card / Table — sc-card sem padding, tabela edge-to-edge ── */
+.tableCard {
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.table tr:last-child td { border-bottom: none; }
+.table tbody tr:hover td { background: var(--sc-bg-secondary); }
+
+.tdValor { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.empty {
+  text-align: center;
+  padding: 1.75rem;
+  color: var(--sc-text-muted);
+  font-size: 0.85rem;
+}
+
+.btnLink {
+  background: none;
+  border: none;
+  color: var(--sc-action);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.15rem 0;
+}
+.btnLink:hover { text-decoration: underline; }
+.btnLink:disabled { color: var(--sc-text-muted); cursor: default; text-decoration: none; }
+
+@media (max-width: 900px) {
+  .resumoGrid { grid-template-columns: repeat(2, 1fr); }
+}

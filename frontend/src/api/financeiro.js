@@ -1,8 +1,9 @@
 import { API_BASE } from '../services/config';
+import { apiFetch } from '../services/api';
 const BASE_URL = `${API_BASE}/api/financeiro`;
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await apiFetch(`${BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
@@ -18,7 +19,7 @@ async function request(path, options = {}) {
 }
 
 async function requestForm(path, formData) {
-  const res = await fetch(`${BASE_URL}${path}`, { method: "POST", body: formData });
+  const res = await apiFetch(`${BASE_URL}${path}`, { method: "POST", body: formData });
   const json = await res.json();
   if (!res.ok) {
     const detail = json.detail;
@@ -31,7 +32,7 @@ async function requestForm(path, formData) {
 }
 
 async function requestBlob(path) {
-  const res = await fetch(`${BASE_URL}${path}`);
+  const res = await apiFetch(`${BASE_URL}${path}`);
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
     throw new Error(json.error || json.detail || `Erro ${res.status}`);
@@ -56,6 +57,17 @@ export const deleteContaBancaria = (id) =>
 
 export const getSaldoContas = (mes, ano) =>
   request(`/saldo-contas?mes=${mes}&ano=${ano}`);
+
+export const upsertSaldoInicial = (dados) =>
+  request("/saldo-inicial", { method: "POST", body: JSON.stringify(dados) });
+
+// ── Transferências entre contas ────────────────────────────────────────────────
+
+export const createTransferencia = (dados) =>
+  request("/transferencias", { method: "POST", body: JSON.stringify(dados) });
+
+export const getTransferencias = (mes, ano) =>
+  request(`/transferencias?mes=${mes}&ano=${ano}`);
 
 // ── Lançamentos ───────────────────────────────────────────────────────────────
 
@@ -143,6 +155,23 @@ export const importarLoteVendas = (arquivos) => {
 export const importarVendaFinal = (dados) =>
   request("/vendas-financeiras/importar", { method: "POST", body: JSON.stringify(dados) });
 
+// ── DANFE Simplificada ───────────────────────────────────────────────────────
+
+export const gerarDanfeSimplificada = async (arquivoXml) => {
+  const formData = new FormData();
+  formData.append("arquivo", arquivoXml);
+
+  const response = await apiFetch(
+    `${API_BASE}/api/financeiro/danfe-simplificada`,
+    { method: "POST", body: formData }
+  );
+
+  if (!response.ok) throw new Error("Erro ao gerar DANFE");
+
+  const blob = await response.blob();
+  return blob;
+};
+
 // ── Anexos ────────────────────────────────────────────────────────────────────
 
 export const uploadAnexo = (lancamentoId, arquivo, tipo) => {
@@ -176,3 +205,39 @@ export const createMeta = (dados) =>
 
 export const updateMeta = (id, dados) =>
   request(`/metas/${id}`, { method: "PUT", body: JSON.stringify(dados) });
+
+// ── Contabilidade ─────────────────────────────────────────────────────────────
+
+export const getContabilidade = (mes, ano) =>
+  request(`/contabilidade?mes=${mes}&ano=${ano}`);
+
+async function requestBlobPost(path, body) {
+  const res = await apiFetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error || json.detail || `Erro ${res.status}`);
+  }
+  return res.blob();
+}
+
+export const gerarPacoteContabil = (mes, ano) =>
+  requestBlobPost("/contabilidade/gerar-pacote", { mes, ano });
+
+export const gerarResumoInternoContabil = (mes, ano) =>
+  requestBlobPost("/contabilidade/resumo-interno", { mes, ano });
+
+// ── Métricas (dashboard) ─────────────────────────────────────────────────────
+
+export const getMetricasCompras = (dataInicio, dataFim) => {
+  const params = new URLSearchParams();
+  if (dataInicio) params.set("data_inicio", dataInicio);
+  if (dataFim) params.set("data_fim", dataFim);
+  const qs = params.toString();
+  return request(`/metricas-compras${qs ? `?${qs}` : ""}`);
+};
+
+export const getMetricasResultado = () => request("/metricas-resultado");
