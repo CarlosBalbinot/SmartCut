@@ -1,64 +1,11 @@
 /**
  * ParteCard — representa uma "parte" do molde (Frente, Costa, Manga…)
- * com todos os tamanhos exibidos em miniatura lado a lado.
- * Controles compartilhados: nome, rotacao_base, sentido_fio, tipo_corte.
+ * com todos os tamanhos exibidos em miniatura, a seta de sentido do
+ * fio arrastável e os controles de rotação/tipo de corte.
  */
 import styles from "./ParteCard.module.css";
-
-// ── Rotação de pontos em torno do centróide ───────────────────────────
-
-function rotatePts(pontos, angleDeg) {
-  if (!angleDeg) return pontos;
-  const xs = pontos.map((p) => p[0]);
-  const ys = pontos.map((p) => p[1]);
-  const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-  const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-  const rad = (angleDeg * Math.PI) / 180;
-  const cos = Math.cos(rad);
-  const sin = Math.sin(rad);
-  return pontos.map(([x, y]) => [
-    cx + (x - cx) * cos - (y - cy) * sin,
-    cy + (x - cx) * sin + (y - cy) * cos,
-  ]);
-}
-
-// ── Mini silhueta SVG ────────────────────────────────────────────────
-
-function MiniSVG({ geometria, rotacao_base = 0 }) {
-  if (!geometria?.coordinates?.[0]) return null;
-  const rawPontos = geometria.coordinates[0];
-  if (rawPontos.length < 2) return null;
-
-  const pontos = rotatePts(rawPontos, rotacao_base);
-
-  const xs = pontos.map((p) => p[0]);
-  const ys = pontos.map((p) => p[1]);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const w = maxX - minX || 1;
-  const h = maxY - minY || 1;
-  const pad = Math.max(w, h) * 0.08;
-  const vw = w + pad * 2;
-  const vh = h + pad * 2;
-  const sw = Math.max(w, h) * 0.014;
-
-  const pontosStr = pontos
-    .map((p) => `${p[0] - minX + pad},${p[1] - minY + pad}`)
-    .join(" ");
-
-  return (
-    <svg viewBox={`0 0 ${vw} ${vh}`} className={styles.miniSvg}>
-      <polygon
-        points={pontosStr}
-        fill="var(--sc-100)"
-        stroke="var(--sc-700)"
-        strokeWidth={sw}
-      />
-    </svg>
-  );
-}
+import MiniSVG from "./MiniSVG";
+import SetaFioArrastavel from "../SetaFioArrastavel";
 
 // ── Controles de rotação ─────────────────────────────────────────────
 
@@ -104,38 +51,12 @@ function BotoesRotacao({ rotacaoAtual, onChange }) {
   );
 }
 
-// ── Botões de sentido do fio ─────────────────────────────────────────
-
-const SENTIDOS = [
-  { valor: "vertical",   label: "↕", titulo: "Vertical"   },
-  { valor: "horizontal", label: "↔", titulo: "Horizontal" },
-  { valor: "45graus",    label: "↗", titulo: "45°"        },
-];
-
-function BotoesSentido({ valor, onChange }) {
-  return (
-    <div className={styles.btnGroup}>
-      {SENTIDOS.map((s) => (
-        <button
-          key={s.valor}
-          type="button"
-          title={s.titulo}
-          className={`${styles.btnSentido} ${valor === s.valor ? styles.btnAtivo : ""}`}
-          onClick={() => onChange(s.valor)}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ── Botões de tipo de corte ──────────────────────────────────────────
 
 const TIPOS_CORTE = [
-  { valor: "simples",         label: "Simples" },
-  { valor: "par",             label: "Par ↔"   },
-  { valor: "par_sem_espelho", label: "Par s/↔" },
+  { valor: "simples",         label: "1 peça" },
+  { valor: "par",             label: "2 peças espelhadas" },
+  { valor: "par_sem_espelho", label: "2 peças sem espelho" },
 ];
 
 function BotoesTipoCorte({ valor, onChange }) {
@@ -157,12 +78,16 @@ function BotoesTipoCorte({ valor, onChange }) {
 
 // ── Componente principal ─────────────────────────────────────────────
 
-export default function ParteCard({ parte, index, onChange }) {
+export default function ParteCard({ parte, index, onChange, onRemove }) {
   function set(campo, valor) {
     onChange(index, campo, valor);
   }
 
   const rotacaoBase = parte.rotacao_base ?? 0;
+
+  // Peça representativa para a seta: o maior tamanho com geometria disponível
+  const pecaRepresentativa =
+    [...parte.pecas].reverse().find((p) => p.geometria_json) ?? null;
 
   return (
     <div className={styles.card}>
@@ -175,48 +100,63 @@ export default function ParteCard({ parte, index, onChange }) {
           onChange={(e) => set("nome", e.target.value)}
           placeholder="Frente, Costa, Manga..."
         />
+        <button
+          type="button"
+          className={styles.btnRemover}
+          onClick={() => onRemove(index)}
+          title="Remover esta parte"
+        >
+          ×
+        </button>
       </div>
 
-      {/* Miniaturas dos tamanhos — rotacionadas em tempo real */}
-      <div className={styles.tamanhos}>
-        {parte.pecas.map((p) => (
-          <div key={p.tamanho} className={styles.tamanhoItem}>
-            <div className={styles.miniPreview}>
-              <MiniSVG geometria={p.geometria_json} rotacao_base={rotacaoBase} />
-            </div>
-            <span className={styles.tamanhoLabel}>{p.tamanho}</span>
-            <span className={styles.areaLabel}>
-              {Number(p.area_cm2).toFixed(0)} cm²
-            </span>
+      {/* Corpo: seta de sentido do fio (esquerda) + tamanhos e controles (direita) */}
+      <div className={styles.corpo}>
+        <div className={styles.colEsquerda}>
+          <SetaFioArrastavel
+            geometria_json={pecaRepresentativa?.geometria_json}
+            sentidoFio={parte.sentido_fio}
+            onChange={(categoria) => set("sentido_fio", categoria)}
+            width={180}
+            height={180}
+            showLabel={false}
+          />
+        </div>
+
+        <div className={styles.colDireita}>
+          {/* Miniaturas dos tamanhos — rotacionadas em tempo real */}
+          <div className={styles.tamanhos}>
+            {parte.pecas.map((p) => (
+              <div key={p.tamanho} className={styles.tamanhoItem}>
+                <div className={styles.miniPreview}>
+                  <MiniSVG geometria={p.geometria_json} rotacao_base={rotacaoBase} />
+                </div>
+                <span className={styles.tamanhoLabel}>{p.tamanho}</span>
+                <span className={styles.areaLabel}>
+                  {p.area_cm2 != null ? `${Number(p.area_cm2).toFixed(0)} cm²` : "faltando"}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Controles compartilhados */}
-      <div className={styles.controles}>
-        <div className={styles.controleItem}>
-          <label className={styles.label}>
-            Orientar peça
-            <span className={styles.labelDica}> — gire até ficar como no tecido</span>
-          </label>
-          <BotoesRotacao
-            rotacaoAtual={rotacaoBase}
-            onChange={(v) => set("rotacao_base", v)}
-          />
-        </div>
-        <div className={styles.controleItem}>
-          <label className={styles.label}>Sentido do fio</label>
-          <BotoesSentido
-            valor={parte.sentido_fio}
-            onChange={(v) => set("sentido_fio", v)}
-          />
-        </div>
-        <div className={styles.controleItem}>
-          <label className={styles.label}>Tipo de corte</label>
-          <BotoesTipoCorte
-            valor={parte.tipo_corte}
-            onChange={(v) => set("tipo_corte", v)}
-          />
+          <div className={styles.controleItem}>
+            <label className={styles.label}>
+              Orientar peça
+              <span className={styles.labelDica}> — gire até ficar como no tecido</span>
+            </label>
+            <BotoesRotacao
+              rotacaoAtual={rotacaoBase}
+              onChange={(v) => set("rotacao_base", v)}
+            />
+          </div>
+
+          <div className={styles.controleItem}>
+            <label className={styles.label}>Tipo de corte</label>
+            <BotoesTipoCorte
+              valor={parte.tipo_corte}
+              onChange={(v) => set("tipo_corte", v)}
+            />
+          </div>
         </div>
       </div>
     </div>

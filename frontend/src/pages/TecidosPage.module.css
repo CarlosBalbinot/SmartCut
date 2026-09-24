@@ -74,6 +74,11 @@
   color: var(--sc-text-primary);
 }
 
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
 .input {
   width: 100%;
   padding: var(--sc-input-padding);

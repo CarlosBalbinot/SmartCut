@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { getMetricasCompras, getMetricasResultado } from "../../api/financeiro";
-import { pedidosApi } from "../../services/api";
+import { getMetricasPedidosVenda } from "../../api/pedidos";
 import styles from "./PainelFinanceiro.module.css";
 
 /* ── Helpers ── */
@@ -110,8 +110,8 @@ export default function PainelFinanceiro() {
     try {
       const anterior = periodoAnterior(rangeAtual.inicio, rangeAtual.fim);
       const [vendasAtual, vendasAnterior, compras, resultado] = await Promise.all([
-        pedidosApi.metricas(rangeAtual.inicio, rangeAtual.fim),
-        pedidosApi.metricas(anterior.inicio, anterior.fim),
+        getMetricasPedidosVenda(rangeAtual.inicio, rangeAtual.fim),
+        getMetricasPedidosVenda(anterior.inicio, anterior.fim),
         getMetricasCompras(rangeAtual.inicio, rangeAtual.fim),
         getMetricasResultado(),
       ]);

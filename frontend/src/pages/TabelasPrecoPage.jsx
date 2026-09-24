@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
-import { gruposApi, tabelasPrecoApi } from "../services/api";
+import { getGrupos } from "../api/moldes";
+import {
+  addItemTabelaPreco,
+  createTabelaPreco,
+  deleteTabelaPreco,
+  getItensTabelaPreco,
+  getTabelasPreco,
+  removeItemTabelaPreco,
+  updateTabelaPreco,
+} from "../api/tabelasPreco";
 import { useAuth } from "../auth/useAuth";
+import PrecosProdutoTabela from "../components/PrecosProdutoTabela/PrecosProdutoTabela";
 import styles from "./TabelasPrecoPage.module.css";
 
 const MODULO = "configuracoes_editar";
@@ -8,7 +18,11 @@ const MODULO = "configuracoes_editar";
 const fmtR = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(parseFloat(v) || 0);
 
-const fmtPct = (v) => `${(parseFloat(v) * 100).toFixed(0)}%`;
+// Erro no padrão do sistema: campo levemente vermelho + mensagem só no
+// tooltip (title). Inline porque o CSS module desta página não tem a classe.
+const ERRO_CAMPO = { background: "var(--sc-danger-bg)", borderColor: "var(--sc-danger-text)" };
+const ERRO_BOTAO = { boxShadow: "0 0 0 2px var(--sc-danger-text)" };
+const UPPER = { textTransform: "uppercase" };
 
 const DROPDOWN_STYLE = {
   position: "absolute", top: "100%", left: 0, right: 0,
@@ -35,7 +49,7 @@ export default function TabelasPrecoPage() {
   const [showNova, setShowNova]           = useState(false);
   const [showAdd, setShowAdd]             = useState(null);
   const [editTabela, setEditTabela]       = useState(null);
-  const [editForm, setEditForm]           = useState({ nome: "", comissao: "" });
+  const [editForm, setEditForm]           = useState({ nome: "" });
   const [savingEdit, setSavingEdit]       = useState(false);
   const [errEdit, setErrEdit]             = useState(null);
   const [inativaOpen, setInativaOpen]     = useState(false);
@@ -44,19 +58,19 @@ export default function TabelasPrecoPage() {
 
   useEffect(() => {
     loadTabelas(true);
-    gruposApi.listar().then((d) => setGrupos(d || [])).catch(() => {});
+    getGrupos().then((d) => setGrupos(d || [])).catch(() => {});
   }, []);
 
   const loadTabelas = async (autoSelect = false) => {
     setLoading(true);
     try {
-      const data = await tabelasPrecoApi.list() || [];
+      const data = await getTabelasPreco() || [];
       setTabelas(data);
       if (autoSelect) {
-        const first = data.find((t) => t.ativo !== false);
+        const first = data.find((t) => t.ativa !== false);
         if (first) {
           setSelectedId(first.id);
-          const itens = await tabelasPrecoApi.listItens(first.id).catch(() => []);
+          const itens = await getItensTabelaPreco(first.id).catch(() => []);
           setTabItens((prev) => ({ ...prev, [first.id]: itens }));
         }
       }
@@ -73,7 +87,7 @@ export default function TabelasPrecoPage() {
     setSelectedId(tab.id);
     if (!tabItens[tab.id]) {
       try {
-        const data = await tabelasPrecoApi.listItens(tab.id);
+        const data = await getItensTabelaPreco(tab.id);
         setTabItens((prev) => ({ ...prev, [tab.id]: data || [] }));
       } catch {
         setTabItens((prev) => ({ ...prev, [tab.id]: [] }));
@@ -83,14 +97,14 @@ export default function TabelasPrecoPage() {
 
   const reloadItens = async (tabelaId) => {
     try {
-      const data = await tabelasPrecoApi.listItens(tabelaId);
+      const data = await getItensTabelaPreco(tabelaId);
       setTabItens((prev) => ({ ...prev, [tabelaId]: data || [] }));
     } catch {}
   };
 
   const handleInativar = async (tab) => {
     try {
-      await tabelasPrecoApi.update(tab.id, { ativo: false });
+      await updateTabelaPreco(tab.id, { ativa: false });
       if (selectedId === tab.id) setSelectedId(null);
       await loadTabelas();
     } catch (e) { showToast(e.message); }
@@ -98,7 +112,7 @@ export default function TabelasPrecoPage() {
 
   const handleAtivar = async (tab) => {
     try {
-      await tabelasPrecoApi.update(tab.id, { ativo: true });
+      await updateTabelaPreco(tab.id, { ativa: true });
       await loadTabelas();
     } catch (e) { showToast(e.message); }
   };
@@ -109,30 +123,28 @@ export default function TabelasPrecoPage() {
       return;
     }
     try {
-      await tabelasPrecoApi.remove(tab.id);
+      await deleteTabelaPreco(tab.id);
       if (selectedId === tab.id) setSelectedId(null);
       await loadTabelas();
     } catch (e) { showToast(e.message); }
   };
 
   const abrirEdit = (tab) => {
-    setEditForm({ nome: tab.nome, comissao: String((parseFloat(tab.comissao_pct) * 100).toFixed(2)) });
+    setEditForm({ nome: tab.nome });
     setEditTabela(tab);
     setErrEdit(null);
   };
 
   const handleSaveEdit = async () => {
     if (!editTabela) return;
+    if (!editForm.nome.trim()) { setErrEdit({ nome: "Informe o nome da tabela." }); return; }
     setSavingEdit(true); setErrEdit(null);
     try {
-      await tabelasPrecoApi.update(editTabela.id, {
-        nome: editForm.nome,
-        comissao_pct: parseFloat(editForm.comissao) / 100,
-      });
+      await updateTabelaPreco(editTabela.id, { nome: editForm.nome.trim() });
       await loadTabelas();
       setEditTabela(null);
     } catch (e) {
-      setErrEdit(e.message);
+      setErrEdit({ geral: e.message });
     } finally {
       setSavingEdit(false);
     }
@@ -140,15 +152,15 @@ export default function TabelasPrecoPage() {
 
   const handleRemoveItem = async (tabelaId, grupoId) => {
     try {
-      await tabelasPrecoApi.removeItem(tabelaId, grupoId);
+      await removeItemTabelaPreco(tabelaId, grupoId);
       setConfirmRemove(null);
       await reloadItens(tabelaId);
       await loadTabelas();
     } catch {}
   };
 
-  const ativas      = tabelas.filter((t) => t.ativo !== false);
-  const inativas    = tabelas.filter((t) => t.ativo === false);
+  const ativas      = tabelas.filter((t) => t.ativa !== false);
+  const inativas    = tabelas.filter((t) => t.ativa === false);
   const selectedTab = tabelas.find((t) => t.id === selectedId) ?? null;
   const itens       = selectedId ? (tabItens[selectedId] ?? []) : [];
 
@@ -202,7 +214,6 @@ export default function TabelasPrecoPage() {
                   )}
                 </div>
                 <div className={styles.tabelaCardMeta}>
-                  <span className={styles.tabelaCardComissao}>{fmtPct(tab.comissao_pct)} comissão</span>
                   <span className={styles.tabelaBadgeAtiva}>Ativa</span>
                 </div>
                 <span className={styles.tabelaCardCount}>
@@ -239,7 +250,6 @@ export default function TabelasPrecoPage() {
                     )}
                   </div>
                   <div className={styles.tabelaCardMeta}>
-                    <span className={styles.tabelaCardComissao}>{fmtPct(tab.comissao_pct)}</span>
                     <span className={styles.tabelaBadgeInativa}>Inativa</span>
                   </div>
                 </div>
@@ -266,20 +276,17 @@ export default function TabelasPrecoPage() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                     <h3 className={styles.tabelasRightNome}>{selectedTab.nome}</h3>
-                    <span className={selectedTab.ativo !== false ? styles.tabelaBadgeAtiva : styles.tabelaBadgeInativa}>
-                      {selectedTab.ativo !== false ? "Ativa" : "Inativa"}
+                    <span className={selectedTab.ativa !== false ? styles.tabelaBadgeAtiva : styles.tabelaBadgeInativa}>
+                      {selectedTab.ativa !== false ? "Ativa" : "Inativa"}
                     </span>
                   </div>
-                  <p className={styles.tabelasRightComissao}>
-                    Comissão: {fmtPct(selectedTab.comissao_pct)} sobre o valor do pedido
-                  </p>
                 </div>
                 {podeEditar && (
                   <div className={styles.tabelasRightBtns}>
                     <button className={styles.btnSecondary} onClick={() => abrirEdit(selectedTab)}>
                       Editar
                     </button>
-                    {selectedTab.ativo !== false
+                    {selectedTab.ativa !== false
                       ? <button className={styles.btnSecondary} onClick={() => handleInativar(selectedTab)}>
                           Inativar
                         </button>
@@ -295,7 +302,7 @@ export default function TabelasPrecoPage() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--sc-text-primary)" }}>
                   Produtos ({itens.length})
                 </span>
-                {selectedTab.ativo !== false && podeEditar && (
+                {selectedTab.ativa !== false && podeEditar && (
                   <button className={styles.btnSecondary} onClick={() => setShowAdd(selectedId)}>
                     + Adicionar produto
                   </button>
@@ -310,7 +317,7 @@ export default function TabelasPrecoPage() {
                       stroke="var(--sc-border-strong)" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                   <p>Nenhum produto nesta tabela.</p>
-                  {selectedTab.ativo !== false && podeEditar && (
+                  {selectedTab.ativa !== false && podeEditar && (
                     <button className={styles.btnSecondary} style={{ marginTop: 8 }}
                       onClick={() => setShowAdd(selectedId)}>
                       + Adicionar produto
@@ -365,6 +372,12 @@ export default function TabelasPrecoPage() {
                   </tbody>
                 </table>
               )}
+
+              <PrecosProdutoTabela
+                key={selectedTab.id}
+                tabelaId={selectedTab.id}
+                editavel={podeEditar && selectedTab.ativa !== false}
+              />
             </>
           )}
         </div>
@@ -398,18 +411,15 @@ export default function TabelasPrecoPage() {
               <label className={styles.field}>
                 <span>Nome</span>
                 <input className={styles.input} value={editForm.nome}
-                  onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))} />
+                  style={{ ...UPPER, ...(errEdit?.nome ? ERRO_CAMPO : {}) }}
+                  title={errEdit?.nome || ""}
+                  onChange={(e) => { setErrEdit(null); setEditForm((f) => ({ ...f, nome: e.target.value.toUpperCase() })); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(); }} />
               </label>
-              <label className={styles.field} style={{ marginTop: 10 }}>
-                <span>Comissão (%)</span>
-                <input type="number" step="0.01" min="0" className={styles.input}
-                  value={editForm.comissao}
-                  onChange={(e) => setEditForm((f) => ({ ...f, comissao: e.target.value }))} />
-              </label>
-              {errEdit && <p className={styles.msgErro} style={{ marginTop: 10 }}>{errEdit}</p>}
               <div className={styles.modalPillActions}>
                 <button className={styles.btnPillSecondary} onClick={() => setEditTabela(null)}>Cancelar</button>
-                <button className={styles.btnPillPrimary} onClick={handleSaveEdit} disabled={savingEdit}>
+                <button className={styles.btnPillPrimary} onClick={handleSaveEdit} disabled={savingEdit}
+                  style={errEdit?.geral ? ERRO_BOTAO : undefined} title={errEdit?.geral || ""}>
                   {savingEdit ? "…" : "Salvar"}
                 </button>
               </div>
@@ -422,21 +432,18 @@ export default function TabelasPrecoPage() {
 }
 
 function ModalNovaTabela({ onClose, onCreated }) {
-  const [form, setForm]     = useState({ nome: "", comissao: "" });
+  const [form, setForm]     = useState({ nome: "" });
   const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState(null);
+  const [err, setErr]       = useState(null);   // { nome } | { geral }
 
   const handleSave = async () => {
-    if (!form.nome.trim() || !form.comissao) { setErr("Preencha todos os campos."); return; }
+    if (!form.nome.trim()) { setErr({ nome: "Informe o nome da tabela." }); return; }
     setSaving(true); setErr(null);
     try {
-      await tabelasPrecoApi.create({
-        nome:         form.nome.trim(),
-        comissao_pct: parseFloat(form.comissao) / 100,
-      });
+      await createTabelaPreco({ nome: form.nome.trim() });
       onCreated();
     } catch (e) {
-      setErr(e.message);
+      setErr({ geral: e.message });
       setSaving(false);
     }
   };
@@ -448,21 +455,17 @@ function ModalNovaTabela({ onClose, onCreated }) {
         <label className={styles.field}>
           <span>Nome</span>
           <input className={styles.input} value={form.nome}
-            onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-            placeholder="Ex.: Atacado Sul"
+            style={{ ...UPPER, ...(err?.nome ? ERRO_CAMPO : {}) }}
+            title={err?.nome || ""}
+            onChange={(e) => { setErr(null); setForm((f) => ({ ...f, nome: e.target.value.toUpperCase() })); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+            placeholder="EX.: ATACADO SUL"
             autoFocus />
         </label>
-        <label className={styles.field} style={{ marginTop: 10 }}>
-          <span>Comissão (%)</span>
-          <input type="number" step="0.01" min="0" className={styles.input}
-            value={form.comissao}
-            onChange={(e) => setForm((f) => ({ ...f, comissao: e.target.value }))}
-            placeholder="Ex.: 10" />
-        </label>
-        {err && <p className={styles.msgErro} style={{ marginTop: 10 }}>{err}</p>}
         <div className={styles.modalPillActions}>
           <button className={styles.btnPillSecondary} onClick={onClose}>Cancelar</button>
-          <button className={styles.btnPillPrimary} onClick={handleSave} disabled={saving}>
+          <button className={styles.btnPillPrimary} onClick={handleSave} disabled={saving}
+            style={err?.geral ? ERRO_BOTAO : undefined} title={err?.geral || ""}>
             {saving ? "Criando…" : "Criar Tabela"}
           </button>
         </div>
@@ -501,7 +504,7 @@ function ModalAddItem({ tabelaId, grupos, onClose, onAdded }) {
     if (!form.preco_avista || !form.preco_aprazo)  { setErr("Informe os preços."); return; }
     setSaving(true); setErr(null);
     try {
-      await tabelasPrecoApi.addItem(tabelaId, {
+      await addItemTabelaPreco(tabelaId, {
         grupo_id:          grupoSel.id,
         preco_avista:      parseFloat(form.preco_avista),
         preco_aprazo:      parseFloat(form.preco_aprazo),

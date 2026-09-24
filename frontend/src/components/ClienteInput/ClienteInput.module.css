@@ -1,0 +1,286 @@
+/* ── Campo: [código/CNPJ] [razão social] [lupa]  Ver cadastro ── */
+.linha {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.campo {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-surface);
+  overflow: hidden;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+.campo:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.campoLeitura,
+.campoLeitura:focus-within {
+  background: var(--sc-bg-secondary);
+  border-color: var(--sc-border-strong);
+  box-shadow: none;
+}
+
+.codigo,
+.razao {
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-transform: uppercase;
+  color: var(--sc-text-primary);
+}
+.codigo::placeholder,
+.razao::placeholder { color: var(--sc-text-muted); font-size: 0.75rem; }
+
+.codigo {
+  flex: 0 0 170px;
+  border-right: 1px solid var(--sc-border);
+}
+.codigo:read-only { cursor: default; }
+
+.razao {
+  flex: 1;
+  padding-right: 34px;
+  text-overflow: ellipsis;
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  cursor: default;
+}
+.campoLeitura .razao { padding-right: 10px; }
+
+/* Erro: campo levemente vermelho; mensagem só no tooltip (title). */
+.campoErro,
+.campoErro:focus {
+  background: var(--sc-danger-bg) !important;
+  box-shadow: inset 0 0 0 1px var(--sc-danger-text);
+}
+
+.lupa {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+}
+.lupa:hover { color: var(--color-primary); background: var(--sc-surface-hover); }
+
+.verCadastro {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--sc-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.verCadastro:hover { color: var(--color-primary); }
+
+/* ── Modal de busca (mesmo padrão do TesInput) ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  width: 820px;
+  max-width: 95vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem 0;
+}
+
+.modalTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+
+.modalScroll {
+  overflow-y: auto;
+  padding: 1.5rem 1.75rem;
+  flex: 1;
+}
+
+.busca {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 1rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: var(--sc-font-size-input);
+  text-transform: uppercase;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.busca:focus { border-color: var(--color-primary); }
+
+.lista {
+  max-height: 380px;
+  overflow-y: auto;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tabela th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tabela td {
+  padding: 8px 12px;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tabela tbody tr { cursor: pointer; }
+.tabela tbody tr:last-child td { border-bottom: none; }
+.tabela tbody tr:hover td { background: var(--sc-bg-secondary); }
+
+.colCodigo { width: 80px; }
+.colDoc    { width: 170px; }
+.colCidade { width: 170px; }
+
+.linhaSelecionada td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
+.linhaAtiva td,
+.linhaAtiva:hover td { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+
+.vazio {
+  padding: 2rem !important;
+  text-align: center;
+  color: var(--sc-text-muted) !important;
+  cursor: default;
+}
+
+.rodapeLista {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.dica {
+  margin: 0;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+}
+
+.btnMais {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--sc-font-size-small);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.btnMais:disabled { opacity: 0.5; cursor: default; }
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.25rem 1.75rem 1.5rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnSecondary:hover { background: var(--sc-surface-hover); }
+
+.btnPrimary {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: 1px solid var(--color-primary);
+  padding: 0.45rem 1rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnPrimary:hover:not(:disabled) { filter: brightness(0.95); }
+.btnPrimary:disabled { opacity: 0.5; cursor: default; }

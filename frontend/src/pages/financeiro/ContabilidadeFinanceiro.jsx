@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   getContabilidade, gerarPacoteContabil, gerarResumoInternoContabil,
 } from "../../api/financeiro";
+import { apiFetch } from "../../services/api";
 import { API_BASE } from "../../services/config";
 import styles from "./Contabilidade.module.css";
 
@@ -22,17 +23,48 @@ const dataFmt = (iso) => {
 const somaValores = (itens, getValor) =>
   itens.reduce((acc, item) => acc + (parseFloat(getValor(item)) || 0), 0);
 
-// Converte o caminho relativo salvo no backend (ex.: "uploads/financeiro/...")
-// na URL pública servida pelo StaticFiles montado em /uploads.
-function arquivoUrl(caminho) {
-  if (!caminho) return null;
-  const rel = caminho.replace(/\\/g, "/").split("uploads/").pop();
-  return `${API_BASE}/uploads/${rel}`;
+// Item 2.1: /uploads deixou de ser público — os PDFs de vendas/compras e
+// boletos são baixados com autenticação via GET /api/v1/uploads/* (mesmo
+// token/cookie usado no resto do sistema) e abertos no aplicativo padrão
+// do sistema (desktop via IPC) ou em nova aba (navegador).
+function nomeArquivo(caminho) {
+  if (!caminho) return "documento.pdf";
+  const partes = String(caminho).replace(/\\/g, "/").split("/");
+  return partes[partes.length - 1] || "documento.pdf";
 }
 
-function abrirArquivo(caminho) {
-  const url = arquivoUrl(caminho);
-  if (url) window.open(url, "_blank");
+function blobParaBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onload = () => resolve(leitor.result);
+    leitor.onerror = () => reject(leitor.error);
+    leitor.readAsDataURL(blob);
+  });
+}
+
+async function abrirArquivo(caminho) {
+  if (!caminho) return;
+  try {
+    const rel = String(caminho).replace(/\\/g, "/").split("uploads/").pop();
+    const res = await apiFetch(`${API_BASE}/api/v1/uploads/${rel}`);
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || json.detail || "Não foi possível baixar o arquivo");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if (window.electronAPI?.openPdfBlob) {
+      // Desktop: abre com o aplicativo padrão do sistema via IPC (blob: não
+      // sobrevive à navegação externa a partir da origem app:// do frontend).
+      const b64 = await blobParaBase64(blob);
+      window.electronAPI.openPdfBlob(b64, nomeArquivo(caminho));
+    } else {
+      // Navegador (dev): exibe em nova aba.
+      window.open(url, "_blank");
+    }
+  } catch (err) {
+    console.error("Falha ao abrir arquivo contábil:", err.message);
+  }
 }
 
 function baixarBlob(blob, nomeArquivo) {

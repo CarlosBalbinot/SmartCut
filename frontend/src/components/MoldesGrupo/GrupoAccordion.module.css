@@ -99,64 +99,63 @@
   color: var(--sc-text-muted);
 }
 
-/* ── Lista de moldes ── */
-.moldesList {
+/* ── Grid de moldes ── */
+.moldesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.moldeCard {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  background-color: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  padding: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
 }
 
-.moldeRow {
-  display: grid;
-  grid-template-columns: 42px 1fr 90px 70px;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 8px;
+.moldeCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.miniPreviewWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: var(--sc-bg-secondary);
   border-radius: var(--sc-radius-sm);
-  transition: background-color 0.1s;
+  padding: 6px;
+  box-sizing: border-box;
 }
 
-.moldeRow:hover {
-  background-color: #FBFBFD;
-}
-
-.tamanhoTag {
-  font-size: 11px;
-  font-weight: 700;
+.tamanhoBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background-color: var(--color-primary);
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 600;
   padding: 2px 6px;
-  border-radius: 6px;
-  background-color: #F5F5F7;
-  color: var(--sc-text-secondary);
-  text-align: center;
-  letter-spacing: 0.04em;
+  border-radius: 10px;
+  line-height: 1.4;
 }
 
 .moldeNome {
-  font-size: 13px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
   color: var(--sc-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .moldeArea {
-  font-size: 12px;
+  font-size: 0.72rem;
   color: var(--sc-text-muted);
   font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.btnEditar {
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 500;
-  background-color: #F5F5F7;
-  color: var(--sc-text-secondary);
-  border: none;
-  border-radius: 980px;
-  cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
-  white-space: nowrap;
-}
-
-.btnEditar:hover {
-  background-color: #E5E5EA;
-  color: var(--sc-text-primary);
 }

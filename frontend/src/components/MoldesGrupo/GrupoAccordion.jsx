@@ -1,4 +1,5 @@
 import { useState } from "react";
+import MiniSVG from "../ImportacaoMoldes/MiniSVG";
 import styles from "./GrupoAccordion.module.css";
 
 const TIPO_LABEL = {
@@ -50,21 +51,6 @@ export default function GrupoAccordion({ grupo, podeEditar, podeExcluir, onEdita
       {/* ── Conteúdo expandido ── */}
       {aberto && (
         <div className={styles.corpo}>
-          {grupo.codigo && (
-            <span style={{
-              display: "inline-block",
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              background: "var(--sc-bg-secondary)",
-              color: "var(--sc-text-secondary)",
-              border: "1px solid var(--sc-border-strong)",
-              borderRadius: "999px",
-              padding: "0.15rem 0.55rem",
-              marginBottom: "0.75rem",
-            }}>
-              Ref. {grupo.codigo}
-            </span>
-          )}
           {Object.entries(porParte).map(([parte, moldes]) => (
             <div key={parte} className={styles.parte}>
               <div className={styles.parteHeader}>
@@ -75,22 +61,22 @@ export default function GrupoAccordion({ grupo, podeEditar, podeExcluir, onEdita
                   {TIPO_LABEL[moldes[0]?.tipo_corte] ?? moldes[0]?.tipo_corte}
                 </span>
               </div>
-              <div className={styles.moldesList}>
+              <div className={styles.moldesGrid}>
                 {moldes.map((m) => (
-                  <div key={m.id} className={styles.moldeRow}>
-                    <span className={styles.tamanhoTag}>{m.tamanho ?? "—"}</span>
-                    <span className={styles.moldeNome}>{m.nome}</span>
+                  <div
+                    key={m.id}
+                    className={styles.moldeCard}
+                    onClick={podeEditar ? () => onEditarMolde(m) : undefined}
+                    title={podeEditar ? "Editar molde" : undefined}
+                  >
+                    <div className={styles.miniPreviewWrap}>
+                      <MiniSVG geometria={m.geometria_json} />
+                      <span className={styles.tamanhoBadge}>{m.tamanho ?? "—"}</span>
+                    </div>
+                    <span className={styles.moldeNome} title={m.nome}>{m.nome}</span>
                     <span className={styles.moldeArea}>
                       {m.area_cm2 != null ? `${Number(m.area_cm2).toFixed(1)} cm²` : "—"}
                     </span>
-                    {podeEditar && (
-                      <button
-                        className={styles.btnEditar}
-                        onClick={() => onEditarMolde(m)}
-                      >
-                        Editar
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>

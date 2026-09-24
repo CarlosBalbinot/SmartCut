@@ -1,8 +1,8 @@
-/* ── Layout ── */
+/* ── Layout raiz ── */
 .pagina {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .loading {
@@ -29,24 +29,29 @@
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: -4px;
 }
 
 .topBarCenter { flex: 1; }
 
-.voltar {
+.btnVoltar {
   background: none;
-  border: none;
-  color: var(--sc-text-secondary);
-  font-size: 13px;
-  font-weight: 500;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
   cursor: pointer;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
-  padding-top: 4px;
+  flex-shrink: 0;
+  transition: background-color 0.12s;
 }
 
-.voltar:hover { color: var(--sc-text-primary); }
+.btnVoltar:hover {
+  background: var(--sc-bg-secondary);
+}
 
 .titulo {
   font-size: 1.3rem;
@@ -62,101 +67,77 @@
   margin: 0;
 }
 
-.btnPdf {
-  padding: 9px 18px;
-  font-size: 14px;
-  font-weight: 500;
-  background-color: var(--color-primary);
-  color: #FFFFFF;
+/* ── Tabs de enfesto ── */
+.tabsBar {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--sc-border);
+  overflow-x: auto;
+}
+
+.tab {
+  background: none;
   border: none;
-  border-radius: 980px;
+  padding: 0.7rem 0.25rem;
+  margin-right: 1.25rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sc-text-muted);
   cursor: pointer;
+  border-bottom: 2px solid transparent;
   white-space: nowrap;
   flex-shrink: 0;
-  align-self: flex-start;
-  transition: background-color 0.15s, transform 0.1s;
 }
 
-.btnPdf:hover:not(:disabled) { background-color: var(--color-primary-hover); transform: scale(1.01); }
-.btnPdf:disabled { opacity: 0.55; cursor: wait; }
+.tab:hover { color: var(--sc-text-primary); }
 
-/* ── Cards de resumo ── */
-.cards {
+.tabAtiva {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* ── Layout principal: painel + visualizador ── */
+.layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-  border-radius: var(--sc-radius-lg);
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  gap: 16px;
+  align-items: stretch;
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 20px 22px;
-  flex: 1;
-  min-width: 130px;
-  background-color: var(--sc-surface);
-  border-right: 1px solid rgba(0,0,0,0.06);
-}
-
-.card:last-child { border-right: none; }
-
-.cardDestaque { background-color: #1D1D1F; }
-.cardBom      { background-color: var(--sc-success-bg); }
-.cardAlerta   { background-color: var(--sc-danger-bg); }
-
-.cardLabel {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--sc-text-muted);
-}
-
-.cardValor {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--sc-text-primary);
-  letter-spacing: -0.8px;
-  line-height: 1.1;
-}
-
-.cardSub {
-  font-size: 12px;
-  color: var(--sc-text-muted);
-}
-
-.cardDestaque .cardLabel { color: rgba(255,255,255,0.5); }
-.cardDestaque .cardValor { color: #FFFFFF; }
-.cardDestaque .cardSub   { color: rgba(255,255,255,0.4); }
-.cardBom .cardLabel      { color: var(--sc-success-text); opacity: 0.7; }
-.cardBom .cardValor      { color: var(--sc-success-text); }
-.cardAlerta .cardLabel   { color: var(--sc-danger-text); opacity: 0.7; }
-.cardAlerta .cardValor   { color: var(--sc-danger-text); }
-
-/* ── Seção de enfesto ── */
-.enfesto {
-  background-color: var(--sc-surface);
-  border-radius: var(--sc-radius-lg);
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
-}
-
-.enfestoHeader {
-  padding: 16px 20px 14px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-  background-color: #FBFBFD;
+/* ── Painel esquerdo ── */
+.painel {
+  width: 320px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  background-color: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  padding: 16px;
+  overflow-y: auto;
 }
 
-.enfestoTopo {
+@media (max-width: 1023px) {
+  .painel { width: 280px; }
+}
+
+.painelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.painelCliente {
+  font-size: 0.78rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.painelBadges {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .badgeTecido {
@@ -178,46 +159,143 @@
   letter-spacing: 0.05em;
 }
 
-.enfestoInstrucoes {
-  font-size: 13px;
-  color: var(--sc-text-primary);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.desperdicioBom    { color: var(--sc-success-text); font-weight: 600; }
-.desperdicioAlerta { color: var(--sc-danger-text); font-weight: 600; }
-
-/* ── Corpo do enfesto ── */
-.enfestoBody {
+/* ── Métricas 2×2 ── */
+.metricsGrid {
   display: grid;
-  grid-template-columns: 260px 1fr;
-}
-
-@media (max-width: 860px) {
-  .enfestoBody { grid-template-columns: 1fr; }
-}
-
-/* ── Lista de peças ── */
-.pecasList {
-  padding: 16px 18px;
-  border-right: 1px solid rgba(0,0,0,0.06);
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-@media (max-width: 860px) {
-  .pecasList { border-right: none; border-bottom: 1px solid rgba(0,0,0,0.06); }
+.metricCard {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background-color: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-sm);
 }
 
-.pecasTitle {
-  font-size: 11px;
+.metricLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+}
+
+.metricValor {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  letter-spacing: -0.02em;
+}
+
+/* ── Card de aproveitamento — justificativa aparece em tooltip no hover ── */
+.cardAproveitamento {
+  position: relative;
+  cursor: help;
+}
+
+.tooltipJustificativa {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 260px;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: var(--sc-text-primary);
+  line-height: 1.6;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.tooltipJustificativa::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-top-color: var(--sc-border);
+}
+
+.tooltipJustificativa::before {
+  content: "";
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 21px;
+  border: 5px solid transparent;
+  border-top-color: var(--sc-surface);
+  z-index: 1;
+}
+
+.tooltipTitulo {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0 0 4px;
+}
+
+.tooltipLista {
+  margin: 0 0 6px;
+  padding-left: 1.1rem;
+}
+
+.tooltipLista li {
+  margin: 2px 0;
+}
+
+.tooltipRodape {
+  font-size: 0.68rem;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+/* ── Lista de peças ── */
+.pecasSection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.pecasSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--sc-text-muted);
-  margin: 0 0 4px 0;
+  margin-bottom: 6px;
+}
+
+.pecasChevron {
+  font-size: 1rem;
+  transition: transform 0.15s;
+  display: inline-block;
+  line-height: 1;
+}
+
+.pecasChevronAberto {
+  transform: rotate(90deg);
+}
+
+.pecasScroll {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 .pecaItem {
@@ -225,6 +303,24 @@
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+  font-family: inherit;
+}
+
+.pecaItem:hover {
+  background-color: var(--sc-bg-secondary);
+}
+
+.pecaItemAtivo {
+  background-color: var(--sc-bg-secondary);
+  box-shadow: inset 2px 0 0 var(--color-primary);
 }
 
 .pecaCor {
@@ -269,8 +365,73 @@
   margin: 0;
 }
 
-/* ── Visualizador ── */
-.visualizadorWrap {
-  padding: 16px;
+/* ── Botão PDF no painel ── */
+.btnPdfPainel {
+  width: 100%;
+  padding: 9px 16px;
+  background: var(--sc-surface);
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.btnPdfPainel:hover:not(:disabled) {
+  background-color: var(--sc-bg-secondary);
+}
+
+.btnPdfPainel:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* ── Área direita: visualizador ── */
+.areaDireita {
+  flex: 1;
   min-width: 0;
+}
+
+.semVisualizador {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-lg);
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  font-style: italic;
+  text-align: center;
+  padding: 24px;
+}
+
+/* ── Responsivo ── */
+@media (max-width: 767px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .painel {
+    width: 100%;
+    order: 2;
+  }
+
+  .areaDireita {
+    order: 1;
+    height: 50vh;
+    min-height: 320px;
+  }
+
+  .semVisualizador {
+    min-height: 320px;
+  }
+
+  .btnPdfPainel {
+    position: sticky;
+    bottom: 0;
+  }
 }

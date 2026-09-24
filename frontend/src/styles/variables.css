@@ -42,6 +42,10 @@
   --sc-info-text: #2596be;
   --sc-info-border: rgba(37,150,190,0.2);
 
+  --sc-bg-warning: #FEF9C3;
+  --sc-text-warning: #854D0E;
+  --sc-border-warning: #FDE68A;
+
   /* ── Aliases legados → novos tokens ── */
   --sc-50: #F5F5F7;
   --sc-100: #F5F5F7;

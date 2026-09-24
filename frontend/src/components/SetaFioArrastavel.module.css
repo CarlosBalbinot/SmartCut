@@ -1,0 +1,59 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.instrucao {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+  margin: 0 0 6px;
+}
+
+.canvas {
+  position: relative;
+  width: 100%;
+  background-color: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-md);
+  user-select: none;
+  cursor: crosshair;
+  overflow: hidden;
+}
+
+.pecaWrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10%;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.setaSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.setaLinha {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.setaPonta,
+.setaCentro {
+  fill: var(--color-primary);
+}
+
+.anguloLabel {
+  font-size: 0.72rem;
+  text-align: center;
+  color: var(--sc-text-muted);
+  margin: 6px 0 0;
+}

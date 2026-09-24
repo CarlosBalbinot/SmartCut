@@ -577,3 +577,93 @@
   color: var(--sc-danger-text);
   margin: 0.5rem 0 0;
 }
+
+/* ── Erro: campo levemente vermelho; mensagem só no tooltip (title) ── */
+.campoErro,
+.campoErro:hover,
+.campoErro:focus {
+  background: var(--sc-danger-bg) !important;
+  border-color: var(--sc-danger-text) !important;
+  box-shadow: none !important;
+}
+.btnErro { box-shadow: 0 0 0 2px var(--sc-danger-text); }
+
+.inputUpper { text-transform: uppercase; }
+
+.fieldHint {
+  font-size: 0.72rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--sc-text-muted);
+}
+
+.btnPill:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Comissões por tabela ── */
+.comissoesTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.comissoesTable th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.comissoesTable td {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+  vertical-align: middle;
+}
+
+.colPct  { width: 150px; }
+.colAcao { width: 40px; text-align: right; }
+
+.comissaoTabela { font-weight: 500; }
+
+.pillInativa {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+  border: 1px solid var(--sc-border-strong);
+}
+
+.inputPct {
+  height: 30px;
+  text-align: right;
+}
+
+.btnRemover {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--sc-radius-sm);
+}
+.btnRemover:hover { color: var(--sc-danger-text); }
+
+.comissoesVazio {
+  font-size: 13px;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.comissoesAcoes { margin-top: 12px; }

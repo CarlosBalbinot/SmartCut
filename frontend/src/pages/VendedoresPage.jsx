@@ -1,9 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
-import { catalogosApi, leadsApi, tabelasPrecoApi } from "../services/api";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  getVendedores, createVendedor, updateVendedor,
-  getCredenciaisVendedor, setCredenciaisVendedor, getMetasVendedor, updateMetasVendedor,
+  createVendedor,
+  getComissoesVendedor,
+  getCredenciaisVendedor,
+  getMetasVendedor,
+  getVendedores,
+  removerComissaoVendedor,
+  salvarComissoesVendedor,
+  setCredenciaisVendedor,
+  updateMetasVendedor,
+  updateVendedor,
 } from "../api/vendedores";
+import {
+  addVendedorCatalogo,
+  createCatalogo,
+  getCatalogos,
+  getCatalogosVendedores,
+  removerVendedorCatalogo,
+} from "../api/catalogos";
+import { createLead, deleteLead, getLeads } from "../api/leads";
+import { getTabelasPreco } from "../api/tabelasPreco";
 import { useAuth } from "../auth/useAuth";
 import styles from "./VendedoresPage.module.css";
 
@@ -16,6 +32,7 @@ const TABS_DADOS = [
 ];
 
 const TABS_GESTAO = [
+  { id: "comissoes", label: "Comissões" },
   { id: "acesso", label: "Acesso" },
   { id: "metas", label: "Metas" },
   { id: "catalogos", label: "Catálogos" },
@@ -47,6 +64,24 @@ const formatCep = (v) => {
 
 const stripDigits = (v) => (v || "").replace(/\D/g, "");
 
+// Percentual pt-BR com 2 casas: 10 → "10,00".
+const pctBR = (v) =>
+  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
+
+// "10" / "10,5" / "10.50" / "10%" → número (2 casas); "" → null; inválido → NaN.
+function parsePct(texto) {
+  const t = String(texto ?? "").replace(/[%\s]/g, "").replace(",", ".");
+  if (!t) return null;
+  if (!/^\d*\.?\d+$/.test(t)) return NaN;
+  return Number(Number(t).toFixed(2));
+}
+
+const erroPct = (n) => {
+  if (Number.isNaN(n)) return "Valor inválido. Use o formato 10,00.";
+  if (n > 100) return "Informe um percentual entre 0 e 100.";
+  return null;
+};
+
 const VAZIO = {
   tipo_pessoa: "fisica",
   nome: "",
@@ -65,7 +100,7 @@ const VAZIO = {
   cpf_cnpj: "",
   rg_ie: "",
   inscricao_municipal: "",
-  comissao_pct: "0",
+  comissao_padrao_pct: "",
   dia_pagto: "0",
   pct_pago_emissao: "100",
   pct_pago_baixa: "0",
@@ -86,7 +121,8 @@ export default function VendedoresPage() {
   const [aba, setAba]               = useState("dados");
   const [abaErro, setAbaErro]       = useState(null);
   const [saving, setSaving]         = useState(false);
-  const [erro, setErro]             = useState(null);
+  const [erro, setErro]             = useState(null);   // erro da API ao salvar
+  const [errosCampo, setErrosCampo] = useState({});     // { campo: mensagem } → tooltip
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -101,7 +137,7 @@ export default function VendedoresPage() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  const abrirNovo = () => { setModal({ ...VAZIO }); setAba("dados"); setAbaErro(null); setErro(null); };
+  const abrirNovo = () => { setModal({ ...VAZIO }); setAba("dados"); setAbaErro(null); setErro(null); setErrosCampo({}); };
 
   const abrirEditar = (v) => {
     setModal({
@@ -124,7 +160,7 @@ export default function VendedoresPage() {
       cpf_cnpj: formatCpfCnpj(v.cpf_cnpj || ""),
       rg_ie: v.rg_ie || "",
       inscricao_municipal: v.inscricao_municipal || "",
-      comissao_pct: money2(v.comissao_pct),
+      comissao_padrao_pct: v.comissao_padrao_pct == null ? "" : pctBR(v.comissao_padrao_pct),
       dia_pagto: String(v.dia_pagto ?? 0),
       pct_pago_emissao: money2(v.pct_pago_emissao),
       pct_pago_baixa: money2(v.pct_pago_baixa),
@@ -136,15 +172,25 @@ export default function VendedoresPage() {
     setAba("dados");
     setAbaErro(null);
     setErro(null);
+    setErrosCampo({});
   };
 
-  const fecharModal = () => { setModal(null); setErro(null); };
-  const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
+  const fecharModal = () => { setModal(null); setErro(null); setErrosCampo({}); };
+  const limparErro = (k) => {
+    setErro(null);
+    setErrosCampo((er) => (er[k] ? { ...er, [k]: undefined } : er));
+  };
+  const setF = (k) => (e) => { limparErro(k); setModal((m) => ({ ...m, [k]: e.target.value })); };
+  const setFUpper = (k) => (e) => { limparErro(k); setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() })); };
 
   const handleSalvar = async () => {
     setAbaErro(null);
-    if (!modal.nome.trim()) {
-      setErro("Nome é obrigatório.");
+    const erros = {};
+    if (!modal.nome.trim()) erros.nome = "Nome é obrigatório.";
+    const comissaoPadrao = parsePct(modal.comissao_padrao_pct);
+    if (comissaoPadrao !== null && erroPct(comissaoPadrao)) erros.comissao_padrao_pct = erroPct(comissaoPadrao);
+    setErrosCampo(erros);
+    if (Object.keys(erros).length) {
       setAbaErro("dados");
       setAba("dados");
       return;
@@ -169,7 +215,7 @@ export default function VendedoresPage() {
         cpf_cnpj: stripDigits(modal.cpf_cnpj) || null,
         rg_ie: modal.rg_ie.trim() || null,
         inscricao_municipal: modal.inscricao_municipal.trim() || null,
-        comissao_pct: Number(modal.comissao_pct) || 0,
+        comissao_padrao_pct: comissaoPadrao,
         dia_pagto: parseInt(modal.dia_pagto, 10) || 0,
         pct_pago_emissao: Number(modal.pct_pago_emissao) || 0,
         pct_pago_baixa: Number(modal.pct_pago_baixa) || 0,
@@ -229,7 +275,7 @@ export default function VendedoresPage() {
               <th>Código</th>
               <th>Nome</th>
               <th>CPF/CNPJ</th>
-              <th>Comissão (%)</th>
+              <th>Comissão padrão</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -244,7 +290,7 @@ export default function VendedoresPage() {
                 <td className={styles.tdMono}>{v.codigo || "—"}</td>
                 <td>{v.nome}</td>
                 <td className={styles.tdMono}>{formatCpfCnpj(v.cpf_cnpj || "") || "—"}</td>
-                <td className={styles.tdMono}>{money2(v.comissao_pct)}%</td>
+                <td className={styles.tdMono}>{v.comissao_padrao_pct == null ? "—" : `${pctBR(v.comissao_padrao_pct)}%`}</td>
                 <td>
                   <span className={`${styles.badge} ${v.status === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}>
                     {v.status === "ativo" ? "Ativo" : "Inativo"}
@@ -317,22 +363,41 @@ export default function VendedoresPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome *</span>
-                    <input className={styles.input} value={modal.nome} onChange={setF("nome")} />
+                    <input
+                      className={`${styles.input} ${errosCampo.nome ? styles.campoErro : ""}`}
+                      value={modal.nome}
+                      title={errosCampo.nome || ""}
+                      onChange={setFUpper("nome")}
+                    />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
-                    <input className={styles.input} value={modal.nome_fantasia} onChange={setF("nome_fantasia")} />
+                    <input className={styles.input} value={modal.nome_fantasia} onChange={setFUpper("nome_fantasia")} />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição</span>
-                    <textarea className={`${styles.input} ${styles.textarea}`} rows={2} value={modal.descricao} onChange={setF("descricao")} />
+                    <textarea className={`${styles.input} ${styles.textarea}`} rows={2} value={modal.descricao} onChange={setFUpper("descricao")} />
                   </label>
 
                   <label className={styles.field}>
-                    <span>Comissão (%)</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.comissao_pct} onChange={setF("comissao_pct")} />
+                    <span>Comissão padrão (%)</span>
+                    <input
+                      className={`${styles.input} ${styles.inputUpper} ${errosCampo.comissao_padrao_pct ? styles.campoErro : ""}`}
+                      value={modal.comissao_padrao_pct}
+                      inputMode="decimal"
+                      placeholder="Opcional"
+                      title={errosCampo.comissao_padrao_pct || ""}
+                      onChange={setFUpper("comissao_padrao_pct")}
+                      onBlur={() => {
+                        const n = parsePct(modal.comissao_padrao_pct);
+                        if (n !== null && !erroPct(n)) setModal((m) => ({ ...m, comissao_padrao_pct: pctBR(n) }));
+                      }}
+                    />
+                    <span className={styles.fieldHint}>
+                      Usada quando o vendedor não tem comissão específica na tabela do pedido
+                    </span>
                   </label>
 
                   <label className={styles.field}>
@@ -367,8 +432,6 @@ export default function VendedoresPage() {
                     </select>
                   </label>
                 </div>
-
-                {erro && <p className={styles.erro}>{erro}</p>}
               </div>
             )}
 
@@ -394,24 +457,24 @@ export default function VendedoresPage() {
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
-                      <input className={styles.input} value={modal.endereco} onChange={setF("endereco")} placeholder="Rua, Av…" />
-                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setF("numero")} placeholder="Nº" />
+                      <input className={styles.input} value={modal.endereco} onChange={setFUpper("endereco")} placeholder="Rua, Av…" />
+                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setFUpper("numero")} placeholder="Nº" />
                     </div>
                   </div>
 
                   <label className={styles.field}>
                     <span>Complemento</span>
-                    <input className={styles.input} value={modal.complemento} onChange={setF("complemento")} />
+                    <input className={styles.input} value={modal.complemento} onChange={setFUpper("complemento")} />
                   </label>
 
                   <label className={styles.field}>
                     <span>Bairro</span>
-                    <input className={styles.input} value={modal.bairro} onChange={setF("bairro")} />
+                    <input className={styles.input} value={modal.bairro} onChange={setFUpper("bairro")} />
                   </label>
 
                   <label className={styles.field}>
                     <span>Município</span>
-                    <input className={styles.input} value={modal.municipio} onChange={setF("municipio")} />
+                    <input className={styles.input} value={modal.municipio} onChange={setFUpper("municipio")} />
                   </label>
                 </div>
               </div>
@@ -468,6 +531,7 @@ export default function VendedoresPage() {
               </div>
             )}
 
+            {aba === "comissoes" && modal.id && <TabComissoes vendedorId={modal.id} />}
             {aba === "acesso"    && modal.id && <TabAcesso vendedorId={modal.id} />}
             {aba === "metas"     && modal.id && <TabMetas vendedorId={modal.id} />}
             {aba === "catalogos" && modal.id && <TabCatalogos vendedorId={modal.id} />}
@@ -476,7 +540,12 @@ export default function VendedoresPage() {
             {["dados", "endereco", "fiscal"].includes(aba) ? (
               <div className={styles.modalActions}>
                 <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
-                <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
+                <button
+                  className={`${styles.btnPrimary} ${erro ? styles.btnErro : ""}`}
+                  onClick={handleSalvar}
+                  disabled={saving}
+                  title={erro || ""}
+                >
                   {saving ? "Salvando…" : "Salvar"}
                 </button>
               </div>
@@ -486,6 +555,239 @@ export default function VendedoresPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Aba: Comissões por tabela ───────────────────────────────────────────
+// Vínculo vendedor + tabela de preço (VendedorTabelaComissao) — tem
+// prioridade sobre a comissão padrão no cálculo do pedido.
+
+// Salva no blur/Enter, Esc reverte. Erro: campo vermelho claro + tooltip.
+// permitirVazio: linha nova — sair do campo vazio não acusa erro.
+function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
+  const [focado, setFocado]     = useState(false);
+  const [texto, setTexto]       = useState("");
+  const [erro, setErro]         = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const ignorarBlur = useRef(false);
+
+  const paraEdicao = () => (valor == null ? "" : pctBR(valor));
+  const exibido = focado || erro ? texto : (valor == null ? "" : `${pctBR(valor)}%`);
+
+  const salvar = async () => {
+    const n = parsePct(texto);
+    if (n === null) {
+      if (permitirVazio) { setErro(null); return true; }
+      setErro("Informe a comissão."); return false;
+    }
+    const msg = erroPct(n);
+    if (msg) { setErro(msg); return false; }
+    if (valor != null && Math.abs(n - valor) < 0.005) { setErro(null); return true; }
+    setSalvando(true);
+    try {
+      await onSalvar(n);
+      setErro(null);
+      return true;
+    } catch (e) {
+      setErro(e.message || "Não foi possível salvar.");
+      return false;
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleKeyDown = async (e) => {
+    if (readOnly || salvando) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const el = e.currentTarget;
+      if (await salvar()) { ignorarBlur.current = true; el.blur(); }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setTexto(paraEdicao());
+      setErro(null);
+      ignorarBlur.current = true;
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      className={`${styles.input} ${styles.inputUpper} ${styles.inputPct} ${erro ? styles.campoErro : ""}`}
+      value={exibido}
+      placeholder="0,00"
+      title={erro || ""}
+      readOnly={readOnly || salvando}
+      tabIndex={readOnly ? -1 : 0}
+      inputMode="decimal"
+      autoFocus={autoFocus}
+      onChange={(e) => setTexto(e.target.value.toUpperCase())}
+      onFocus={(e) => {
+        if (!erro) setTexto(paraEdicao());
+        setFocado(true);
+        const el = e.target;
+        requestAnimationFrame(() => el.select());
+      }}
+      onBlur={() => {
+        setFocado(false);
+        if (ignorarBlur.current) { ignorarBlur.current = false; return; }
+        if (!readOnly) salvar();
+      }}
+      onKeyDown={handleKeyDown}
+    />
+  );
+}
+
+function TabComissoes({ vendedorId }) {
+  const { hasPermission } = useAuth();
+  const podeEditar = hasPermission(MODULO, "editar");
+  const [linhas, setLinhas]           = useState([]);
+  const [tabelas, setTabelas]         = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [erroCarga, setErroCarga]     = useState(null);
+  const [novo, setNovo]               = useState(null);   // { tabela_preco_id } da linha em inclusão
+  const [erroRemover, setErroRemover] = useState({});     // { comissaoId: mensagem }
+
+  useEffect(() => {
+    let ativo = true;
+    setLoading(true); setErroCarga(null); setNovo(null);
+    Promise.all([
+      getComissoesVendedor(vendedorId),
+      getTabelasPreco().catch(() => []),
+    ])
+      .then(([coms, tabs]) => { if (ativo) { setLinhas(coms || []); setTabelas(tabs || []); } })
+      .catch((e) => { if (ativo) setErroCarga(e.message); })
+      .finally(() => { if (ativo) setLoading(false); });
+    return () => { ativo = false; };
+  }, [vendedorId]);
+
+  const vinculadas = new Set(linhas.map((l) => l.tabela_preco_id));
+  const disponiveis = tabelas.filter((t) => t.ativa !== false && !vinculadas.has(t.id));
+
+  const salvar = async (tabelaId, pct) => {
+    const data = await salvarComissoesVendedor(vendedorId, [
+      { tabela_preco_id: tabelaId, comissao_pct: pct },
+    ]);
+    setLinhas(data || []);
+  };
+
+  const salvarNovo = async (pct) => {
+    await salvar(novo.tabela_preco_id, pct);
+    setNovo(null);
+  };
+
+  const remover = async (linha) => {
+    setErroRemover((er) => ({ ...er, [linha.id]: undefined }));
+    try {
+      await removerComissaoVendedor(vendedorId, linha.id);
+      setLinhas((ls) => ls.filter((l) => l.id !== linha.id));
+    } catch (e) {
+      setErroRemover((er) => ({ ...er, [linha.id]: e.message }));
+    }
+  };
+
+  if (loading) return <p className={styles.tabInner} style={{ color: "var(--sc-text-muted)", fontSize: 13 }}>Carregando…</p>;
+
+  if (erroCarga) {
+    return (
+      <div className={styles.tabInner}>
+        <p className={styles.comissoesVazio} title={erroCarga}>Não foi possível carregar as comissões.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.tabInner}>
+      <p className={styles.hint} style={{ marginBottom: 12 }}>
+        A comissão da tabela tem prioridade sobre a comissão padrão do vendedor.
+      </p>
+
+      {linhas.length === 0 && !novo ? (
+        <p className={styles.comissoesVazio}>
+          Nenhuma tabela vinculada. A comissão padrão será usada em todos os pedidos.
+        </p>
+      ) : (
+        <table className={styles.comissoesTable}>
+          <thead>
+            <tr>
+              <th>Tabela</th>
+              <th className={styles.colPct}>Comissão (%)</th>
+              <th className={styles.colAcao} />
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((l) => (
+              <tr key={l.id}>
+                <td>
+                  <span className={styles.comissaoTabela}>{l.tabela_nome}</span>
+                  {!l.tabela_ativa && <span className={styles.pillInativa}>Inativa</span>}
+                </td>
+                <td>
+                  <CampoPct
+                    valor={Number(l.comissao_pct)}
+                    readOnly={!podeEditar}
+                    onSalvar={(n) => salvar(l.tabela_preco_id, n)}
+                  />
+                </td>
+                <td className={styles.colAcao}>
+                  {podeEditar && (
+                    <button
+                      type="button"
+                      className={`${styles.btnRemover} ${erroRemover[l.id] ? styles.btnErro : ""}`}
+                      title={erroRemover[l.id] || "Remover vínculo"}
+                      onClick={() => remover(l)}
+                    >×</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {novo && (
+              <tr>
+                <td>
+                  <select
+                    className={`${styles.input} ${styles.inputUpper}`}
+                    value={novo.tabela_preco_id}
+                    autoFocus
+                    onChange={(e) => setNovo({ tabela_preco_id: e.target.value })}
+                  >
+                    <option value="">Selecione a tabela…</option>
+                    {disponiveis.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                  </select>
+                </td>
+                <td>
+                  {novo.tabela_preco_id && (
+                    <CampoPct
+                      key={novo.tabela_preco_id}
+                      valor={null}
+                      autoFocus
+                      permitirVazio
+                      onSalvar={salvarNovo}
+                    />
+                  )}
+                </td>
+                <td className={styles.colAcao}>
+                  <button type="button" className={styles.btnRemover} title="Cancelar" onClick={() => setNovo(null)}>×</button>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
+      {podeEditar && !novo && (
+        <div className={styles.comissoesAcoes}>
+          <button
+            type="button"
+            className={styles.btnPill}
+            disabled={disponiveis.length === 0}
+            title={disponiveis.length === 0 ? "Todas as tabelas ativas já estão vinculadas." : ""}
+            onClick={() => setNovo({ tabela_preco_id: "" })}
+          >
+            + Vincular tabela
+          </button>
         </div>
       )}
     </div>
@@ -630,12 +932,12 @@ function TabCatalogos({ vendedorId }) {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [cats, tabs] = await Promise.all([catalogosApi.list(), tabelasPrecoApi.list()]);
+      const [cats, tabs] = await Promise.all([getCatalogos(), getTabelasPreco()]);
       const catList = cats || [];
       setCatalogos(catList);
       setTabelas(tabs || []);
       const acessosArr = await Promise.all(
-        catList.map((cat) => catalogosApi.listVendedores(cat.id).catch(() => []))
+        catList.map((cat) => getCatalogosVendedores(cat.id).catch(() => []))
       );
       const comAcesso = catList
         .filter((_, i) => (acessosArr[i] || []).includes(String(vendedorId)))
@@ -650,10 +952,10 @@ function TabCatalogos({ vendedorId }) {
   const toggleAcesso = async (catId, temAcesso) => {
     try {
       if (temAcesso) {
-        await catalogosApi.removeVendedor(catId, vendedorId);
+        await removerVendedorCatalogo(catId, vendedorId);
         setAcessos((prev) => prev.filter((id) => id !== catId));
       } else {
-        await catalogosApi.addVendedor(catId, vendedorId);
+        await addVendedorCatalogo(catId, vendedorId);
         setAcessos((prev) => [...prev, catId]);
       }
     } catch {}
@@ -667,7 +969,7 @@ function TabCatalogos({ vendedorId }) {
       fd.append("nome", upForm.nome);
       if (upForm.tabela_preco_id) fd.append("tabela_preco_id", upForm.tabela_preco_id);
       fd.append("arquivo", upFile);
-      await catalogosApi.create(fd);
+      await createCatalogo(fd);
       setShowUpload(false);
       setUpForm({ nome: "", tabela_preco_id: "" });
       setUpFile(null);
@@ -776,7 +1078,7 @@ function TabLeads({ vendedorId }) {
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const all = await leadsApi.list();
+      const all = await getLeads();
       setLeads((all || []).filter((l) => l.vendedor_id === String(vendedorId)));
     } catch {}
     finally { setLoading(false); }
@@ -788,7 +1090,7 @@ function TabLeads({ vendedorId }) {
     if (!form.nome.trim()) { setErr("Nome é obrigatório."); return; }
     setSaving(true); setErr(null);
     try {
-      await leadsApi.create({ ...form, vendedor_id: vendedorId });
+      await createLead({ ...form, vendedor_id: vendedorId });
       setShowNovo(false);
       setForm(LEAD_VAZIO);
       await loadLeads();
@@ -800,7 +1102,7 @@ function TabLeads({ vendedorId }) {
   };
 
   const handleDelete = async (leadId) => {
-    try { await leadsApi.remove(leadId); await loadLeads(); } catch {}
+    try { await deleteLead(leadId); await loadLeads(); } catch {}
   };
 
   return (

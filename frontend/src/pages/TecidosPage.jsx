@@ -27,6 +27,26 @@ function badgeLote(lote) {
   return "intacto";
 }
 
+// Campos numéricos que devem aceitar só inteiro (largura útil, gramatura,
+// máx. camadas) — evita o erro de digitar "1.4" num campo que deveria
+// receber "140" (ponto/vírgula vira decimal errado, não separador de milhar).
+function bloquearDecimal(e) {
+  if (e.key === "." || e.key === ",") {
+    e.preventDefault();
+  }
+}
+
+function bloquearColarDecimal(e) {
+  const text = e.clipboardData.getData("text");
+  if (/[.,]/.test(text)) {
+    e.preventDefault();
+  }
+}
+
+function apenasInteiro(valor) {
+  return valor.replace(/[^0-9]/g, "");
+}
+
 // ─────────────────────────────────────────────────────────────────────
 //  Componente principal
 // ─────────────────────────────────────────────────────────────────────
@@ -367,10 +387,13 @@ export default function TecidosPage() {
                 <input
                   className={ts.input}
                   type="number"
+                  step="1"
                   min="1"
                   max="500"
                   value={formModelo.max_camadas}
-                  onChange={(e) => setFormModelo((p) => ({ ...p, max_camadas: e.target.value }))}
+                  onChange={(e) => setFormModelo((p) => ({ ...p, max_camadas: apenasInteiro(e.target.value) }))}
+                  onKeyDown={bloquearDecimal}
+                  onPaste={bloquearColarDecimal}
                 />
               </div>
             </div>
@@ -411,24 +434,32 @@ export default function TecidosPage() {
                 <input
                   className={ts.input}
                   type="number"
-                  step="0.01"
+                  step="1"
                   min="0"
+                  placeholder="ex: 140"
                   value={formCor.largura_util_cm}
-                  onChange={(e) => setFormCor((p) => ({ ...p, largura_util_cm: e.target.value }))}
+                  onChange={(e) => setFormCor((p) => ({ ...p, largura_util_cm: apenasInteiro(e.target.value) }))}
+                  onKeyDown={bloquearDecimal}
+                  onPaste={bloquearColarDecimal}
                   required
                 />
+                <span className={ts.hint}>Informe em centímetros (ex: 140 = 1,40m)</span>
               </div>
               <div className={ts.campo}>
                 <label className={ts.label}>Gramatura (g/m²) *</label>
                 <input
                   className={ts.input}
                   type="number"
-                  step="0.01"
+                  step="1"
                   min="0"
+                  placeholder="ex: 220"
                   value={formCor.gramatura_g_m2}
-                  onChange={(e) => setFormCor((p) => ({ ...p, gramatura_g_m2: e.target.value }))}
+                  onChange={(e) => setFormCor((p) => ({ ...p, gramatura_g_m2: apenasInteiro(e.target.value) }))}
+                  onKeyDown={bloquearDecimal}
+                  onPaste={bloquearColarDecimal}
                   required
                 />
+                <span className={ts.hint}>Gramas por metro quadrado</span>
               </div>
             </div>
             <div className={ts.campo}>

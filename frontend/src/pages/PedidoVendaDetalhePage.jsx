@@ -3,31 +3,40 @@ import ReactDOM from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   getPedidoVenda, updatePedidoVenda, updateStatusPedidoVenda,
-  addItemPedidoVenda, updateItemPedidoVenda, removeItemPedidoVenda,
+  addItensBulkPedidoVenda, removeItemPedidoVenda,
   getPdfPedidoVenda, getPdfCortePedidoVenda, gerarEncaixePedidoVenda,
 } from "../api/pedidos";
+import { produtosApi } from "../api/produtos";
 import { getVendedores } from "../api/vendedores";
 import { listar as listarTes } from "../api/tes";
+import { listar as listarCondicoesPagamento, simular as simularParcelas } from "../api/condicoesPagamento";
 import { criar as criarNfe } from "../api/nfe";
 import { transportadorasApi } from "../api/transportadoras";
-import { tabelasPrecoApi, modelosApi, coresApi, gruposApi } from "../services/api";
+import { aplicarTabelaPedidoVenda, updateItemPedidoVenda } from "../api/pedidos";
+import { getTabelasPreco } from "../api/tabelasPreco";
+import useResizableColumns from "../hooks/useResizableColumns";
+import TesInput from "../components/TesInput/TesInput";
+import ClienteInput from "../components/ClienteInput/ClienteInput";
+import ClienteFormModal from "../components/ClienteFormModal/ClienteFormModal";
+import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
 import { useAuth } from "../auth/useAuth";
 import styles from "./PedidoVendaDetalhePage.module.css";
 
 const MODULO_EDITAR = "pedidos_editar";
 const MODULO_EXCLUIR = "pedidos_excluir";
 
-const TAMANHOS_BASE = ["P", "M", "G", "GG"];
-const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
-const TAM_KEY = { P: "qtd_p", M: "qtd_m", G: "qtd_g", GG: "qtd_gg", G1: "qtd_g1", G2: "qtd_g2", G3: "qtd_g3" };
-const QTD_KEYS = ["qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_g3"];
-
-const CONDICOES_LABEL = { avista: "À Vista", aprazo: "A Prazo" };
-
 const STATUS_LABELS = { Aberto: "Aberto", Fechado: "Fechado", Cancelado: "Cancelado" };
 const STATUS_CLS = { Aberto: "stAberto", Fechado: "stFechado", Cancelado: "stCancelado" };
 
-const INDICADOR_PRESENCA_OPCOES = ["Presencial", "Internet", "Teleatendimento", "Outros"];
+const INDICADOR_PRESENCA_OPCOES = [
+  { value: "0", label: "0 – Não se aplica" },
+  { value: "1", label: "1 – Operação presencial" },
+  { value: "2", label: "2 – Operação não presencial, pela Internet" },
+  { value: "3", label: "3 – Operação não presencial, Teleatendimento" },
+  { value: "4", label: "4 – NFC-e em operação com entrega a domicílio" },
+  { value: "5", label: "5 – Operação presencial, fora do estabelecimento" },
+  { value: "9", label: "9 – Operação não presencial, outros" },
+];
 const TIPO_FRETE_OPCOES = ["Sem Frete", "CIF", "FOB", "Por conta de terceiros", "Próprio", "Sem Ocorrência"];
 const SERIE_NFE_OPCOES = [
   { value: "001", label: "001 - NF-e" },
@@ -60,16 +69,141 @@ async function downloadBlob(promiseFn, filename) {
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
-const CAMPOS_CLIENTE = [
-  { k: "cliente_razao_social", l: "Razão Social *"    },
-  { k: "cliente_cnpj",         l: "CNPJ"              },
-  { k: "cliente_ie",           l: "Inscrição Estadual" },
-  { k: "cliente_endereco",     l: "Endereço"           },
-  { k: "cliente_cidade",       l: "Cidade"             },
-  { k: "cliente_cep",          l: "CEP"                },
-  { k: "cliente_telefone",     l: "Telefone"           },
-  { k: "cliente_email",        l: "E-mail"             },
+// ── Tabela de itens: colunas redimensionáveis + edição inline ────────────────
+// descricao = null → coluna flexível (ocupa o que sobrar, mínimo 220px).
+const ITENS_COLUNAS_CHAVE = "sc.pedido.itens.colunas";
+const ITENS_COLUNAS_PADRAO = {
+  ref: 150, descricao: null, qtde: 80, punit: 110, desc: 100, total: 120, tes: 130, acao: 40,
+};
+const ITENS_COLUNAS_MINIMOS = { descricao: 220 };
+const ITENS_COLUNAS = [
+  { key: "ref",       label: "REF" },
+  { key: "descricao", label: "Descrição" },
+  { key: "qtde",      label: "Qtde",     num: true },
+  { key: "punit",     label: "P. Unit.", num: true },
+  { key: "desc",      label: "Desc.",    num: true },
+  { key: "total",     label: "Total",    num: true },
+  { key: "tes",       label: "TES" },
+  { key: "acao",      label: "" },
 ];
+
+// Campo editável da coluna → campo do body do PATCH /itens/{item_id}.
+const CAMPO_PATCH = { qtde: "quantidade", punit: "preco_unitario", desc: "desconto" };
+
+const numeroBR = (v, casas) =>
+  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })
+    .format(Number(v) || 0);
+
+// Comissão do pedido: % e origem vêm prontos do backend (snapshot gravado
+// em venda_service.aplicar_comissao) — aqui só formata.
+const pctBR = (v) => `${numeroBR(v, 2)}%`;
+
+// Aceita "1.234,56", "1234,56", "1234.56" e "R$ 12,50". Vírgula presente →
+// pontos são milhar; só ponto → decimal se tiver até 2 casas depois dele.
+function parseNumeroBR(texto) {
+  let t = String(texto ?? "").replace(/R\$/gi, "").replace(/\s/g, "");
+  if (!t) return NaN;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if ((t.match(/\./g) || []).length > 1 || /\.\d{3,}$/.test(t)) t = t.replace(/\./g, "");
+  return /^-?\d*\.?\d+$/.test(t) ? Number(t) : NaN;
+}
+
+/**
+ * Célula numérica sempre em modo input. Fora do foco mostra o valor
+ * formatado (com "R$" quando moeda); no foco, o número cru para edição.
+ * Salva no blur ou Enter; Esc reverte. Erro da API mantém o texto digitado.
+ */
+function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProximo, inputRef, marcador }) {
+  const [focado, setFocado] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [erro, setErro] = useState(null);
+  const [salvando, setSalvando] = useState(false);
+  const ignorarBlur = useRef(false);
+
+  const formatado = ehMoeda ? moeda(valor) : numeroBR(valor, casas);
+  const paraEdicao = () => numeroBR(valor, casas).replace(/\./g, "");
+  const exibido = focado || erro ? texto : formatado;
+
+  const salvar = async () => {
+    const n = parseNumeroBR(texto);
+    if (Number.isNaN(n)) { setErro("Valor inválido."); return false; }
+    const arredondado = Number(n.toFixed(casas));
+    if (arredondado === Number(valor || 0)) { setErro(null); return true; }
+    setSalvando(true);
+    try {
+      await onSalvar(arredondado);
+      setErro(null);
+      return true;
+    } catch (e) {
+      setErro(e.message || "Erro ao salvar.");
+      return false;
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleFocus = (e) => {
+    if (!erro) setTexto(paraEdicao());
+    setFocado(true);
+    const el = e.target;
+    requestAnimationFrame(() => el.select());
+  };
+
+  const handleBlur = () => {
+    setFocado(false);
+    if (ignorarBlur.current) { ignorarBlur.current = false; return; }
+    if (!readOnly) salvar();
+  };
+
+  const handleKeyDown = async (e) => {
+    if (readOnly || salvando) return;
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const ok = await salvar();
+      if (ok) { ignorarBlur.current = true; onProximo?.(); }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setTexto(paraEdicao());
+      setErro(null);
+      ignorarBlur.current = true;
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className={styles.celulaEdit}>
+      {marcador}
+      <input
+        ref={inputRef}
+        className={`${styles.inputCelula} ${erro ? styles.inputCelulaErro : ""}`}
+        value={exibido}
+        readOnly={readOnly || salvando}
+        tabIndex={readOnly ? -1 : 0}
+        inputMode="decimal"
+        title={erro || formatado}
+        onChange={(e) => setTexto(e.target.value.toUpperCase())}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+      />
+      {erro && <div className={styles.celulaErro} title={erro}>{erro}</div>}
+    </div>
+  );
+}
+
+// Cliente do pedido no formato do ClienteInput — montado da cópia cliente_*
+// gravada no pedido (dados completos ficam só no cadastro do cliente).
+function clienteDoPedido(pedido) {
+  if (!pedido.cliente_id && !pedido.cliente_razao_social) return null;
+  return {
+    id:           pedido.cliente_id ?? null,
+    codigo:       pedido.cliente_codigo || "",
+    razao_social: pedido.cliente_razao_social || "",
+    cnpj:         pedido.cliente_cnpj || "",
+    cidade:       pedido.cliente_cidade || "",
+    uf:           pedido.cliente_uf || "",
+  };
+}
 
 function headerFormFromPedido(pedido) {
   return {
@@ -77,19 +211,13 @@ function headerFormFromPedido(pedido) {
     data_emissao:         pedido.data_emissao         || "",
     prazo_entrega_dias:   String(pedido.prazo_entrega_dias ?? ""),
     condicoes:            pedido.condicoes            || "avista",
+    condicao_pagamento_id: pedido.condicao_pagamento_id ?? "",
+    primeiro_vencimento:  pedido.primeiro_vencimento  || "",
     vendedor_id:          pedido.vendedor_id          || "",
     tabela_preco_id:      pedido.tabela_preco_id      || "",
-    cliente_razao_social: pedido.cliente_razao_social || "",
-    cliente_cnpj:         pedido.cliente_cnpj         || "",
-    cliente_ie:           pedido.cliente_ie           || "",
-    cliente_endereco:     pedido.cliente_endereco     || "",
-    cliente_cidade:       pedido.cliente_cidade       || "",
-    cliente_cep:          pedido.cliente_cep          || "",
-    cliente_telefone:     pedido.cliente_telefone     || "",
-    cliente_email:        pedido.cliente_email        || "",
-    representante:        pedido.representante        || "",
+    cliente:              clienteDoPedido(pedido),
     tes_id:               pedido.tes_id ?? "",
-    indicador_presenca:   pedido.indicador_presenca   || "Presencial",
+    indicador_presenca:   pedido.indicador_presenca   || "1",
     desconto_geral_pct:   String(pedido.desconto_geral_pct ?? 0),
     desconto_geral_valor: String(pedido.desconto_geral_valor ?? 0),
     acrescimo_pct:        String(pedido.acrescimo_pct ?? 0),
@@ -110,15 +238,13 @@ function headerFormFromPedido(pedido) {
   };
 }
 
-const ITEM_VAZIO = {
-  searchQuery: "", searchResults: [], selectedGrupo: null,
-  modelo_id: "", cor_id: "", lote_id: "",
-  cores: [], lotes: [],
-  cor: "", qtd_p: "", qtd_m: "", qtd_g: "", qtd_gg: "",
-  qtd_g1: "", qtd_g2: "", qtd_g3: "",
-  precoUnit: "", loadingPreco: false,
-  precoAutoFilled: false, precoSemTabela: false,
-  tes_id: "", desconto_pct: "0", desconto_valor: "0",
+// ── Modal "Adicionar Item" — 3 passos: busca (pai/avulso) → grade do pai
+// → linha simples do avulso. Ver PART 2a do fluxo de itens.
+const ITEM_MODAL_VAZIO = {
+  step: 1,
+  searchQuery: "", searchResults: [], searching: false,
+  produtoPai: null, grade: null, gradeLoading: false, gradeQtds: {},
+  avulso: null, avulsoForm: null,
 };
 
 export default function PedidoVendaDetalhePage() {
@@ -133,13 +259,26 @@ export default function PedidoVendaDetalhePage() {
   const [tabelas, setTabelas]           = useState([]);
   const [tesList, setTesList]           = useState([]);
   const [transportadoras, setTransportadoras] = useState([]);
-  const [modelos, setModelos]           = useState([]);
+  const [condicoesPagamento, setCondicoesPagamento] = useState([]);
   const [loading, setLoading]           = useState(true);
+
+  const [previewParcelas, setPreviewParcelas] = useState(null);
+  const [previewParcelasErro, setPreviewParcelasErro] = useState(null);
+  const [previewParcelasLoading, setPreviewParcelasLoading] = useState(false);
+  const previewParcelasTimer = useRef(null);
 
   const [aba, setAba]                   = useState("dados");
   const [headerForm, setHeaderForm]     = useState(null);
   const [savingHeader, setSavingHeader] = useState(false);
   const [erroHeader, setErroHeader]     = useState(null);
+  // Troca de tabela de preço com itens: { id, nome } aguardando confirmação.
+  const [confirmTabela, setConfirmTabela] = useState(null);
+  const [confirmCliente, setConfirmCliente] = useState(null);
+  // id do cliente aberto no modal de cadastro ("Ver cadastro"), ou null.
+  const [cadastroClienteId, setCadastroClienteId] = useState(null);
+  const [aplicandoTabela, setAplicandoTabela] = useState(false);
+  // Referências que mantiveram o preço anterior (sem preço na tabela nova).
+  const [semPrecoTabela, setSemPrecoTabela] = useState(null);
   const [headerSalvo, setHeaderSalvo]   = useState(false);
 
   const [itemModal, setItemModal]       = useState(null);
@@ -176,24 +315,28 @@ export default function PedidoVendaDetalhePage() {
     carregar();
     Promise.all([
       getVendedores(),
-      tabelasPrecoApi.list(),
+      getTabelasPreco(),
       listarTes().catch(() => []),
       transportadorasApi.listar().catch(() => []),
-    ]).then(([v, t, tes, transp]) => {
+      listarCondicoesPagamento({ situacao: "Ativa" }).catch(() => []),
+    ]).then(([v, t, tes, transp, condicoes]) => {
       setVendedores((v || []).filter((x) => x.ativo !== false));
-      setTabelas((t || []).filter((x) => x.ativo));
+      // Lista completa — o filtro de ativas fica só no select (tabelasSelecionaveis).
+      setTabelas(t || []);
       setTesList((tes || []).filter((x) => x.tipo === "Saída" && x.situacao === "Ativo"));
       setTransportadoras((transp || []).filter((x) => !x.bloqueado));
+      setCondicoesPagamento(condicoes || []);
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // ── Cabeçalho (Dados / Transporte / Outros) ───────────────────────────────────
   const setH = (key) => (e) => setHeaderForm((f) => ({ ...f, [key]: e.target.value }));
+  const setHUpper = (key) => (e) => setHeaderForm((f) => ({ ...f, [key]: e.target.value.toUpperCase() }));
 
   const handleSalvarHeader = async () => {
-    if (!headerForm.cliente_razao_social.trim()) {
-      setErroHeader("Razão social é obrigatória.");
+    if (!headerForm.cliente?.razao_social) {
+      setErroHeader("Informe o cliente do pedido.");
       setAba("dados");
       return;
     }
@@ -202,17 +345,14 @@ export default function PedidoVendaDetalhePage() {
       const updated = await updatePedidoVenda(id, {
         prazo_entrega_dias:   Number(headerForm.prazo_entrega_dias) || 0,
         condicoes:            headerForm.condicoes,
+        condicao_pagamento_id: headerForm.condicao_pagamento_id ? Number(headerForm.condicao_pagamento_id) : null,
+        primeiro_vencimento:  headerForm.primeiro_vencimento || null,
         vendedor_id:          headerForm.vendedor_id     || null,
         tabela_preco_id:      headerForm.tabela_preco_id || null,
-        cliente_razao_social: headerForm.cliente_razao_social.trim(),
-        cliente_cnpj:         headerForm.cliente_cnpj,
-        cliente_ie:           headerForm.cliente_ie,
-        cliente_endereco:     headerForm.cliente_endereco,
-        cliente_cidade:       headerForm.cliente_cidade,
-        cliente_cep:          headerForm.cliente_cep,
-        cliente_telefone:     headerForm.cliente_telefone,
-        cliente_email:        headerForm.cliente_email,
-        representante:        headerForm.representante,
+        // Só o vínculo: a cópia cliente_* é preenchida pelo backend a partir
+        // do cadastro (e ignorada se vier daqui). Pedido de cliente não
+        // cadastrado (sem id) não manda nada e mantém a cópia atual.
+        ...(headerForm.cliente?.id ? { cliente_id: headerForm.cliente.id } : {}),
         tes_id:               headerForm.tes_id || null,
         indicador_presenca:   headerForm.indicador_presenca,
         desconto_geral_pct:   Number(headerForm.desconto_geral_pct) || 0,
@@ -244,9 +384,54 @@ export default function PedidoVendaDetalhePage() {
     }
   };
 
-  const tabelaSel = headerForm?.tabela_preco_id
-    ? tabelas.find((t) => t.id === headerForm.tabela_preco_id)
+  // Campo do backend é "ativa". A tabela já gravada no pedido continua
+  // no select mesmo se tiver sido inativada depois.
+  const tabelasSelecionaveis = tabelas.filter(
+    (t) => t.ativa || t.id === headerForm?.tabela_preco_id,
+  );
+  const condicaoPagamentoSel = headerForm?.condicao_pagamento_id
+    ? condicoesPagamento.find((c) => String(c.id) === String(headerForm.condicao_pagamento_id))
     : null;
+
+  // ── Preview de parcelas (Aba Dados) — debounce 600ms ──────────────────────
+  useEffect(() => {
+    if (!headerForm || !pedido) return;
+    clearTimeout(previewParcelasTimer.current);
+
+    if (!condicaoPagamentoSel || !(parseFloat(pedido.total_pedido) > 0)) {
+      setPreviewParcelas(null);
+      setPreviewParcelasErro(null);
+      return;
+    }
+    const dataBase = condicaoPagamentoSel.tipo === "intervalo"
+      ? headerForm.primeiro_vencimento
+      : pedido.data_emissao;
+    if (!dataBase) {
+      setPreviewParcelas(null);
+      setPreviewParcelasErro(null);
+      return;
+    }
+
+    previewParcelasTimer.current = setTimeout(async () => {
+      setPreviewParcelasLoading(true);
+      setPreviewParcelasErro(null);
+      try {
+        const resp = await simularParcelas({
+          condicao_id: Number(headerForm.condicao_pagamento_id),
+          valor: pedido.total_pedido,
+          data_emissao: dataBase,
+        });
+        setPreviewParcelas(resp.parcelas || []);
+      } catch (e) {
+        setPreviewParcelas(null);
+        setPreviewParcelasErro(e.message);
+      } finally {
+        setPreviewParcelasLoading(false);
+      }
+    }, 600);
+    return () => clearTimeout(previewParcelasTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [headerForm?.condicao_pagamento_id, headerForm?.primeiro_vencimento, pedido?.total_pedido, pedido?.data_emissao]);
 
   // ── Status / ações ────────────────────────────────────────────────────────────
   const handleMudarStatus = async (novoStatus) => {
@@ -263,133 +448,147 @@ export default function PedidoVendaDetalhePage() {
   };
 
   // ── Item modal ────────────────────────────────────────────────────────────────
-  const abrirItemModal = async () => {
-    setItemModal({ ...ITEM_VAZIO, tes_id: headerForm?.tes_id || "" });
+  const abrirItemModal = () => {
+    setItemModal({ ...ITEM_MODAL_VAZIO });
     setErroItem(null);
-    try { const ms = await modelosApi.listar(); setModelos(ms || []); } catch {}
   };
 
   const handleSearchChange = (query) => {
-    setItemModal((m) => ({ ...m, searchQuery: query, selectedGrupo: null, searchResults: [] }));
+    setItemModal((m) => ({ ...m, searchQuery: query, searchResults: [] }));
     if (searchInputRef.current) {
       const rect = searchInputRef.current.getBoundingClientRect();
       setAcPos({ top: rect.bottom + 2, left: rect.left, width: rect.width });
     }
     clearTimeout(searchTimer.current);
-    if (query.trim().length < 2) return;
+    if (query.trim().length < 1) return;
     searchTimer.current = setTimeout(async () => {
+      setItemModal((m) => ({ ...m, searching: true }));
       try {
-        const results = await gruposApi.buscar(query);
-        setItemModal((m) => ({ ...m, searchResults: (results || []).slice(0, 10) }));
-      } catch {}
-    }, 300);
-  };
-
-  const selecionarGrupo = async (grupo) => {
-    setItemModal((m) => ({
-      ...m,
-      searchQuery:     `${grupo.codigo ? grupo.codigo + " — " : ""}${grupo.nome}`,
-      searchResults:   [],
-      selectedGrupo:   grupo,
-      qtd_p: "", qtd_m: "", qtd_g: "", qtd_gg: "",
-      qtd_g1: "", qtd_g2: "", qtd_g3: "",
-      precoUnit:       "",
-      loadingPreco:    !!pedido?.tabela_preco_id,
-      precoAutoFilled: false,
-      precoSemTabela:  false,
-    }));
-
-    if (!pedido?.tabela_preco_id) return;
-
-    try {
-      const itensTabela = await tabelasPrecoApi.listItens(pedido.tabela_preco_id);
-      const precoItem   = (itensTabela || []).find((it) => it.grupo_id === grupo.id);
-      if (precoItem) {
-        const val = pedido.condicoes === "avista" ? precoItem.preco_avista : precoItem.preco_aprazo;
-        setItemModal((m) => ({ ...m, precoUnit: String(val ?? ""), loadingPreco: false, precoAutoFilled: true }));
-        return;
+        const results = await produtosApi.buscaPedido(query);
+        setItemModal((m) => ({ ...m, searchResults: results || [], searching: false }));
+      } catch {
+        setItemModal((m) => ({ ...m, searching: false }));
       }
-    } catch {}
-    setItemModal((m) => ({ ...m, loadingPreco: false, precoSemTabela: true }));
+    }, 400);
   };
 
-  const handleModeloChange = async (modelo_id) => {
-    setItemModal((m) => ({ ...m, modelo_id, cor_id: "", lote_id: "", cor: "", cores: [], lotes: [] }));
-    if (!modelo_id) return;
+  // Passo 1 → Passo 2 (produto pai, carrega a grade) ou Passo 3 (avulso).
+  const selecionarResultadoBusca = async (resultado) => {
+    if (resultado.tipo === "avulso") {
+      setItemModal((m) => ({
+        ...m,
+        step: 3,
+        searchResults: [],
+        avulso: resultado,
+        avulsoForm: {
+          quantidade: "1",
+          precoUnit: resultado.preco_venda != null ? String(resultado.preco_venda) : "",
+          tesId: headerForm?.tes_id || "",
+          descontoPct: "0",
+        },
+      }));
+      return;
+    }
+    setItemModal((m) => ({
+      ...m, step: 2, searchResults: [], produtoPai: resultado, gradeLoading: true, gradeQtds: {},
+    }));
     try {
-      const cores = await modelosApi.listarCores(modelo_id);
-      setItemModal((m) => ({ ...m, cores: cores || [] }));
-    } catch {}
+      const grade = await produtosApi.gradePedido(resultado.id);
+      setItemModal((m) => ({ ...m, grade, gradeLoading: false }));
+    } catch (e) {
+      setErroItem(e.message);
+      setItemModal((m) => ({ ...m, gradeLoading: false }));
+    }
   };
 
-  const handleCorChange = async (cor_id) => {
-    setItemModal((m) => ({ ...m, cor_id, lote_id: "", cor: "", lotes: [] }));
-    if (!cor_id) return;
-    try {
-      const lotes = await coresApi.listarLotes(cor_id);
-      const lotesAtivos = (lotes || []).filter(
-        (l) => !l.status || l.status === "aberto" || l.status === "intacto"
-      );
-      setItemModal((m) => ({ ...m, lotes: lotesAtivos }));
-    } catch {}
+  const voltarParaBusca = () => {
+    setErroItem(null);
+    setItemModal((m) => ({ ...ITEM_MODAL_VAZIO, searchQuery: m.searchQuery }));
   };
 
-  const handleLoteChange = (lote_id) => {
-    const corSel = itemModal.cores.find((c) => String(c.id) === String(itemModal.cor_id));
-    setItemModal((m) => ({ ...m, lote_id, cor: corSel?.nome || "" }));
+  // ── Passo 2 — grade do produto pai ────────────────────────────────────────
+  const skuNaCelula = (linhaId, colunaId) =>
+    itemModal?.grade?.skus.find((s) => s.linha_item_id === linhaId && s.coluna_item_id === colunaId);
+
+  const setGradeQtd = (linhaId, colunaId, valor) => {
+    const key = `${linhaId}-${colunaId}`;
+    setItemModal((m) => ({ ...m, gradeQtds: { ...m.gradeQtds, [key]: valor } }));
   };
 
-  const loteLabelFn = (l) => {
-    const cod = l.codigo || l.nome || String(l.id).slice(0, 8);
-    const qtd = l.quantidade_disponivel ?? l.qtd_disponivel ?? l.metros ?? null;
-    return qtd != null ? `${cod} — ${qtd}kg disp.` : cod;
-  };
-
-  const totalItemBruto = (() => {
-    if (!itemModal) return 0;
-    const qtd = QTD_KEYS.reduce((s, k) => s + (parseInt(itemModal[k]) || 0), 0);
-    return qtd * (parseFloat(itemModal.precoUnit) || 0);
+  const gradeTotais = (() => {
+    if (!itemModal?.grade) return { pecas: 0, valor: 0, temSemPreco: false };
+    let pecas = 0, valor = 0, temSemPreco = false;
+    for (const [key, qtdStr] of Object.entries(itemModal.gradeQtds)) {
+      const qtd = parseInt(qtdStr) || 0;
+      if (qtd <= 0) continue;
+      const [linhaId, colunaId] = key.split("-").map((v) => (v === "null" ? null : Number(v)));
+      const sku = skuNaCelula(linhaId, colunaId);
+      if (!sku) continue;
+      pecas += qtd;
+      if (sku.preco_origem === "sem_preco") temSemPreco = true;
+      else valor += qtd * (parseFloat(sku.preco_venda) || 0);
+    }
+    return { pecas, valor, temSemPreco };
   })();
 
-  const totalItemLiquido = totalItemBruto - (parseFloat(itemModal?.desconto_valor) || 0);
-
-  // Desconto do item: editar % recalcula R$, editar R$ recalcula % — cada um
-  // usa o total bruto do momento, então se a quantidade/preço mudar depois,
-  // o par pct/valor pode ficar defasado até o usuário reeditar um dos dois.
-  const setDescontoPct = (e) => {
-    const pct = e.target.value;
-    const valor = totalItemBruto > 0 ? (totalItemBruto * (parseFloat(pct) || 0)) / 100 : 0;
-    setItemModal((m) => ({ ...m, desconto_pct: pct, desconto_valor: valor.toFixed(2) }));
-  };
-
-  const setDescontoValor = (e) => {
-    const valor = e.target.value;
-    const pct = totalItemBruto > 0 ? ((parseFloat(valor) || 0) / totalItemBruto) * 100 : 0;
-    setItemModal((m) => ({ ...m, desconto_valor: valor, desconto_pct: pct.toFixed(2) }));
-  };
-
-  const handleSalvarItem = async () => {
-    if (!itemModal.selectedGrupo) { setErroItem("Selecione uma referência."); return; }
-    const qtdTotal = QTD_KEYS.reduce((s, k) => s + (parseInt(itemModal[k]) || 0), 0);
-    if (qtdTotal === 0) { setErroItem("Informe ao menos uma quantidade."); return; }
+  const handleAdicionarGrade = async () => {
+    const itensBulk = [];
+    for (const [key, qtdStr] of Object.entries(itemModal.gradeQtds)) {
+      const qtd = parseInt(qtdStr) || 0;
+      if (qtd <= 0) continue;
+      const [linhaId, colunaId] = key.split("-").map((v) => (v === "null" ? null : Number(v)));
+      const sku = skuNaCelula(linhaId, colunaId);
+      if (!sku || sku.situacao !== "Ativo") continue;
+      itensBulk.push({
+        produto_id: itemModal.produtoPai.id,
+        sku_id: sku.id,
+        quantidade: qtd,
+        preco_unitario: sku.preco_venda ?? 0,
+        tes_id: headerForm?.tes_id ? Number(headerForm.tes_id) : null,
+        desconto_pct: 0,
+      });
+    }
+    if (itensBulk.length === 0) { setErroItem("Informe ao menos uma quantidade na grade."); return; }
     setSaving(true); setErroItem(null);
     try {
-      await addItemPedidoVenda(id, {
-        grupo_id:       itemModal.selectedGrupo.id,
-        cor:            itemModal.cor,
-        lote_id:        itemModal.lote_id || null,
-        qtd_p:          parseInt(itemModal.qtd_p)  || 0,
-        qtd_m:          parseInt(itemModal.qtd_m)  || 0,
-        qtd_g:          parseInt(itemModal.qtd_g)  || 0,
-        qtd_gg:         parseInt(itemModal.qtd_gg) || 0,
-        qtd_g1:         parseInt(itemModal.qtd_g1) || 0,
-        qtd_g2:         parseInt(itemModal.qtd_g2) || 0,
-        qtd_g3:         parseInt(itemModal.qtd_g3) || 0,
-        preco_unitario: parseFloat(itemModal.precoUnit) || 0,
-        tes_id:         itemModal.tes_id || null,
-        desconto_pct:   parseFloat(itemModal.desconto_pct) || 0,
-        desconto_valor: parseFloat(itemModal.desconto_valor) || 0,
-      });
+      await addItensBulkPedidoVenda(id, itensBulk);
+      await carregar();
+      setItemModal(null);
+    } catch (e) {
+      setErroItem(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Passo 3 — produto avulso ───────────────────────────────────────────────
+  const setAvulsoForm = (key) => (e) =>
+    setItemModal((m) => ({ ...m, avulsoForm: { ...m.avulsoForm, [key]: e.target.value } }));
+
+  const totalAvulso = (() => {
+    if (!itemModal?.avulsoForm) return 0;
+    const qtd = parseInt(itemModal.avulsoForm.quantidade) || 0;
+    const preco = parseFloat(itemModal.avulsoForm.precoUnit) || 0;
+    const desconto = parseFloat(itemModal.avulsoForm.descontoPct) || 0;
+    return qtd * preco * (1 - desconto / 100);
+  })();
+
+  const handleAdicionarAvulso = async () => {
+    const { quantidade, precoUnit, tesId, descontoPct } = itemModal.avulsoForm;
+    if (!parseInt(quantidade) || parseInt(quantidade) <= 0) {
+      setErroItem("Informe uma quantidade válida.");
+      return;
+    }
+    setSaving(true); setErroItem(null);
+    try {
+      await addItensBulkPedidoVenda(id, [{
+        produto_id: itemModal.avulso.id,
+        sku_id: null,
+        quantidade: parseInt(quantidade),
+        preco_unitario: parseFloat(precoUnit) || 0,
+        tes_id: tesId ? Number(tesId) : null,
+        desconto_pct: parseFloat(descontoPct) || 0,
+      }]);
       await carregar();
       setItemModal(null);
     } catch (e) {
@@ -403,36 +602,154 @@ export default function PedidoVendaDetalhePage() {
     try { await removeItemPedidoVenda(id, itemId); await carregar(); } catch {}
   };
 
-  const alterarTesItem = async (item, novoTesId) => {
-    try {
-      await updateItemPedidoVenda(id, item.id, { tes_id: novoTesId ? Number(novoTesId) : null });
-      await carregar();
-    } catch {}
+  const itens = pedido?.itens || [];
+
+  // ── Tabela de itens: edição inline ────────────────────────────────────────────
+  const itensEditaveis = podeEditar && pedido?.status === "Aberto";
+  const { larguras, arrastando, iniciarArrasto, restaurar } = useResizableColumns(
+    ITENS_COLUNAS_CHAVE, ITENS_COLUNAS_PADRAO, ITENS_COLUNAS_MINIMOS,
+  );
+  const camposItemRef = useRef(new Map());
+
+  // Item legado de corte (grupo_id) tem quantidade por tamanho — o PATCH
+  // recusa "quantidade" para ele, então Qtde fica só leitura.
+  const camposEditaveisItem = (item) => {
+    if (!itensEditaveis) return [];
+    return item.grupo_id ? ["punit", "desc"] : ["qtde", "punit", "desc"];
   };
 
-  // ── Table grouping ──────────────────────────────────────────────────────────
-  const itens       = pedido?.itens || [];
-  const temPlus     = itens.some((i) => (i.qtd_g1 || 0) + (i.qtd_g2 || 0) + (i.qtd_g3 || 0) > 0);
-  const tamCols     = temPlus ? TAMANHOS_PLUS : TAMANHOS_BASE;
-  const gruposOrdem = [];
-  const grupoMap    = {};
-  itens.forEach((item) => {
-    if (!grupoMap[item.grupo_id]) { grupoMap[item.grupo_id] = []; gruposOrdem.push(item.grupo_id); }
-    grupoMap[item.grupo_id].push(item);
-  });
+  // Ordem de navegação do Enter: campos editáveis da linha, depois a
+  // primeira coluna editável da linha seguinte.
+  const focarProximoCampo = (chaveAtual) => {
+    const ordem = itens.flatMap((item) => camposEditaveisItem(item).map((c) => `${item.id}:${c}`));
+    const proximo = ordem[ordem.indexOf(chaveAtual) + 1];
+    if (proximo) camposItemRef.current.get(proximo)?.focus();
+    else camposItemRef.current.get(chaveAtual)?.blur();
+  };
 
+  const aplicarRespostaItem = (resp) =>
+    setPedido((p) => ({
+      ...p,
+      total_pedido: resp.totais.total,
+      itens: p.itens.map((i) => (i.id === resp.item.id ? { ...i, ...resp.item } : i)),
+    }));
+
+  const salvarCampoItem = async (item, coluna, valor) => {
+    aplicarRespostaItem(await updateItemPedidoVenda(id, item.id, { [CAMPO_PATCH[coluna]]: valor }));
+  };
+
+  // TesInput já validou o código; o PATCH revalida pelo tes_codigo.
+  const salvarTesItem = async (item, tes) => {
+    aplicarRespostaItem(await updateItemPedidoVenda(id, item.id, { tes_codigo: tes.codigo }));
+  };
+
+  // ── Troca de cliente ──────────────────────────────────────────────────────────
+  // Só no formulário — vai para o backend com "Salvar Alterações". Com itens
+  // no pedido, pede confirmação antes.
+  const handleTrocarCliente = (novo) => {
+    if (itens.length > 0) {
+      setConfirmCliente(novo);
+      return;
+    }
+    setHeaderForm((f) => ({ ...f, cliente: novo }));
+  };
+
+  // "Ver cadastro": abre o cadastro em modal por cima do pedido — sem sair
+  // da página, então alterações não salvas do pedido continuam no form.
+  const verCadastroCliente = (c) => setCadastroClienteId(c.id);
+
+  const cadastroClienteSalvo = async (salvo) => {
+    setCadastroClienteId(null);
+    const doCampo = headerForm.cliente?.id === salvo.id;
+    // O backend já recopiou o cadastro para este pedido (Aberto, sem NF-e,
+    // cliente gravado = o editado): busca a cópia nova sem descartar o
+    // resto do formulário.
+    if (salvo.pedidos_sincronizados > 0 && pedido.cliente_id === salvo.id) {
+      try {
+        const p = await getPedidoVenda(id);
+        setPedido(p);
+        if (doCampo) setHeaderForm((f) => ({ ...f, cliente: clienteDoPedido(p) }));
+        return;
+      } catch { /* segue para o ajuste local abaixo */ }
+    }
+    // Cliente escolhido e ainda não salvo no pedido (ou pedido que não
+    // sincroniza): só o campo mostra o cadastro novo; a cópia do pedido vem
+    // no próximo "Salvar Alterações".
+    if (doCampo && pedido.status === "Aberto") {
+      setHeaderForm((f) => ({
+        ...f,
+        cliente: {
+          id: salvo.id,
+          codigo: salvo.codigo || "",
+          razao_social: salvo.razao_social || "",
+          cnpj: salvo.cnpj || salvo.cpf || "",
+          cidade: salvo.cidade || "",
+          uf: salvo.estado || "",
+        },
+      }));
+    }
+  };
+
+  // ── Troca de tabela de preço ──────────────────────────────────────────────────
+  // Com itens no pedido, escolher outra tabela reprecifica tudo (inclusive
+  // preço manual) após confirmação. Esvaziar o campo não mexe em preço —
+  // só entra no PATCH do cabeçalho ao salvar.
+  const handleTrocarTabela = (e) => {
+    const novaId = e.target.value;
+    if (!novaId || itens.length === 0 || novaId === pedido.tabela_preco_id) {
+      setHeaderForm((f) => ({ ...f, tabela_preco_id: novaId }));
+      return;
+    }
+    const tabela = tabelas.find((t) => t.id === novaId);
+    setConfirmTabela({ id: novaId, nome: tabela?.nome || "" });
+  };
+
+  const confirmarAplicarTabela = async () => {
+    const { id: tabelaId } = confirmTabela;
+    setAplicandoTabela(true);
+    try {
+      const resp = await aplicarTabelaPedidoVenda(id, tabelaId);
+      setPedido(resp.pedido);
+      setHeaderForm((f) => ({ ...f, tabela_preco_id: tabelaId }));
+      setSemPrecoTabela(resp.sem_preco?.length ? resp.sem_preco : null);
+      setErroHeader(null);
+    } catch (err) {
+      setErroHeader(err.message);
+    } finally {
+      setAplicandoTabela(false);
+      setConfirmTabela(null);
+    }
+  };
+
+  const valorTotalItem = (item) =>
+    (parseFloat(item.preco_total) || 0) - (parseFloat(item.desconto_valor) || 0) + (parseFloat(item.acrescimo_valor) || 0);
+
+  const somaLargurasFixas = Object.values(larguras).reduce((acc, w) => acc + (w || 0), 0);
+  const estiloTabelaItens = larguras.descricao != null
+    ? { width: somaLargurasFixas }
+    : { width: "100%", minWidth: somaLargurasFixas + ITENS_COLUNAS_MINIMOS.descricao };
+
+  // Sem vendedor não há comissão — nem quadro na aba Dados, nem linha nos totais.
   const tabelaAtual    = tabelas.find((t) => t.id === pedido?.tabela_preco_id);
-  const comissaoPctStr = tabelaAtual
-    ? `${((tabelaAtual.comissao_pct || 0) * 100).toFixed(1)}%`
-    : null;
+  const comissaoPctStr = pedido?.vendedor_id ? pctBR(pedido.comissao_pct) : null;
+  const comissaoOrigemTexto = !pedido?.vendedor_id ? "Pedido sem vendedor" : ({
+    VINCULO:         `Comissão do vendedor na tabela ${tabelaAtual?.nome || ""}`.trim(),
+    PADRAO_VENDEDOR: "Comissão padrão do vendedor",
+    NENHUMA:         "Vendedor sem comissão para esta tabela",
+  }[pedido.comissao_origem] || "");
+  // Vendedor/tabela alterados no formulário e ainda não salvos: o campo
+  // continua mostrando a comissão gravada até o PATCH devolver a nova.
+  const comissaoPendente = !!pedido && !!headerForm && pedido.status === "Aberto" && (
+    (headerForm.vendedor_id || null) !== (pedido.vendedor_id || null)
+    || (headerForm.tabela_preco_id || null) !== (pedido.tabela_preco_id || null)
+  );
+  const comissaoTooltip = [comissaoOrigemTexto, comissaoPendente && "Salve o pedido para recalcular."]
+    .filter(Boolean).join(" — ");
 
   const subtotalItens = itens.reduce(
     (acc, i) => acc + (parseFloat(i.preco_total) || 0) - (parseFloat(i.desconto_valor) || 0) + (parseFloat(i.acrescimo_valor) || 0),
     0
   );
-
-  const isPlus  = itemModal?.selectedGrupo?.tem_plus;
-  const tamForm = isPlus ? TAMANHOS_PLUS : TAMANHOS_BASE;
 
   // ── NF-e ──────────────────────────────────────────────────────────────────────
   const abrirNfeModal = () => {
@@ -476,67 +793,65 @@ export default function PedidoVendaDetalhePage() {
         Voltar
       </button>
 
-      {/* ── Cabeçalho ── */}
-      <div className="sc-page-header">
-        <div>
-          <h1>Pedido {pedido.numero}</h1>
-          <div className={styles.statusLine}>
+      {/* ── Cabeçalho: título + status + cliente à esquerda, ações à direita.
+          Em tela estreita as ações quebram para a linha de baixo. ── */}
+      <div className={styles.cabecalho}>
+        <div className={styles.cabecalhoTitulo}>
+          <div className={styles.tituloLinha}>
+            <h1 className={styles.titulo}>Pedido {pedido.numero}</h1>
             <span className={`${styles.statusBadge} ${styles[STATUS_CLS[pedido.status] || "stAberto"]}`}>
               {STATUS_LABELS[pedido.status] || pedido.status}
             </span>
           </div>
+          {/* Cliente gravado — atualiza depois de trocar e salvar. */}
+          {pedido.cliente_razao_social && (
+            <p className={styles.clienteLinha} title={pedido.cliente_razao_social}>
+              {pedido.cliente_razao_social}
+            </p>
+          )}
         </div>
 
-        <div className={styles.headerActions}>
-          {podeEditar && pedido.status === "Aberto" && (
-            <button className={styles.btnNovo} onClick={() => handleMudarStatus("Fechado")} disabled={statusLoading}>
-              Fechar Pedido
-            </button>
-          )}
-          {podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null && (
-            <button className={styles.btnSecondary} onClick={() => handleMudarStatus("Aberto")} disabled={statusLoading}>
-              Reabrir Pedido
-            </button>
-          )}
-          {podeExcluir && pedido.status === "Aberto" && (
-            <button className={styles.btnDanger} onClick={() => setCancelarConfirm(true)} disabled={statusLoading}>
-              Cancelar Pedido
-            </button>
-          )}
-          {podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null && (
-            <button className={styles.btnNovo} onClick={abrirNfeModal}>
-              Emitir Nota Fiscal
-            </button>
-          )}
+        <div className={styles.actionBar}>
           <button
-            className={styles.btnDownload}
-            onClick={() => downloadBlob(() => getPdfPedidoVenda(id), `pedido-${pedido.numero}.pdf`)}
-          >
-            Formulário de Pedido PDF
-          </button>
-          <button
-            className={styles.btnDownload}
+            className={styles.btnHeaderSecondary}
             onClick={() => downloadBlob(() => getPdfCortePedidoVenda(id), `corte-${pedido.numero}.pdf`)}
           >
             Formulário de Corte PDF
           </button>
-        </div>
-      </div>
+          <button
+            className={styles.btnHeaderSecondary}
+            onClick={() => downloadBlob(() => getPdfPedidoVenda(id), `pedido-${pedido.numero}.pdf`)}
+          >
+            Formulário de Pedido PDF
+          </button>
 
-      <div className={styles.infoGrid}>
-        {[
-          { label: "Cliente",  valor: pedido.cliente_razao_social || "" },
-          { label: "Data",     valor: dataLocal(pedido.data_emissao) },
-          { label: "Prazo",    valor: `${pedido.prazo_entrega_dias ?? 0} dias` },
-          { label: "Vendedor", valor: pedido.vendedor_nome || "" },
-          { label: "Tabela",   valor: pedido.tabela_nome || "" },
-          { label: "Condição", valor: CONDICOES_LABEL[pedido.condicoes] || pedido.condicoes || "" },
-        ].map((c) => (
-          <div key={c.label} className={styles.infoCard}>
-            <span className={styles.infoLabel}>{c.label}</span>
-            <span className={styles.infoValor}>{c.valor}</span>
-          </div>
-        ))}
+          {((podeExcluir && pedido.status === "Aberto") ||
+            (podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null) ||
+            (podeEditar && pedido.status === "Aberto")) && (
+            <span className={styles.actionBarSeparator} />
+          )}
+
+          {podeExcluir && pedido.status === "Aberto" && (
+            <button className={styles.btnHeaderCancelar} onClick={() => setCancelarConfirm(true)} disabled={statusLoading}>
+              Cancelar Pedido
+            </button>
+          )}
+          {podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null && (
+            <button className={styles.btnHeaderSecondary} onClick={() => handleMudarStatus("Aberto")} disabled={statusLoading}>
+              Reabrir Pedido
+            </button>
+          )}
+          {podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null && (
+            <button className={styles.btnHeaderFechar} onClick={abrirNfeModal}>
+              Emitir Nota Fiscal
+            </button>
+          )}
+          {podeEditar && pedido.status === "Aberto" && (
+            <button className={styles.btnHeaderFechar} onClick={() => handleMudarStatus("Fechado")} disabled={statusLoading}>
+              Fechar Pedido
+            </button>
+          )}
+        </div>
       </div>
 
       {statusErro && <p className={styles.erroInline}>{statusErro}</p>}
@@ -555,10 +870,55 @@ export default function PedidoVendaDetalhePage() {
         ))}
       </div>
 
+      {semPrecoTabela && (
+        <div
+          className={styles.avisoWarn}
+          style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.75rem" }}
+        >
+          <span>
+            Sem preço na tabela aplicada — mantiveram o preço anterior:{" "}
+            <strong>{semPrecoTabela.join(", ")}</strong>
+          </span>
+          <button className={styles.btnClose} onClick={() => setSemPrecoTabela(null)} aria-label="Fechar aviso">×</button>
+        </div>
+      )}
+
+      {cadastroClienteId != null && (
+        <ClienteFormModal
+          clienteId={cadastroClienteId}
+          onClose={() => setCadastroClienteId(null)}
+          onSaved={cadastroClienteSalvo}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={!!confirmCliente}
+        titulo="Trocar cliente"
+        mensagem={`Trocar o cliente do pedido para ${confirmCliente?.razao_social || ""}?`}
+        labelConfirmar="Trocar"
+        variante="neutro"
+        onConfirmar={() => {
+          const novo = confirmCliente;
+          setConfirmCliente(null);
+          setHeaderForm((f) => ({ ...f, cliente: novo }));
+        }}
+        onCancelar={() => setConfirmCliente(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!confirmTabela}
+        titulo="Aplicar tabela de preço"
+        mensagem={`Aplicar a tabela ${confirmTabela?.nome || ""}? Todos os preços dos itens serão substituídos, inclusive os alterados manualmente.`}
+        labelConfirmar={aplicandoTabela ? "Aplicando…" : "Aplicar"}
+        variante="neutro"
+        onConfirmar={() => { if (!aplicandoTabela) confirmarAplicarTabela(); }}
+        onCancelar={() => { if (!aplicandoTabela) setConfirmTabela(null); }}
+      />
+
       {/* ══ ABA DADOS ══ */}
       {aba === "dados" && (
-        <div className={styles.tabPanel}>
-          <div className={styles.grid2}>
+        <div className={`${styles.tabPanel} ${styles.compactoCampos}`}>
+          <div className={styles.grid3Compacto}>
             <label className={styles.field}>
               <span>Nº Pedido</span>
               <input className={styles.input} value={headerForm.numero} disabled />
@@ -572,35 +932,80 @@ export default function PedidoVendaDetalhePage() {
               <input type="number" min="0" className={styles.input} disabled={!podeEditar}
                 value={headerForm.prazo_entrega_dias} onChange={setH("prazo_entrega_dias")} />
             </label>
-            <label className={styles.field}>
-              <span>Condição de pagamento</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.condicoes} onChange={setH("condicoes")}>
-                <option value="avista">À Vista</option>
-                <option value="aprazo">A Prazo</option>
+
+            {/* div, não label: o campo tem dois inputs e botões */}
+            <div className={`${styles.field} ${styles.colSpan3}`}>
+              <span>Cliente</span>
+              <ClienteInput
+                cliente={headerForm.cliente}
+                readOnly={!podeEditar || pedido.status !== "Aberto"}
+                onChange={handleTrocarCliente}
+                onVerCadastro={hasPermission("cadastros_clientes", "ver") ? verCadastroCliente : null}
+              />
+            </div>
+
+            <label className={`${styles.field} ${styles.colSpan2}`}>
+              <span>Condição de Pagamento</span>
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.condicao_pagamento_id}
+                onChange={(e) => setHeaderForm((f) => ({ ...f, condicao_pagamento_id: e.target.value }))}
+              >
+                <option value="">Nenhuma</option>
+                {condicoesPagamento.map((c) => (
+                  <option key={c.id} value={c.id}>{c.codigo} — {c.descricao}</option>
+                ))}
               </select>
             </label>
+            <label className={styles.field}>
+              <span>Primeiro Vencimento</span>
+              <input type="date" className={styles.input}
+                disabled={!podeEditar || condicaoPagamentoSel?.tipo !== "intervalo"}
+                value={headerForm.primeiro_vencimento} onChange={setH("primeiro_vencimento")} />
+            </label>
+
             <label className={styles.field}>
               <span>Vendedor</span>
               <select className={styles.input} disabled={!podeEditar} value={headerForm.vendedor_id}
                 onChange={(e) => {
-                  const vid  = e.target.value;
-                  const vend = vendedores.find((v) => String(v.id) === String(vid));
-                  setHeaderForm((f) => ({ ...f, vendedor_id: vid, representante: vend?.nome || f.representante }));
+                  const vid = e.target.value;
+                  setHeaderForm((f) => ({ ...f, vendedor_id: vid }));
                 }}>
-                <option value="">Nenhum</option>
+                <option value="">Sem vendedor</option>
                 {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
               </select>
             </label>
             <label className={styles.field}>
               <span>Tabela de preço</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.tabela_preco_id} onChange={setH("tabela_preco_id")}>
+              <select className={styles.input} disabled={!podeEditar || aplicandoTabela} value={headerForm.tabela_preco_id} onChange={handleTrocarTabela}>
                 <option value="">Nenhuma</option>
-                {tabelas.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} ({((t.comissao_pct || 0) * 100).toFixed(0)}% comissão)
-                  </option>
+                {tabelasSelecionaveis.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
                 ))}
               </select>
+            </label>
+            <label className={styles.field}>
+              {/* Renomeado de "Condição de pagamento" para não confundir com o
+                  select de Condição de Pagamento (parcelas) acima — este aqui só
+                  decide preço à vista/a prazo na tabela de preço, ver
+                  services/venda_service.get_preco. */}
+              <span>Preço da tabela</span>
+              <select className={styles.input} disabled={!podeEditar} value={headerForm.condicoes} onChange={setH("condicoes")}>
+                <option value="avista">À Vista</option>
+                <option value="aprazo">A Prazo</option>
+              </select>
+            </label>
+
+            <label className={styles.field}>
+              <span>Comissão (%)</span>
+              <input
+                className={`${styles.input} ${styles.inputSomenteLeitura} ${pedido.vendedor_id && pedido.comissao_origem === "NENHUMA" ? styles.inputAlerta : ""}`}
+                value={comissaoPctStr || "—"}
+                title={comissaoTooltip}
+                readOnly
+                tabIndex={-1}
+              />
             </label>
             <label className={styles.field}>
               <span>TES padrão do pedido</span>
@@ -614,33 +1019,32 @@ export default function PedidoVendaDetalhePage() {
             <label className={styles.field}>
               <span>Indicador de Presença</span>
               <select className={styles.input} disabled={!podeEditar} value={headerForm.indicador_presenca} onChange={setH("indicador_presenca")}>
-                {INDICADOR_PRESENCA_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+                {INDICADOR_PRESENCA_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
-          </div>
 
-          {tabelaSel && (
-            <div className={styles.aviso}>
-              Comissão: <strong>{((tabelaSel.comissao_pct || 0) * 100).toFixed(1)}%</strong> sobre preço{" "}
-              {headerForm.condicoes === "avista" ? "à vista" : "a prazo"}
-            </div>
-          )}
-
-          <p className={styles.secLabel} style={{ marginTop: "1.5rem" }}>Cliente</p>
-          <div className={styles.grid2}>
-            {CAMPOS_CLIENTE.map(({ k, l }) => (
-              <label key={k} className={styles.field}>
-                <span>{l}</span>
-                <input className={styles.input} disabled={!podeEditar} value={headerForm[k]} onChange={setH(k)} />
-              </label>
-            ))}
-            <label className={styles.field}>
-              <span>Representante</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.representante} onChange={setH("representante")}>
-                <option value="">Nenhum</option>
-                {vendedores.map((v) => <option key={v.id} value={v.nome}>{v.nome}</option>)}
-              </select>
-            </label>
+            {condicaoPagamentoSel && (
+              <div className={`${styles.parcelasPreview} ${styles.colSpan3}`}>
+                <p className={styles.parcelasPreviewTitulo}>Parcelas que serão geradas:</p>
+                {previewParcelasLoading ? (
+                  <p className={styles.parcelasPreviewMsg}>Calculando…</p>
+                ) : previewParcelasErro ? (
+                  <p className={styles.parcelasPreviewMsg}>{previewParcelasErro}</p>
+                ) : previewParcelas ? (
+                  <ul className={styles.parcelasPreviewLista}>
+                    {previewParcelas.map((p) => (
+                      <li key={p.parcela}>
+                        {p.descricao} — {moeda(p.valor)} — {dataLocal(p.vencimento)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : condicaoPagamentoSel.tipo === "intervalo" ? (
+                  <p className={styles.parcelasPreviewMsg}>Informe o primeiro vencimento para ver o preview.</p>
+                ) : (
+                  <p className={styles.parcelasPreviewMsg}>Salve o total do pedido para ver o preview.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -650,68 +1054,128 @@ export default function PedidoVendaDetalhePage() {
         <div className={styles.tabPanel}>
           <div className={styles.sectionHead}>
             <h2 className={styles.sectionTitle}>Itens do pedido</h2>
-            {podeEditar && (
-              <button className={styles.btnPrimary} onClick={abrirItemModal}>+ Adicionar item</button>
-            )}
+            <div className={styles.sectionHeadRight}>
+              <div className={styles.descontoHeader}>
+                <span className={styles.descontoHeaderLabel}>DESCONTO GERAL:</span>
+                <input
+                  type="number" step="0.01" min="0" max="100"
+                  className={styles.descontoInputSm}
+                  disabled={!podeEditar}
+                  title="Desconto (%)"
+                  value={headerForm.desconto_geral_pct}
+                  onChange={(e) => {
+                    const pct = e.target.value;
+                    const valor = subtotalItens > 0 ? (subtotalItens * (parseFloat(pct) || 0)) / 100 : 0;
+                    setHeaderForm((f) => ({ ...f, desconto_geral_pct: pct, desconto_geral_valor: valor.toFixed(2) }));
+                  }}
+                />
+                <span className={styles.descontoUnit}>%</span>
+                <span className={styles.descontoUnit}>R$</span>
+                <input
+                  type="number" step="0.01" min="0"
+                  className={styles.descontoInputSm}
+                  disabled={!podeEditar}
+                  title="Desconto (R$)"
+                  value={headerForm.desconto_geral_valor}
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    const pct = subtotalItens > 0 ? ((parseFloat(valor) || 0) / subtotalItens) * 100 : 0;
+                    setHeaderForm((f) => ({ ...f, desconto_geral_valor: valor, desconto_geral_pct: pct.toFixed(2) }));
+                  }}
+                />
+                {podeEditar && (
+                  <button className={styles.btnAplicar} onClick={handleSalvarHeader} disabled={savingHeader}>
+                    {savingHeader ? "Salvando…" : "Aplicar"}
+                  </button>
+                )}
+              </div>
+              {podeEditar && (
+                <>
+                  <span className={styles.headSeparator}>|</span>
+                  <button className={styles.btnPrimary} onClick={abrirItemModal}>+ Adicionar Item</button>
+                </>
+              )}
+            </div>
           </div>
 
           <div className={`sc-card ${styles.tableCard}`}>
             <div className={styles.tableWrap}>
-              <table className={styles.table}>
+              <table className={styles.table} style={estiloTabelaItens}>
+                <colgroup>
+                  {ITENS_COLUNAS.map((col) => (
+                    <col
+                      key={col.key}
+                      style={larguras[col.key] != null ? { width: larguras[col.key] } : undefined}
+                    />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
-                    <th>REF</th>
-                    <th>Nome</th>
-                    <th>Cor</th>
-                    {tamCols.map((t) => <th key={t} className={styles.thQty}>{t}</th>)}
-                    <th className={styles.thPreco}>P. Unit.</th>
-                    <th className={styles.thPreco}>Desconto</th>
-                    <th className={styles.thPreco}>Total</th>
-                    <th>TES</th>
-                    <th style={{ width: 36 }}></th>
+                    {ITENS_COLUNAS.map((col) => (
+                      <th key={col.key} className={col.num ? styles.thNum : ""} title={col.label}>
+                        {col.label}
+                        <span
+                          className={`${styles.resizeHandle} ${arrastando === col.key ? styles.resizeHandleAtivo : ""}`}
+                          onMouseDown={iniciarArrasto(col.key)}
+                          onDoubleClick={() => restaurar(col.key)}
+                          title="Arraste para redimensionar. Duplo clique restaura."
+                        />
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {gruposOrdem.map((gid) => {
-                    const grupo_itens = grupoMap[gid];
-                    return grupo_itens.map((item, idx) => (
-                      <tr key={item.id} className={idx === 0 ? styles.trFirst : styles.trCont}>
-                        {idx === 0 && (
-                          <>
-                            <td rowSpan={grupo_itens.length} className={styles.tdRef}>
-                              <code>{item.grupo_codigo || ""}</code>
-                            </td>
-                            <td rowSpan={grupo_itens.length} className={styles.tdNome}>
-                              {item.grupo_nome || ""}
-                            </td>
-                          </>
-                        )}
-                        <td>{item.cor || ""}</td>
-                        {tamCols.map((t) => (
-                          <td key={t} className={styles.tdQty}>
-                            {(item[TAM_KEY[t]] || 0) > 0 ? item[TAM_KEY[t]] : ""}
-                          </td>
-                        ))}
-                        <td className={styles.tdPreco}>{moeda(item.preco_unitario)}</td>
-                        <td className={styles.tdPreco}>
-                          {parseFloat(item.desconto_valor) > 0 ? moeda(item.desconto_valor) : ""}
+                  {itens.map((item) => {
+                    const editaveis = camposEditaveisItem(item);
+                    const celula = (coluna, props) => {
+                      const chave = `${item.id}:${coluna}`;
+                      return (
+                        <CelulaNumero
+                          {...props}
+                          readOnly={!editaveis.includes(coluna)}
+                          onSalvar={(valor) => salvarCampoItem(item, coluna, valor)}
+                          onProximo={() => focarProximoCampo(chave)}
+                          inputRef={(el) => {
+                            if (el) camposItemRef.current.set(chave, el);
+                            else camposItemRef.current.delete(chave);
+                          }}
+                        />
+                      );
+                    };
+                    const totalItem = valorTotalItem(item);
+                    return (
+                      <tr key={item.id}>
+                        <td className={styles.tdRef} title={item.ref_codigo || ""}>
+                          <code>{item.ref_codigo || ""}</code>
                         </td>
-                        <td className={styles.tdTotal}>
-                          {moeda((parseFloat(item.preco_total) || 0) - (parseFloat(item.desconto_valor) || 0) + (parseFloat(item.acrescimo_valor) || 0))}
+                        <td className={styles.tdNome} title={item.descricao_completa || ""}>
+                          {item.descricao_completa || ""}
                         </td>
-                        <td>
-                          <select
-                            className={styles.tesSelectInline}
-                            value={item.tes_id ?? ""}
-                            disabled={!podeEditar}
-                            onChange={(e) => alterarTesItem(item, e.target.value)}
-                          >
-                            <option value="">Nenhum</option>
-                            {tesList.map((t) => <option key={t.id} value={t.id}>{t.codigo}</option>)}
-                          </select>
+                        <td className={styles.tdEdit}>
+                          {celula("qtde", { valor: item.quantidade_total, casas: 0 })}
                         </td>
-                        <td>
-                          {podeEditar && (
+                        <td className={styles.tdEdit}>
+                          {celula("punit", {
+                            valor: item.preco_unitario, casas: 2, moeda: true,
+                            marcador: item.preco_manual ? (
+                              <span className={styles.marcadorManual} title="Preço alterado manualmente" />
+                            ) : null,
+                          })}
+                        </td>
+                        <td className={styles.tdEdit}>
+                          {celula("desc", { valor: item.desconto_valor, casas: 2, moeda: true })}
+                        </td>
+                        <td className={styles.tdTotal} title={moeda(totalItem)}>{moeda(totalItem)}</td>
+                        <td className={styles.tdTes}>
+                          <TesInput
+                            tesId={item.tes_id}
+                            tesList={tesList}
+                            readOnly={!itensEditaveis}
+                            onChange={(tes) => salvarTesItem(item, tes)}
+                          />
+                        </td>
+                        <td className={styles.tdAcao}>
+                          {itensEditaveis && (
                             <button
                               className={styles.btnExcluir}
                               onClick={() => removerItem(item.id)}
@@ -720,46 +1184,17 @@ export default function PedidoVendaDetalhePage() {
                           )}
                         </td>
                       </tr>
-                    ));
+                    );
                   })}
                   {itens.length === 0 && (
                     <tr>
-                      <td colSpan={6 + tamCols.length} className={styles.empty}>
+                      <td colSpan={ITENS_COLUNAS.length} className={styles.empty}>
                         Nenhum item adicionado.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
-            </div>
-
-            <div className={styles.descontoGeralRow}>
-              <span className={styles.secLabel} style={{ margin: 0 }}>Desconto geral</span>
-              <label className={styles.field} style={{ maxWidth: 140 }}>
-                <span>Desconto (%)</span>
-                <input type="number" step="0.01" min="0" max="100" className={styles.input} disabled={!podeEditar}
-                  value={headerForm.desconto_geral_pct}
-                  onChange={(e) => {
-                    const pct = e.target.value;
-                    const valor = subtotalItens > 0 ? (subtotalItens * (parseFloat(pct) || 0)) / 100 : 0;
-                    setHeaderForm((f) => ({ ...f, desconto_geral_pct: pct, desconto_geral_valor: valor.toFixed(2) }));
-                  }} />
-              </label>
-              <label className={styles.field} style={{ maxWidth: 140 }}>
-                <span>Desconto (R$)</span>
-                <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
-                  value={headerForm.desconto_geral_valor}
-                  onChange={(e) => {
-                    const valor = e.target.value;
-                    const pct = subtotalItens > 0 ? ((parseFloat(valor) || 0) / subtotalItens) * 100 : 0;
-                    setHeaderForm((f) => ({ ...f, desconto_geral_valor: valor, desconto_geral_pct: pct.toFixed(2) }));
-                  }} />
-              </label>
-              {podeEditar && (
-                <button className={styles.btnSecondary} onClick={handleSalvarHeader} disabled={savingHeader}>
-                  {savingHeader ? "Salvando…" : "Salvar desconto"}
-                </button>
-              )}
             </div>
 
             {itens.length > 0 && (
@@ -816,22 +1251,23 @@ export default function PedidoVendaDetalhePage() {
 
       {/* ══ ABA TRANSPORTE ══ */}
       {aba === "transporte" && (
-        <div className={styles.tabPanel}>
-          <div className={styles.grid2}>
-            <label className={styles.field}>
-              <span>Transportadora</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.transportadora_id} onChange={setH("transportadora_id")}>
-                <option value="">Nenhuma</option>
-                {transportadoras.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
-              </select>
-            </label>
-            <label className={styles.field}>
+        <div className={`${styles.tabPanel} ${styles.compactoCampos}`}>
+          <div className={styles.grid3Compacto}>
+            <label className={`${styles.field} ${styles.colSpan3}`}>
               <span>Tipo de Frete</span>
               <select className={styles.input} disabled={!podeEditar} value={headerForm.tipo_frete} onChange={setH("tipo_frete")}>
                 <option value="">Selecionar</option>
                 {TIPO_FRETE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
               </select>
             </label>
+            <label className={`${styles.field} ${styles.colSpan3}`}>
+              <span>Transportadora</span>
+              <select className={styles.input} disabled={!podeEditar} value={headerForm.transportadora_id} onChange={setH("transportadora_id")}>
+                <option value="">Nenhuma</option>
+                {transportadoras.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+              </select>
+            </label>
+
             <label className={styles.field}>
               <span>Valor Frete (R$)</span>
               <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
@@ -847,30 +1283,32 @@ export default function PedidoVendaDetalhePage() {
               <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
                 value={headerForm.valor_despesas} onChange={setH("valor_despesas")} />
             </label>
-            <label className={styles.field}>
-              <span>Peso Líquido (kg)</span>
-              <input type="number" step="0.001" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.peso_liquido} onChange={setH("peso_liquido")} />
-            </label>
+
             <label className={styles.field}>
               <span>Peso Bruto (kg)</span>
               <input type="number" step="0.001" min="0" className={styles.input} disabled={!podeEditar}
                 value={headerForm.peso_bruto} onChange={setH("peso_bruto")} />
             </label>
             <label className={styles.field}>
+              <span>Peso Líquido (kg)</span>
+              <input type="number" step="0.001" min="0" className={styles.input} disabled={!podeEditar}
+                value={headerForm.peso_liquido} onChange={setH("peso_liquido")} />
+            </label>
+            <label className={styles.field}>
               <span>Quantidade de Volumes</span>
               <input type="number" step="1" min="0" className={styles.input} disabled={!podeEditar}
                 value={headerForm.qtd_volumes} onChange={setH("qtd_volumes")} />
             </label>
+
             <label className={styles.field}>
               <span>Espécie dos Volumes</span>
               <input className={styles.input} disabled={!podeEditar}
-                value={headerForm.especie_volumes} onChange={setH("especie_volumes")} placeholder="Ex: Caixa, Fardo…" />
+                value={headerForm.especie_volumes} onChange={setHUpper("especie_volumes")} placeholder="Ex: Caixa, Fardo…" />
             </label>
             <label className={styles.field}>
               <span>Placa do Veículo</span>
               <input className={styles.input} disabled={!podeEditar}
-                value={headerForm.placa_veiculo} onChange={setH("placa_veiculo")} maxLength={10} />
+                value={headerForm.placa_veiculo} onChange={setHUpper("placa_veiculo")} maxLength={10} />
             </label>
             <label className={styles.field}>
               <span>UF do Veículo</span>
@@ -883,29 +1321,31 @@ export default function PedidoVendaDetalhePage() {
 
       {/* ══ ABA OUTROS ══ */}
       {aba === "outros" && (
-        <div className={styles.tabPanel}>
-          <label className={styles.field}>
-            <span>Observações Internas</span>
-            <textarea
-              className={`${styles.input} ${styles.textarea}`}
-              disabled={!podeEditar}
-              rows={4}
-              value={headerForm.observacoes_internas}
-              onChange={setH("observacoes_internas")}
-              placeholder="Uso interno — não vai para a NF-e"
-            />
-          </label>
-          <label className={styles.field} style={{ marginTop: "1rem" }}>
-            <span>Informações Adicionais da Nota</span>
-            <textarea
-              className={`${styles.input} ${styles.textarea}`}
-              disabled={!podeEditar}
-              rows={4}
-              value={headerForm.informacoes_adicionais}
-              onChange={setH("informacoes_adicionais")}
-              placeholder="Vai para o XML da NF-e"
-            />
-          </label>
+        <div className={`${styles.tabPanel} ${styles.compactoCampos}`}>
+          <div className={styles.grid3Compacto}>
+            <label className={`${styles.field} ${styles.colSpan3}`}>
+              <span>Informações Adicionais da Nota</span>
+              <textarea
+                className={`${styles.input} ${styles.textarea}`}
+                disabled={!podeEditar}
+                rows={3}
+                value={headerForm.informacoes_adicionais}
+                onChange={setHUpper("informacoes_adicionais")}
+                placeholder="Vai para o XML da NF-e"
+              />
+            </label>
+            <label className={`${styles.field} ${styles.colSpan3}`}>
+              <span>Observações Internas</span>
+              <textarea
+                className={`${styles.input} ${styles.textarea}`}
+                disabled={!podeEditar}
+                rows={3}
+                value={headerForm.observacoes_internas}
+                onChange={setHUpper("observacoes_internas")}
+                placeholder="Uso interno — não vai para a NF-e"
+              />
+            </label>
+          </div>
         </div>
       )}
 
@@ -920,160 +1360,185 @@ export default function PedidoVendaDetalhePage() {
         </div>
       )}
 
-      {/* ══ MODAL — Adicionar item ══ */}
+      {/* ══ MODAL — Adicionar item (3 passos: busca → grade do pai / avulso) ══ */}
       {itemModal && (
         <div className={styles.overlay} onClick={() => { setItemModal(null); setErroItem(null); }}>
-          <div className={styles.modalMd} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`${styles.modalMd} ${
+              itemModal.step === 2 ? styles.modalGrade : itemModal.step === 3 ? styles.modalAvulso : styles.modalBusca
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHead}>
-              <h2 className={styles.modalTitle}>Adicionar item</h2>
+              <h2 className={styles.modalTitle}>
+                {itemModal.step === 1 ? (
+                  "Adicionar Item"
+                ) : (
+                  <>
+                    <button className={styles.btnVoltarModal} onClick={voltarParaBusca} title="Voltar">←</button>
+                    {itemModal.step === 2 ? itemModal.produtoPai?.descricao : itemModal.avulso?.descricao}
+                  </>
+                )}
+              </h2>
               <button className={styles.btnClose}
                 onClick={() => { setItemModal(null); setErroItem(null); }}>×</button>
             </div>
 
             <div className={styles.modalBody}>
-              <div className={styles.searchWrap}>
-                <label className={styles.field}>
-                  <span>Referência — código ou nome</span>
-                  <input
-                    ref={searchInputRef}
-                    className={styles.input}
-                    placeholder="Digite para buscar…"
-                    value={itemModal.searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    onBlur={() => setTimeout(() => setItemModal((m) => m ? { ...m, searchResults: [] } : m), 200)}
-                    autoComplete="off"
-                  />
-                </label>
-                {itemModal.searchResults.length > 0 && ReactDOM.createPortal(
-                  <ul className={styles.autocomplete} style={{ top: acPos.top, left: acPos.left, width: acPos.width }}>
-                    {itemModal.searchResults.map((g) => (
-                      <li key={g.id} className={styles.acItem} onClick={() => selecionarGrupo(g)}>
-                        <code className={styles.acCod}>{g.codigo || "?"}</code>
-                        <span className={styles.acNome}>{g.nome}</span>
-                        {g.tem_plus && <span className={styles.acPlus}>Plus</span>}
-                      </li>
-                    ))}
-                  </ul>,
-                  document.body
-                )}
-              </div>
+              {/* ── Passo 1 — busca ── */}
+              {itemModal.step === 1 && (
+                <div className={styles.searchWrap}>
+                  <label className={styles.field}>
+                    <span>Buscar produto</span>
+                    <input
+                      ref={searchInputRef}
+                      className={styles.input}
+                      placeholder="Buscar produto por código ou nome..."
+                      value={itemModal.searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      onBlur={() => setTimeout(() => setItemModal((m) => m ? { ...m, searchResults: [] } : m), 200)}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                  </label>
+                  {itemModal.searching && <small className={styles.precoHint}>Buscando…</small>}
+                  {itemModal.searchResults.length > 0 && ReactDOM.createPortal(
+                    <ul className={styles.autocomplete} style={{ top: acPos.top, left: acPos.left, width: acPos.width }}>
+                      {itemModal.searchResults.map((r) => (
+                        <li key={`${r.tipo}-${r.id}`} className={styles.acItem} onClick={() => selecionarResultadoBusca(r)}>
+                          <span className={styles.acIcone} title={r.tipo === "pai" ? "Produto com grade" : "Produto avulso"}>
+                            {r.tipo === "pai" ? "⊞" : "□"}
+                          </span>
+                          <code className={styles.acCod}>{r.codigo || "?"}</code>
+                          <span className={styles.acNomeCol}>
+                            <span className={styles.acNome}>{r.descricao}</span>
+                            {r.grupo && <span className={styles.acGrupo}>{r.grupo}</span>}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>,
+                    document.body
+                  )}
+                </div>
+              )}
 
-              {itemModal.selectedGrupo && (
+              {/* ── Passo 2 — grade do produto pai ── */}
+              {itemModal.step === 2 && (
                 <>
-                  <div className={styles.grupoInfo}>
-                    <span className={styles.grupoNome}>{itemModal.selectedGrupo.nome}</span>
-                    <code className={styles.grupoCod}>{itemModal.selectedGrupo.codigo}</code>
-                    {itemModal.selectedGrupo.tem_plus && (
-                      <span className={styles.badgePlus}>Plus</span>
-                    )}
-                  </div>
+                  {itemModal.gradeLoading ? (
+                    <p className={styles.precoHint}>Carregando grade…</p>
+                  ) : itemModal.grade ? (
+                    <>
+                      {gradeTotais.temSemPreco && (
+                        <div className={styles.avisoWarn}>
+                          Alguns produtos não têm preço definido. Informe uma tabela de preço no
+                          pedido, cadastre o preço no produto pai, ou preencha o preço manualmente
+                          após adicionar.
+                        </div>
+                      )}
+                      <div className={styles.gradeWrap}>
+                        <table className={styles.gradeTable}>
+                          <thead>
+                            <tr>
+                              <th></th>
+                              {itemModal.grade.coluna_grade.itens.map((col) => (
+                                <th key={col.id}>{col.codigo_curto}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {itemModal.grade.linha_grade.itens.map((linha) => (
+                              <tr key={linha.id}>
+                                <th>{linha.codigo_curto}</th>
+                                {itemModal.grade.coluna_grade.itens.map((col) => {
+                                  const sku = skuNaCelula(linha.id, col.id);
+                                  const disabled = !sku || sku.situacao !== "Ativo";
+                                  const key = `${linha.id}-${col.id}`;
+                                  return (
+                                    <td key={col.id}>
+                                      <input
+                                        type="number" min="0"
+                                        className={styles.gradeCell}
+                                        disabled={disabled}
+                                        value={itemModal.gradeQtds[key] || ""}
+                                        onChange={(e) => setGradeQtd(linha.id, col.id, e.target.value)}
+                                      />
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <table className={styles.gradePrecoTable}>
+                          <thead><tr><th>Preço Unit.</th></tr></thead>
+                          <tbody>
+                            {itemModal.grade.linha_grade.itens.map((linha) => {
+                              // Uma referência de preço por linha — usa a primeira coluna com
+                              // SKU (o preço, salvo edição manual do SKU, é igual em toda a linha).
+                              const skuRef = itemModal.grade.coluna_grade.itens
+                                .map((col) => skuNaCelula(linha.id, col.id))
+                                .find(Boolean);
+                              return (
+                                <tr key={linha.id}>
+                                  <td
+                                    className={skuRef?.preco_origem === "sem_preco" ? styles.gradePrecoSemPreco : ""}
+                                  >
+                                    {skuRef?.preco_origem === "sem_preco" ? "—" : moeda(skuRef?.preco_venda)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className={styles.itemTotal}>
+                        Total de peças: <strong>{gradeTotais.pecas}</strong> | Total: <strong>{moeda(gradeTotais.valor)}</strong>
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              )}
 
-                  <div className={styles.tecidoSection}>
+              {/* ── Passo 3 — produto avulso ── */}
+              {itemModal.step === 3 && itemModal.avulsoForm && (
+                <>
+                  <label className={styles.field}>
+                    <span>Código</span>
+                    <input className={styles.input} value={itemModal.avulso.codigo} disabled />
+                  </label>
+                  <label className={styles.field}>
+                    <span>Descrição</span>
+                    <input className={styles.input} value={itemModal.avulso.descricao} disabled />
+                  </label>
+                  <div className={styles.grid2}>
                     <label className={styles.field}>
-                      <span>Modelo de Tecido</span>
-                      <select className={styles.input} value={itemModal.modelo_id}
-                        onChange={(e) => handleModeloChange(e.target.value)}>
-                        <option value="">Selecionar modelo</option>
-                        {modelos.map((mo) => <option key={mo.id} value={mo.id}>{mo.nome}</option>)}
+                      <span>Quantidade *</span>
+                      <input type="number" min="1" className={styles.input}
+                        value={itemModal.avulsoForm.quantidade} onChange={setAvulsoForm("quantidade")} />
+                    </label>
+                    <label className={styles.field}>
+                      <span>Preço unitário (R$) *</span>
+                      <input type="number" step="0.01" className={styles.input}
+                        value={itemModal.avulsoForm.precoUnit} onChange={setAvulsoForm("precoUnit")} />
+                    </label>
+                  </div>
+                  <div className={styles.grid2}>
+                    <label className={styles.field}>
+                      <span>TES</span>
+                      <select className={styles.input} value={itemModal.avulsoForm.tesId} onChange={setAvulsoForm("tesId")}>
+                        <option value="">Nenhum</option>
+                        {tesList.map((t) => <option key={t.id} value={t.id}>{t.codigo} — {t.descricao}</option>)}
                       </select>
                     </label>
-                    {itemModal.modelo_id && (
-                      <label className={styles.field}>
-                        <span>Cor</span>
-                        <select className={styles.input} value={itemModal.cor_id}
-                          onChange={(e) => handleCorChange(e.target.value)}>
-                          <option value="">Selecionar cor</option>
-                          {itemModal.cores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </select>
-                      </label>
-                    )}
-                    {itemModal.cor_id && (
-                      <label className={styles.field}>
-                        <span>Lote</span>
-                        <select className={styles.input} value={itemModal.lote_id}
-                          onChange={(e) => handleLoteChange(e.target.value)}>
-                          <option value="">Selecionar lote</option>
-                          {itemModal.lotes.map((l) => (
-                            <option key={l.id} value={l.id}>{loteLabelFn(l)}</option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    {itemModal.cor && (
-                      <p className={styles.corExtraida}>
-                        Cor selecionada: <strong>{itemModal.cor}</strong>
-                      </p>
-                    )}
-                  </div>
-
-                  <div className={styles.tamSection}>
-                    <p className={styles.tamLabel}>Quantidades por tamanho</p>
-                    <div className={styles.tamGrid}>
-                      {tamForm.map((tam) => (
-                        <label key={tam} className={styles.tamItem}>
-                          <span>{tam}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            className={styles.tamInput}
-                            value={itemModal[TAM_KEY[tam]]}
-                            onChange={(e) =>
-                              setItemModal((m) => ({ ...m, [TAM_KEY[tam]]: e.target.value }))
-                            }
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <label className={styles.field}>
-                    <span>Preço unitário (R$)</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={styles.input}
-                      value={itemModal.precoUnit}
-                      disabled={itemModal.loadingPreco}
-                      onChange={(e) => setItemModal((m) => ({ ...m, precoUnit: e.target.value }))}
-                    />
-                    {pedido.tabela_nome && (
-                      <small className={`${styles.precoHint}${itemModal.precoSemTabela ? " " + styles.precoHintWarn : ""}`}>
-                        {itemModal.loadingPreco
-                          ? "Buscando preço…"
-                          : itemModal.precoSemTabela
-                          ? "Produto sem preço nesta tabela"
-                          : `Tabela ${pedido.tabela_nome} — ${CONDICOES_LABEL[pedido.condicoes] || pedido.condicoes}${itemModal.precoAutoFilled ? " — valor automático" : ""}`}
-                      </small>
-                    )}
-                  </label>
-
-                  <div className={styles.grid2}>
                     <label className={styles.field}>
                       <span>Desconto (%)</span>
                       <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                        value={itemModal.desconto_pct} onChange={setDescontoPct} />
-                    </label>
-                    <label className={styles.field}>
-                      <span>Desconto (R$)</span>
-                      <input type="number" step="0.01" min="0" className={styles.input}
-                        value={itemModal.desconto_valor} onChange={setDescontoValor} />
+                        value={itemModal.avulsoForm.descontoPct} onChange={setAvulsoForm("descontoPct")} />
                     </label>
                   </div>
-
-                  <label className={styles.field}>
-                    <span>TES do item</span>
-                    <select className={styles.input} value={itemModal.tes_id}
-                      onChange={(e) => setItemModal((m) => ({ ...m, tes_id: e.target.value }))}>
-                      <option value="">Nenhum</option>
-                      {tesList.map((t) => <option key={t.id} value={t.id}>{t.codigo} — {t.descricao}</option>)}
-                    </select>
-                    <small className={styles.precoHint}>
-                      Preenchido a partir do TES padrão do pedido — pode ser trocado aqui.
-                    </small>
-                  </label>
-
                   <div className={styles.itemTotal}>
-                    Total do item: <strong>{moeda(totalItemLiquido)}</strong>
+                    Total: <strong>{moeda(totalAvulso)}</strong>
                   </div>
                 </>
               )}
@@ -1084,13 +1549,20 @@ export default function PedidoVendaDetalhePage() {
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary}
                 onClick={() => { setItemModal(null); setErroItem(null); }}>Cancelar</button>
-              <button
-                className={styles.btnPrimary}
-                onClick={handleSalvarItem}
-                disabled={saving || !itemModal.selectedGrupo}
-              >
-                {saving ? "Adicionando…" : "Adicionar item"}
-              </button>
+              {itemModal.step === 2 && (
+                <button
+                  className={styles.btnPrimary}
+                  onClick={handleAdicionarGrade}
+                  disabled={saving || gradeTotais.pecas === 0}
+                >
+                  {saving ? "Adicionando…" : "Adicionar à grade →"}
+                </button>
+              )}
+              {itemModal.step === 3 && (
+                <button className={styles.btnPrimary} onClick={handleAdicionarAvulso} disabled={saving}>
+                  {saving ? "Adicionando…" : "Adicionar item"}
+                </button>
+              )}
             </div>
           </div>
         </div>

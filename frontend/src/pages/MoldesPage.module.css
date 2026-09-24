@@ -175,6 +175,105 @@
   gap: 10px;
 }
 
+/* ── Seção por grupo de produto ── */
+.secaoProduto {
+  margin-bottom: 2rem;
+}
+
+.secaoProdutoLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sc-text-muted);
+  padding: 0 0 0.5rem;
+  border-bottom: 1px solid var(--sc-border);
+  margin-bottom: 1rem;
+}
+
+.secaoProdutoGrupos {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Autocomplete de produto ── */
+.autocompleteWrap {
+  position: relative;
+}
+
+.autocompleteDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-sm);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+}
+
+.autocompleteInfo {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--sc-text-muted);
+}
+
+.autocompleteItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.12s;
+}
+
+.autocompleteItem:hover {
+  background-color: var(--sc-bg-secondary);
+}
+
+.produtoChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--sc-radius-sm);
+  background-color: var(--sc-bg-secondary);
+}
+
+.produtoChipCodigo {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.produtoChipNome {
+  flex: 1;
+  font-size: 13px;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btnLimparProduto {
+  border: none;
+  background: transparent;
+  color: var(--sc-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.btnLimparProduto:hover {
+  color: var(--sc-text-primary);
+}
+
 /* ── Checkboxes de tamanho ── */
 .checkboxGrid {
   display: flex;
@@ -217,18 +316,26 @@
 }
 
 .avisoSobra {
-  padding: 10px 14px;
-  background-color: var(--sc-bg-secondary);
+  background: var(--sc-bg-warning, #fef9c3);
+  border: 1px solid var(--sc-border-warning, #fde68a);
   border-radius: var(--sc-radius-sm);
-  font-size: 13px;
-  color: var(--sc-text-secondary);
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-warning, #854d0e);
+}
+
+.avisoLista {
+  margin: 0.4rem 0;
+  padding-left: 1.25rem;
+}
+
+.avisoLista li {
+  margin: 0.15rem 0;
 }
 
 .partesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  max-height: 62vh;
-  overflow-y: auto;
-  padding-right: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
 }

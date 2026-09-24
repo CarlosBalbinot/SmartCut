@@ -43,6 +43,9 @@ export const deletePedidoVenda = (id) =>
 export const addItemPedidoVenda = (id, payload) =>
   request(`/pedidos-venda/${id}/itens`, { method: "POST", body: JSON.stringify(payload) });
 
+export const addItensBulkPedidoVenda = (id, itens) =>
+  request(`/pedidos-venda/${id}/itens/bulk`, { method: "POST", body: JSON.stringify({ itens }) });
+
 export const updateItemPedidoVenda = (id, itemId, payload) =>
   request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) });
 
@@ -58,3 +61,20 @@ export const gerarEncaixePedidoVenda = (id) =>
 export const getPdfPedidoVenda = (id) => requestBlob(`/pedidos-venda/${id}/pdf-pedido`);
 
 export const getPdfCortePedidoVenda = (id) => requestBlob(`/pedidos-venda/${id}/pdf-corte`);
+
+// Reprecifica todos os itens pela tabela (inclusive preço manual).
+// Devolve { pedido, sem_preco: [referências que mantiveram o preço] }.
+export const aplicarTabelaPedidoVenda = (id, tabela_preco_id) =>
+  request(`/pedidos-venda/${id}/aplicar-tabela`, {
+    method: "POST",
+    body: JSON.stringify({ tabela_preco_id }),
+  });
+
+// Métricas de vendas do dashboard executivo (PainelFinanceiro).
+export const getMetricasPedidosVenda = (dataInicio, dataFim) => {
+  const params = new URLSearchParams();
+  if (dataInicio) params.set("data_inicio", dataInicio);
+  if (dataFim) params.set("data_fim", dataFim);
+  const qs = params.toString();
+  return request(`/pedidos-venda/metricas${qs ? `?${qs}` : ""}`);
+};

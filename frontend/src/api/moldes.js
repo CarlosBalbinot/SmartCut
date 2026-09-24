@@ -27,8 +27,8 @@ async function requestForm(path, formData) {
 
 export const getGrupos = () => request("/grupos-molde/");
 
-export const buscarGrupos = (search) =>
-  request(`/grupos-molde/?search=${encodeURIComponent(search)}`);
+export const buscarGrupos = (busca) =>
+  request(`/grupos-molde/?busca=${encodeURIComponent(busca)}`);
 
 export const getGrupo = (id) => request(`/grupos-molde/${id}`);
 
@@ -57,3 +57,8 @@ export const updateMolde = (id, payload) =>
 
 export const deleteMolde = (id) =>
   request(`/moldes/${id}`, { method: "DELETE" });
+
+// ── Produtos (para vínculo com o grupo de molde) ────────────────────────
+
+export const buscarProdutos = (termo) =>
+  request(`/produtos/?busca=${encodeURIComponent(termo)}`);

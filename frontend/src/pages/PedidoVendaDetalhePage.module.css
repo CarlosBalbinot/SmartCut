@@ -19,18 +19,106 @@
 
 /* ── Cabeçalho ── */
 
-/* Linha de status abaixo do título (dentro do sc-page-header) */
-.statusLine {
-  margin-top: 0.35rem;
+/* Faixa do cabeçalho: título/status/cliente à esquerda, ações à direita.
+   flex-wrap: em tela estreita as ações descem para a linha de baixo e o
+   margin-left: auto mantém elas alinhadas à direita. */
+.cabecalho {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
-/* Botões de ação do cabeçalho (topo da página) */
-.headerActions {
+/* Encolhe (razão social longa vira reticências) antes de empurrar as ações
+   para baixo; só quebra de linha quando nem 240px sobram. */
+.cabecalhoTitulo {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tituloLinha,
+.actionBar { min-height: 34px; }
+
+.tituloLinha {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
+
+.titulo {
+  margin: 0;
+  font-size: var(--sc-font-size-page-title);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+  white-space: nowrap;
+}
+
+.clienteLinha {
+  margin: 0;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.actionBarSeparator {
+  width: 1px;
+  height: 20px;
+  background: var(--sc-border);
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+.btnHeaderSecondary {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-primary);
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+}
+.btnHeaderSecondary:hover    { background: var(--sc-surface-hover); }
+.btnHeaderSecondary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btnHeaderCancelar {
+  background: var(--sc-surface);
+  border: 1px solid #dc2626;
+  color: #dc2626;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+}
+.btnHeaderCancelar:hover    { background: #fee2e2; }
+.btnHeaderCancelar:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btnHeaderFechar {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.btnHeaderFechar:hover    { filter: brightness(0.92); }
+.btnHeaderFechar:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .stCancelado { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
 
@@ -45,42 +133,6 @@
 }
 .stAberto  { background: var(--color-primary); color: #FFF; }
 .stFechado { background: var(--sc-success-text); color: #FFF; }
-
-/* Linha de informações do pedido, em cards/chips. */
-.infoGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  width: 100%;
-}
-
-.infoCard {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--sc-card-bg);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-card-radius);
-  padding: 12px 16px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.infoLabel {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--sc-text-muted);
-}
-
-.infoValor {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--sc-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .erroInline {
   margin: -0.75rem 0 1rem;
@@ -131,6 +183,48 @@
   color: var(--sc-text-muted);
 }
 
+/* ── Campos compactos — padrão reaproveitado pelas abas Dados,
+   Transporte e Outros (grid denso, sem scroll) ── */
+.compactoCampos {
+  padding: 1rem;
+}
+
+.compactoCampos .field {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-muted);
+  gap: 3px;
+}
+
+.compactoCampos .input {
+  height: 34px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  width: 100%;
+}
+
+.compactoCampos .textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  resize: vertical;
+}
+
+.grid3Compacto {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.colSpan2 { grid-column: span 2; }
+.colSpan3 { grid-column: span 3; }
+
 /* Barra "Salvar Alterações" do cabeçalho (Dados/Transporte/Outros) */
 .headerSaveBar {
   display: flex;
@@ -144,16 +238,6 @@
 .msgSalvo {
   font-size: 0.82rem;
   color: var(--sc-success-text);
-}
-
-/* Linha de desconto geral, abaixo da grid de itens */
-.descontoGeralRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  border-top: 1px solid var(--sc-border);
-  flex-wrap: wrap;
 }
 
 .tesSelectInline {
@@ -181,13 +265,73 @@
   margin-bottom: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--sc-border);
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .sectionTitle {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--sc-text-primary);
   margin: 0;
+}
+
+.sectionHeadRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.descontoHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.descontoHeaderLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+}
+
+.descontoInputSm {
+  width: 80px;
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  box-sizing: border-box;
+}
+.descontoInputSm:focus    { border-color: var(--sc-action); }
+.descontoInputSm:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+
+.descontoUnit {
+  font-size: 0.78rem;
+  color: var(--sc-text-muted);
+}
+
+.btnAplicar {
+  padding: 5px 12px;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--sc-text-primary);
+  cursor: pointer;
+}
+.btnAplicar:hover    { background: var(--sc-surface-hover); }
+.btnAplicar:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.headSeparator {
+  color: var(--sc-border-strong);
+  font-size: 0.9rem;
 }
 
 /* ── Card / Table — sc-card sem padding, tabela edge-to-edge ── */
@@ -198,31 +342,52 @@
 
 .tableWrap { overflow-x: auto; }
 
+/* Larguras vêm do <colgroup> (useResizableColumns); a largura/min-width da
+   tabela é calculada no componente para a Descrição flexível (mín. 220px). */
 .table {
-  width: 100%;
   border-collapse: collapse;
-  min-width: 700px;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .table th {
+  position: relative;
   text-align: left;
-  padding: 10px 16px;
-  font-size: 0.72rem;
+  padding: 6px 8px;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--sc-text-muted);
   background: var(--sc-bg-secondary);
   border-bottom: 1px solid var(--sc-border);
-  white-space: nowrap;
+  user-select: none;
 }
 
-.thQty   { text-align: center; width: 46px; }
-.thPreco { text-align: right; }
+.thNum { text-align: right !important; }
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.1s;
+}
+.resizeHandle:hover,
+.resizeHandleAtivo { background: var(--color-primary); }
 
 .table td {
-  padding: 12px 16px;
-  font-size: 0.82rem;
+  padding: 6px 8px;
+  font-size: var(--sc-font-size-body);
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
   vertical-align: middle;
@@ -235,32 +400,97 @@
 .table tr:last-child td { border-bottom: none; }
 .table tbody tr:hover td { background: var(--sc-bg-secondary); }
 
-.tdRef {
-  white-space: nowrap;
-  border-right: 1px solid var(--sc-border);
-}
+.tdRef { border-right: 1px solid var(--sc-border); }
 
 .tdRef code {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
   font-family: monospace;
-  font-size: 0.8rem;
+  font-size: var(--sc-font-size-body);
   background: var(--sc-bg-secondary);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
 }
 
-.tdNome {
-  border-right: 1px solid var(--sc-border);
-  min-width: 140px;
-}
+.tdNome { border-right: 1px solid var(--sc-border); }
 
-.tdQty {
-  text-align: center;
-  color: var(--sc-text-secondary);
+.tdTotal {
+  text-align: right;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-.tdPreco { text-align: right; white-space: nowrap; }
-.tdTotal { text-align: right; white-space: nowrap; font-weight: 500; }
+.tdTes .tesSelectInline { width: 100%; }
+.tdAcao { text-align: center; padding-left: 0 !important; padding-right: 0 !important; }
+
+/* ── Célula editável (Qtde / P. Unit. / Desc.) ── */
+.tdEdit { padding: 3px 4px !important; }
+
+.celulaEdit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inputCelula {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-font-size-input);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  color: var(--sc-text-primary);
+  outline: none;
+  transition: border-color 0.1s, box-shadow 0.1s;
+}
+.inputCelula:hover:not(:read-only) { border-color: var(--sc-border-strong); }
+.inputCelula:focus:not(:read-only) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.inputCelula:read-only {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+.inputCelulaErro,
+.inputCelulaErro:hover,
+.inputCelulaErro:focus { border-color: var(--sc-danger-text) !important; }
+
+.celulaErro {
+  margin-top: 2px;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-danger-text);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preço digitado à mão (preco_manual) — ponto discreto à esquerda. */
+.marcadorManual {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  z-index: 1;
+}
+.celulaEdit:has(.celulaErro) .marcadorManual { top: 0.95rem; }
 
 .empty {
   padding: 2rem;
@@ -293,8 +523,8 @@
 }
 
 .totaisTotal {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
   color: var(--sc-text-primary);
   margin-top: 0.25rem;
   padding-top: 0.5rem;
@@ -312,22 +542,6 @@
   line-height: 1;
 }
 .btnExcluir:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
-
-/* ── Botão de ação do cabeçalho — primário (fora do modal) ── */
-.btnNovo {
-  background: var(--color-primary);
-  color: var(--sc-action-text);
-  border: none;
-  padding: 7px 16px;
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.82rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: filter 0.15s;
-}
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ── Buttons (.btnPrimary também usado dentro dos modais — não alterado) ── */
 .btnPrimary {
@@ -360,19 +574,6 @@
   cursor: pointer;
 }
 .btnSecondary:hover { background: var(--sc-surface-hover); }
-
-.btnDownload {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-primary);
-  border: 1px solid var(--sc-border-strong);
-  padding: 0.5rem 1rem;
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.btnDownload:hover { background: var(--sc-200); }
 
 /* Destrutivo — branco, borda e texto na cor de perigo. Compartilhado
    com o botão de confirmação do modal de cancelamento. */
@@ -443,6 +644,9 @@
 }
 
 .modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--sc-text-primary);
@@ -468,15 +672,6 @@
 }
 
 /* ── Form shared ── */
-.secLabel {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--sc-text-secondary);
-  margin: 0 0 0.75rem;
-}
-
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -508,6 +703,20 @@
 .input:focus    { border-color: var(--sc-action); }
 .input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
 
+/* Só leitura com o mesmo visual de :disabled — readOnly (e não disabled)
+   para o tooltip (title) aparecer no hover em qualquer navegador. */
+.inputSomenteLeitura,
+.inputSomenteLeitura:focus {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+  border-color: var(--sc-border-strong);
+  cursor: default;
+}
+
+/* Comissão com origem NENHUMA: borda amarela suave. */
+.compactoCampos .inputAlerta,
+.compactoCampos .inputAlerta:focus { border-color: var(--sc-border-warning); }
+
 .aviso {
   margin-top: 0.75rem;
   padding: 0.6rem 0.875rem;
@@ -526,6 +735,40 @@
   border-radius: var(--sc-radius-sm);
   font-size: 0.82rem;
   color: var(--sc-danger-text);
+}
+
+/* ── Preview de parcelas (Aba Dados) ── */
+.parcelasPreview {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.875rem;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+}
+
+.parcelasPreviewTitulo {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  margin: 0 0 0.4rem;
+}
+
+.parcelasPreviewLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.parcelasPreviewMsg {
+  font-size: 0.8rem;
+  color: var(--sc-text-muted);
+  margin: 0;
 }
 
 .confirmText {
@@ -547,7 +790,7 @@
   z-index: 1050;
   list-style: none;
   margin: 0; padding: 0.25rem 0;
-  max-height: 220px;
+  max-height: 300px;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -562,6 +805,13 @@
 }
 .acItem:hover { background: var(--sc-surface-hover); }
 
+.acIcone {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  color: var(--sc-text-muted);
+}
+
 .acCod {
   font-family: monospace;
   font-size: 0.78rem;
@@ -572,86 +822,22 @@
   flex-shrink: 0;
 }
 
-.acNome { flex: 1; color: var(--sc-text-primary); }
-
-.acPlus {
-  font-size: 0.68rem;
-  font-weight: 700;
-  background: var(--sc-info-bg);
-  color: var(--sc-info-text);
-  border: 1px solid var(--sc-info-border);
-  border-radius: 4px;
-  padding: 0.1rem 0.35rem;
+.acNome {
+  font-weight: 600;
+  color: var(--sc-text-primary);
 }
 
-.grupoInfo {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.75rem;
-  background: var(--sc-bg-secondary);
-  border-radius: var(--sc-radius-sm);
-  border: 1px solid var(--sc-border);
-}
-
-.grupoNome { font-size: 0.9rem; font-weight: 500; color: var(--sc-text-primary); flex: 1; }
-.grupoCod {
-  font-family: monospace;
-  font-size: 0.8rem;
-  background: var(--sc-surface);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  border: 1px solid var(--sc-border);
-}
-
-.badgePlus {
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: var(--sc-info-bg);
-  color: var(--sc-info-text);
-  border: 1px solid var(--sc-info-border);
-  border-radius: 4px;
-  padding: 0.1rem 0.4rem;
-}
-
-/* Tamanhos grid */
-.tamSection {}
-.tamLabel {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--sc-text-secondary);
-  margin-bottom: 0.5rem;
-}
-
-.tamGrid {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.tamItem {
+.acNomeCol {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--sc-text-secondary);
-  text-transform: uppercase;
+  min-width: 0;
 }
 
-.tamInput {
-  width: 52px;
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  padding: 0.4rem 0.4rem;
-  font-size: 0.875rem;
-  text-align: center;
-  color: var(--sc-text-primary);
-  outline: none;
+.acGrupo {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
 }
-.tamInput:focus { border-color: var(--sc-action); }
 
 .precoHint {
   display: block;
@@ -673,34 +859,91 @@
   font-size: 1rem;
 }
 
-.tecidoSection {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
+/* ── Modal "Adicionar Item" — largura por passo ── */
+.modalBusca  { width: 560px; }
+.modalGrade  { width: 820px; }
+.modalAvulso { width: 480px; }
 
-/* Garante que os selects de tecido não fiquem com texto invisível */
-.tecidoSection .input {
-  color: var(--sc-text-primary) !important;
-  background: var(--sc-surface) !important;
-  -webkit-text-fill-color: var(--sc-text-primary) !important;
-}
-
-.tecidoSection .input option {
-  color: #1D1D1F;
-  background: #ffffff;
-}
-
-.corExtraida {
-  font-size: 0.82rem;
+.btnVoltarModal {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
   color: var(--sc-text-secondary);
-  margin: 0;
-  padding: 0.4rem 0.7rem;
-  background: var(--sc-bg-secondary);
+  cursor: pointer;
+  padding: 0 0.3rem 0 0;
+  margin-right: 0.4rem;
+}
+.btnVoltarModal:hover { color: var(--color-primary); }
+
+.avisoWarn {
+  padding: 0.6rem 0.875rem;
+  background: #fef9c3;
+  border: 1px solid #fde68a;
   border-radius: var(--sc-radius-sm);
-  border: 1px solid var(--sc-border);
+  font-size: 0.82rem;
+  color: #854d0e;
 }
 
-.precoHintWarn {
-  color: var(--sc-danger-text);
+/* ── Passo 2 — grade do produto pai ── */
+.gradeWrap {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  overflow-x: auto;
 }
+
+.gradeTable {
+  border-collapse: collapse;
+}
+.gradeTable th, .gradeTable td {
+  padding: 4px 6px;
+  text-align: center;
+}
+.gradeTable thead th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+}
+.gradeTable tbody th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  text-align: left;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.gradeCell {
+  width: 60px;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 0.82rem;
+  border: 1px solid var(--sc-border);
+  border-radius: 4px;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+}
+.gradeCell:focus { border-color: var(--sc-action); }
+.gradeCell:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+
+.gradePrecoTable {
+  border-collapse: collapse;
+  flex-shrink: 0;
+}
+.gradePrecoTable th, .gradePrecoTable td {
+  padding: 4px 6px;
+  text-align: right;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.gradePrecoTable thead th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+}
+.gradePrecoTable tbody td { color: var(--color-primary); }
+.gradePrecoSemPreco { color: var(--sc-danger-text, #dc2626) !important; }

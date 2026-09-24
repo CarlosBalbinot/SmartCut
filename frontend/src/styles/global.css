@@ -75,6 +75,29 @@ a:hover { text-decoration: underline; }
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; }
 
+/* ── Maiúsculo automático em campos de texto livre ──────────────────
+   Efeito visual imediato; o valor salvo no state é uppercased à parte,
+   no onChange de cada campo (ver src/utils/uppercase.js). */
+input[type="text"],
+input[type="search"],
+input:not([type]),
+input[type="tel"],
+input[type="number"],
+textarea {
+  text-transform: uppercase;
+}
+
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+.no-uppercase,
+.no-uppercase input {
+  text-transform: none;
+}
+
 /* ── Scrollbar minimalista ── */
 ::-webkit-scrollbar {
   width: 4px;

@@ -71,6 +71,36 @@
 }
 .input:focus { border-color: var(--sc-action); }
 
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  font-weight: 400;
+}
+
+.previewCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-top: 0.25rem;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+}
+
+.previewLabel {
+  font-size: 0.78rem;
+  color: var(--sc-text-secondary);
+}
+
+.previewCodigo {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+
 .erro {
   margin-top: 1rem;
   padding: 0.5rem 0.75rem;

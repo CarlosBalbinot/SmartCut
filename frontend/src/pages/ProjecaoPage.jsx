@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { gruposApi, precificacoesApi } from "../services/api";
+import { getGrupos } from "../api/moldes";
+import {
+  getConfigPrecificacao,
+  getCustosFixos,
+  getPrecificacoes,
+} from "../api/precificacoes";
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -77,7 +82,7 @@ export default function ProjecaoPage() {
   const [resultado, setResultado] = useState(null);
 
   useEffect(() => {
-    Promise.all([gruposApi.listar(), precificacoesApi.getConfig(), precificacoesApi.getCustos()])
+    Promise.all([getGrupos(), getConfigPrecificacao(), getCustosFixos()])
       .then(([gs, cfg, cst]) => {
         setGrupos(gs);
         setConfig(cfg);
@@ -89,7 +94,7 @@ export default function ProjecaoPage() {
 
   const carregarPrecs = async (grupoId) => {
     if (precsPorGrupo[grupoId]) return precsPorGrupo[grupoId];
-    const data = await precificacoesApi.listar(grupoId);
+    const data = await getPrecificacoes(grupoId);
     setPrecsPorGrupo((p) => ({ ...p, [grupoId]: data }));
     return data;
   };

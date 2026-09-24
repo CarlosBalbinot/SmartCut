@@ -1,21 +1,96 @@
-.container {
+.wrap {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  background-color: #FBFBFD;
-  border-radius: var(--sc-radius-sm);
+  height: auto;
+  background-color: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-lg);
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
 }
 
-.dimensoes {
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--sc-text-muted);
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
   background-color: var(--sc-surface);
   border-bottom: 1px solid rgba(0,0,0,0.06);
-  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.dimensoes {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.zoomControls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 auto;
+}
+
+.btnZoom {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  color: var(--sc-text-primary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.btnZoom:hover {
+  background-color: var(--sc-border-strong);
+}
+
+.btnGrade {
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--sc-surface);
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.btnGrade:hover {
+  color: var(--sc-text-primary);
+}
+
+.btnGradeAtivo {
+  background: var(--color-primary);
+  color: #FFFFFF;
+  border-color: var(--color-primary);
+}
+
+.btnGradeAtivo:hover {
+  color: #FFFFFF;
+}
+
+.stageWrap {
+  background-color: var(--sc-bg-secondary);
+  display: flex;
 }
 
 .stage {
   display: block;
+  cursor: grab;
+}
+
+.stage:active {
+  cursor: grabbing;
 }

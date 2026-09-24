@@ -18,12 +18,12 @@
   min-width: 0;
 }
 
-.cardTitle {
+.sectionLabel {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--sc-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
   margin: 0 0 0.75rem;
 }
 
@@ -40,9 +40,11 @@
 }
 
 .field > span {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--sc-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
 }
 
 .input {
@@ -50,16 +52,18 @@
   box-sizing: border-box;
   border: 1px solid var(--sc-border-strong);
   border-radius: var(--sc-radius-sm);
-  padding: 7px 10px;
-  font-size: 13px;
+  height: 34px;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
   color: var(--sc-text-primary);
-  background: var(--sc-bg);
+  background: var(--sc-surface);
   outline: none;
   transition: border-color 0.15s;
+  font-family: inherit;
 }
 
 .input:focus {
-  border-color: var(--sc-action);
+  border-color: var(--color-primary);
 }
 
 .input:disabled {
@@ -99,15 +103,17 @@
   gap: 6px;
 }
 
-.pecaItem {
+.pecaCard {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
   color: var(--sc-text-primary);
   background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
   border-radius: var(--sc-radius-sm);
-  padding: 8px 10px;
+  padding: 8px 12px;
 }
 
 .pecaInfo {
@@ -126,9 +132,20 @@
 }
 
 .pecaQtds {
-  font-size: 11px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.tamBadge {
+  display: inline-block;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
   color: var(--sc-text-secondary);
-  margin-top: 3px;
 }
 
 .btnRemovePeca {
@@ -153,55 +170,45 @@
 .btnAddPeca {
   width: 100%;
   padding: 8px;
-  border: 1.5px dashed var(--sc-border-strong);
+  border: 1px dashed var(--sc-border-strong);
   border-radius: var(--sc-radius-sm);
-  background: transparent;
-  color: var(--sc-text-secondary);
-  font-size: 13px;
+  background: none;
+  color: var(--sc-text-muted);
+  font-size: 0.82rem;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .btnAddPeca:hover {
-  border-color: var(--sc-action);
-  color: var(--sc-text-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 /* ── Botão gerar ── */
 .btnGerar {
   width: 100%;
-  padding: 14px;
-  background: var(--sc-action);
-  color: var(--sc-action-text);
+  background: var(--color-primary);
+  color: #FFFFFF;
   border: none;
-  border-radius: 50px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: var(--sc-radius-sm);
+  padding: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  letter-spacing: 0.01em;
-  transition: background 0.15s, opacity 0.15s;
+  margin-top: 0.5rem;
+  transition: filter 0.15s, opacity 0.15s;
 }
 
 .btnGerar:hover:not(:disabled) {
-  background: var(--sc-action-hover);
+  filter: brightness(0.92);
 }
 
 .btnGerar:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* ── Erro ── */
-.erro {
-  font-size: 12px;
-  color: var(--sc-danger-text);
-  background: var(--sc-danger-bg);
-  border: 1px solid var(--sc-danger-border);
-  border-radius: var(--sc-radius-sm);
-  padding: 8px 10px;
-}
-
-/* ── Empty state (coluna direita) ── */
+/* ── Empty / loading state (coluna direita) ── */
 .emptyState {
   display: flex;
   flex-direction: column;
@@ -225,7 +232,62 @@
 .emptyText {
   font-size: 14px;
   line-height: 1.6;
-  color: var(--sc-text-secondary);
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--sc-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: encaixeRapidoSpin 0.8s linear infinite;
+}
+
+@keyframes encaixeRapidoSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Error state (coluna direita) ── */
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 320px;
+  padding: 3rem 2rem;
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-md);
+  text-align: center;
+}
+
+.errorText {
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  margin: 0;
+}
+
+/* ── Warning state (0% de aproveitamento) ── */
+.warningState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 320px;
+  padding: 3rem 2rem;
+  background: var(--sc-bg-warning, #fef9c3);
+  border: 1px solid var(--sc-border-warning, #fde68a);
+  border-radius: var(--sc-radius-md);
+  text-align: center;
+}
+
+.warningText {
+  font-size: 0.82rem;
+  color: var(--sc-text-warning, #854d0e);
   margin: 0;
 }
 
@@ -238,7 +300,7 @@
 }
 
 .resultHeader {
-  background: var(--sc-action);
+  background: var(--color-primary);
   color: var(--sc-action-text);
   padding: 1.25rem 1.5rem;
 }
@@ -271,14 +333,14 @@
 }
 
 .resultMetricLabel {
-  font-size: 11px;
+  font-size: 0.72rem;
   color: var(--sc-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .resultMetricValue {
-  font-size: 24px;
+  font-size: 1.4rem;
   font-weight: 600;
   color: var(--sc-text-primary);
   letter-spacing: -0.02em;
@@ -291,24 +353,42 @@
   flex-wrap: wrap;
 }
 
+.avisoBanner {
+  background: var(--sc-bg-warning, #fef9c3);
+  border: 1px solid var(--sc-border-warning, #fde68a);
+  color: var(--sc-text-warning, #854d0e);
+  font-size: 0.78rem;
+  padding: 0.75rem;
+  border-radius: var(--sc-radius-sm);
+  margin: 0.75rem 1.5rem 1.25rem;
+}
+
+.avisoBanner p {
+  margin: 0;
+}
+
+.avisoBanner p + p {
+  margin-top: 0.25rem;
+}
+
 /* ── Botões genéricos (coluna direita + modal) ── */
 .btnPrimary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 9px 16px;
-  background: var(--sc-action);
+  background: var(--color-primary);
   color: var(--sc-action-text);
   border: none;
   border-radius: var(--sc-radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: filter 0.15s;
   white-space: nowrap;
 }
 
-.btnPrimary:hover:not(:disabled) { background: var(--sc-action-hover); }
+.btnPrimary:hover:not(:disabled) { filter: brightness(0.92); }
 
 .btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -362,24 +442,25 @@
 
 .modal {
   background: var(--sc-surface);
-  border-radius: var(--sc-radius-lg);
-  width: 100%;
-  max-width: 460px;
+  border-radius: var(--sc-radius-md);
+  width: 480px;
+  max-width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--shadow-lg);
 }
 
 .modalHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.25rem 0;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--sc-border);
 }
 
 .modalTitle {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--sc-text-primary);
   margin: 0;
@@ -405,14 +486,14 @@
 .modalBody {
   flex: 1;
   overflow: visible;
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.5rem;
 }
 
 .modalActions {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.5rem;
   border-top: 1px solid var(--sc-border);
 }
 
@@ -515,7 +596,7 @@
   transition: border-color 0.15s;
 }
 
-.tamInput:focus { border-color: var(--sc-action); }
+.tamInput:focus { border-color: var(--color-primary); }
 
 .erroModal {
   font-size: 12px;
@@ -544,14 +625,16 @@
   gap: 5px;
 }
 
-.tecidoItem {
+.tecidoCard {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
   background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
   border-radius: var(--sc-radius-sm);
-  padding: 8px 10px;
+  padding: 8px 12px;
 }
 
 .tecidoInfo {
@@ -563,14 +646,14 @@
 }
 
 .tecidoNome {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 500;
   color: var(--sc-text-primary);
 }
 
 .tecidoMeta {
-  font-size: 11px;
-  color: var(--sc-text-secondary);
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
 }
 
 /* ── Tecido vinculado na linha de peça ── */

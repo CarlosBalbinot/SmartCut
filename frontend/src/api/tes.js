@@ -29,3 +29,7 @@ export const atualizar = (id, dados) =>
   request(`/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
 export const excluir = (id) => request(`/${id}`, { method: "DELETE" });
+
+// Validação por código digitado (usada pelo TesInput). 404 = código inexistente.
+export const validarTes = (codigo) =>
+  request(`/validar?codigo=${encodeURIComponent(codigo)}`);

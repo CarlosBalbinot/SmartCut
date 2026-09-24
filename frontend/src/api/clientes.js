@@ -42,3 +42,17 @@ export const getClienteByCnpj = async (cnpj) => {
   if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
   return json.data;
 };
+
+// Lookup do campo Cliente do pedido: código ou CNPJ/CPF (com ou sem
+// pontuação). 404 → Error("Cliente não encontrado").
+// Devolve { id, codigo, razao_social, cnpj, cidade, uf }.
+export const validarCliente = (codigo) =>
+  request(`/clientes/validar?codigo=${encodeURIComponent(codigo)}`);
+
+// Modal de busca: razão social, fantasia, código, CNPJ/CPF ou cidade;
+// só tipo cliente/ambos; paginado (50 por página, offset = página * 50).
+export const buscarClientes = (busca = "", offset = 0, limit = 50) => {
+  const params = new URLSearchParams({ tipo: "cliente", limit: String(limit), offset: String(offset) });
+  if (busca) params.set("busca", busca);
+  return request(`/clientes/?${params.toString()}`);
+};

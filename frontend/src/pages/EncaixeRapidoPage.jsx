@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { modelosApi, coresApi, gruposApi, encaixesApi } from "../services/api";
+import { getCoresDoModelo, getLotesDaCor, getModelos } from "../api/tecidos";
+import { buscarGrupos } from "../api/moldes";
+import { gerarEncaixeAutomatico, getPdfEncaixe } from "../api/encaixes";
 import { getProximoNumeroPedidoVenda, createPedidoVenda, addItemPedidoVenda } from "../api/pedidos";
 import styles from "./EncaixeRapidoPage.module.css";
 
@@ -38,12 +40,13 @@ export default function EncaixeRapidoPage() {
   const [itemModal, setItemModal]     = useState(null);
   const [gerando, setGerando]         = useState(false);
   const [resultado, setResultado]     = useState(null);
+  const [avisos, setAvisos]           = useState([]);
   const [erroGeral, setErroGeral]     = useState(null);
   const [erroModal, setErroModal]     = useState(null);
   const searchTimer                   = useRef(null);
 
   useEffect(() => {
-    modelosApi.listar().then((m) => setModelos(m || [])).catch(() => {});
+    getModelos().then((m) => setModelos(m || [])).catch(() => {});
   }, []);
 
   // ── Tecido modal handlers ──────────────────────────────────────────────────
@@ -53,7 +56,7 @@ export default function EncaixeRapidoPage() {
     setTecidoModal((m) => ({ ...m, tmModeloId: id, tmCores: [], tmCorId: "", tmLotes: [], tmLoteId: "" }));
     if (!id) return;
     try {
-      const cs = (await modelosApi.listarCores(id)) || [];
+      const cs = (await getCoresDoModelo(id)) || [];
       setTecidoModal((m) => ({ ...m, tmCores: cs }));
     } catch {}
   };
@@ -62,7 +65,7 @@ export default function EncaixeRapidoPage() {
     setTecidoModal((m) => ({ ...m, tmCorId: id, tmLotes: [], tmLoteId: "" }));
     if (!id) return;
     try {
-      const all = (await coresApi.listarLotes(id)) || [];
+      const all = (await getLotesDaCor(id)) || [];
       setTecidoModal((m) => ({
         ...m,
         tmLotes: all.filter((l) => l.status !== "esgotado" && l.status !== "arquivado"),
@@ -104,10 +107,10 @@ export default function EncaixeRapidoPage() {
     if (query.trim().length < 2) return;
     searchTimer.current = setTimeout(async () => {
       try {
-        const results = await gruposApi.buscar(query);
+        const results = await buscarGrupos(query);
         setItemModal((m) => ({ ...m, searchResults: (results || []).slice(0, 10) }));
       } catch {}
-    }, 300);
+    }, 400);
   };
 
   const selecionarGrupo = (grupo) => {
@@ -149,12 +152,18 @@ export default function EncaixeRapidoPage() {
 
   const removerPeca = (_id) => setPecas((ps) => ps.filter((p) => p._id !== _id));
 
-  const pecaQtdStr = (peca) => {
+  const pecaQtdEntries = (peca) => {
     const cols = peca.tem_plus ? TAMANHOS_PLUS : TAMANHOS_BASE;
     return cols
       .filter((t) => (peca[TAM_KEY[t]] || 0) > 0)
-      .map((t) => `${t}:${peca[TAM_KEY[t]]}`)
-      .join("  ");
+      .map((t) => ({ tam: t, qtd: peca[TAM_KEY[t]] }));
+  };
+
+  const corAproveitamento = (v) => {
+    if (v == null) return undefined;
+    if (v >= 85) return "var(--sc-success-text)";
+    if (v >= 70) return "var(--color-primary)";
+    return "var(--sc-danger-text)";
   };
 
   // ── Gerar encaixe ─────────────────────────────────────────────────────────
@@ -162,7 +171,7 @@ export default function EncaixeRapidoPage() {
     if (tecidos.length === 0)            { setErroGeral("Adicione ao menos um tecido."); return; }
     if (pecas.length === 0)              { setErroGeral("Adicione ao menos uma peça."); return; }
     if (pecas.some((p) => !p.tecido_id)) { setErroGeral("Todas as peças precisam ter um tecido."); return; }
-    setGerando(true); setErroGeral(null); setResultado(null);
+    setGerando(true); setErroGeral(null); setResultado(null); setAvisos([]);
 
     try {
       await getProximoNumeroPedidoVenda("encaixe_rapido").catch(() => "001");
@@ -192,18 +201,22 @@ export default function EncaixeRapidoPage() {
         });
       }
 
-      const encaixe = await encaixesApi.gerarAutomatico(pedido.id).catch(() => null);
+      // gerarAutomatico retorna {encaixes, avisos} — sem .catch: falhas
+      // agora sobem para o catch abaixo, que já exibe erroGeral na tela em
+      // vez de redirecionar silenciosamente.
+      const resposta = await gerarEncaixeAutomatico(pedido.id);
+      const encaixe = resposta?.encaixes?.[0] ?? null;
 
       if (encaixe?.id) {
         setResultado({
           encaixe_id:     encaixe.id,
-          aproveitamento: encaixe.aproveitamento_pct,
-          metros:         encaixe.comprimento_total_cm != null
-                            ? (encaixe.comprimento_total_cm / 100).toFixed(2)
-                            : null,
-          peso:           encaixe.peso_estimado_kg,
-          custo:          encaixe.custo_estimado,
+          pedido_id:      pedido.id,
+          aproveitamento: encaixe.desperdicio_pct != null ? 100 - encaixe.desperdicio_pct : null,
+          metros:         encaixe.comp_metros != null ? encaixe.comp_metros.toFixed(2) : null,
+          peso:           encaixe.peso_kg,
+          custo:          encaixe.custo_total,
         });
+        setAvisos(resposta?.avisos ?? []);
       } else {
         navigate("/producao/encaixes");
       }
@@ -226,12 +239,12 @@ export default function EncaixeRapidoPage() {
         <div className={styles.colLeft}>
 
           <div className="sc-card">
-            <p className={styles.cardTitle}>Configuração do Encaixe</p>
+            <p className={styles.sectionLabel}>Configuração do Encaixe</p>
             <label className={styles.field}>
               <span>Nome / identificação (opcional)</span>
               <input
                 className={styles.input}
-                placeholder="Ex.: Coleção Inverno — Pedido 42"
+                placeholder="Ex: Legging / Pedido 001"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
               />
@@ -240,14 +253,14 @@ export default function EncaixeRapidoPage() {
 
           {/* ── Card Tecidos ── */}
           <div className="sc-card">
-            <p className={styles.cardTitle}>Tecidos do Encaixe</p>
+            <p className={styles.sectionLabel}>Tecidos do Encaixe</p>
 
             {tecidos.length === 0 ? (
               <p className={styles.tecidosVazio}>Adicione ao menos um tecido</p>
             ) : (
               <ul className={styles.tecidosList}>
                 {tecidos.map((t) => (
-                  <li key={t._id} className={styles.tecidoItem}>
+                  <li key={t._id} className={styles.tecidoCard}>
                     <div className={styles.tecidoInfo}>
                       <span className={styles.tecidoNome}>{t.modelo_nome} — {t.cor_nome}</span>
                       <span className={styles.tecidoMeta}>
@@ -275,14 +288,14 @@ export default function EncaixeRapidoPage() {
 
           {/* ── Card Peças ── */}
           <div className="sc-card">
-            <p className={styles.cardTitle}>Peças a encaixar</p>
+            <p className={styles.sectionLabel}>Peças a encaixar</p>
 
             {pecas.length > 0 && (
               <ul className={styles.pecasList}>
                 {pecas.map((peca) => {
                   const tec = tecidos.find((t) => t._id === peca.tecido_id);
                   return (
-                    <li key={peca._id} className={styles.pecaItem}>
+                    <li key={peca._id} className={styles.pecaCard}>
                       <div className={styles.pecaInfo}>
                         <div>
                           <code className={styles.pecaCod}>{peca.grupo_codigo || "?"}</code>
@@ -293,7 +306,11 @@ export default function EncaixeRapidoPage() {
                             </span>
                           )}
                         </div>
-                        <div className={styles.pecaQtds}>{pecaQtdStr(peca)}</div>
+                        <div className={styles.pecaQtds}>
+                          {pecaQtdEntries(peca).map(({ tam, qtd }) => (
+                            <span key={tam} className={styles.tamBadge}>{tam}×{qtd}</span>
+                          ))}
+                        </div>
                       </div>
                       <button
                         className={styles.btnRemovePeca}
@@ -311,26 +328,52 @@ export default function EncaixeRapidoPage() {
             </button>
           </div>
 
-          {erroGeral && <p className={styles.erro}>{erroGeral}</p>}
-
           <button
             className={styles.btnGerar}
             onClick={handleGerar}
             disabled={gerando}
           >
-            {gerando ? "Gerando encaixe…" : "⚡ Gerar Encaixe"}
+            {gerando ? "Gerando encaixe…" : "Gerar Encaixe"}
           </button>
         </div>
 
         {/* ── Coluna direita ── */}
         <div className={styles.colRight}>
-          {!resultado ? (
+          {gerando ? (
+            <div className={styles.emptyState}>
+              <div className={styles.spinner} />
+              <p className={styles.emptyText}>Gerando encaixe…</p>
+            </div>
+          ) : erroGeral ? (
+            <div className={styles.errorState}>
+              <p className={styles.errorText}>{erroGeral}</p>
+              <button className={styles.btnPrimary} onClick={handleGerar}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : !resultado ? (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>✂</div>
               <p className={styles.emptyText}>
                 Configure as peças e clique em<br />
                 <strong>Gerar Encaixe</strong>
               </p>
+            </div>
+          ) : resultado.aproveitamento != null && resultado.aproveitamento <= 0 ? (
+            <div className={styles.warningState}>
+              {avisos.length > 0 ? (
+                avisos.map((aviso, i) => (
+                  <p key={i} className={styles.warningText}>{aviso}</p>
+                ))
+              ) : (
+                <p className={styles.warningText}>
+                  Nenhuma peça foi posicionada no tecido. Verifique a largura
+                  útil do tecido selecionado.
+                </p>
+              )}
+              <button className={styles.btnPrimary} onClick={handleGerar}>
+                Tentar novamente
+              </button>
             </div>
           ) : (
             <div className={styles.resultCard}>
@@ -342,7 +385,10 @@ export default function EncaixeRapidoPage() {
               <div className={styles.resultGrid}>
                 <div className={styles.resultMetric}>
                   <span className={styles.resultMetricLabel}>Aproveitamento</span>
-                  <span className={styles.resultMetricValue}>
+                  <span
+                    className={styles.resultMetricValue}
+                    style={{ color: corAproveitamento(resultado.aproveitamento) }}
+                  >
                     {resultado.aproveitamento != null
                       ? `${Number(resultado.aproveitamento).toFixed(1)}%`
                       : "—"}
@@ -373,7 +419,7 @@ export default function EncaixeRapidoPage() {
               <div className={styles.resultActions}>
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => navigate(`/producao/encaixes/${resultado.encaixe_id}`)}
+                  onClick={() => navigate(`/producao/encaixes/${resultado.pedido_id}`)}
                 >
                   Ver encaixe completo →
                 </button>
@@ -381,7 +427,7 @@ export default function EncaixeRapidoPage() {
                   className={styles.btnDownload}
                   onClick={async () => {
                     try {
-                      const blob = await encaixesApi.pdf(resultado.encaixe_id);
+                      const blob = await getPdfEncaixe(resultado.pedido_id);
                       const url  = URL.createObjectURL(blob);
                       const a    = document.createElement("a");
                       a.href = url;
@@ -396,6 +442,14 @@ export default function EncaixeRapidoPage() {
                   ↓ Baixar PDF de Corte
                 </button>
               </div>
+
+              {avisos.length > 0 && (
+                <div className={styles.avisoBanner}>
+                  {avisos.map((aviso, i) => (
+                    <p key={i}>{aviso}</p>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

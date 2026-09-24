@@ -1,10 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { precificacoesApi } from "../services/api";
+import {
+  getConfigPrecificacao,
+  getCustosFixos,
+  updateConfigPrecificacao,
+  updateCustosFixos,
+} from "../api/precificacoes";
+import * as configuracaoGradeApi from "../api/configuracaoGrade";
 import { useAuth } from "../auth/useAuth";
 import styles from "./UsuarioConfiguracoesGeraisPage.module.css";
 
 const MODULO = "configuracoes_editar";
+
+const GRADE_VAZIO = { mascara: "", separador: "-", tamanho_seq: 4 };
+const PREVIEW_EXEMPLO = { grupo_prefixo: "LG", seq_exemplo: 21, cor_codigo: "AZU", tam_codigo: "M" };
 
 const CUSTOS_VAZIO = {
   custo_rolo_overlock: "", metros_rolo_overlock: "",
@@ -54,10 +63,18 @@ export default function UsuarioConfiguracoesGeraisPage() {
   const [erro, setErro]       = useState(null);
   const [sucesso, setSucesso] = useState(false);
 
+  const [formGrade, setFormGrade]       = useState(GRADE_VAZIO);
+  const [savingGrade, setSavingGrade]   = useState(false);
+  const [erroGrade, setErroGrade]       = useState(null);
+  const [sucessoGrade, setSucessoGrade] = useState(false);
+  const [previewCodigo, setPreviewCodigo]   = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewTimer = useRef(null);
+
   useEffect(() => {
     Promise.all([
-      precificacoesApi.getConfig(),
-      precificacoesApi.getCustos(),
+      getConfigPrecificacao(),
+      getCustosFixos(),
     ]).then(([config, custos]) => {
       setForm((prev) => {
         const next = { ...prev };
@@ -73,19 +90,63 @@ export default function UsuarioConfiguracoesGeraisPage() {
         return next;
       });
     }).catch(() => {});
+
+    configuracaoGradeApi.obter().then((cfg) => {
+      if (cfg) setFormGrade({ mascara: cfg.mascara, separador: cfg.separador, tamanho_seq: cfg.tamanho_seq });
+    }).catch(() => {});
   }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setGrade = (key) => (e) => setFormGrade((f) => ({ ...f, [key]: e.target.value }));
+
+  // ── Preview do código de produto — debounce 400ms ──────────────────────
+  useEffect(() => {
+    clearTimeout(previewTimer.current);
+    if (!formGrade.mascara.trim()) { setPreviewCodigo(""); return; }
+    previewTimer.current = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const resp = await configuracaoGradeApi.preview({
+          mascara: formGrade.mascara,
+          separador: formGrade.separador,
+          tamanho_seq: Number(formGrade.tamanho_seq) || 4,
+          ...PREVIEW_EXEMPLO,
+        });
+        setPreviewCodigo(resp.codigo_gerado);
+      } catch {
+        setPreviewCodigo("");
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(previewTimer.current);
+  }, [formGrade.mascara, formGrade.separador, formGrade.tamanho_seq]);
+
+  const handleSaveGrade = async () => {
+    setSavingGrade(true); setErroGrade(null); setSucessoGrade(false);
+    try {
+      await configuracaoGradeApi.atualizar({
+        mascara: formGrade.mascara,
+        separador: formGrade.separador,
+        tamanho_seq: Number(formGrade.tamanho_seq),
+      });
+      setSucessoGrade(true);
+    } catch (e) {
+      setErroGrade(e.message);
+    } finally {
+      setSavingGrade(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true); setErro(null); setSucesso(false);
     try {
       await Promise.all([
-        precificacoesApi.updateConfig({
+        updateConfigPrecificacao({
           aliquota_simples: n(form.aliquota_simples),
           custo_etiqueta:   n(form.custo_etiqueta),
         }),
-        precificacoesApi.updateCustos(
+        updateCustosFixos(
           Object.fromEntries(Object.keys(CUSTOS_VAZIO).map((k) => [k, n(form[k])]))
         ),
       ]);
@@ -156,7 +217,7 @@ export default function UsuarioConfiguracoesGeraisPage() {
         </div>
 
         {/* LOGÍSTICA */}
-        <div className={`${styles.secao} ${styles.secaoLast}`}>
+        <div className={styles.secao}>
           <p className={styles.secLabel}>Logística</p>
           <CustoRow
             campos={[
@@ -206,6 +267,58 @@ export default function UsuarioConfiguracoesGeraisPage() {
             </button>
           </div>
         )}
+
+        {/* GERAÇÃO DE CÓDIGO DE PRODUTO */}
+        <div className={`${styles.secao} ${styles.secaoLast}`}>
+          <p className={styles.secLabel}>Geração de Código de Produto</p>
+
+          <div className={styles.grid2}>
+            <label className={`${styles.field} ${styles.fieldFull}`}>
+              <span>Máscara</span>
+              <input className={styles.input} value={formGrade.mascara} onChange={setGrade("mascara")} />
+              <span className={styles.hint}>
+                Variáveis disponíveis: {"{GRUPO}"} = prefixo do grupo, {"{SEQ}"} = sequencial numérico,
+                {" "}{"{COR}"} = código da cor, {"{TAM}"} = código do tamanho
+              </span>
+            </label>
+
+            <label className={styles.field}>
+              <span>Separador padrão</span>
+              <input className={styles.input} value={formGrade.separador} maxLength={3} onChange={setGrade("separador")} />
+            </label>
+
+            <label className={styles.field}>
+              <span>Dígitos do sequencial</span>
+              <select
+                className={styles.input}
+                value={formGrade.tamanho_seq}
+                onChange={(e) => setFormGrade((f) => ({ ...f, tamanho_seq: Number(e.target.value) }))}
+              >
+                <option value={3}>3 dígitos (001)</option>
+                <option value={4}>4 dígitos (0001)</option>
+                <option value={5}>5 dígitos (00001)</option>
+              </select>
+            </label>
+          </div>
+
+          <div className={styles.previewCard}>
+            <span className={styles.previewLabel}>Exemplo de código gerado:</span>
+            <span className={styles.previewCodigo}>
+              {previewLoading ? "…" : previewCodigo || "—"}
+            </span>
+          </div>
+
+          {erroGrade && <p className={styles.erro}>{erroGrade}</p>}
+          {sucessoGrade && <p className={styles.sucesso}>Configuração de código salva.</p>}
+
+          {podeEditar && (
+            <div className={styles.actions}>
+              <button className={styles.btnNovo} onClick={handleSaveGrade} disabled={savingGrade}>
+                {savingGrade ? "Salvando…" : "Salvar"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { gruposApi, precificacoesApi } from "../services/api";
+import { getGrupos } from "../api/moldes";
+import {
+  createPrecificacao,
+  deletePrecificacao,
+  getConfigPrecificacao,
+  getCustosFixos,
+  getPrecificacoes,
+  updatePrecificacao,
+} from "../api/precificacoes";
 import Modal from "../components/Modal/Modal";
 import styles from "./PrecificacaoPage.module.css";
 
@@ -111,7 +119,7 @@ export default function PrecificacaoPage() {
   const [confirmarDeletar, setConfirmarDeletar] = useState(null);
 
   useEffect(() => {
-    Promise.all([gruposApi.listar(), precificacoesApi.getConfig(), precificacoesApi.getCustos()])
+    Promise.all([getGrupos(), getConfigPrecificacao(), getCustosFixos()])
       .then(([gs, cfg, cst]) => {
         setGrupos(gs);
         setConfig(cfg);
@@ -144,7 +152,7 @@ export default function PrecificacaoPage() {
     if (abrindo && !precsPorGrupo[grupoId]) {
       setCarregando((c) => ({ ...c, [grupoId]: true }));
       try {
-        const data = await precificacoesApi.listar(grupoId);
+        const data = await getPrecificacoes(grupoId);
         setPrecsPorGrupo((p) => ({ ...p, [grupoId]: data }));
       } catch {
         setPrecsPorGrupo((p) => ({ ...p, [grupoId]: [] }));
@@ -211,7 +219,7 @@ export default function PrecificacaoPage() {
 
       let result;
       if (modal.modo === "criar") {
-        result = await precificacoesApi.upsert(payload);
+        result = await createPrecificacao(payload);
         setPrecsPorGrupo((p) => {
           const lista = p[modal.grupoId] || [];
           const idx = lista.findIndex((x) => x.tamanho === result.tamanho);
@@ -224,7 +232,7 @@ export default function PrecificacaoPage() {
         const updatePayload = { ...payload };
         delete updatePayload.grupo_id;
         delete updatePayload.tamanho;
-        result = await precificacoesApi.atualizar(modal.prec.id, updatePayload);
+        result = await updatePrecificacao(modal.prec.id, updatePayload);
         setPrecsPorGrupo((p) => ({
           ...p,
           [modal.grupoId]: (p[modal.grupoId] || []).map((x) => x.id === result.id ? result : x),
@@ -240,7 +248,7 @@ export default function PrecificacaoPage() {
 
   const confirmarDeletarPrec = async (grupoId, precId) => {
     try {
-      await precificacoesApi.deletar(precId);
+      await deletePrecificacao(precId);
       setPrecsPorGrupo((p) => ({
         ...p,
         [grupoId]: (p[grupoId] || []).filter((x) => x.id !== precId),

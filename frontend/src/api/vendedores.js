@@ -44,3 +44,14 @@ export const getMetasVendedor = (id) => request(`/vendedores/${id}/metas`);
 
 export const updateMetasVendedor = (id, payload) =>
   request(`/vendedores/${id}/metas`, { method: "PATCH", body: JSON.stringify(payload) });
+
+// Comissão por tabela de preço (tem prioridade sobre comissao_padrao_pct).
+// PUT é upsert em lote [{tabela_preco_id, comissao_pct}] e devolve a
+// lista completa atualizada.
+export const getComissoesVendedor = (id) => request(`/vendedores/${id}/comissoes`);
+
+export const salvarComissoesVendedor = (id, linhas) =>
+  request(`/vendedores/${id}/comissoes`, { method: "PUT", body: JSON.stringify(linhas) });
+
+export const removerComissaoVendedor = (id, comissaoId) =>
+  request(`/vendedores/${id}/comissoes/${comissaoId}`, { method: "DELETE" });

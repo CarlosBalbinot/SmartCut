@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { configuracaoEmpresaApi } from "../services/api";
+import {
+  getConfiguracaoEmpresa,
+  updateConfiguracaoEmpresa,
+  uploadLogoEmpresa,
+} from "../api/configuracaoEmpresa";
+import { urlAbsoluta } from "../services/config";
 import { buscarEnderecoPorCep } from "../utils/cepIbge";
 import { useAuth } from "../auth/useAuth";
 import styles from "./UsuarioConfiguracaoEmpresaPage.module.css";
@@ -8,7 +13,7 @@ import styles from "./UsuarioConfiguracaoEmpresaPage.module.css";
 const MODULO = "configuracoes_editar";
 
 const CAMPOS_EMPRESA = [
-  { name: "razao_social", label: "Razão Social", full: true },
+  { name: "razao_social", label: "Razão Social", full: true, upper: true },
   { name: "cnpj",         label: "CNPJ"          },
   { name: "ie",           label: "Inscrição Estadual" },
 ];
@@ -16,8 +21,8 @@ const CAMPOS_EMPRESA = [
 const CAMPOS_CONTATO = [
   { name: "telefone1", label: "Telefone 1" },
   { name: "telefone2", label: "Telefone 2" },
-  { name: "email",     label: "E-mail"     },
-  { name: "site",      label: "Site"       },
+  { name: "email",     label: "E-mail", type: "email" },
+  { name: "site",      label: "Site", type: "url" },
 ];
 
 const EMPRESA_VAZIO = {
@@ -45,7 +50,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
   const fileRef                = useRef();
 
   useEffect(() => {
-    configuracaoEmpresaApi.get().then((d) => {
+    getConfiguracaoEmpresa().then((d) => {
       if (!d) return;
       setForm({
         razao_social: d.razao_social || "",
@@ -62,7 +67,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
         email:        d.email        || "",
         site:         d.site         || "",
       });
-      if (d.logo_url) setLogoUrl(d.logo_url);
+      if (d.logo_url) setLogoUrl(urlAbsoluta(d.logo_url));
     }).catch(() => {});
   }, []);
 
@@ -91,7 +96,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
   const handleSave = async () => {
     setSaving(true); setErro(null); setSucesso(false);
     try {
-      await configuracaoEmpresaApi.update({ ...form, cep: stripDigits(form.cep) || null });
+      await updateConfiguracaoEmpresa({ ...form, cep: stripDigits(form.cep) || null });
       setSucesso(true);
     } catch (e) {
       setErro(e.message);
@@ -106,22 +111,23 @@ export default function UsuarioConfiguracaoEmpresaPage() {
     const fd = new FormData();
     fd.append("logo", file);
     try {
-      const d = await configuracaoEmpresaApi.uploadLogo(fd);
-      if (d?.logo_url) setLogoUrl(d.logo_url);
+      const d = await uploadLogoEmpresa(fd);
+      if (d?.logo_url) setLogoUrl(urlAbsoluta(d.logo_url));
     } catch (e) {
       setErro(e.message);
     }
   };
 
-  const renderCampo = ({ name, label }) => (
+  const renderCampo = ({ name, label, upper, type }) => (
     <label key={name} className={styles.field}>
       <span>{label}</span>
       <input
         className={styles.input}
+        type={type}
         name={name}
         value={form[name]}
         disabled={!podeEditar}
-        onChange={(e) => setForm((f) => ({ ...f, [name]: e.target.value }))}
+        onChange={(e) => setForm((f) => ({ ...f, [name]: upper ? e.target.value.toUpperCase() : e.target.value }))}
       />
     </label>
   );
@@ -171,13 +177,13 @@ export default function UsuarioConfiguracaoEmpresaPage() {
         {cepStatus === "erro" && <p className={styles.erro}>Erro ao consultar o CEP.</p>}
         {cepStatus === "preenchido" && <p className={styles.sucesso}>Endereço preenchido. Revise antes de salvar.</p>}
 
-        {renderCampo({ name: "endereco", label: "Endereço" })}
+        {renderCampo({ name: "endereco", label: "Endereço", upper: true })}
         <div className={styles.grid2}>
           {renderCampo({ name: "endereco_numero", label: "Número" })}
-          {renderCampo({ name: "endereco_bairro", label: "Bairro" })}
+          {renderCampo({ name: "endereco_bairro", label: "Bairro", upper: true })}
         </div>
         <div className={styles.grid2}>
-          {renderCampo({ name: "cidade", label: "Cidade" })}
+          {renderCampo({ name: "cidade", label: "Cidade", upper: true })}
         </div>
 
         <p className={styles.secLabel} style={{ marginTop: "1.5rem" }}>Contato</p>

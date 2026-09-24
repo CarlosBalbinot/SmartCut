@@ -1,0 +1,379 @@
+/* ── Seção "Preços por produto" (abaixo dos preços por grupo) ── */
+.secao {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.titulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.dica {
+  margin: 0 0 12px;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+}
+
+.vazio {
+  padding: 1.5rem 0;
+  text-align: center;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-muted);
+}
+
+/* ── Tabela ── */
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sc-border);
+  vertical-align: middle;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.num { text-align: right !important; }
+
+.linhaPai:hover td { background: var(--sc-bg-secondary); }
+.linhaPai:hover .btnRemover { visibility: visible; }
+
+.descricao { color: var(--sc-text-secondary); }
+
+.btnToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 4px 2px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+}
+.btnToggle:hover { color: var(--color-primary); }
+
+.chevron { flex-shrink: 0; transition: transform 0.15s; }
+.chevronAberto { transform: rotate(90deg); }
+
+.refBadge {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  font-family: monospace;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.contExcecoes {
+  margin-left: 6px;
+  font-size: 11px;
+  color: var(--color-primary);
+}
+
+/* SKUs (accordion) */
+.linhaSku td { background: var(--sc-bg-tertiary); }
+.linhaSku td:first-child { padding-left: 34px; }
+
+.skuCodigo {
+  font-family: monospace;
+  font-size: 11px !important;
+  color: var(--sc-text-secondary) !important;
+}
+
+.skuInfo,
+.skuInfoInline {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+}
+
+.linhaSkuRodape td {
+  background: var(--sc-bg-tertiary);
+  padding: 4px 12px 8px 34px;
+  text-align: right;
+}
+.linhaSkuRodape .skuInfoInline { margin-right: 10px; }
+
+.acoes { text-align: right; overflow: visible !important; }
+
+/* ── Campo de preço inline ── */
+.campo {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-input-bg);
+  font-size: var(--sc-font-size-input);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-transform: uppercase;
+  color: var(--sc-text-primary);
+  outline: none;
+  transition: border-color 0.1s, box-shadow 0.1s, background 0.1s;
+}
+.campo::placeholder { color: var(--sc-text-muted); }
+.campo:hover:not(:read-only) { border-color: var(--sc-border-strong); }
+.campo:focus:not(:read-only) {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.campo:read-only {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+
+/* Exceção do SKU (preço próprio) — destaque sutil. */
+.campoExcecao,
+.campoExcecao:read-only {
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--sc-surface));
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  font-weight: 600;
+}
+
+/* Erro: campo levemente vermelho; mensagem só no tooltip (title). */
+.campoErro,
+.campoErro:hover,
+.campoErro:focus {
+  background: var(--sc-danger-bg) !important;
+  border-color: var(--sc-danger-text) !important;
+  box-shadow: none !important;
+}
+
+.erroAcao {
+  margin-right: 10px;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-danger-text);
+  cursor: help;
+}
+
+/* ── Botões ── */
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.4rem 0.875rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnSecondary:hover { background: var(--sc-surface-hover); }
+
+.btnLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--sc-font-size-small);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.btnLink:hover:not(:disabled) { text-decoration: underline; }
+.btnLink:disabled { color: var(--sc-text-muted); cursor: default; }
+
+.btnRemover {
+  visibility: hidden;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-muted);
+  font-size: 17px;
+  padding: 0 4px;
+  line-height: 1;
+}
+.btnRemover:hover { color: var(--sc-danger-text); }
+
+.confirmar { display: inline-flex; align-items: center; gap: 4px; }
+
+.btnSim {
+  background: var(--sc-danger-text);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btnNao {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 11px;
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+}
+
+/* ── Modal adicionar produto (mesmo estilo pill da página) ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: 16px;
+  padding: 28px;
+  width: 480px;
+  max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modalTitulo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 1.25rem;
+}
+
+.campoLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  font-size: var(--sc-font-size-label);
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.inputModal {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: var(--sc-font-size-input);
+  text-transform: uppercase;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.inputModal:focus { border-color: var(--color-primary); }
+.inputNum { text-align: right; font-variant-numeric: tabular-nums; }
+
+.buscaWrap { position: relative; margin-bottom: 16px; }
+
+.dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.dropdownItem,
+.dropdownInfo {
+  padding: 10px 12px;
+  font-size: var(--sc-font-size-body);
+  border-bottom: 1px solid var(--sc-border);
+}
+.dropdownItem { cursor: pointer; }
+.dropdownItem:hover { background: var(--sc-bg-secondary); }
+.dropdownInfo { color: var(--sc-text-muted); }
+
+.produtoSel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--sc-bg-secondary);
+  border-radius: 10px;
+}
+
+.produtoSelNome {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.linhaPrecos { display: flex; gap: 12px; }
+
+.modalAcoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding-top: 1.25rem;
+}
+
+.btnPillPrimary {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btnPillPrimary:hover:not(:disabled) { filter: brightness(0.95); }
+.btnPillPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnErro { box-shadow: 0 0 0 2px var(--sc-danger-text); }
+
+.btnPillSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 20px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnPillSecondary:hover { background: var(--sc-surface-hover); }
