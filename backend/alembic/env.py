@@ -3,14 +3,16 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from database import Base
+from database import Base, resolver_url
 from config import settings
 
 # Importar todos os modelos para que o Alembic os detecte no autogenerate
 import models  # noqa: F401
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Item 5.2/5.3: a URL é resolvida pelo MESMO caminho do runtime (desktop:
+# SMARTCUT_DB_PATH aponta para userData; Docker/dev: DATABASE_URL/settings).
+config.set_main_option("sqlalchemy.url", resolver_url())
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

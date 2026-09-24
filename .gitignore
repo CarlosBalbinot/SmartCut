@@ -47,9 +47,16 @@ backend/Certificados/
 *.p12
 *.cer
 
+# Build de release assinado (item 6.1): guarda CSC_LINK/CSC_KEY_PASSWORD
+release.env
+
 # Logs
 *.log
 backend/logs/
+
+# Backups automáticos do SQLite (item 3.3)
+backups/
+backend/backups/
 
 # IDE
 .vscode/
@@ -58,13 +65,16 @@ backend/logs/
 # DB / Docker volumes
 postgres_data/
 
-# Alembic — migrações não versionadas (schema real vem de
-# Base.metadata.create_all, ver models/__init__.py + database.py)
-backend/alembic/versions/*.py
-!backend/alembic/versions/.gitkeep
+# Alembic — migrações VERSIONADAS (item 5.2): backend/alembic/versions/*.py
+# são commitadas no git (baseline + evoluções futuras). A pasta legado/
+# guarda migrações antigas nunca commitadas (substituídas pela baseline) e
+# não deve entrar no repo nem na imagem Docker.
+backend/alembic/legado/
 
 # Documentação interna / nesting de terceiros
-docs/
+# (PROMPT-CORRECOES.md fica versionado para acompanhar as correções)
+docs/*
+!docs/PROMPT-CORRECOES.md
 backend/nesting/svgnest/
 
 # OS

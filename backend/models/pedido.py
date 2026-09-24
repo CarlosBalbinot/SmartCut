@@ -1,7 +1,8 @@
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -9,6 +10,14 @@ from database import Base
 STATUS_VALIDOS = ("Aberto", "Fechado", "Cancelado")
 
 INDICADOR_PRESENCA_VALIDOS = ("Presencial", "Internet", "Teleatendimento", "Outros")
+
+# ItemPedido.desconto_tipo — qual dos dois valores é a fonte da verdade
+# quando quantidade/preço mudam: PERCENTUAL mantém o % e recalcula o R$;
+# VALOR mantém o R$ e recalcula o %.
+DESCONTO_TIPOS = ("PERCENTUAL", "VALOR")
+
+# PedidoVenda.comissao_origem
+COMISSAO_ORIGENS = ("VINCULO", "PADRAO_VENDEDOR", "SEM_VENDEDOR", "NENHUMA")
 
 TIPO_FRETE_VALIDOS = (
     "Sem Frete", "CIF", "FOB", "Por conta de terceiros", "Próprio", "Sem Ocorrência",
@@ -23,12 +32,40 @@ class PedidoVenda(Base):
     tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="venda")
     data_emissao: Mapped[date] = mapped_column(Date, nullable=False)
     prazo_entrega_dias: Mapped[int | None] = mapped_column(Integer, default=20)
+    # "avista" / "aprazo" — usado hoje para escolher entre preco_avista e
+    # preco_aprazo na tabela de preços (ver services/venda_service.get_preco
+    # e o preenchimento automático de preço no frontend). Não é texto livre
+    # de condição de pagamento apesar do nome — por isso NÃO foi renomeado
+    # para condicoes_legado nem substituído: fazer isso quebraria o
+    # preenchimento automático de preço em todo pedido, novo ou antigo.
+    # O novo módulo de Condições de Pagamento (parcelas) é independente
+    # disso — ver condicao_pagamento_id abaixo.
     condicoes: Mapped[str | None] = mapped_column(String(20))
+    # Condição de pagamento (parcelamento) — módulo novo, independente do
+    # campo `condicoes` acima. Com FK real (diferente de tes_id/nfe_id
+    # históricos): a tabela condicoes_pagamento já existe nesta mesma leva
+    # de mudanças, então não há o problema de ordem que levou aqueles
+    # campos a ficarem sem FK.
+    condicao_pagamento_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("condicoes_pagamento.id"), nullable=True
+    )
+    # Data base para calcular as parcelas quando a condição é do tipo
+    # "intervalo" (dias a partir da emissão) — usada tanto pelo preview no
+    # frontend quanto por uma futura geração automática de parcelas.
+    primeiro_vencimento: Mapped[date | None] = mapped_column(Date, nullable=True)
     vendedor_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("vendedores.id"), nullable=True
     )
     tabela_preco_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("tabelas_preco.id"), nullable=True
+    )
+    # Cliente do cadastro. Os campos cliente_* abaixo são a cópia (snapshot)
+    # usada por PDF, NF-e, portal e relatórios — preenchida pelo backend a
+    # partir do cadastro ao criar o pedido ou trocar o cliente (ver
+    # routers/pedidos_venda._aplicar_snapshot_cliente). Nulo em pedidos de
+    # cliente não cadastrado, que mantêm a cópia digitada.
+    cliente_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("clientes.id"), nullable=True
     )
     cliente_razao_social: Mapped[str | None] = mapped_column(String(200))
     cliente_cnpj: Mapped[str | None] = mapped_column(String(20))
@@ -51,6 +88,12 @@ class PedidoVenda(Base):
 
     total_pedido: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     comissao_valor: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    # Snapshot do % (0–100) usado no último cálculo de comissao_valor e de
+    # onde ele veio — ver COMISSAO_ORIGENS.
+    comissao_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
+    comissao_origem: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # ── Fiscal / Financeiro ──────────────────────────────────────────────
     # TES padrão do cabeçalho — a tabela "tes" já existe (Fase 2), então
@@ -95,8 +138,13 @@ class PedidoVenda(Base):
     encaixes: Mapped[list["Encaixe"]] = relationship(back_populates="pedido")  # noqa: F821
     vendedor: Mapped["Vendedor | None"] = relationship(back_populates="pedidos")  # noqa: F821
     tabela_preco: Mapped["TabelaPreco | None"] = relationship()  # noqa: F821
+    cliente: Mapped["Cliente | None"] = relationship()  # noqa: F821
     transportadora: Mapped["Transportadora | None"] = relationship()  # noqa: F821
     notas_fiscais: Mapped[list["NotaFiscal"]] = relationship(back_populates="pedido")  # noqa: F821
+
+    @property
+    def cliente_codigo(self) -> str | None:
+        return self.cliente.codigo if self.cliente_id and self.cliente else None
 
 
 class ItemPedido(Base):
@@ -106,8 +154,11 @@ class ItemPedido(Base):
     pedido_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False
     )
-    grupo_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=False
+    # Nullable: itens do catálogo fiscal novo (produto_id/sku_id, ver abaixo)
+    # não pertencem a um GrupoMolde — só itens legados de corte preenchem
+    # este campo (ver models/pedido.py — Item pai vs. avulso no fluxo novo).
+    grupo_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=True
     )
     cor: Mapped[str | None] = mapped_column(String(50))
     lote_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -122,6 +173,10 @@ class ItemPedido(Base):
     qtd_g3: Mapped[int] = mapped_column(Integer, default=0)
     preco_unitario: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     preco_total: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    # True quando o preço foi digitado à mão na edição inline do item
+    # (PATCH /{id}/itens/{item_id}); POST /{id}/aplicar-tabela sobrescreve
+    # mesmo assim e volta para False.
+    preco_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Produto do cadastro fiscal (NCM/CEST/unidade/peso) — opcional e
     # coexiste com grupo_id: pedidos de corte legado usam só grupo_id,
@@ -129,16 +184,72 @@ class ItemPedido(Base):
     produto_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("produtos.id"), nullable=True
     )
+    # SKU (combinação de grade) do produto acima, quando o item vem de um
+    # produto "pai" — item avulso (sem SKUs) preenche só produto_id.
+    sku_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("produtos_sku.id"), nullable=True
+    )
+    # Quantidade genérica dos itens do fluxo novo (produto/SKU) — os itens
+    # legados de corte usam qtd_p..qtd_g3 em vez deste campo.
+    quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # TES do item — herda do produto (tes_saida_id) ou do cabeçalho do
     # pedido quando não informado; ver POST /{id}/itens no router.
     tes_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("tes.id"), nullable=True)
+    # desconto_pct (Float) é o campo antigo, mantido em sincronia com
+    # desconto_percentual para quem ainda lê dele (bulk/NF-e).
     desconto_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     desconto_valor: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    desconto_percentual: Mapped[Decimal] = mapped_column(
+        Numeric(7, 4), nullable=False, default=0, server_default="0"
+    )
+    desconto_tipo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="VALOR", server_default="VALOR"
+    )
     acrescimo_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     acrescimo_valor: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
+    # Descrição editável do item (maiúscula, até 120). Preenchida com
+    # descricao_completa ao criar/trocar o SKU; vazia no PATCH volta a ela.
+    descricao: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
     pedido: Mapped["PedidoVenda"] = relationship(back_populates="itens")
-    grupo: Mapped["GrupoMolde"] = relationship()  # noqa: F821
+    grupo: Mapped["GrupoMolde | None"] = relationship()  # noqa: F821
     lote: Mapped["LoteTecido | None"] = relationship()  # noqa: F821
     produto: Mapped["Produto | None"] = relationship()  # noqa: F821
+    sku: Mapped["ProdutoSKU | None"] = relationship()  # noqa: F821
+
+    @property
+    def sku_codigo(self) -> str | None:
+        return self.sku.codigo if self.sku_id and self.sku else None
+
+    @property
+    def ref_codigo(self) -> str | None:
+        if self.sku_id and self.sku:
+            return self.sku.codigo
+        if self.produto:
+            return self.produto.codigo
+        if self.grupo:
+            return self.grupo.codigo
+        return None
+
+    @property
+    def descricao_completa(self) -> str:
+        if self.sku_id and self.sku:
+            pai = self.sku.produto_pai
+            partes = [pai.descricao if pai else "", self.sku.linha_item_descricao, self.sku.coluna_item_descricao]
+            return " ".join(p for p in partes if p)
+        if self.produto:
+            return self.produto.descricao
+        if self.grupo:
+            return f"{self.grupo.nome} — {self.cor}" if self.cor else self.grupo.nome
+        return ""
+
+    @property
+    def quantidade_total(self) -> int:
+        if self.produto_id and not self.grupo_id:
+            return self.quantidade
+        return (
+            (self.qtd_p or 0) + (self.qtd_m or 0) + (self.qtd_g or 0)
+            + (self.qtd_gg or 0) + (self.qtd_g1 or 0) + (self.qtd_g2 or 0) + (self.qtd_g3 or 0)
+        )

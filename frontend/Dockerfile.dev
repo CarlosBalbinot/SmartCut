@@ -1,0 +1,9 @@
+# ── SmartCut frontend — DOCKERFILE DE DESENVOLVIMENTO ────────────────────────
+# Roda o Vite dev (HMR) com o código montado do host (ver docker-compose.yml).
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci || npm install
+COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host"]

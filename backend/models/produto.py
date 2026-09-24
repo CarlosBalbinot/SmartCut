@@ -3,12 +3,13 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, ForeignKey, Integer, Numeric,
+    Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric,
     String, Uuid, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
+from models.tabela_grade import TabelaGrade
 
 
 class GrupoProduto(Base):
@@ -66,14 +67,15 @@ class Produto(Base):
     cod_barras: Mapped[str | None] = mapped_column(String(50), nullable=True)
     peso_gramas: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
     peso_kg: Mapped[Decimal | None] = mapped_column(Numeric(10, 3), nullable=True)
-    linha_grade_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("linhas_grade.id"), nullable=True
+    linha_grade_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("tabelas_grade.id", ondelete="SET NULL"), nullable=True
     )
-    coluna_grade_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("colunas_grade.id"), nullable=True
+    coluna_grade_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("tabelas_grade.id", ondelete="SET NULL"), nullable=True
     )
     data_cadastro: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="ativo")
+    tamanhos_disponiveis: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
 
     # ── Impostos / Faturamento ──────────────────────────────────────
     ncm: Mapped[str | None] = mapped_column(String(8), nullable=True)
@@ -109,5 +111,20 @@ class Produto(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     grupo: Mapped["GrupoProduto"] = relationship(back_populates="produtos")
-    linha_grade: Mapped["LinhaGrade | None"] = relationship()
-    coluna_grade: Mapped["ColunaGrade | None"] = relationship()
+    linha_grade: Mapped["TabelaGrade | None"] = relationship(foreign_keys=[linha_grade_id])
+    coluna_grade: Mapped["TabelaGrade | None"] = relationship(foreign_keys=[coluna_grade_id])
+    skus: Mapped[list["ProdutoSKU"]] = relationship(  # noqa: F821
+        back_populates="produto_pai", cascade="all, delete-orphan"
+    )
+
+    @property
+    def linha_grade_nome(self) -> str | None:
+        return self.linha_grade.descricao if self.linha_grade else None
+
+    @property
+    def coluna_grade_nome(self) -> str | None:
+        return self.coluna_grade.descricao if self.coluna_grade else None
+
+    @property
+    def is_pai(self) -> bool:
+        return len(self.skus) > 0

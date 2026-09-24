@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -69,25 +69,4 @@ class ConsumoLote(Base):
     observacao: Mapped[str | None] = mapped_column(Text)
 
     lote: Mapped["LoteTecido"] = relationship(back_populates="consumos")
-
-
-# ─────────────────────────────────────────────────────────────────────
-#  Modelo legado — mantido para compatibilidade com dados antigos
-# ─────────────────────────────────────────────────────────────────────
-
-class Tecido(Base):
-    __tablename__ = "tecidos"
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    nome: Mapped[str] = mapped_column(String(100), nullable=False)
-    tipo: Mapped[str | None] = mapped_column(String(50))
-    largura_util_cm: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
-    gramatura_g_m2: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False)
-    valor_por_kg: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    encolhimento_pct: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
-    estoque_kg: Mapped[float] = mapped_column(Numeric(10, 3), nullable=False)
-    lote: Mapped[str | None] = mapped_column(String(50))
-    cor: Mapped[str | None] = mapped_column(String(50))
-    max_camadas: Mapped[int] = mapped_column(Integer, default=15)
-    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

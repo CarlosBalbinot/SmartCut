@@ -2,7 +2,10 @@ fastapi==0.111.0
 uvicorn[standard]==0.29.0
 sqlalchemy==2.0.30
 alembic==1.13.1
-# psycopg2-binary>=2.9.9  # removido: migrado para SQLite
+# Driver PostgreSQL — necessário apenas na implantação via Docker/compose
+# (desktop usa SQLite; o PyInstaller exclui psycopg2 no smartcut.spec, então
+# o executável não carrega o driver).
+psycopg2-binary==2.9.9
 pydantic==2.7.1
 pydantic-settings==2.2.1
 python-dotenv==1.0.1

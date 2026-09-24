@@ -1,0 +1,91 @@
+version: "3.9"
+
+# ── SmartCut — AMBIENTE DE PRODUÇÃO (Docker) ─────────────────────────────────
+# Uso:  docker compose -f docker-compose.prod.yml up -d
+#
+# Diferenças para o compose de dev (item 3.2):
+#   - Postgres fica SOMENTE na rede interna do compose (nenhuma porta no host).
+#   - Backend compilado SEM --reload e sem volume de código (só os uploads).
+#   - Frontend é build de produção servido pelo nginx (proxy /api → backend).
+#   - Serviço "backup" roda pg_dump diário para volume separado (item 3.3).
+#
+# Segredos vêm do `.env` (não versionado). POSTGRES_PASSWORD e SECRET_KEY são
+# obrigatórios (:?) — sem eles o compose recusa iniciar.
+#
+# Para publicar o backend em localhost (debug), descomente:
+#   ports:
+#     - "127.0.0.1:8000:8000"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartcut_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartcut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (veja .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-smartcut_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartcut} -d ${POSTGRES_DB:-smartcut_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backup diário do Postgres (item 3.3): pg_dump compactado num volume
+  # separado, com retenção de BACKUP_RETENTION_DIAS dias. Para um restore
+  # manual:  zcat backups/smartcut_*.sql.gz | psql -U smartcut -h postgres smartcut_db
+  backup:
+    image: postgres:15-alpine
+    container_name: smartcut_backups_prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartcut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (veja .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-smartcut_db}
+      BACKUP_RETENTION_DIAS: ${BACKUP_RETENTION_DIAS:-7}
+    volumes:
+      - postgres_backups:/backups
+    entrypoint: []
+    command: >
+      sh -c 'while true; do
+        PGPASSWORD="$${POSTGRES_PASSWORD}" pg_dump -h postgres -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+          | gzip > "/backups/smartcut_$$(date +%Y%m%d_%H%M%S).sql.gz";
+        find /backups -name "smartcut_*.sql.gz" -mtime +"$${BACKUP_RETENTION_DIAS}" -delete;
+        sleep 86400;
+      done'
+
+  backend:
+    build: ./backend
+    container_name: smartcut_backend_prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-smartcut}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartcut_db}
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env (veja .env.example)}
+      UPLOAD_DIR: /app/uploads
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
+      NESTING_TIMEOUT_SEC: ${NESTING_TIMEOUT_SEC:-120}
+    volumes:
+      - uploads_data:/app/uploads
+    # Sem --reload e sem volume de código: o Dockerfile (CMD) serve o build.
+
+  frontend:
+    build: ./frontend
+    container_name: smartcut_frontend_prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
+  uploads_data:
+  postgres_backups:

@@ -1,20 +1,34 @@
 version: "3.9"
 
+# ── SmartCut — AMBIENTE DE DESENVOLVIMENTO ───────────────────────────────────
+# Uso:  docker compose up -d
+# Para produção use:  docker compose -f docker-compose.prod.yml up -d
+#
+# Segurança (item 3.2):
+#   - Postgres NÃO é exposto à rede: apenas 127.0.0.1 (para ferramentas locais
+#     como DBeaver/psql). A aplicação acessa via rede interna do compose.
+#   - Backend exposto só em 127.0.0.1 (debug) e roda com --reload (dev).
+#   - Frontend roda o Vite dev (Dockerfile.dev).
+#
+# Nenhum segredo literal aqui (item 3.1): tudo vem do `.env` (não versionado)
+# via interpolação. Crie o seu a partir do `.env.example`. SECRET_KEY é
+# obrigatória (:?) — o compose recusa iniciar sem ela, evitando segredo fraco.
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: smartcut_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: smartcut
-      POSTGRES_PASSWORD: senha
-      POSTGRES_DB: smartcut_db
+      POSTGRES_USER: ${POSTGRES_USER:-smartcut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (veja .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-smartcut_db}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smartcut -d smartcut_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartcut} -d ${POSTGRES_DB:-smartcut_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,26 +41,31 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://smartcut:senha@postgres:5432/smartcut_db
-      SECRET_KEY: chave-secreta-aqui
-      UPLOAD_DIR: ./uploads
-      MAX_FILE_SIZE_MB: 50
-      NESTING_TIMEOUT_SEC: 120
+      DATABASE_URL: postgresql://${POSTGRES_USER:-smartcut}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartcut_db}
+      SECRET_KEY: ${SECRET_KEY:?defina SECRET_KEY no .env (veja .env.example)}
+      UPLOAD_DIR: ${UPLOAD_DIR:-./uploads}
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
+      NESTING_TIMEOUT_SEC: ${NESTING_TIMEOUT_SEC:-120}
+      BACKUP_DIR: ${BACKUP_DIR:-}
+      BACKUP_RETENTION_DIAS: ${BACKUP_RETENTION_DIAS:-7}
+      BACKUP_INTERVAL_SEC: ${BACKUP_INTERVAL_SEC:-21600}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
       - uploads_data:/app/uploads
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     container_name: smartcut_frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules

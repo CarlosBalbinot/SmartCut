@@ -1,0 +1,35 @@
+# ── backend/.dockerignore ─────────────────────────────────────────────────────
+# Imagem: só o código. Nada de segredos, dados locais ou artefatos de máquina.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+*.pyo
+
+# Segredos/ambiente — nunca na imagem
+.env
+.env.*
+!*.env.example
+
+# Certificados digitais — nunca na imagem (sensibilidade máxima, item 4.1)
+Certificados/
+**/*.pfx
+**/*.p12
+**/*.cer
+
+# Dados locais (desenvolvimento)
+uploads/
+backups/
+*.db
+*.sqlite*
+logs/
+
+# Migrações Alembic legadas (item 5.2) — não entram na imagem; apenas a
+# baseline versionada em alembic/versions/ é necessária em runtime.
+alembic/legado/
+
+# Dependências recompiladas na imagem via requirements.txt
+*.egg-info

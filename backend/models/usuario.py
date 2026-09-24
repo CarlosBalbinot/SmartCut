@@ -18,7 +18,14 @@ MODULOS_VALIDOS = (
     "usuarios_admin",
 )
 
-ACOES_VALIDAS = ("ver", "criar", "editar", "excluir", "usar", "imprimir", "confirmar", "gerar")
+# Item 5.1: "executar" e "cancelar" são as ações de execução dos módulos
+# fiscais (fiscal_transmitir/fiscal_cancelar) — o router NF-e antes exigia
+# "ver" para essas operações de escrita, o que deixava qualquer usuário com
+# leitura fiscal transmitir/cancelar notas.
+ACOES_VALIDAS = (
+    "ver", "criar", "editar", "excluir", "usar", "imprimir", "confirmar", "gerar",
+    "executar", "cancelar",
+)
 
 
 class Usuario(Base):

@@ -30,6 +30,13 @@ class Encaixe(Base):
     custo_total: Mapped[float | None] = mapped_column(Numeric(12, 2))
     desperdicio_pct: Mapped[float | None] = mapped_column(Numeric(5, 2))
     num_camadas: Mapped[int] = mapped_column(Integer, default=1)
+    # Numeração sequencial própria do encaixe (ENC-001, ENC-002...),
+    # independente do número do PedidoVenda — gerada em
+    # nesting_service._salvar_encaixe via COUNT(*)+1.
+    numero: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Identificação textual — herda o "Nome / identificação" que o usuário
+    # digitou no Encaixe Rápido (PedidoVenda.observacoes_internas).
+    descricao: Mapped[str | None] = mapped_column(String(200), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     data_corte: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(30), default="ativo")
