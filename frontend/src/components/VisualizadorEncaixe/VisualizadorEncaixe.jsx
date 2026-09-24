@@ -151,13 +151,28 @@ export default function VisualizadorEncaixe({
           {comprimento_cm} × {largura_cm} cm
         </span>
         <div className={styles.zoomControls}>
-          <button type="button" className={styles.btnZoom} onClick={() => zoomBotao(-1)} title="Diminuir zoom">
+          <button
+            type="button"
+            className={styles.btnZoom}
+            onClick={() => zoomBotao(-1)}
+            title="Diminuir zoom"
+          >
             −
           </button>
-          <button type="button" className={styles.btnZoom} onClick={resetarZoom} title="Ajustar à tela">
+          <button
+            type="button"
+            className={styles.btnZoom}
+            onClick={resetarZoom}
+            title="Ajustar à tela"
+          >
             ◎
           </button>
-          <button type="button" className={styles.btnZoom} onClick={() => zoomBotao(1)} title="Aumentar zoom">
+          <button
+            type="button"
+            className={styles.btnZoom}
+            onClick={() => zoomBotao(1)}
+            title="Aumentar zoom"
+          >
             +
           </button>
         </div>
@@ -203,7 +218,12 @@ export default function VisualizadorEncaixe({
             {linhasGrade.map((x) => (
               <Group key={`grade-${x}`}>
                 <Line
-                  points={[PAD + x * fitScale, PAD, PAD + x * fitScale, PAD + largura_cm * fitScale]}
+                  points={[
+                    PAD + x * fitScale,
+                    PAD,
+                    PAD + x * fitScale,
+                    PAD + largura_cm * fitScale,
+                  ]}
                   stroke="#cccccc"
                   strokeWidth={0.5 / view.scale}
                   dash={[4 / view.scale, 4 / view.scale]}

@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
 import { getGrupos } from "../api/moldes";
+import { getConfigPrecificacao, getCustosFixos, getPrecificacoes } from "../api/precificacoes";
 import {
-  getConfigPrecificacao,
-  getCustosFixos,
-  getPrecificacoes,
-} from "../api/precificacoes";
-import {
-  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
 } from "recharts";
 import styles from "./ProjecaoPage.module.css";
 
 /* ── Helpers ── */
-const R = (v) => v != null ? `R$ ${parseFloat(v).toFixed(2).replace(".", ",")}` : "—";
-const Pct = (v) => v != null ? `${(parseFloat(v) * 100).toFixed(1)}%` : "—";
+const R = (v) => (v != null ? `R$ ${parseFloat(v).toFixed(2).replace(".", ",")}` : "—");
+const Pct = (v) => (v != null ? `${(parseFloat(v) * 100).toFixed(1)}%` : "—");
 
 function calcLocal(p, config, custos) {
   const usaKg = !!(p.valor_kg_tecido && p.pecas_por_kg && parseFloat(p.pecas_por_kg) > 0);
@@ -39,7 +44,7 @@ function calcLocal(p, config, custos) {
   const preco_comb = parseFloat(custos?.preco_combustivel) || 0;
   const pecas_viagem = parseFloat(p.pecas_por_viagem) || 50;
   if (dist > 0 && consumo > 0 && preco_comb > 0 && pecas_viagem > 0) {
-    custo_gasolina = (dist * 2 * num_viagens / consumo) * preco_comb / pecas_viagem;
+    custo_gasolina = (((dist * 2 * num_viagens) / consumo) * preco_comb) / pecas_viagem;
   }
 
   let custo_caixa = 0;
@@ -50,13 +55,29 @@ function calcLocal(p, config, custos) {
   const custo_costura = parseFloat(p.custo_costura) || 0;
   const custo_etiqueta = parseFloat(config?.custo_etiqueta) || 0;
   const custo_embalagem = parseFloat(config?.custo_embalagem) || 0;
-  const custo_base = custo_tecido + custo_costura + custo_linha + custo_gasolina + custo_caixa + custo_etiqueta + custo_embalagem;
+  const custo_base =
+    custo_tecido +
+    custo_costura +
+    custo_linha +
+    custo_gasolina +
+    custo_caixa +
+    custo_etiqueta +
+    custo_embalagem;
 
   const aliquota = parseFloat(config?.aliquota_simples) || 0;
   const margem = parseFloat(p.margem_desejada) || 0.6;
   const denom = 1 - aliquota - margem;
 
-  const base = { custo_tecido, custo_costura, custo_linha, custo_gasolina, custo_caixa, custo_etiqueta, custo_embalagem, custo_base };
+  const base = {
+    custo_tecido,
+    custo_costura,
+    custo_linha,
+    custo_gasolina,
+    custo_caixa,
+    custo_etiqueta,
+    custo_embalagem,
+    custo_base,
+  };
   if (denom <= 0 || custo_base <= 0) return { ...base, preco: null, imposto: null, lucro: null };
 
   const preco = custo_base / denom;
@@ -65,7 +86,16 @@ function calcLocal(p, config, custos) {
   return { ...base, preco, imposto, lucro };
 }
 
-const GRAYSCALE = ["#1D1D1F", "#6E6E73", "#AEAEB2", "#C7C7CC", "#D1D1D6", "#E5E5EA", "#3A3A3C", "#8E8E93"];
+const GRAYSCALE = [
+  "#1D1D1F",
+  "#6E6E73",
+  "#AEAEB2",
+  "#C7C7CC",
+  "#D1D1D6",
+  "#E5E5EA",
+  "#3A3A3C",
+  "#8E8E93",
+];
 
 export default function ProjecaoPage() {
   const [loading, setLoading] = useState(true);
@@ -77,7 +107,9 @@ export default function ProjecaoPage() {
   const [precsPorGrupo, setPrecsPorGrupo] = useState({});
 
   // Itens da projeção: [{grupoId, tamanho, faixa, quantidade}]
-  const [itens, setItens] = useState([{ grupoId: "", tamanho: "", faixa: "padrao", quantidade: "100" }]);
+  const [itens, setItens] = useState([
+    { grupoId: "", tamanho: "", faixa: "padrao", quantidade: "100" },
+  ]);
   const [calculando, setCalculando] = useState(false);
   const [resultado, setResultado] = useState(null);
 
@@ -100,7 +132,9 @@ export default function ProjecaoPage() {
   };
 
   const calcular = async () => {
-    const itensValidos = itens.filter((i) => i.grupoId && i.tamanho && parseFloat(i.quantidade) > 0);
+    const itensValidos = itens.filter(
+      (i) => i.grupoId && i.tamanho && parseFloat(i.quantidade) > 0
+    );
     if (itensValidos.length === 0) return;
     setCalculando(true);
     try {
@@ -116,11 +150,20 @@ export default function ProjecaoPage() {
       const linhas = itensValidos.map((item) => {
         const grupo = grupos.find((g) => g.id === item.grupoId);
         const precs = snap[item.grupoId] || [];
-        const prec = precs.find((p) => p.tamanho === item.tamanho && (p.faixa_tamanho || "padrao") === item.faixa);
-        if (!prec) return { ...item, grupoNome: grupo?.nome || item.grupoId, erro: "Precificação não encontrada" };
+        const prec = precs.find(
+          (p) => p.tamanho === item.tamanho && (p.faixa_tamanho || "padrao") === item.faixa
+        );
+        if (!prec)
+          return {
+            ...item,
+            grupoNome: grupo?.nome || item.grupoId,
+            erro: "Precificação não encontrada",
+          };
 
         const r = calcLocal(prec, config, custos);
-        const preco_unit = prec.preco_venda_final ? parseFloat(prec.preco_venda_final) : (r.preco || 0);
+        const preco_unit = prec.preco_venda_final
+          ? parseFloat(prec.preco_venda_final)
+          : r.preco || 0;
         const custo_unit = r.custo_base || 0;
         const qty = parseFloat(item.quantidade);
         const receita = preco_unit * qty;
@@ -154,11 +197,10 @@ export default function ProjecaoPage() {
   const adicionarItem = () =>
     setItens((prev) => [...prev, { grupoId: "", tamanho: "", faixa: "padrao", quantidade: "100" }]);
 
-  const removerItem = (idx) =>
-    setItens((prev) => prev.filter((_, i) => i !== idx));
+  const removerItem = (idx) => setItens((prev) => prev.filter((_, i) => i !== idx));
 
   const updateItem = (idx, field, value) =>
-    setItens((prev) => prev.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+    setItens((prev) => prev.map((it, i) => (i === idx ? { ...it, [field]: value } : it)));
 
   /* ── Dados derivados ── */
   const linhasOk = resultado?.filter((r) => !r.erro) || [];
@@ -192,31 +234,78 @@ export default function ProjecaoPage() {
 
   // Composição de custo (média ponderada)
   const custoTotal_sum = linhasOk.reduce((s, r) => s + r.custo_total, 0);
-  const pieData = custoTotal_sum > 0 ? [
-    { name: "Tecido", value: parseFloat((linhasOk.reduce((s, r) => s + r.breakdown.custo_tecido * r.quantidade, 0)).toFixed(2)) },
-    { name: "Costura", value: parseFloat((linhasOk.reduce((s, r) => s + r.breakdown.custo_costura * r.quantidade, 0)).toFixed(2)) },
-    { name: "Linha", value: parseFloat((linhasOk.reduce((s, r) => s + r.breakdown.custo_linha * r.quantidade, 0)).toFixed(2)) },
-    { name: "Gasolina", value: parseFloat((linhasOk.reduce((s, r) => s + r.breakdown.custo_gasolina * r.quantidade, 0)).toFixed(2)) },
-    { name: "Caixa", value: parseFloat((linhasOk.reduce((s, r) => s + r.breakdown.custo_caixa * r.quantidade, 0)).toFixed(2)) },
-    { name: "Etiqueta", value: parseFloat((linhasOk.reduce((s, r) => s + (r.breakdown.custo_etiqueta + r.breakdown.custo_embalagem) * r.quantidade, 0)).toFixed(2)) },
-  ].filter((d) => d.value > 0) : [];
+  const pieData =
+    custoTotal_sum > 0
+      ? [
+          {
+            name: "Tecido",
+            value: parseFloat(
+              linhasOk.reduce((s, r) => s + r.breakdown.custo_tecido * r.quantidade, 0).toFixed(2)
+            ),
+          },
+          {
+            name: "Costura",
+            value: parseFloat(
+              linhasOk.reduce((s, r) => s + r.breakdown.custo_costura * r.quantidade, 0).toFixed(2)
+            ),
+          },
+          {
+            name: "Linha",
+            value: parseFloat(
+              linhasOk.reduce((s, r) => s + r.breakdown.custo_linha * r.quantidade, 0).toFixed(2)
+            ),
+          },
+          {
+            name: "Gasolina",
+            value: parseFloat(
+              linhasOk.reduce((s, r) => s + r.breakdown.custo_gasolina * r.quantidade, 0).toFixed(2)
+            ),
+          },
+          {
+            name: "Caixa",
+            value: parseFloat(
+              linhasOk.reduce((s, r) => s + r.breakdown.custo_caixa * r.quantidade, 0).toFixed(2)
+            ),
+          },
+          {
+            name: "Etiqueta",
+            value: parseFloat(
+              linhasOk
+                .reduce(
+                  (s, r) =>
+                    s + (r.breakdown.custo_etiqueta + r.breakdown.custo_embalagem) * r.quantidade,
+                  0
+                )
+                .toFixed(2)
+            ),
+          },
+        ].filter((d) => d.value > 0)
+      : [];
 
-  if (loading) return (
-    <div className="sc-page">
-      <div className="sc-page-header"><h1>Projeção</h1></div>
-      <p className={styles.loading}>Carregando…</p>
-    </div>
-  );
-  if (erro) return (
-    <div className="sc-page">
-      <div className="sc-page-header"><h1>Projeção</h1></div>
-      <p className={styles.erro}>{erro}</p>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="sc-page">
+        <div className="sc-page-header">
+          <h1>Projeção</h1>
+        </div>
+        <p className={styles.loading}>Carregando…</p>
+      </div>
+    );
+  if (erro)
+    return (
+      <div className="sc-page">
+        <div className="sc-page-header">
+          <h1>Projeção</h1>
+        </div>
+        <p className={styles.erro}>{erro}</p>
+      </div>
+    );
 
   return (
     <div className={`sc-page ${styles.pagina}`}>
-      <div className="sc-page-header"><h1>Projeção</h1></div>
+      <div className="sc-page-header">
+        <h1>Projeção</h1>
+      </div>
 
       {/* ── Formulário de projeção ── */}
       <div className={`sc-card ${styles.card}`}>
@@ -226,33 +315,45 @@ export default function ProjecaoPage() {
         <div className={styles.cardBody}>
           <div className={styles.itensList}>
             {itens.map((item, idx) => {
-              const precsGrupo = item.grupoId ? (precsPorGrupo[item.grupoId] || []) : [];
-              const tamanhos = [...new Set(precsGrupo.map((p) => ({ t: p.tamanho, f: p.faixa_tamanho || "padrao" })))];
+              const precsGrupo = item.grupoId ? precsPorGrupo[item.grupoId] || [] : [];
+              const tamanhos = [
+                ...new Set(
+                  precsGrupo.map((p) => ({ t: p.tamanho, f: p.faixa_tamanho || "padrao" }))
+                ),
+              ];
               return (
                 <div key={idx} className={styles.itemRow}>
                   <div className={styles.campo}>
                     <label className={styles.labelSub}>Modelo</label>
-                    <select className={styles.select}
+                    <select
+                      className={styles.select}
                       value={item.grupoId}
                       onChange={(e) => {
                         updateItem(idx, "grupoId", e.target.value);
                         updateItem(idx, "tamanho", "");
                         if (e.target.value) carregarPrecs(e.target.value);
-                      }}>
+                      }}
+                    >
                       <option value="">Selecione…</option>
-                      {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                      {grupos.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.nome}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className={styles.campo}>
                     <label className={styles.labelSub}>Tamanho</label>
-                    <select className={styles.select}
+                    <select
+                      className={styles.select}
                       value={`${item.tamanho}|${item.faixa}`}
                       onChange={(e) => {
                         const [t, f] = e.target.value.split("|");
                         updateItem(idx, "tamanho", t);
                         updateItem(idx, "faixa", f);
                       }}
-                      disabled={!item.grupoId}>
+                      disabled={!item.grupoId}
+                    >
                       <option value="|padrao">Selecione…</option>
                       {tamanhos.map(({ t, f }) => (
                         <option key={`${t}|${f}`} value={`${t}|${f}`}>
@@ -263,19 +364,32 @@ export default function ProjecaoPage() {
                   </div>
                   <div className={styles.campoQtd}>
                     <label className={styles.labelSub}>Quantidade</label>
-                    <input type="number" step="1" min="1" className={styles.input}
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      className={styles.input}
                       value={item.quantidade}
-                      onChange={(e) => updateItem(idx, "quantidade", e.target.value)} />
+                      onChange={(e) => updateItem(idx, "quantidade", e.target.value)}
+                    />
                   </div>
                   {itens.length > 1 && (
-                    <button className={styles.btnRemoverItem} onClick={() => removerItem(idx)} title="Remover">×</button>
+                    <button
+                      className={styles.btnRemoverItem}
+                      onClick={() => removerItem(idx)}
+                      title="Remover"
+                    >
+                      ×
+                    </button>
                   )}
                 </div>
               );
             })}
           </div>
           <div className={styles.formAcoes}>
-            <button className={styles.btnSecundario} onClick={adicionarItem}>+ Adicionar item</button>
+            <button className={styles.btnSecundario} onClick={adicionarItem}>
+              + Adicionar item
+            </button>
             <button className={styles.btnPrimario} onClick={calcular} disabled={calculando}>
               {calculando ? "Calculando…" : "Calcular projeção"}
             </button>
@@ -298,13 +412,17 @@ export default function ProjecaoPage() {
             </div>
             <div className={styles.statCard}>
               <span className={styles.statLabel}>Lucro total</span>
-              <span className={`${styles.statValor} ${totalLucro >= 0 ? styles.statPositivo : styles.statNegativo}`}>
+              <span
+                className={`${styles.statValor} ${totalLucro >= 0 ? styles.statPositivo : styles.statNegativo}`}
+              >
                 {R(totalLucro)}
               </span>
             </div>
             <div className={styles.statCard}>
               <span className={styles.statLabel}>Margem média</span>
-              <span className={`${styles.statValor} ${margemMedia >= 0.4 ? styles.statPositivo : margemMedia >= 0.2 ? styles.statNeutro : styles.statNegativo}`}>
+              <span
+                className={`${styles.statValor} ${margemMedia >= 0.4 ? styles.statPositivo : margemMedia >= 0.2 ? styles.statNeutro : styles.statNegativo}`}
+              >
                 {Pct(margemMedia)}
               </span>
             </div>
@@ -312,14 +430,22 @@ export default function ProjecaoPage() {
 
           {/* Gráficos */}
           <div className={styles.graficosGrid}>
-
             {/* Pizza — composição de custo */}
             {pieData.length > 0 && (
               <div className={styles.graficoCard}>
                 <h3 className={styles.graficoTitulo}>Composição de custo</h3>
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      labelLine={false}
+                    >
                       {pieData.map((_, i) => (
                         <Cell key={i} fill={GRAYSCALE[i % GRAYSCALE.length]} />
                       ))}
@@ -338,7 +464,10 @@ export default function ProjecaoPage() {
                   <BarChart data={barData} margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                     <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "#AEAEB2" }} />
-                    <YAxis tick={{ fontSize: 11, fill: "#AEAEB2" }} tickFormatter={(v) => `${v.toFixed(0)}`} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#AEAEB2" }}
+                      tickFormatter={(v) => `${v.toFixed(0)}`}
+                    />
                     <Tooltip formatter={(v) => `R$ ${v.toFixed(2)}`} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
                     <Bar dataKey="Receita" fill="#1D1D1F" radius={[3, 3, 0, 0]} />
@@ -354,10 +483,23 @@ export default function ProjecaoPage() {
               <div className={`${styles.graficoCard} ${styles.graficoFull}`}>
                 <h3 className={styles.graficoTitulo}>Margem por modelo (decrescente)</h3>
                 <ResponsiveContainer width="100%" height={Math.max(160, margemData.length * 36)}>
-                  <BarChart data={margemData} layout="vertical" margin={{ top: 4, right: 32, left: 8, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+                  <BarChart
+                    data={margemData}
+                    layout="vertical"
+                    margin={{ top: 4, right: 32, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(0,0,0,0.06)"
+                      horizontal={false}
+                    />
                     <XAxis type="number" unit="%" tick={{ fontSize: 11, fill: "#AEAEB2" }} />
-                    <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11, fill: "#6E6E73" }} />
+                    <YAxis
+                      type="category"
+                      dataKey="nome"
+                      width={110}
+                      tick={{ fontSize: 11, fill: "#6E6E73" }}
+                    />
                     <Tooltip formatter={(v) => `${v}%`} />
                     <Bar dataKey="margem" fill="#1D1D1F" radius={[0, 3, 3, 0]} />
                   </BarChart>
@@ -374,19 +516,36 @@ export default function ProjecaoPage() {
             <table className={styles.tabelaResultado}>
               <thead>
                 <tr>
-                  <th>Modelo</th><th>Tam.</th><th>Faixa</th><th>Qtd</th>
-                  <th>Preço unit.</th><th>Custo unit.</th>
-                  <th>Receita</th><th>Custo</th><th>Lucro</th><th>Margem</th>
+                  <th>Modelo</th>
+                  <th>Tam.</th>
+                  <th>Faixa</th>
+                  <th>Qtd</th>
+                  <th>Preço unit.</th>
+                  <th>Custo unit.</th>
+                  <th>Receita</th>
+                  <th>Custo</th>
+                  <th>Lucro</th>
+                  <th>Margem</th>
                 </tr>
               </thead>
               <tbody>
                 {resultado.map((r, i) => (
                   <tr key={i} className={r.erro ? styles.linhaErro : ""}>
                     <td>{r.grupoNome}</td>
-                    <td><span className={styles.tamanhoTag}>{r.tamanho || "—"}</span></td>
-                    <td>{r.faixa === "plus" ? <span className={styles.faixaPlus}>Plus</span> : <span className={styles.faixaPadrao}>Padrão</span>}</td>
+                    <td>
+                      <span className={styles.tamanhoTag}>{r.tamanho || "—"}</span>
+                    </td>
+                    <td>
+                      {r.faixa === "plus" ? (
+                        <span className={styles.faixaPlus}>Plus</span>
+                      ) : (
+                        <span className={styles.faixaPadrao}>Padrão</span>
+                      )}
+                    </td>
                     {r.erro ? (
-                      <td colSpan="7" className={styles.erroCell}>{r.erro}</td>
+                      <td colSpan="7" className={styles.erroCell}>
+                        {r.erro}
+                      </td>
                     ) : (
                       <>
                         <td>{r.quantidade}</td>
@@ -396,7 +555,15 @@ export default function ProjecaoPage() {
                         <td>{R(r.custo_total)}</td>
                         <td>{R(r.lucro)}</td>
                         <td>
-                          <span className={r.margem >= 0.5 ? styles.margemBoa : r.margem >= 0.3 ? styles.margemMedia : styles.margemBaixa}>
+                          <span
+                            className={
+                              r.margem >= 0.5
+                                ? styles.margemBoa
+                                : r.margem >= 0.3
+                                  ? styles.margemMedia
+                                  : styles.margemBaixa
+                            }
+                          >
                             {Pct(r.margem)}
                           </span>
                         </td>

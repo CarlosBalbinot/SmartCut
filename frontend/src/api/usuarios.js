@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1/usuarios`;
 
 async function request(path, options = {}) {
@@ -22,8 +22,7 @@ export const usuariosApi = {
   listar: () => request("/"),
   obter: (id) => request(`/${id}`),
   criar: (payload) => request("/", { method: "POST", body: JSON.stringify(payload) }),
-  atualizar: (id, payload) =>
-    request(`/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
+  atualizar: (id, payload) => request(`/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   substituirPermissoes: (id, permissoes) =>
     request(`/${id}/permissoes`, { method: "PUT", body: JSON.stringify({ permissoes }) }),
   desativar: (id) => request(`/${id}`, { method: "DELETE" }),

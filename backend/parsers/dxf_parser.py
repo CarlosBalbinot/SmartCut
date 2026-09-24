@@ -6,6 +6,7 @@ Linhas independentes são agrupadas por layer quando formam contornos.
 Também varre textos (TEXT/MTEXT) para sugerir nomes de peça e linhas
 soltas para detectar o sentido do fio.
 """
+
 from __future__ import annotations
 
 import math
@@ -16,7 +17,6 @@ from typing import Any
 import ezdxf
 from ezdxf.math import Vec2
 from shapely.geometry import Polygon
-from shapely.ops import unary_union
 
 
 MIN_AREA_CM2 = 1.0  # ignora entidades minúsculas (pontos de marcação)
@@ -90,7 +90,7 @@ def parse_dxf(caminho: str) -> list[dict[str, Any]]:
                 idx += 1
 
     # Tenta montar polígonos a partir dos segmentos LINE por layer
-    for layer, segments in lines_by_layer.items():
+    for _layer, segments in lines_by_layer.items():
         for poly in _segments_to_polygons(segments):
             resultado = _poly_to_peca(poly, idx)
             if resultado:

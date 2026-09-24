@@ -16,6 +16,7 @@ _MOD_EDITAR = "configuracoes_editar"
 
 # ── Schemas ─────────────────────────────────────────────────────────────
 
+
 class ConfiguracaoGradeUpdate(BaseModel):
     mascara: Optional[str] = Field(None, max_length=100)
     separador: Optional[str] = Field(None, max_length=5)
@@ -46,6 +47,7 @@ class PreviewResponse(BaseModel):
 
 # ── Rotas ───────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def obter(db: Session = Depends(get_db)):
     config = obter_configuracao(db)
@@ -64,12 +66,18 @@ def atualizar(payload: ConfiguracaoGradeUpdate, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/preview", response_model=dict,
+    "/preview",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_VER, "ver"))],
 )
 def preview(payload: PreviewRequest):
     codigo = aplicar_mascara(
-        payload.mascara, payload.separador, payload.tamanho_seq,
-        payload.grupo_prefixo, payload.seq_exemplo, payload.cor_codigo, payload.tam_codigo,
+        payload.mascara,
+        payload.separador,
+        payload.tamanho_seq,
+        payload.grupo_prefixo,
+        payload.seq_exemplo,
+        payload.cor_codigo,
+        payload.tam_codigo,
     )
     return {"data": PreviewResponse(codigo_gerado=codigo), "error": None}

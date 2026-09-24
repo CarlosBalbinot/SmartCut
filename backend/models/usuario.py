@@ -6,15 +6,32 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 MODULOS_VALIDOS = (
-    "cadastros_clientes", "cadastros_produtos", "cadastros_transportadoras",
-    "cadastros_vendedores", "tecidos", "moldes", "encaixe_rapido", "encaixes",
-    "precificacao", "projecao",
-    "pedidos_criar", "pedidos_editar", "pedidos_ver", "pedidos_excluir",
+    "cadastros_clientes",
+    "cadastros_produtos",
+    "cadastros_transportadoras",
+    "cadastros_vendedores",
+    "tecidos",
+    "moldes",
+    "encaixe_rapido",
+    "encaixes",
+    "precificacao",
+    "projecao",
+    "pedidos_criar",
+    "pedidos_editar",
+    "pedidos_ver",
+    "pedidos_excluir",
     "pedidos_emitir_nfe",
-    "financeiro_painel", "financeiro_fluxo", "financeiro_compras",
-    "financeiro_vendas", "financeiro_contabilidade",
-    "fiscal_nfe", "fiscal_transmitir", "fiscal_cancelar", "fiscal_carta_correcao",
-    "configuracoes_ver", "configuracoes_editar",
+    "financeiro_painel",
+    "financeiro_fluxo",
+    "financeiro_compras",
+    "financeiro_vendas",
+    "financeiro_contabilidade",
+    "fiscal_nfe",
+    "fiscal_transmitir",
+    "fiscal_cancelar",
+    "fiscal_carta_correcao",
+    "configuracoes_ver",
+    "configuracoes_editar",
     "usuarios_admin",
 )
 
@@ -23,8 +40,16 @@ MODULOS_VALIDOS = (
 # "ver" para essas operações de escrita, o que deixava qualquer usuário com
 # leitura fiscal transmitir/cancelar notas.
 ACOES_VALIDAS = (
-    "ver", "criar", "editar", "excluir", "usar", "imprimir", "confirmar", "gerar",
-    "executar", "cancelar",
+    "ver",
+    "criar",
+    "editar",
+    "excluir",
+    "usar",
+    "imprimir",
+    "confirmar",
+    "gerar",
+    "executar",
+    "cancelar",
 )
 
 
@@ -35,6 +60,7 @@ class Usuario(Base):
     vendedor, tabela `usuarios`) — por isso a tabela aqui é
     `usuarios_sistema`, para não colidir.
     """
+
     __tablename__ = "usuarios_sistema"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -46,9 +72,7 @@ class Usuario(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     ultimo_acesso: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    permissoes: Mapped[list["Permissao"]] = relationship(
-        back_populates="usuario", cascade="all, delete-orphan"
-    )
+    permissoes: Mapped[list["Permissao"]] = relationship(back_populates="usuario", cascade="all, delete-orphan")
 
 
 class Permissao(Base):

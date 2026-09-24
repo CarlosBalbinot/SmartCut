@@ -11,7 +11,10 @@ from database import get_db
 from middleware.permissions import require_permission
 from schemas.venda_schema import EmpresaOut, EmpresaUpdate, EmpresaFiscalUpdate, TestarCertificadoIn
 from services.venda_service import (
-    atualizar_fiscal, empresa_fiscal_out, get_ou_criar_empresa, testar_certificado,
+    atualizar_fiscal,
+    empresa_fiscal_out,
+    get_ou_criar_empresa,
+    testar_certificado,
 )
 
 router = APIRouter(prefix="/api/v1/configuracao-empresa", tags=["empresa"])
@@ -25,6 +28,7 @@ _MOD_EDITAR = "configuracoes_editar"
 # competia com um path igual em routers/precificacoes.py — movido para
 # /configuracao-precificacao/ lá, então este GET/PATCH agora são
 # realmente os únicos a responder por este prefixo.
+
 
 @router.get("/", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def get_empresa(db: Session = Depends(get_db)):
@@ -54,6 +58,7 @@ def get_logo(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Logo não encontrada")
     return FileResponse(str(arquivo))
 
+
 @router.patch("/", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def update_empresa(payload: EmpresaUpdate, db: Session = Depends(get_db)):
     empresa = get_ou_criar_empresa(db)
@@ -62,6 +67,7 @@ def update_empresa(payload: EmpresaUpdate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(empresa)
     return {"data": EmpresaOut.model_validate(empresa), "error": None}
+
 
 @router.patch("/logo", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 async def upload_logo(logo: UploadFile = File(...), db: Session = Depends(get_db)):

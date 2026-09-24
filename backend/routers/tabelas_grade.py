@@ -19,6 +19,7 @@ _MOD_EDITAR = "configuracoes_editar"
 
 # ── Schemas ─────────────────────────────────────────────────────────────
 
+
 class ItemCreate(BaseModel):
     codigo_curto: str = Field(..., max_length=4)
     descricao: str = Field(..., max_length=100)
@@ -69,6 +70,7 @@ class TabelaGradeResponse(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
+
 def _validar_situacao(situacao: str) -> None:
     if situacao not in SITUACAO_VALIDAS:
         raise HTTPException(
@@ -97,9 +99,9 @@ def _tabela_vinculada_a_produto(db: Session, tabela_id: int) -> bool:
     # — ver aviso no relatório final. A checagem já compara contra
     # tabela_id para funcionar sem alteração assim que produto.py passar a
     # referenciar TabelaGrade; até lá, nunca encontra vínculo.
-    existe = db.query(Produto).filter(
-        or_(Produto.linha_grade_id == tabela_id, Produto.coluna_grade_id == tabela_id)
-    ).first()
+    existe = (
+        db.query(Produto).filter(or_(Produto.linha_grade_id == tabela_id, Produto.coluna_grade_id == tabela_id)).first()
+    )
     return existe is not None
 
 
@@ -111,6 +113,7 @@ def _item_usado_em_produto(item: ItemTabelaGrade) -> bool:
 
 
 # ── Tabelas de Grade ────────────────────────────────────────────────────
+
 
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar(situacao: Optional[str] = None, db: Session = Depends(get_db)):
@@ -124,7 +127,8 @@ def listar(situacao: Optional[str] = None, db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/{tabela_id}", response_model=dict,
+    "/{tabela_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_VER, "ver"))],
 )
 def obter(tabela_id: int, db: Session = Depends(get_db)):
@@ -133,7 +137,9 @@ def obter(tabela_id: int, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def criar(payload: TabelaGradeCreate, db: Session = Depends(get_db)):
@@ -150,7 +156,8 @@ def criar(payload: TabelaGradeCreate, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{tabela_id}", response_model=dict,
+    "/{tabela_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def atualizar(tabela_id: int, payload: TabelaGradeUpdate, db: Session = Depends(get_db)):
@@ -170,7 +177,8 @@ def atualizar(tabela_id: int, payload: TabelaGradeUpdate, db: Session = Depends(
 
 
 @router.delete(
-    "/{tabela_id}", response_model=dict,
+    "/{tabela_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def excluir(tabela_id: int, db: Session = Depends(get_db)):
@@ -184,22 +192,30 @@ def excluir(tabela_id: int, db: Session = Depends(get_db)):
 
 # ── Itens da Tabela de Grade ────────────────────────────────────────────
 
+
 @router.get(
-    "/{tabela_id}/itens/", response_model=dict,
+    "/{tabela_id}/itens/",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_VER, "ver"))],
 )
 def listar_itens(tabela_id: int, db: Session = Depends(get_db)):
     _get_tabela_ou_404(db, tabela_id)
-    itens = db.execute(
-        select(ItemTabelaGrade)
-        .where(ItemTabelaGrade.tabela_id == tabela_id)
-        .order_by(ItemTabelaGrade.ordem, ItemTabelaGrade.descricao)
-    ).scalars().all()
+    itens = (
+        db.execute(
+            select(ItemTabelaGrade)
+            .where(ItemTabelaGrade.tabela_id == tabela_id)
+            .order_by(ItemTabelaGrade.ordem, ItemTabelaGrade.descricao)
+        )
+        .scalars()
+        .all()
+    )
     return {"data": [ItemResponse.model_validate(i) for i in itens], "error": None}
 
 
 @router.post(
-    "/{tabela_id}/itens/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/{tabela_id}/itens/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def criar_item(tabela_id: int, payload: ItemCreate, db: Session = Depends(get_db)):
@@ -217,7 +233,8 @@ def criar_item(tabela_id: int, payload: ItemCreate, db: Session = Depends(get_db
 
 
 @router.put(
-    "/{tabela_id}/itens/{item_id}", response_model=dict,
+    "/{tabela_id}/itens/{item_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def atualizar_item(tabela_id: int, item_id: int, payload: ItemUpdate, db: Session = Depends(get_db)):
@@ -237,7 +254,8 @@ def atualizar_item(tabela_id: int, item_id: int, payload: ItemUpdate, db: Sessio
 
 
 @router.delete(
-    "/{tabela_id}/itens/{item_id}", response_model=dict,
+    "/{tabela_id}/itens/{item_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def excluir_item(tabela_id: int, item_id: int, db: Session = Depends(get_db)):

@@ -77,9 +77,9 @@ function formDoCliente(c) {
     tipo_pessoa: c.tipo_pessoa || "juridica",
     razao_social: c.razao_social || "",
     nome_fantasia: c.nome_fantasia || "",
-    cnpj:  formatCnpj(c.cnpj || ""),
-    cpf:   c.cpf  || "",
-    ie:    c.ie   || "",
+    cnpj: formatCnpj(c.cnpj || ""),
+    cpf: c.cpf || "",
+    ie: c.ie || "",
     inscricao_municipal: c.inscricao_municipal || "",
     rg: c.rg || "",
     id_estrangeiro: c.id_estrangeiro || "",
@@ -91,14 +91,14 @@ function formDoCliente(c) {
     celular: c.celular || "",
     whatsapp: c.whatsapp || "",
     fax: c.fax || "",
-    contato:  c.contato  || "",
+    contato: c.contato || "",
     endereco: c.endereco || "",
-    numero:   c.numero   || "",
+    numero: c.numero || "",
     complemento: c.complemento || "",
-    bairro:   c.bairro   || "",
-    cidade:   c.cidade   || "",
-    estado:   c.estado   || "",
-    cep:      formatCep(c.cep || ""),
+    bairro: c.bairro || "",
+    cidade: c.cidade || "",
+    estado: c.estado || "",
+    cep: formatCep(c.cep || ""),
     pais: c.pais || "Brasil",
     codigo_ibge_municipio: c.codigo_ibge_municipio || "",
     caixa_postal: c.caixa_postal || "",
@@ -124,16 +124,21 @@ function formDoCliente(c) {
  *   onClose          — fechar sem salvar
  *   onSaved(cliente) — cliente salvo (resposta da API); o pai fecha o modal
  */
-export default function ClienteFormModal({ clienteId = null, valoresIniciais = null, onClose, onSaved }) {
-  const [modal, setModal]             = useState(null);
-  const [aba, setAba]                 = useState("dados");
-  const [abaErro, setAbaErro]         = useState(null);
-  const [saving, setSaving]           = useState(false);
-  const [erro, setErro]               = useState(null);
-  const [cnpjStatus, setCnpjStatus]   = useState(null);
+export default function ClienteFormModal({
+  clienteId = null,
+  valoresIniciais = null,
+  onClose,
+  onSaved,
+}) {
+  const [modal, setModal] = useState(null);
+  const [aba, setAba] = useState("dados");
+  const [abaErro, setAbaErro] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [cnpjStatus, setCnpjStatus] = useState(null);
   const [clienteExistente, setClienteExistente] = useState(null);
-  const [cepStatus, setCepStatus]     = useState(null);
-  const [erroCarga, setErroCarga]     = useState(null);
+  const [cepStatus, setCepStatus] = useState(null);
+  const [erroCarga, setErroCarga] = useState(null);
 
   const resetModal = (base = VAZIO) => {
     setModal(base);
@@ -153,12 +158,19 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
       resetModal({ ...VAZIO, ...ini });
       return undefined;
     }
-    setModal(null); setErroCarga(null);
+    setModal(null);
+    setErroCarga(null);
     getCliente(clienteId)
-      .then((c) => { if (ativo) resetModal(formDoCliente(c)); })
-      .catch((e) => { if (ativo) setErroCarga(e.message || "Não foi possível carregar o cadastro."); });
-    return () => { ativo = false; };
-  }, [clienteId]); // eslint-disable-line react-hooks/exhaustive-deps
+      .then((c) => {
+        if (ativo) resetModal(formDoCliente(c));
+      })
+      .catch((e) => {
+        if (ativo) setErroCarga(e.message || "Não foi possível carregar o cadastro.");
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [clienteId]);
 
   const fecharModal = () => onClose?.();
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
@@ -172,35 +184,36 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
       setAba("dados");
       return;
     }
-    setSaving(true); setErro(null);
+    setSaving(true);
+    setErro(null);
     try {
       const payload = {
         tipo_registro: modal.tipo_registro,
         tipo_pessoa: modal.tipo_pessoa || null,
         razao_social: modal.razao_social.trim(),
         nome_fantasia: modal.nome_fantasia.trim() || null,
-        cnpj:  stripDigits(modal.cnpj) || null,
-        cpf:   stripDigits(modal.cpf)  || null,
-        ie:    modal.ie.trim()         || null,
+        cnpj: stripDigits(modal.cnpj) || null,
+        cpf: stripDigits(modal.cpf) || null,
+        ie: modal.ie.trim() || null,
         inscricao_municipal: modal.inscricao_municipal.trim() || null,
         rg: modal.rg.trim() || null,
         id_estrangeiro: modal.id_estrangeiro.trim() || null,
         tipo_fiscal: modal.tipo_fiscal || null,
-        email: modal.email.trim()      || null,
+        email: modal.email.trim() || null,
         email_nfe: modal.email_nfe.trim() || null,
         telefone: modal.telefone.trim() || null,
         telefone2: modal.telefone2.trim() || null,
         celular: modal.celular.trim() || null,
         whatsapp: modal.whatsapp.trim() || null,
         fax: modal.fax.trim() || null,
-        contato:  modal.contato.trim()  || null,
+        contato: modal.contato.trim() || null,
         endereco: modal.endereco.trim() || null,
-        numero:   modal.numero.trim()   || null,
+        numero: modal.numero.trim() || null,
         complemento: modal.complemento.trim() || null,
-        bairro:   modal.bairro.trim()   || null,
-        cidade:   modal.cidade.trim()   || null,
-        estado:   modal.estado.trim().toUpperCase() || null,
-        cep:      stripDigits(modal.cep) || null,
+        bairro: modal.bairro.trim() || null,
+        cidade: modal.cidade.trim() || null,
+        estado: modal.estado.trim().toUpperCase() || null,
+        cep: stripDigits(modal.cep) || null,
         pais: modal.pais.trim() || null,
         codigo_ibge_municipio: modal.codigo_ibge_municipio || null,
         caixa_postal: modal.caixa_postal.trim() || null,
@@ -227,7 +240,10 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
   const consultarCnpj = async (forcarBrasilApi = false) => {
     const digits = stripDigits(modal.cnpj);
-    if (digits.length !== 14) { setCnpjStatus("invalido"); return; }
+    if (digits.length !== 14) {
+      setCnpjStatus("invalido");
+      return;
+    }
 
     setCnpjStatus("consultando");
     setClienteExistente(null);
@@ -243,12 +259,18 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
       }
 
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
-      if (res.status === 404) { setCnpjStatus("nao_encontrado"); return; }
-      if (!res.ok)            { setCnpjStatus("erro");           return; }
+      if (res.status === 404) {
+        setCnpjStatus("nao_encontrado");
+        return;
+      }
+      if (!res.ok) {
+        setCnpjStatus("erro");
+        return;
+      }
 
       const d = await res.json();
       const tel = (d.ddd_telefone_1 || "").trim();
-      const logradouro  = d.logradouro  || "";
+      const logradouro = d.logradouro || "";
       const complemento = d.complemento || "";
       const cepRaw = (d.cep || "").replace(/\D/g, "");
       const cep = cepRaw.length === 8 ? `${cepRaw.slice(0, 5)}-${cepRaw.slice(5)}` : cepRaw;
@@ -257,15 +279,15 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
         ...m,
         razao_social: d.razao_social || m.razao_social,
         nome_fantasia: d.nome_fantasia || m.nome_fantasia,
-        email:    d.email    || m.email,
-        telefone: tel        || m.telefone,
+        email: d.email || m.email,
+        telefone: tel || m.telefone,
         cep,
-        endereco: logradouro  || m.endereco,
+        endereco: logradouro || m.endereco,
         complemento: complemento || m.complemento,
-        numero:   d.numero   || m.numero,
-        bairro:   d.bairro   || m.bairro,
-        cidade:   d.municipio || m.cidade,
-        estado:   d.uf        || m.estado,
+        numero: d.numero || m.numero,
+        bairro: d.bairro || m.bairro,
+        cidade: d.municipio || m.cidade,
+        estado: d.uf || m.estado,
       }));
       setCnpjStatus("preenchido");
     } catch {
@@ -275,19 +297,25 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
   const consultarCep = async () => {
     const digits = stripDigits(modal.cep);
-    if (digits.length !== 8) { setCepStatus("invalido"); return; }
+    if (digits.length !== 8) {
+      setCepStatus("invalido");
+      return;
+    }
 
     setCepStatus("consultando");
     try {
       const r = await buscarEnderecoPorCep(digits);
-      if (!r.logradouro && !r.bairro && !r.cidade) { setCepStatus("nao_encontrado"); return; }
+      if (!r.logradouro && !r.bairro && !r.cidade) {
+        setCepStatus("nao_encontrado");
+        return;
+      }
 
       setModal((m) => ({
         ...m,
         endereco: r.logradouro || m.endereco,
-        bairro:   r.bairro     || m.bairro,
-        cidade:   r.cidade     || m.cidade,
-        estado:   r.uf         || m.estado,
+        bairro: r.bairro || m.bairro,
+        cidade: r.cidade || m.cidade,
+        estado: r.uf || m.estado,
         complemento: r.complemento || m.complemento,
         codigo_ibge_municipio: r.codigo_ibge || m.codigo_ibge_municipio,
       }));
@@ -312,7 +340,9 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.modalHead}>
             <h2 className={styles.modalTitle}>Editar Cadastro</h2>
-            <button className={styles.btnClose} onClick={fecharModal}>×</button>
+            <button className={styles.btnClose} onClick={fecharModal}>
+              ×
+            </button>
           </div>
           <div className={styles.modalBody}>
             <p className={styles.empty} title={erroCarga || ""}>
@@ -321,7 +351,7 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
           </div>
         </div>
       </div>,
-      document.body,
+      document.body
     );
   }
 
@@ -330,7 +360,9 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>{modal.id ? "Editar Cadastro" : "Novo Cadastro"}</h2>
-          <button className={styles.btnClose} onClick={fecharModal}>×</button>
+          <button className={styles.btnClose} onClick={fecharModal}>
+            ×
+          </button>
         </div>
 
         <div className={styles.tabs}>
@@ -351,7 +383,11 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
             <div className={styles.fieldGrid}>
               <label className={styles.field}>
                 <span>Tipo Registro</span>
-                <select className={styles.input} value={modal.tipo_registro} onChange={setF("tipo_registro")}>
+                <select
+                  className={styles.input}
+                  value={modal.tipo_registro}
+                  onChange={setF("tipo_registro")}
+                >
                   <option value="cliente">Cliente</option>
                   <option value="fornecedor">Fornecedor</option>
                   <option value="ambos">Ambos</option>
@@ -360,7 +396,11 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Tipo Pessoa</span>
-                <select className={styles.input} value={modal.tipo_pessoa} onChange={setF("tipo_pessoa")}>
+                <select
+                  className={styles.input}
+                  value={modal.tipo_pessoa}
+                  onChange={setF("tipo_pessoa")}
+                >
                   <option value="juridica">Jurídica</option>
                   <option value="fisica">Física</option>
                 </select>
@@ -368,7 +408,11 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Código</span>
-                <input className={styles.input} value={modal.codigo || "Gerado automaticamente"} readOnly />
+                <input
+                  className={styles.input}
+                  value={modal.codigo || "Gerado automaticamente"}
+                  readOnly
+                />
               </label>
 
               <label className={styles.field}>
@@ -381,31 +425,53 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Grupo</span>
-                <input className={styles.input} value={modal.grupo} onChange={setF("grupo")} placeholder="Opcional" />
+                <input
+                  className={styles.input}
+                  value={modal.grupo}
+                  onChange={setF("grupo")}
+                  placeholder="Opcional"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Data Cadastro</span>
                 <input
                   className={styles.input}
-                  value={modal.data_cadastro ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR") : "Hoje"}
+                  value={
+                    modal.data_cadastro
+                      ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR")
+                      : "Hoje"
+                  }
                   readOnly
                 />
               </label>
 
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Razão Social *</span>
-                <input className={styles.input} value={modal.razao_social} onChange={setFUpper("razao_social")} placeholder="Nome ou razão social" />
+                <input
+                  className={styles.input}
+                  value={modal.razao_social}
+                  onChange={setFUpper("razao_social")}
+                  placeholder="Nome ou razão social"
+                />
               </label>
 
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Nome Fantasia</span>
-                <input className={styles.input} value={modal.nome_fantasia} onChange={setFUpper("nome_fantasia")} />
+                <input
+                  className={styles.input}
+                  value={modal.nome_fantasia}
+                  onChange={setFUpper("nome_fantasia")}
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Tipo Fiscal</span>
-                <select className={styles.input} value={modal.tipo_fiscal} onChange={setF("tipo_fiscal")}>
+                <select
+                  className={styles.input}
+                  value={modal.tipo_fiscal}
+                  onChange={setF("tipo_fiscal")}
+                >
                   <option value="consumidor_final">Consumidor Final</option>
                   <option value="contribuinte">Contribuinte</option>
                   <option value="nao_contribuinte">Não Contribuinte</option>
@@ -471,7 +537,10 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
                     <button className={styles.btnBannerPrimary} onClick={carregarExistente}>
                       Carregar dados cadastrados
                     </button>
-                    <button className={styles.btnBannerSecondary} onClick={() => consultarCnpj(true)}>
+                    <button
+                      className={styles.btnBannerSecondary}
+                      onClick={() => consultarCnpj(true)}
+                    >
                       Continuar consultando
                     </button>
                   </div>
@@ -480,7 +549,12 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>CPF</span>
-                <input className={styles.input} value={modal.cpf} onChange={setF("cpf")} placeholder="000.000.000-00" />
+                <input
+                  className={styles.input}
+                  value={modal.cpf}
+                  onChange={setF("cpf")}
+                  placeholder="000.000.000-00"
+                />
               </label>
 
               <label className={styles.field}>
@@ -490,7 +564,11 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Inscrição Municipal</span>
-                <input className={styles.input} value={modal.inscricao_municipal} onChange={setFUpper("inscricao_municipal")} />
+                <input
+                  className={styles.input}
+                  value={modal.inscricao_municipal}
+                  onChange={setFUpper("inscricao_municipal")}
+                />
               </label>
 
               <label className={styles.field}>
@@ -500,7 +578,11 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>ID Estrangeiro</span>
-                <input className={styles.input} value={modal.id_estrangeiro} onChange={setF("id_estrangeiro")} />
+                <input
+                  className={styles.input}
+                  value={modal.id_estrangeiro}
+                  onChange={setF("id_estrangeiro")}
+                />
               </label>
             </div>
           )}
@@ -513,11 +595,18 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
                   <input
                     className={styles.input}
                     value={modal.cep}
-                    onChange={(e) => { setModal((m) => ({ ...m, cep: formatCep(e.target.value) })); setCepStatus(null); }}
+                    onChange={(e) => {
+                      setModal((m) => ({ ...m, cep: formatCep(e.target.value) }));
+                      setCepStatus(null);
+                    }}
                     placeholder="00000-000"
                     maxLength={9}
                   />
-                  <button className={styles.btnConsultar} onClick={consultarCep} disabled={cepStatus === "consultando"}>
+                  <button
+                    className={styles.btnConsultar}
+                    onClick={consultarCep}
+                    disabled={cepStatus === "consultando"}
+                  >
                     {cepStatus === "consultando" ? "Consultando…" : "Buscar CEP"}
                   </button>
                 </div>
@@ -525,7 +614,13 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Estado (UF)</span>
-                <input className={styles.input} value={modal.estado} onChange={setF("estado")} placeholder="SP" maxLength={2} />
+                <input
+                  className={styles.input}
+                  value={modal.estado}
+                  onChange={setF("estado")}
+                  placeholder="SP"
+                  maxLength={2}
+                />
               </label>
 
               {cepStatus === "invalido" && (
@@ -552,24 +647,48 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
               <div className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Endereço / Número</span>
                 <div className={styles.endRow}>
-                  <input className={styles.input} value={modal.endereco} onChange={setFUpper("endereco")} placeholder="Rua, Av…" />
-                  <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setFUpper("numero")} placeholder="Nº" />
+                  <input
+                    className={styles.input}
+                    value={modal.endereco}
+                    onChange={setFUpper("endereco")}
+                    placeholder="Rua, Av…"
+                  />
+                  <input
+                    className={`${styles.input} ${styles.inputNumero}`}
+                    value={modal.numero}
+                    onChange={setFUpper("numero")}
+                    placeholder="Nº"
+                  />
                 </div>
               </div>
 
               <label className={styles.field}>
                 <span>Complemento</span>
-                <input className={styles.input} value={modal.complemento} onChange={setFUpper("complemento")} />
+                <input
+                  className={styles.input}
+                  value={modal.complemento}
+                  onChange={setFUpper("complemento")}
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Bairro</span>
-                <input className={styles.input} value={modal.bairro} onChange={setFUpper("bairro")} placeholder="Bairro" />
+                <input
+                  className={styles.input}
+                  value={modal.bairro}
+                  onChange={setFUpper("bairro")}
+                  placeholder="Bairro"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Município</span>
-                <input className={styles.input} value={modal.cidade} onChange={setFUpper("cidade")} placeholder="Cidade" />
+                <input
+                  className={styles.input}
+                  value={modal.cidade}
+                  onChange={setFUpper("cidade")}
+                  placeholder="Cidade"
+                />
               </label>
 
               <label className={styles.field}>
@@ -583,22 +702,40 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
             <div className={styles.fieldGrid}>
               <label className={styles.field}>
                 <span>Telefone 1</span>
-                <input className={styles.input} value={modal.telefone} onChange={setF("telefone")} placeholder="(00) 0000-0000" />
+                <input
+                  className={styles.input}
+                  value={modal.telefone}
+                  onChange={setF("telefone")}
+                  placeholder="(00) 0000-0000"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Telefone 2</span>
-                <input className={styles.input} value={modal.telefone2} onChange={setF("telefone2")} />
+                <input
+                  className={styles.input}
+                  value={modal.telefone2}
+                  onChange={setF("telefone2")}
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Celular</span>
-                <input className={styles.input} value={modal.celular} onChange={setF("celular")} placeholder="(00) 00000-0000" />
+                <input
+                  className={styles.input}
+                  value={modal.celular}
+                  onChange={setF("celular")}
+                  placeholder="(00) 00000-0000"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>WhatsApp</span>
-                <input className={styles.input} value={modal.whatsapp} onChange={setF("whatsapp")} />
+                <input
+                  className={styles.input}
+                  value={modal.whatsapp}
+                  onChange={setF("whatsapp")}
+                />
               </label>
 
               <label className={styles.field}>
@@ -608,47 +745,93 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
 
               <label className={styles.field}>
                 <span>Contato</span>
-                <input className={styles.input} value={modal.contato} onChange={setFUpper("contato")} placeholder="Nome do contato" />
+                <input
+                  className={styles.input}
+                  value={modal.contato}
+                  onChange={setFUpper("contato")}
+                  placeholder="Nome do contato"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>E-mail</span>
-                <input type="email" className={styles.input} value={modal.email} onChange={setF("email")} placeholder="email@empresa.com" />
+                <input
+                  type="email"
+                  className={styles.input}
+                  value={modal.email}
+                  onChange={setF("email")}
+                  placeholder="email@empresa.com"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>E-mail NF-e</span>
-                <input type="email" className={styles.input} value={modal.email_nfe} onChange={setF("email_nfe")} />
+                <input
+                  type="email"
+                  className={styles.input}
+                  value={modal.email_nfe}
+                  onChange={setF("email_nfe")}
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Home-Page</span>
-                <input className={`${styles.input} no-uppercase`} value={modal.homepage} onChange={setF("homepage")} placeholder="https://…" />
+                <input
+                  className={`${styles.input} no-uppercase`}
+                  value={modal.homepage}
+                  onChange={setF("homepage")}
+                  placeholder="https://…"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Instagram</span>
-                <input className={styles.input} value={modal.instagram} onChange={setF("instagram")} placeholder="@usuario" />
+                <input
+                  className={styles.input}
+                  value={modal.instagram}
+                  onChange={setF("instagram")}
+                  placeholder="@usuario"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Atividade</span>
-                <input className={styles.input} value={modal.atividade} onChange={setF("atividade")} placeholder="Ramo de atividade" />
+                <input
+                  className={styles.input}
+                  value={modal.atividade}
+                  onChange={setF("atividade")}
+                  placeholder="Ramo de atividade"
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Caixa Postal</span>
-                <input className={styles.input} value={modal.caixa_postal} onChange={setF("caixa_postal")} />
+                <input
+                  className={styles.input}
+                  value={modal.caixa_postal}
+                  onChange={setF("caixa_postal")}
+                />
               </label>
 
               <label className={styles.field}>
                 <span>Nascimento</span>
-                <input type="date" className={styles.input} value={modal.nascimento || ""} onChange={setF("nascimento")} />
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={modal.nascimento || ""}
+                  onChange={setF("nascimento")}
+                />
               </label>
 
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Observações</span>
-                <textarea className={`${styles.input} ${styles.textarea}`} value={modal.observacoes} onChange={setFUpper("observacoes")} rows={2} placeholder="Observações opcionais" />
+                <textarea
+                  className={`${styles.input} ${styles.textarea}`}
+                  value={modal.observacoes}
+                  onChange={setFUpper("observacoes")}
+                  rows={2}
+                  placeholder="Observações opcionais"
+                />
               </label>
             </div>
           )}
@@ -657,13 +840,15 @@ export default function ClienteFormModal({ clienteId = null, valoresIniciais = n
         </div>
 
         <div className={styles.modalActions}>
-          <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
+          <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
+            Cancelar
+          </button>
           <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
             {saving ? "Salvando…" : "Salvar"}
           </button>
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }

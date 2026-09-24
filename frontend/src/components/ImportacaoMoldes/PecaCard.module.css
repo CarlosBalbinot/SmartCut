@@ -5,11 +5,13 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .preview {
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   border-radius: var(--sc-radius-sm);
   display: flex;
   align-items: center;
@@ -37,7 +39,7 @@
   padding: 2px 7px;
   border-radius: 6px;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   letter-spacing: 0.04em;
 }
 
@@ -71,7 +73,7 @@
   border: none;
   border-radius: var(--sc-radius-sm);
   font-size: 13px;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   color: var(--sc-text-primary);
   outline: none;
   font-family: inherit;
@@ -79,7 +81,7 @@
 }
 
 .input:focus {
-  box-shadow: 0 0 0 3px rgba(37,150,190,0.25);
+  box-shadow: 0 0 0 3px rgba(37, 150, 190, 0.25);
 }
 
 /* ── Dica de label ── */
@@ -106,35 +108,39 @@
   padding: 5px 4px;
   font-size: 11px;
   font-weight: 600;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   border: none;
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
   color: var(--sc-text-secondary);
   white-space: nowrap;
   text-align: center;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
 }
 
 .btnRotacao:hover {
-  background-color: #E5E5EA;
+  background-color: #e5e5ea;
   color: var(--sc-text-primary);
 }
 
 .btnReset {
   padding: 5px 8px;
   font-size: 13px;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   border: none;
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
   color: var(--sc-text-muted);
   flex-shrink: 0;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
 }
 
 .btnReset:hover {
-  background-color: #E5E5EA;
+  background-color: #e5e5ea;
   color: var(--sc-text-primary);
 }
 
@@ -154,26 +160,31 @@
   flex: 1;
   padding: 5px 4px;
   font-size: 1rem;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   border: none;
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
   color: var(--sc-text-muted);
   line-height: 1;
 }
 
 .btnSentido:hover {
-  background-color: #E5E5EA;
+  background-color: #e5e5ea;
   color: var(--sc-text-primary);
 }
 
 .btnSentidoAtivo {
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
-.btnSentidoAtivo:hover { background-color: var(--color-primary-hover); color: #FFFFFF; }
+.btnSentidoAtivo:hover {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+}
 
 /* ── Botões de tipo de corte ── */
 .btnGroupCorte {
@@ -186,24 +197,29 @@
   padding: 5px 4px;
   font-size: 11px;
   font-weight: 500;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   border: none;
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
   color: var(--sc-text-muted);
   white-space: nowrap;
   text-align: center;
 }
 
 .btnCorte:hover {
-  background-color: #E5E5EA;
+  background-color: #e5e5ea;
   color: var(--sc-text-primary);
 }
 
 .btnCorteAtivo {
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
-.btnCorteAtivo:hover { background-color: var(--color-primary-hover); color: #FFFFFF; }
+.btnCorteAtivo:hover {
+  background-color: var(--color-primary-hover);
+  color: #ffffff;
+}

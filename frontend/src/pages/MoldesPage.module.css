@@ -84,7 +84,9 @@
   box-sizing: border-box;
 }
 
-.input::placeholder { color: var(--sc-text-muted); }
+.input::placeholder {
+  color: var(--sc-text-muted);
+}
 
 .input:focus,
 .select:focus {
@@ -99,14 +101,16 @@
 
 /* ── Upload de arquivo (migrado de Page.module.css) ── */
 .fileDrop {
-  border: 2px dashed rgba(0,0,0,0.15);
+  border: 2px dashed rgba(0, 0, 0, 0.15);
   border-radius: var(--sc-radius-sm);
   padding: 20px 16px;
   text-align: center;
   color: var(--sc-text-muted);
   cursor: pointer;
   font-size: 14px;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
 }
 
 .fileDrop:hover {
@@ -127,7 +131,7 @@
   justify-content: flex-end;
   margin-top: 4px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .btnSecondary {
@@ -149,13 +153,15 @@
 .btnPrimary {
   padding: 9px 18px;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: 980px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.1s;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
 .btnPrimary:hover:not(:disabled) {
@@ -212,7 +218,9 @@
   overflow-y: auto;
   background: var(--sc-surface);
   border-radius: var(--sc-radius-sm);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .autocompleteInfo {

@@ -61,7 +61,10 @@ const VAZIO_PRODUTO = {
 const VAZIO_GRUPO = { nome: "", prefixo: "", situacao: "ativo" };
 
 const num = (v) => (v === "" || v === null || v === undefined ? undefined : Number(v));
-const txtOuNull = (v) => { const t = (v || "").trim(); return t || null; };
+const txtOuNull = (v) => {
+  const t = (v || "").trim();
+  return t || null;
+};
 
 function produtoParaForm(p) {
   return {
@@ -139,7 +142,8 @@ function formParaPayload(f) {
     linha_grade_id: f.linha_grade_id ? Number(f.linha_grade_id) : null,
     coluna_grade_id: f.coluna_grade_id ? Number(f.coluna_grade_id) : null,
     status: f.status,
-    tamanhos_disponiveis: f.tamanhos_disponiveis && f.tamanhos_disponiveis.length > 0 ? f.tamanhos_disponiveis : null,
+    tamanhos_disponiveis:
+      f.tamanhos_disponiveis && f.tamanhos_disponiveis.length > 0 ? f.tamanhos_disponiveis : null,
     ncm: txtOuNull(f.ncm),
     cest: txtOuNull(f.cest),
     origem: parseInt(f.origem, 10) || 0,
@@ -165,8 +169,7 @@ function formParaPayload(f) {
   };
 }
 
-const money = (v) =>
-  Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const money = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function ProdutosPage() {
   const { hasPermission } = useAuth();
@@ -214,8 +217,12 @@ export default function ProdutosPage() {
     }
   }, [filtroStatus, filtroGrupo]);
 
-  useEffect(() => { carregarListas(); }, [carregarListas]);
-  useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
+  useEffect(() => {
+    carregarListas();
+  }, [carregarListas]);
+  useEffect(() => {
+    carregarProdutos();
+  }, [carregarProdutos]);
 
   const gruposAtivos = useMemo(() => grupos.filter((g) => g.situacao === "ativo"), [grupos]);
   const tabelasGradeAtivas = useMemo(
@@ -225,7 +232,9 @@ export default function ProdutosPage() {
 
   const gruposPorId = useMemo(() => {
     const map = {};
-    grupos.forEach((g) => { map[g.id] = g; });
+    grupos.forEach((g) => {
+      map[g.id] = g;
+    });
     return map;
   }, [grupos]);
 
@@ -233,7 +242,8 @@ export default function ProdutosPage() {
     if (!busca.trim()) return produtos;
     const termo = busca.trim().toLowerCase();
     return produtos.filter(
-      (p) => p.codigo.toLowerCase().includes(termo) ||
+      (p) =>
+        p.codigo.toLowerCase().includes(termo) ||
         (p.descricao_completa || p.descricao).toLowerCase().includes(termo)
     );
   }, [produtos, busca]);
@@ -250,7 +260,12 @@ export default function ProdutosPage() {
     // produto completo antes de abrir o modal com todos os campos.
     try {
       const full = await produtosApi.obter(p.id);
-      setModal({ id: full.id, codigo: full.codigo, data_cadastro: full.data_cadastro, ...produtoParaForm(full) });
+      setModal({
+        id: full.id,
+        codigo: full.codigo,
+        data_cadastro: full.data_cadastro,
+        ...produtoParaForm(full),
+      });
       setAba("dados");
       setAbaErro(null);
       setErro(null);
@@ -259,7 +274,10 @@ export default function ProdutosPage() {
     }
   };
 
-  const fecharModal = () => { setModal(null); setErro(null); };
+  const fecharModal = () => {
+    setModal(null);
+    setErro(null);
+  };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
   const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
 
@@ -273,11 +291,27 @@ export default function ProdutosPage() {
 
   const handleSalvar = async () => {
     setAbaErro(null);
-    if (!modal.grupo_id) { setErro("Selecione um grupo."); setAbaErro("dados"); setAba("dados"); return; }
-    if (!modal.descricao.trim()) { setErro("Descrição é obrigatória."); setAbaErro("dados"); setAba("dados"); return; }
-    if (!modal.unidade.trim()) { setErro("Unidade é obrigatória."); setAbaErro("dados"); setAba("dados"); return; }
+    if (!modal.grupo_id) {
+      setErro("Selecione um grupo.");
+      setAbaErro("dados");
+      setAba("dados");
+      return;
+    }
+    if (!modal.descricao.trim()) {
+      setErro("Descrição é obrigatória.");
+      setAbaErro("dados");
+      setAba("dados");
+      return;
+    }
+    if (!modal.unidade.trim()) {
+      setErro("Unidade é obrigatória.");
+      setAbaErro("dados");
+      setAba("dados");
+      return;
+    }
 
-    setSaving(true); setErro(null);
+    setSaving(true);
+    setErro(null);
     try {
       const payload = formParaPayload(modal);
       if (modal.id) {
@@ -306,12 +340,18 @@ export default function ProdutosPage() {
       return;
     }
     if (!window.confirm("Deseja excluir este produto?")) return;
-    try { await produtosApi.deletar(p.id); await carregarProdutos(); } catch (e) { alert(e.message); }
+    try {
+      await produtosApi.deletar(p.id);
+      await carregarProdutos();
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const abrirEditarSku = (p) => {
     setModalSku({
-      produtoPaiId: p.produto_pai_id, skuId: p.sku_id,
+      produtoPaiId: p.produto_pai_id,
+      skuId: p.sku_id,
       codigo: p.codigo,
       preco_venda: String(p.preco_venda ?? ""),
       status: p.status,
@@ -319,11 +359,18 @@ export default function ProdutosPage() {
     setErroSku(null);
   };
 
-  const fecharModalSku = () => { setModalSku(null); setErroSku(null); };
+  const fecharModalSku = () => {
+    setModalSku(null);
+    setErroSku(null);
+  };
 
   const handleSalvarSku = async () => {
-    if (!modalSku.codigo.trim()) { setErroSku("Código é obrigatório."); return; }
-    setSavingSku(true); setErroSku(null);
+    if (!modalSku.codigo.trim()) {
+      setErroSku("Código é obrigatório.");
+      return;
+    }
+    setSavingSku(true);
+    setErroSku(null);
     try {
       await atualizarSku(modalSku.produtoPaiId, modalSku.skuId, {
         codigo: modalSku.codigo.trim(),
@@ -344,7 +391,9 @@ export default function ProdutosPage() {
       <div className="sc-page-header">
         <h1>Produtos</h1>
         {hasPermission(MODULO, "criar") && (
-          <button className={styles.btnNovo} onClick={abrirNovo}>+ Novo Produto</button>
+          <button className={styles.btnNovo} onClick={abrirNovo}>
+            + Novo Produto
+          </button>
         )}
       </div>
 
@@ -357,18 +406,30 @@ export default function ProdutosPage() {
             placeholder="Buscar por código ou descrição…"
           />
         </div>
-        <select className={styles.select} value={filtroGrupo} onChange={(e) => setFiltroGrupo(e.target.value)}>
+        <select
+          className={styles.select}
+          value={filtroGrupo}
+          onChange={(e) => setFiltroGrupo(e.target.value)}
+        >
           <option value="">Todos os grupos</option>
           {grupos.map((g) => (
-            <option key={g.id} value={g.id}>{g.nome}</option>
+            <option key={g.id} value={g.id}>
+              {g.nome}
+            </option>
           ))}
         </select>
-        <select className={styles.select} value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
+        <select
+          className={styles.select}
+          value={filtroStatus}
+          onChange={(e) => setFiltroStatus(e.target.value)}
+        >
           <option value="">Todos os status</option>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
         </select>
-        <button className={styles.btnSecondary} onClick={() => setModalGrupos(true)}>Grupos de Produto</button>
+        <button className={styles.btnSecondary} onClick={() => setModalGrupos(true)}>
+          Grupos de Produto
+        </button>
       </div>
 
       <div className={`sc-card ${styles.tableCard}`}>
@@ -386,37 +447,55 @@ export default function ProdutosPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className={styles.empty}>Carregando…</td></tr>
-            ) : produtosFiltrados.length === 0 ? (
-              <tr><td colSpan={7} className={styles.empty}>Nenhum produto cadastrado.</td></tr>
-            ) : produtosFiltrados.map((p) => (
-              <tr key={p.id}>
-                <td className={styles.tdMono}>{p.codigo}</td>
-                <td>{p.descricao_completa || p.descricao}</td>
-                <td>{gruposPorId[p.grupo_id]?.nome || "—"}</td>
-                <td>{p.unidade}</td>
-                <td className={styles.tdMono}>{money(p.preco_venda)}</td>
-                <td>
-                  <span className={`${styles.badge} ${p.status === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}>
-                    {p.status === "ativo" ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.actions}>
-                    {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => (p.is_sku ? abrirEditarSku(p) : abrirEditar(p))}>
-                        Editar
-                      </button>
-                    )}
-                    {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(p)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Carregando…
                 </td>
               </tr>
-            ))}
+            ) : produtosFiltrados.length === 0 ? (
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Nenhum produto cadastrado.
+                </td>
+              </tr>
+            ) : (
+              produtosFiltrados.map((p) => (
+                <tr key={p.id}>
+                  <td className={styles.tdMono}>{p.codigo}</td>
+                  <td>{p.descricao_completa || p.descricao}</td>
+                  <td>{gruposPorId[p.grupo_id]?.nome || "—"}</td>
+                  <td>{p.unidade}</td>
+                  <td className={styles.tdMono}>{money(p.preco_venda)}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${p.status === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}
+                    >
+                      {p.status === "ativo" ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      {hasPermission(MODULO, "editar") && (
+                        <button
+                          className={styles.btnLink}
+                          onClick={() => (p.is_sku ? abrirEditarSku(p) : abrirEditar(p))}
+                        >
+                          Editar
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={`${styles.btnLink} ${styles.btnDanger}`}
+                          onClick={() => handleExcluir(p)}
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -426,7 +505,9 @@ export default function ProdutosPage() {
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modal.id ? "Editar Produto" : "Novo Produto"}</h2>
-              <button className={styles.btnClose} onClick={fecharModal}>×</button>
+              <button className={styles.btnClose} onClick={fecharModal}>
+                ×
+              </button>
             </div>
 
             <div className={styles.tabs}>
@@ -451,22 +532,36 @@ export default function ProdutosPage() {
                 <div className={styles.fieldGrid}>
                   <label className={styles.field}>
                     <span>Grupo *</span>
-                    <select className={styles.input} value={modal.grupo_id} onChange={setF("grupo_id")}>
+                    <select
+                      className={styles.input}
+                      value={modal.grupo_id}
+                      onChange={setF("grupo_id")}
+                    >
                       <option value="">Selecione…</option>
                       {gruposAtivos.map((g) => (
-                        <option key={g.id} value={g.id}>{g.nome} ({g.prefixo})</option>
+                        <option key={g.id} value={g.id}>
+                          {g.nome} ({g.prefixo})
+                        </option>
                       ))}
                     </select>
                   </label>
 
                   <label className={styles.field}>
                     <span>Código</span>
-                    <input className={styles.input} value={modal.codigo || "Gerado automaticamente"} readOnly />
+                    <input
+                      className={styles.input}
+                      value={modal.codigo || "Gerado automaticamente"}
+                      readOnly
+                    />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição *</span>
-                    <input className={styles.input} value={modal.descricao} onChange={setFUpper("descricao")} />
+                    <input
+                      className={styles.input}
+                      value={modal.descricao}
+                      onChange={setFUpper("descricao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -476,90 +571,177 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Almoxarifado</span>
-                    <input className={styles.input} value={modal.almoxarifado} onChange={setF("almoxarifado")} />
+                    <input
+                      className={styles.input}
+                      value={modal.almoxarifado}
+                      onChange={setF("almoxarifado")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Unidade *</span>
-                    <input className={styles.input} value={modal.unidade} onChange={setF("unidade")} placeholder="PC, UN…" />
+                    <input
+                      className={styles.input}
+                      value={modal.unidade}
+                      onChange={setF("unidade")}
+                      placeholder="PC, UN…"
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Segunda Unidade</span>
-                    <input className={styles.input} value={modal.segunda_unidade} onChange={setF("segunda_unidade")} />
+                    <input
+                      className={styles.input}
+                      value={modal.segunda_unidade}
+                      onChange={setF("segunda_unidade")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Tipo Conversão</span>
-                    <input className={styles.input} value={modal.tipo_conversao} onChange={setF("tipo_conversao")} />
+                    <input
+                      className={styles.input}
+                      value={modal.tipo_conversao}
+                      onChange={setF("tipo_conversao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Fator Conversão</span>
-                    <input type="number" step="0.0001" className={styles.input} value={modal.fator_conversao} onChange={setF("fator_conversao")} />
+                    <input
+                      type="number"
+                      step="0.0001"
+                      className={styles.input}
+                      value={modal.fator_conversao}
+                      onChange={setF("fator_conversao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Classe</span>
-                    <input className={styles.input} value={modal.classe} onChange={setFUpper("classe")} />
+                    <input
+                      className={styles.input}
+                      value={modal.classe}
+                      onChange={setFUpper("classe")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Marca</span>
-                    <input className={styles.input} value={modal.marca} onChange={setFUpper("marca")} />
+                    <input
+                      className={styles.input}
+                      value={modal.marca}
+                      onChange={setFUpper("marca")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Comissão (%)</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.comissao_pct} onChange={setF("comissao_pct")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.comissao_pct}
+                      onChange={setF("comissao_pct")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Custo</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.custo} onChange={setF("custo")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.custo}
+                      onChange={setF("custo")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Margem Lucro (%)</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.margem_lucro_pct} onChange={setF("margem_lucro_pct")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.margem_lucro_pct}
+                      onChange={setF("margem_lucro_pct")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Preço Venda</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.preco_venda} onChange={setF("preco_venda")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.preco_venda}
+                      onChange={setF("preco_venda")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Último Preço Compra</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.ultimo_preco_compra} onChange={setF("ultimo_preco_compra")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.ultimo_preco_compra}
+                      onChange={setF("ultimo_preco_compra")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Tipo Código de Barras</span>
-                    <input className={styles.input} value={modal.tipo_cod_barras} onChange={setF("tipo_cod_barras")} />
+                    <input
+                      className={styles.input}
+                      value={modal.tipo_cod_barras}
+                      onChange={setF("tipo_cod_barras")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Código de Barras</span>
-                    <input className={styles.input} value={modal.cod_barras} onChange={setF("cod_barras")} />
+                    <input
+                      className={styles.input}
+                      value={modal.cod_barras}
+                      onChange={setF("cod_barras")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Peso Gramas</span>
-                    <input type="number" step="0.001" className={styles.input} value={modal.peso_gramas} onChange={setF("peso_gramas")} />
+                    <input
+                      type="number"
+                      step="0.001"
+                      className={styles.input}
+                      value={modal.peso_gramas}
+                      onChange={setF("peso_gramas")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Peso (Kg)</span>
-                    <input type="number" step="0.001" className={styles.input} value={modal.peso_kg} onChange={setF("peso_kg")} />
+                    <input
+                      type="number"
+                      step="0.001"
+                      className={styles.input}
+                      value={modal.peso_kg}
+                      onChange={setF("peso_kg")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Linha Grade</span>
-                    <select className={styles.input} value={modal.linha_grade_id} onChange={setF("linha_grade_id")}>
+                    <select
+                      className={styles.input}
+                      value={modal.linha_grade_id}
+                      onChange={setF("linha_grade_id")}
+                    >
                       <option value="">Nenhuma</option>
                       {tabelasGradeAtivas.map((t) => (
-                        <option key={t.id} value={t.id}>{t.codigo} - {t.descricao}</option>
+                        <option key={t.id} value={t.id}>
+                          {t.codigo} - {t.descricao}
+                        </option>
                       ))}
                     </select>
                     {modal.linha_grade_nome && (
@@ -569,10 +751,16 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Coluna Grade</span>
-                    <select className={styles.input} value={modal.coluna_grade_id} onChange={setF("coluna_grade_id")}>
+                    <select
+                      className={styles.input}
+                      value={modal.coluna_grade_id}
+                      onChange={setF("coluna_grade_id")}
+                    >
                       <option value="">Nenhuma</option>
                       {tabelasGradeAtivas.map((t) => (
-                        <option key={t.id} value={t.id}>{t.codigo} - {t.descricao}</option>
+                        <option key={t.id} value={t.id}>
+                          {t.codigo} - {t.descricao}
+                        </option>
                       ))}
                     </select>
                     {modal.coluna_grade_nome && (
@@ -582,7 +770,11 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Data Cadastro</span>
-                    <input className={styles.input} value={modal.data_cadastro || "Hoje"} readOnly />
+                    <input
+                      className={styles.input}
+                      value={modal.data_cadastro || "Hoje"}
+                      readOnly
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -601,7 +793,9 @@ export default function ProdutosPage() {
                           key={t}
                           type="button"
                           className={`${styles.tamanhoPill} ${
-                            (modal.tamanhos_disponiveis || []).includes(t) ? styles.tamanhoPillAtivo : ""
+                            (modal.tamanhos_disponiveis || []).includes(t)
+                              ? styles.tamanhoPillAtivo
+                              : ""
                           }`}
                           onClick={() => toggleTamanho(t)}
                         >
@@ -617,7 +811,12 @@ export default function ProdutosPage() {
                 <div className={styles.fieldGrid}>
                   <label className={styles.field}>
                     <span>NCM</span>
-                    <input className={styles.input} value={modal.ncm} onChange={setF("ncm")} maxLength={8} />
+                    <input
+                      className={styles.input}
+                      value={modal.ncm}
+                      onChange={setF("ncm")}
+                      maxLength={8}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -629,14 +828,20 @@ export default function ProdutosPage() {
                     <span>Origem</span>
                     <select className={styles.input} value={modal.origem} onChange={setF("origem")}>
                       {Array.from({ length: 9 }, (_, i) => (
-                        <option key={i} value={i}>{i}</option>
+                        <option key={i} value={i}>
+                          {i}
+                        </option>
                       ))}
                     </select>
                   </label>
 
                   <label className={styles.field}>
                     <span>ICMS Incidência</span>
-                    <select className={styles.input} value={modal.icms_incidencia} onChange={setF("icms_incidencia")}>
+                    <select
+                      className={styles.input}
+                      value={modal.icms_incidencia}
+                      onChange={setF("icms_incidencia")}
+                    >
                       <option value="normal">Normal</option>
                       <option value="st">Substituição Tributária</option>
                       <option value="isento">Isento</option>
@@ -646,52 +851,104 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Alíquota IPI (%)</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.aliquota_ipi_pct} onChange={setF("aliquota_ipi_pct")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.aliquota_ipi_pct}
+                      onChange={setF("aliquota_ipi_pct")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Código ISS</span>
-                    <input className={styles.input} value={modal.codigo_iss} onChange={setF("codigo_iss")} />
+                    <input
+                      className={styles.input}
+                      value={modal.codigo_iss}
+                      onChange={setF("codigo_iss")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Cód. Tributário ISS</span>
-                    <input className={styles.input} value={modal.cod_trib_iss} onChange={setF("cod_trib_iss")} />
+                    <input
+                      className={styles.input}
+                      value={modal.cod_trib_iss}
+                      onChange={setF("cod_trib_iss")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Cód. CNAE</span>
-                    <input className={styles.input} value={modal.cod_cnae} onChange={setF("cod_cnae")} />
+                    <input
+                      className={styles.input}
+                      value={modal.cod_cnae}
+                      onChange={setF("cod_cnae")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Base ICMS ST Ret.</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.base_icms_st_ret} onChange={setF("base_icms_st_ret")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.base_icms_st_ret}
+                      onChange={setF("base_icms_st_ret")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Valor ICMS ST Ret.</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.valor_icms_st_ret} onChange={setF("valor_icms_st_ret")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.valor_icms_st_ret}
+                      onChange={setF("valor_icms_st_ret")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Base FCP ST Ret.</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.base_fcp_st_ret} onChange={setF("base_fcp_st_ret")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.base_fcp_st_ret}
+                      onChange={setF("base_fcp_st_ret")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Alíq. FCP ST Ret. (%)</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.aliq_fcp_st_ret_pct} onChange={setF("aliq_fcp_st_ret_pct")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.aliq_fcp_st_ret_pct}
+                      onChange={setF("aliq_fcp_st_ret_pct")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Valor FCP ST Ret.</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.valor_fcp_st_ret} onChange={setF("valor_fcp_st_ret")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.valor_fcp_st_ret}
+                      onChange={setF("valor_fcp_st_ret")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Natureza Receita</span>
-                    <input className={styles.input} value={modal.nat_receita} onChange={setF("nat_receita")} />
+                    <input
+                      className={styles.input}
+                      value={modal.nat_receita}
+                      onChange={setF("nat_receita")}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -710,27 +967,49 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Código ANP</span>
-                    <input className={styles.input} value={modal.codigo_anp} onChange={setF("codigo_anp")} />
+                    <input
+                      className={styles.input}
+                      value={modal.codigo_anp}
+                      onChange={setF("codigo_anp")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Conta Contábil</span>
-                    <input className={styles.input} value={modal.conta_contabil} onChange={setF("conta_contabil")} />
+                    <input
+                      className={styles.input}
+                      value={modal.conta_contabil}
+                      onChange={setF("conta_contabil")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Cód. FCI</span>
-                    <input className={styles.input} value={modal.cod_fci} onChange={setF("cod_fci")} />
+                    <input
+                      className={styles.input}
+                      value={modal.cod_fci}
+                      onChange={setF("cod_fci")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Valor Importação</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.valor_importacao} onChange={setF("valor_importacao")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.valor_importacao}
+                      onChange={setF("valor_importacao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Inventário SPED</span>
-                    <select className={styles.input} value={modal.inventario_sped} onChange={setF("inventario_sped")}>
+                    <select
+                      className={styles.input}
+                      value={modal.inventario_sped}
+                      onChange={setF("inventario_sped")}
+                    >
                       <option value="sim">Sim</option>
                       <option value="nao">Não</option>
                     </select>
@@ -746,7 +1025,11 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>UM Faturamento</span>
-                    <select className={styles.input} value={modal.um_faturamento} onChange={setF("um_faturamento")}>
+                    <select
+                      className={styles.input}
+                      value={modal.um_faturamento}
+                      onChange={setF("um_faturamento")}
+                    >
                       <option value="primeira_um">Primeira UM</option>
                       <option value="segunda_um">Segunda UM</option>
                     </select>
@@ -754,7 +1037,12 @@ export default function ProdutosPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Informações Adicionais</span>
-                    <textarea className={`${styles.input} ${styles.textarea}`} rows={3} value={modal.inf_adicionais} onChange={setF("inf_adicionais")} />
+                    <textarea
+                      className={`${styles.input} ${styles.textarea}`}
+                      rows={3}
+                      value={modal.inf_adicionais}
+                      onChange={setF("inf_adicionais")}
+                    />
                   </label>
                 </div>
               )}
@@ -763,7 +1051,9 @@ export default function ProdutosPage() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
+              <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
+                Cancelar
+              </button>
               <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
                 {saving ? "Salvando…" : "Salvar"}
               </button>
@@ -777,36 +1067,51 @@ export default function ProdutosPage() {
           <div className={`${styles.modal} ${styles.modalSm}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar SKU</h2>
-              <button className={styles.btnClose} onClick={fecharModalSku}>×</button>
+              <button className={styles.btnClose} onClick={fecharModalSku}>
+                ×
+              </button>
             </div>
 
             <div className={styles.modalBody}>
               <div className={styles.fieldGrid}>
                 <label className={styles.field}>
                   <span>Código</span>
-                  <input className={styles.input} value={modalSku.codigo}
-                    onChange={(e) => setModalSku((m) => ({ ...m, codigo: e.target.value }))} />
+                  <input
+                    className={styles.input}
+                    value={modalSku.codigo}
+                    onChange={(e) => setModalSku((m) => ({ ...m, codigo: e.target.value }))}
+                  />
                 </label>
                 <label className={styles.field}>
                   <span>Situação</span>
-                  <select className={styles.input} value={modalSku.status}
-                    onChange={(e) => setModalSku((m) => ({ ...m, status: e.target.value }))}>
+                  <select
+                    className={styles.input}
+                    value={modalSku.status}
+                    onChange={(e) => setModalSku((m) => ({ ...m, status: e.target.value }))}
+                  >
                     <option value="ativo">Ativo</option>
                     <option value="inativo">Inativo</option>
                   </select>
                 </label>
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Preço Venda</span>
-                  <input type="number" step="0.01" className={styles.input} value={modalSku.preco_venda}
+                  <input
+                    type="number"
+                    step="0.01"
+                    className={styles.input}
+                    value={modalSku.preco_venda}
                     placeholder="Herdado do produto pai"
-                    onChange={(e) => setModalSku((m) => ({ ...m, preco_venda: e.target.value }))} />
+                    onChange={(e) => setModalSku((m) => ({ ...m, preco_venda: e.target.value }))}
+                  />
                 </label>
               </div>
               {erroSku && <p className={styles.erro}>{erroSku}</p>}
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={fecharModalSku} disabled={savingSku}>Cancelar</button>
+              <button className={styles.btnSecondary} onClick={fecharModalSku} disabled={savingSku}>
+                Cancelar
+              </button>
               <button className={styles.btnPrimary} onClick={handleSalvarSku} disabled={savingSku}>
                 {savingSku ? "Salvando…" : "Salvar"}
               </button>
@@ -834,14 +1139,30 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
 
   const setF = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const abrirNovo = () => { setForm({ ...VAZIO_GRUPO }); setErro(null); };
-  const abrirEditar = (g) => { setForm({ id: g.id, nome: g.nome, prefixo: g.prefixo, situacao: g.situacao }); setErro(null); };
-  const cancelarForm = () => { setForm(null); setErro(null); };
+  const abrirNovo = () => {
+    setForm({ ...VAZIO_GRUPO });
+    setErro(null);
+  };
+  const abrirEditar = (g) => {
+    setForm({ id: g.id, nome: g.nome, prefixo: g.prefixo, situacao: g.situacao });
+    setErro(null);
+  };
+  const cancelarForm = () => {
+    setForm(null);
+    setErro(null);
+  };
 
   const salvar = async () => {
-    if (!form.nome.trim()) { setErro("Nome é obrigatório."); return; }
-    if (!form.prefixo.trim()) { setErro("Prefixo é obrigatório."); return; }
-    setSaving(true); setErro(null);
+    if (!form.nome.trim()) {
+      setErro("Nome é obrigatório.");
+      return;
+    }
+    if (!form.prefixo.trim()) {
+      setErro("Prefixo é obrigatório.");
+      return;
+    }
+    setSaving(true);
+    setErro(null);
     try {
       const payload = {
         nome: form.nome.trim(),
@@ -877,7 +1198,9 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
       <div className={`${styles.modal} ${styles.modalSm}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>Grupos de Produto</h2>
-          <button className={styles.btnClose} onClick={onFechar}>×</button>
+          <button className={styles.btnClose} onClick={onFechar}>
+            ×
+          </button>
         </div>
 
         <div className={styles.modalBody}>
@@ -887,26 +1210,39 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
               <div className={styles.grupoFormRow}>
                 <label className={styles.field}>
                   <span>Nome</span>
-                  <input className={styles.input} value={form.nome} onChange={setF("nome")} placeholder="Ex: Legging" />
+                  <input
+                    className={styles.input}
+                    value={form.nome}
+                    onChange={setF("nome")}
+                    placeholder="Ex: Legging"
+                  />
                 </label>
                 <label className={styles.field}>
                   <span>Prefixo</span>
                   <input
                     className={styles.input}
                     value={form.prefixo}
-                    onChange={(e) => setForm((f) => ({ ...f, prefixo: e.target.value.toUpperCase().slice(0, 4) }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, prefixo: e.target.value.toUpperCase().slice(0, 4) }))
+                    }
                     placeholder="LEG"
                     maxLength={4}
                   />
                 </label>
                 <label className={styles.field}>
                   <span>Situação</span>
-                  <select className={styles.input} value={form.situacao} onChange={setF("situacao")}>
+                  <select
+                    className={styles.input}
+                    value={form.situacao}
+                    onChange={setF("situacao")}
+                  >
                     <option value="ativo">Ativo</option>
                     <option value="inativo">Inativo</option>
                   </select>
                 </label>
-                <button className={styles.btnSecondary} onClick={cancelarForm} disabled={saving}>Cancelar</button>
+                <button className={styles.btnSecondary} onClick={cancelarForm} disabled={saving}>
+                  Cancelar
+                </button>
                 <button className={styles.btnPrimary} onClick={salvar} disabled={saving}>
                   {saving ? "Salvando…" : "Salvar"}
                 </button>
@@ -915,7 +1251,9 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
             </>
           ) : hasPermission(MODULO, "criar") ? (
             <div className={styles.actions} style={{ marginBottom: "1rem" }}>
-              <button className={styles.btnPrimary} onClick={abrirNovo}>+ Novo Grupo</button>
+              <button className={styles.btnPrimary} onClick={abrirNovo}>
+                + Novo Grupo
+              </button>
             </div>
           ) : null}
 
@@ -931,37 +1269,52 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
             </thead>
             <tbody>
               {grupos.length === 0 ? (
-                <tr><td colSpan={5} className={styles.empty}>Nenhum grupo cadastrado.</td></tr>
-              ) : grupos.map((g) => (
-                <tr key={g.id}>
-                  <td className={styles.tdMono}>{g.codigo}</td>
-                  <td>{g.nome}</td>
-                  <td>{g.prefixo}</td>
-                  <td>
-                    <span className={`${styles.badge} ${g.situacao === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}>
-                      {g.situacao === "ativo" ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td>
-                    <div className={styles.actions}>
-                      {hasPermission(MODULO, "editar") && (
-                        <button className={styles.btnLink} onClick={() => abrirEditar(g)}>Editar</button>
-                      )}
-                      {hasPermission(MODULO, "excluir") && (
-                        <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => excluir(g.id)}>
-                          Excluir
-                        </button>
-                      )}
-                    </div>
+                <tr>
+                  <td colSpan={5} className={styles.empty}>
+                    Nenhum grupo cadastrado.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                grupos.map((g) => (
+                  <tr key={g.id}>
+                    <td className={styles.tdMono}>{g.codigo}</td>
+                    <td>{g.nome}</td>
+                    <td>{g.prefixo}</td>
+                    <td>
+                      <span
+                        className={`${styles.badge} ${g.situacao === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}
+                      >
+                        {g.situacao === "ativo" ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.actions}>
+                        {hasPermission(MODULO, "editar") && (
+                          <button className={styles.btnLink} onClick={() => abrirEditar(g)}>
+                            Editar
+                          </button>
+                        )}
+                        {hasPermission(MODULO, "excluir") && (
+                          <button
+                            className={`${styles.btnLink} ${styles.btnDanger}`}
+                            onClick={() => excluir(g.id)}
+                          >
+                            Excluir
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className={styles.modalActions}>
-          <button className={styles.btnSecondary} onClick={onFechar}>Fechar</button>
+          <button className={styles.btnSecondary} onClick={onFechar}>
+            Fechar
+          </button>
         </div>
       </div>
     </div>

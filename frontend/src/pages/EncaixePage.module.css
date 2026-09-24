@@ -31,7 +31,9 @@
   gap: 16px;
 }
 
-.topBarCenter { flex: 1; }
+.topBarCenter {
+  flex: 1;
+}
 
 .btnVoltar {
   background: none;
@@ -89,7 +91,9 @@
   flex-shrink: 0;
 }
 
-.tab:hover { color: var(--sc-text-primary); }
+.tab:hover {
+  color: var(--sc-text-primary);
+}
 
 .tabAtiva {
   color: var(--color-primary);
@@ -112,13 +116,17 @@
   gap: 12px;
   background-color: var(--sc-surface);
   border-radius: var(--sc-radius-lg);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
   padding: 16px;
   overflow-y: auto;
 }
 
 @media (max-width: 1023px) {
-  .painel { width: 280px; }
+  .painel {
+    width: 280px;
+  }
 }
 
 .painelHeader {
@@ -144,7 +152,7 @@
   display: inline-block;
   padding: 3px 12px;
   border-radius: 6px;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   color: var(--sc-text-secondary);
   font-size: 12px;
   font-weight: 700;
@@ -341,7 +349,7 @@
 
 .pecaTamanho {
   display: inline-block;
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
   color: var(--sc-text-secondary);
   font-size: 11px;
   font-weight: 700;

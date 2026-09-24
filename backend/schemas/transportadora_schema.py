@@ -6,8 +6,15 @@ from pydantic import BaseModel, ConfigDict, field_validator
 # Campos de texto livre convertidos para maiúsculo antes de salvar — segunda
 # garantia além do uppercase já aplicado no onChange do frontend.
 _CAMPOS_UPPER = (
-    "nome", "nome_fantasia", "endereco", "numero", "complemento",
-    "bairro", "municipio", "contato", "placa",
+    "nome",
+    "nome_fantasia",
+    "endereco",
+    "numero",
+    "complemento",
+    "bairro",
+    "municipio",
+    "contato",
+    "placa",
 )
 
 

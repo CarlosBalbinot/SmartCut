@@ -15,7 +15,10 @@ from models.painel_vendedor import MetaVendedor, Usuario
 from models.pedido import PedidoVenda
 from models.venda import TabelaPreco, Vendedor, VendedorTabelaComissao
 from schemas.venda_schema import (
-    PedidoVendaOut, VendedorCreate, VendedorOut, VendedorUpdate,
+    PedidoVendaOut,
+    VendedorCreate,
+    VendedorOut,
+    VendedorUpdate,
 )
 from services.auth_service import hash_senha, validar_politica_senha
 
@@ -25,6 +28,7 @@ _MOD = "cadastros_vendedores"
 
 
 # ── Schemas inline (campos ausentes no venda_schema.py) ──────────────────────
+
 
 class _VendedorCreate(VendedorCreate):
     comissao_padrao_pct: Optional[Decimal] = Field(None, ge=0, le=100)
@@ -44,10 +48,7 @@ class _ComissaoTabelaIn(BaseModel):
 
 
 def _proximo_codigo(db: Session) -> str:
-    codigos = [
-        row[0] for row in
-        db.execute(select(Vendedor.codigo).where(Vendedor.codigo.isnot(None))).all()
-    ]
+    codigos = [row[0] for row in db.execute(select(Vendedor.codigo).where(Vendedor.codigo.isnot(None))).all()]
     max_val = 0
     for codigo in codigos:
         try:
@@ -113,6 +114,7 @@ def deletar(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
 # ── Comissão por tabela de preço (VendedorTabelaComissao) ───────────────────
 # Tem prioridade sobre comissao_padrao_pct — ver venda_service.resolver_comissao.
 
+
 def _get_vendedor(db: Session, vendedor_id: uuid.UUID) -> Vendedor:
     v = db.get(Vendedor, vendedor_id)
     if not v:
@@ -165,18 +167,20 @@ def upsert_comissoes(
 
     existentes = {
         c.tabela_preco_id: c
-        for c in db.execute(
-            select(VendedorTabelaComissao).where(VendedorTabelaComissao.vendedor_id == vendedor_id)
-        ).scalars().all()
+        for c in db.execute(select(VendedorTabelaComissao).where(VendedorTabelaComissao.vendedor_id == vendedor_id))
+        .scalars()
+        .all()
     }
     for linha in payload:
         registro = existentes.get(linha.tabela_preco_id)
         if registro is None:
-            db.add(VendedorTabelaComissao(
-                vendedor_id=vendedor_id,
-                tabela_preco_id=linha.tabela_preco_id,
-                comissao_pct=linha.comissao_pct,
-            ))
+            db.add(
+                VendedorTabelaComissao(
+                    vendedor_id=vendedor_id,
+                    tabela_preco_id=linha.tabela_preco_id,
+                    comissao_pct=linha.comissao_pct,
+                )
+            )
         else:
             registro.comissao_pct = linha.comissao_pct
 
@@ -309,21 +313,31 @@ def dashboard(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
     for _ in range(5):
         seis_meses_atras = (seis_meses_atras - timedelta(days=1)).replace(day=1)
 
-    pedidos_mes = db.execute(
-        select(PedidoVenda).where(
-            PedidoVenda.vendedor_id == vendedor_id,
-            PedidoVenda.data_emissao >= mes_inicio,
-            PedidoVenda.status != "cancelado",
+    pedidos_mes = (
+        db.execute(
+            select(PedidoVenda).where(
+                PedidoVenda.vendedor_id == vendedor_id,
+                PedidoVenda.data_emissao >= mes_inicio,
+                PedidoVenda.status != "cancelado",
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
-    pedidos_6m = db.execute(
-        select(PedidoVenda).where(
-            PedidoVenda.vendedor_id == vendedor_id,
-            PedidoVenda.data_emissao >= seis_meses_atras,
-            PedidoVenda.status != "cancelado",
-        ).order_by(PedidoVenda.data_emissao)
-    ).scalars().all()
+    pedidos_6m = (
+        db.execute(
+            select(PedidoVenda)
+            .where(
+                PedidoVenda.vendedor_id == vendedor_id,
+                PedidoVenda.data_emissao >= seis_meses_atras,
+                PedidoVenda.status != "cancelado",
+            )
+            .order_by(PedidoVenda.data_emissao)
+        )
+        .scalars()
+        .all()
+    )
 
     total_mes = sum(float(p.total_pedido or 0) for p in pedidos_mes)
     num_pedidos_mes = len(pedidos_mes)
@@ -337,8 +351,7 @@ def dashboard(vendedor_id: uuid.UUID, db: Session = Depends(get_db)):
         por_mes[chave]["num_pedidos"] += 1
 
     vendas_ultimos_6_meses = [
-        {"mes": k, "total": v["total"], "num_pedidos": v["num_pedidos"]}
-        for k, v in sorted(por_mes.items())
+        {"mes": k, "total": v["total"], "num_pedidos": v["num_pedidos"]} for k, v in sorted(por_mes.items())
     ]
 
     return {

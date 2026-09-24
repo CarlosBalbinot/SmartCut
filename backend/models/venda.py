@@ -4,8 +4,18 @@ from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Date, DateTime, ForeignKey, Integer, Numeric,
-    String, Text, UniqueConstraint, Uuid, func,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -66,9 +76,7 @@ class TabelaPreco(Base):
 
 class PrecoReferencia(Base):
     __tablename__ = "precos_referencia"
-    __table_args__ = (
-        UniqueConstraint("grupo_id", "tabela_id", name="uq_preco_ref_grupo_tabela"),
-    )
+    __table_args__ = (UniqueConstraint("grupo_id", "tabela_id", name="uq_preco_ref_grupo_tabela"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     grupo_id: Mapped[uuid.UUID] = mapped_column(
@@ -94,6 +102,7 @@ class PrecoTabelaProduto(Base):
     (services/venda_service.resolver_preco_item) o preço do SKU vence o do
     produto pai, que vence o do grupo.
     """
+
     __tablename__ = "precos_tabela_produto"
     __table_args__ = (
         CheckConstraint(
@@ -170,6 +179,7 @@ class Vendedor(Base):
 
 class VendedorTabelaComissao(Base):
     """Comissão (%) de um vendedor numa tabela de preço específica."""
+
     __tablename__ = "vendedor_tabela_comissao"
     __table_args__ = (
         UniqueConstraint("vendedor_id", "tabela_preco_id", name="uq_vendedor_tabela_comissao"),

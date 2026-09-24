@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 
 from fastapi import (
     APIRouter,
-    Cookie,
     Depends,
     Header,
     HTTPException,
@@ -70,15 +69,12 @@ def login(body: LoginInput, request: Request, response: Response, db: Session = 
     if restante:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                "Muitas tentativas de login. Tente novamente em "
-                f"{max(1, int(restante // 60))} minuto(s)."
-            ),
+            detail=(f"Muitas tentativas de login. Tente novamente em {max(1, int(restante // 60))} minuto(s)."),
         )
 
     usuario = (
         db.query(Usuario)
-        .filter(Usuario.username == body.username, Usuario.ativo == True)
+        .filter(Usuario.username == body.username, Usuario.ativo == True)  # noqa: E712 — expressão SQL
         .first()
     )
 
@@ -100,11 +96,10 @@ def login(body: LoginInput, request: Request, response: Response, db: Session = 
         "data": {
             "token": token,
             "vendedor_id": str(usuario.vendedor_id),
-            "nome": vendedor.nome,
             "nome": vendedor.nome if vendedor else usuario.username,
-    },
-    "error": None
-}
+        },
+        "error": None,
+    }
 
 
 @router.post("/logout")
@@ -114,11 +109,7 @@ def logout_vendedor(
     authorization: str = Header(default=""),
 ):
     # Item 1.3/1.4: revoga o jti do token atual e limpa o cookie de sessão.
-    token = (
-        authorization[7:]
-        if authorization.startswith("Bearer ")
-        else request.cookies.get(COOKIE_VENDEDOR, "")
-    )
+    token = authorization[7:] if authorization.startswith("Bearer ") else request.cookies.get(COOKIE_VENDEDOR, "")
     if token:
         try:
             dados = verificar_token(token)
@@ -135,10 +126,10 @@ def logout_vendedor(
 # separados do login do painel do vendedor acima.
 # ═══════════════════════════════════════════════════════════════════════
 
-from models.usuario import Usuario as UsuarioSistema        # noqa: E402
-from middleware.permissions import get_current_user         # noqa: E402
-from schemas.usuario_schema import UsuarioSelfUpdate         # noqa: E402
-from services import usuario_service                        # noqa: E402
+from models.usuario import Usuario as UsuarioSistema  # noqa: E402
+from middleware.permissions import get_current_user  # noqa: E402
+from schemas.usuario_schema import UsuarioSelfUpdate  # noqa: E402
+from services import usuario_service  # noqa: E402
 
 router_admin = APIRouter(prefix="/api/v1/auth", tags=["auth-admin"])
 
@@ -202,15 +193,12 @@ def login_admin(body: LoginAdminInput, request: Request, response: Response, db:
     if restante:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=(
-                "Muitas tentativas de login. Tente novamente em "
-                f"{max(1, int(restante // 60))} minuto(s)."
-            ),
+            detail=(f"Muitas tentativas de login. Tente novamente em {max(1, int(restante // 60))} minuto(s)."),
         )
 
     usuario = (
         db.query(UsuarioSistema)
-        .filter(UsuarioSistema.username == body.username, UsuarioSistema.ativo == True)
+        .filter(UsuarioSistema.username == body.username, UsuarioSistema.ativo == True)  # noqa: E712 — expressão SQL
         .first()
     )
     if not usuario or not usuario_service.verificar_senha(body.senha, usuario.senha_hash):
@@ -235,11 +223,7 @@ def logout_admin(
     authorization: str = Header(default=""),
 ):
     # Item 1.3: revoga o token atual (jti) — a sessão deixa de valer já.
-    token = (
-        authorization[7:]
-        if authorization.startswith("Bearer ")
-        else request.cookies.get(COOKIE_ADMIN, "")
-    )
+    token = authorization[7:] if authorization.startswith("Bearer ") else request.cookies.get(COOKIE_ADMIN, "")
     if token:
         try:
             dados = verificar_token(token)

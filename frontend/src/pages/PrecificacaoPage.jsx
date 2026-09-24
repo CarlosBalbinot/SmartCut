@@ -12,15 +12,13 @@ import Modal from "../components/Modal/Modal";
 import styles from "./PrecificacaoPage.module.css";
 
 /* ── Helpers ── */
-const R = (v) =>
-  v != null ? `R$ ${parseFloat(v).toFixed(2).replace(".", ",")}` : "—";
-const Pct = (v) =>
-  v != null ? `${(parseFloat(v) * 100).toFixed(1)}%` : "—";
+const R = (v) => (v != null ? `R$ ${parseFloat(v).toFixed(2).replace(".", ",")}` : "—");
+const Pct = (v) => (v != null ? `${(parseFloat(v) * 100).toFixed(1)}%` : "—");
 
 function calcLocal(form, config, custos) {
   // custo tecido
   let custo_tecido = 0;
-  if (form.usar_kg && (parseFloat(form.valor_kg_tecido) > 0) && (parseFloat(form.pecas_por_kg) > 0)) {
+  if (form.usar_kg && parseFloat(form.valor_kg_tecido) > 0 && parseFloat(form.pecas_por_kg) > 0) {
     custo_tecido = parseFloat(form.valor_kg_tecido) / parseFloat(form.pecas_por_kg);
   } else if (form.usar_custo_encaixe) {
     custo_tecido = parseFloat(form.custo_tecido_encaixe) || 0;
@@ -46,7 +44,7 @@ function calcLocal(form, config, custos) {
   const preco_comb = parseFloat(custos?.preco_combustivel) || 0;
   const pecas_viagem = parseFloat(form.pecas_por_viagem) || 50;
   if (dist > 0 && consumo > 0 && preco_comb > 0 && pecas_viagem > 0) {
-    custo_gasolina = (dist * 2 * num_viagens / consumo) * preco_comb / pecas_viagem;
+    custo_gasolina = (((dist * 2 * num_viagens) / consumo) * preco_comb) / pecas_viagem;
   }
 
   // custo saquinho (automático, 1 por peça)
@@ -64,13 +62,33 @@ function calcLocal(form, config, custos) {
   const custo_costura = parseFloat(form.custo_costura) || 0;
   const custo_etiqueta = parseFloat(config?.custo_etiqueta) || 0;
 
-  const custo_base = custo_tecido + custo_costura + custo_overlock + custo_reta + custo_gasolina + custo_saquinho + custo_caixa + custo_etiqueta;
+  const custo_base =
+    custo_tecido +
+    custo_costura +
+    custo_overlock +
+    custo_reta +
+    custo_gasolina +
+    custo_saquinho +
+    custo_caixa +
+    custo_etiqueta;
 
   const aliquota = (parseFloat(config?.aliquota_simples) || 0) / 100;
   const margem = (parseFloat(form.margem_desejada) || 60) / 100;
   const denom = 1 - aliquota - margem;
 
-  const base = { custo_tecido, custo_costura, custo_overlock, custo_reta, custo_metro_overlock, custo_metro_reta, custo_gasolina, custo_saquinho, custo_caixa, custo_etiqueta, custo_base };
+  const base = {
+    custo_tecido,
+    custo_costura,
+    custo_overlock,
+    custo_reta,
+    custo_metro_overlock,
+    custo_metro_reta,
+    custo_gasolina,
+    custo_saquinho,
+    custo_caixa,
+    custo_etiqueta,
+    custo_base,
+  };
 
   if (denom <= 0 || custo_base <= 0) return { ...base, preco: null, imposto: null, lucro: null };
 
@@ -135,14 +153,26 @@ export default function PrecificacaoPage() {
     const resultado = calcLocal(form, config, custos);
     setCalc(resultado);
     if (!form.preco_final_manual) {
-      setForm((f) => ({ ...f, preco_venda_final: resultado.preco ? resultado.preco.toFixed(2) : "" }));
+      setForm((f) => ({
+        ...f,
+        preco_venda_final: resultado.preco ? resultado.preco.toFixed(2) : "",
+      }));
     }
   }, [
-    form.usar_kg, form.valor_kg_tecido, form.pecas_por_kg,
-    form.custo_tecido_manual, form.custo_tecido_encaixe, form.usar_custo_encaixe,
-    form.custo_costura, form.metros_linha_overlock, form.metros_linha_reta,
-    form.pecas_por_viagem, form.margem_desejada,
-    modal, config, custos,
+    form.usar_kg,
+    form.valor_kg_tecido,
+    form.pecas_por_kg,
+    form.custo_tecido_manual,
+    form.custo_tecido_encaixe,
+    form.usar_custo_encaixe,
+    form.custo_costura,
+    form.metros_linha_overlock,
+    form.metros_linha_reta,
+    form.pecas_por_viagem,
+    form.margem_desejada,
+    modal,
+    config,
+    custos,
   ]);
 
   /* ── Accordion ── */
@@ -194,7 +224,10 @@ export default function PrecificacaoPage() {
   };
 
   const salvarModal = async () => {
-    if (!form.tamanho && modal.modo === "criar") { setErroModal("Informe o tamanho."); return; }
+    if (!form.tamanho && modal.modo === "criar") {
+      setErroModal("Informe o tamanho.");
+      return;
+    }
     setSalvando(true);
     setErroModal(null);
     try {
@@ -203,17 +236,26 @@ export default function PrecificacaoPage() {
         tamanho: form.tamanho?.trim().toUpperCase() || modal.prec?.tamanho,
         faixa_tamanho: form.faixa_tamanho || "padrao",
         usar_kg: undefined,
-        valor_kg_tecido: form.usar_kg && form.valor_kg_tecido !== "" ? parseFloat(form.valor_kg_tecido) : null,
-        pecas_por_kg: form.usar_kg && form.pecas_por_kg !== "" ? parseFloat(form.pecas_por_kg) : null,
+        valor_kg_tecido:
+          form.usar_kg && form.valor_kg_tecido !== "" ? parseFloat(form.valor_kg_tecido) : null,
+        pecas_por_kg:
+          form.usar_kg && form.pecas_por_kg !== "" ? parseFloat(form.pecas_por_kg) : null,
         usar_custo_encaixe: !form.usar_kg && form.usar_custo_encaixe,
-        custo_tecido_manual: !form.usar_kg && !form.usar_custo_encaixe && form.custo_tecido_manual !== "" ? parseFloat(form.custo_tecido_manual) : null,
-        custo_tecido_encaixe: !form.usar_kg && form.usar_custo_encaixe && form.custo_tecido_encaixe !== "" ? parseFloat(form.custo_tecido_encaixe) : null,
+        custo_tecido_manual:
+          !form.usar_kg && !form.usar_custo_encaixe && form.custo_tecido_manual !== ""
+            ? parseFloat(form.custo_tecido_manual)
+            : null,
+        custo_tecido_encaixe:
+          !form.usar_kg && form.usar_custo_encaixe && form.custo_tecido_encaixe !== ""
+            ? parseFloat(form.custo_tecido_encaixe)
+            : null,
         custo_costura: parseFloat(form.custo_costura) || 0,
         metros_linha_overlock: parseFloat(form.metros_linha_overlock) || 0,
         metros_linha_reta: parseFloat(form.metros_linha_reta) || 0,
         pecas_por_viagem: parseInt(form.pecas_por_viagem) || 50,
         margem_desejada: (parseFloat(form.margem_desejada) || 60) / 100,
-        preco_venda_final: form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : null,
+        preco_venda_final:
+          form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : null,
       };
       delete payload.usar_kg;
 
@@ -223,9 +265,10 @@ export default function PrecificacaoPage() {
         setPrecsPorGrupo((p) => {
           const lista = p[modal.grupoId] || [];
           const idx = lista.findIndex((x) => x.tamanho === result.tamanho);
-          const nova = idx >= 0
-            ? lista.map((x, i) => (i === idx ? result : x))
-            : [...lista, result].sort((a, b) => a.tamanho.localeCompare(b.tamanho));
+          const nova =
+            idx >= 0
+              ? lista.map((x, i) => (i === idx ? result : x))
+              : [...lista, result].sort((a, b) => a.tamanho.localeCompare(b.tamanho));
           return { ...p, [modal.grupoId]: nova };
         });
       } else {
@@ -235,7 +278,7 @@ export default function PrecificacaoPage() {
         result = await updatePrecificacao(modal.prec.id, updatePayload);
         setPrecsPorGrupo((p) => ({
           ...p,
-          [modal.grupoId]: (p[modal.grupoId] || []).map((x) => x.id === result.id ? result : x),
+          [modal.grupoId]: (p[modal.grupoId] || []).map((x) => (x.id === result.id ? result : x)),
         }));
       }
       setModal(null);
@@ -262,25 +305,40 @@ export default function PrecificacaoPage() {
 
   /* ── CSV ── */
   const exportarCSV = () => {
-    const linhas = [["Modelo", "Tamanho", "Faixa", "Custo", "Imposto", "Preço", "Lucro", "Margem%"]];
+    const linhas = [
+      ["Modelo", "Tamanho", "Faixa", "Custo", "Imposto", "Preço", "Lucro", "Margem%"],
+    ];
     grupos.forEach((g) => {
       (precsPorGrupo[g.id] || []).forEach((p) => {
         const r = calcLocal(
-          { ...p, usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg), margem_desejada: parseFloat(p.margem_desejada) * 100 },
-          config, custos
+          {
+            ...p,
+            usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg),
+            margem_desejada: parseFloat(p.margem_desejada) * 100,
+          },
+          config,
+          custos
         );
         const preco = p.preco_venda_final || r.preco;
-        linhas.push([g.nome, p.tamanho, p.faixa_tamanho || "padrao",
-          r.custo_base?.toFixed(2) || "", r.imposto?.toFixed(2) || "",
-          preco?.toFixed(2) || "", r.lucro?.toFixed(2) || "",
-          r.lucro && preco ? ((r.lucro / preco) * 100).toFixed(1) : ""]);
+        linhas.push([
+          g.nome,
+          p.tamanho,
+          p.faixa_tamanho || "padrao",
+          r.custo_base?.toFixed(2) || "",
+          r.imposto?.toFixed(2) || "",
+          preco?.toFixed(2) || "",
+          r.lucro?.toFixed(2) || "",
+          r.lucro && preco ? ((r.lucro / preco) * 100).toFixed(1) : "",
+        ]);
       });
     });
     const csv = linhas.map((l) => l.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "precificacao.csv"; a.click();
+    a.href = url;
+    a.download = "precificacao.csv";
+    a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -288,32 +346,54 @@ export default function PrecificacaoPage() {
   const resumo = grupos.flatMap((g) =>
     (precsPorGrupo[g.id] || []).map((p) => {
       const r = calcLocal(
-        { ...p, usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg), margem_desejada: parseFloat(p.margem_desejada) * 100 },
-        config, custos
+        {
+          ...p,
+          usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg),
+          margem_desejada: parseFloat(p.margem_desejada) * 100,
+        },
+        config,
+        custos
       );
       const preco = p.preco_venda_final || r.preco;
-      return { grupo: g.nome, tamanho: p.tamanho, faixa: p.faixa_tamanho || "padrao", custo: r.custo_base, imposto: r.imposto, preco, lucro: r.lucro, margem: preco && r.lucro != null ? (r.lucro / preco) : null };
+      return {
+        grupo: g.nome,
+        tamanho: p.tamanho,
+        faixa: p.faixa_tamanho || "padrao",
+        custo: r.custo_base,
+        imposto: r.imposto,
+        preco,
+        lucro: r.lucro,
+        margem: preco && r.lucro != null ? r.lucro / preco : null,
+      };
     })
   );
 
-  if (loading) return (
-    <div className="sc-page">
-      <div className="sc-page-header"><h1>Precificação</h1></div>
-      <p className={styles.loading}>Carregando…</p>
-    </div>
-  );
-  if (erro) return (
-    <div className="sc-page">
-      <div className="sc-page-header"><h1>Precificação</h1></div>
-      <p className={styles.erro}>{erro}</p>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="sc-page">
+        <div className="sc-page-header">
+          <h1>Precificação</h1>
+        </div>
+        <p className={styles.loading}>Carregando…</p>
+      </div>
+    );
+  if (erro)
+    return (
+      <div className="sc-page">
+        <div className="sc-page-header">
+          <h1>Precificação</h1>
+        </div>
+        <p className={styles.erro}>{erro}</p>
+      </div>
+    );
 
   const tipoTecidoAtivo = form.usar_kg ? "kg" : form.usar_custo_encaixe ? "encaixe" : "manual";
 
   return (
     <div className={`sc-page ${styles.pagina}`}>
-      <div className="sc-page-header"><h1>Precificação</h1></div>
+      <div className="sc-page-header">
+        <h1>Precificação</h1>
+      </div>
 
       {/* ══ Seção — Accordion por grupo ══ */}
       <div className={`sc-card ${styles.secao}`}>
@@ -331,7 +411,9 @@ export default function PrecificacaoPage() {
                   <span className={`${styles.seta} ${aberto ? styles.setaAberta : ""}`}>›</span>
                   <span className={styles.grupoNome}>{g.nome}</span>
                   {precsPorGrupo[g.id] !== undefined && (
-                    <span className={styles.grupoCount}>{precs.length} tamanho{precs.length !== 1 ? "s" : ""}</span>
+                    <span className={styles.grupoCount}>
+                      {precs.length} tamanho{precs.length !== 1 ? "s" : ""}
+                    </span>
                   )}
                 </button>
                 {aberto && (
@@ -355,33 +437,76 @@ export default function PrecificacaoPage() {
                             <tbody>
                               {precs.map((p) => {
                                 const r = calcLocal(
-                                  { ...p, usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg), margem_desejada: parseFloat(p.margem_desejada) * 100 },
-                                  config, custos
+                                  {
+                                    ...p,
+                                    usar_kg: !!(p.valor_kg_tecido && p.pecas_por_kg),
+                                    margem_desejada: parseFloat(p.margem_desejada) * 100,
+                                  },
+                                  config,
+                                  custos
                                 );
                                 const isDeletando = confirmarDeletar === p.id;
                                 return (
                                   <tr key={p.id}>
-                                    <td><span className={styles.tamanhoTag}>{p.tamanho}</span></td>
-                                    <td><span className={p.faixa_tamanho === "plus" ? styles.faixaPlus : styles.faixaPadrao}>{p.faixa_tamanho === "plus" ? "Plus" : "Padrão"}</span></td>
+                                    <td>
+                                      <span className={styles.tamanhoTag}>{p.tamanho}</span>
+                                    </td>
+                                    <td>
+                                      <span
+                                        className={
+                                          p.faixa_tamanho === "plus"
+                                            ? styles.faixaPlus
+                                            : styles.faixaPadrao
+                                        }
+                                      >
+                                        {p.faixa_tamanho === "plus" ? "Plus" : "Padrão"}
+                                      </span>
+                                    </td>
                                     <td>{R(r.custo_base)}</td>
                                     <td>{R(p.preco_venda_sugerido || r.preco)}</td>
                                     <td className={styles.precoFinalCell}>
-                                      {p.preco_venda_final
-                                        ? <><span className={styles.precoFinal}>{R(p.preco_venda_final)}</span><span className={styles.precoFinalTag}>editado</span></>
-                                        : R(r.preco)}
+                                      {p.preco_venda_final ? (
+                                        <>
+                                          <span className={styles.precoFinal}>
+                                            {R(p.preco_venda_final)}
+                                          </span>
+                                          <span className={styles.precoFinalTag}>editado</span>
+                                        </>
+                                      ) : (
+                                        R(r.preco)
+                                      )}
                                     </td>
                                     <td>
                                       {isDeletando ? (
                                         <span className={styles.confirmarDeletar}>
                                           Deletar?{" "}
-                                          <button className={styles.btnDeletarSim} onClick={() => confirmarDeletarPrec(g.id, p.id)}>Sim</button>
-                                          {" "}
-                                          <button className={styles.btnDeletarNao} onClick={() => setConfirmarDeletar(null)}>Não</button>
+                                          <button
+                                            className={styles.btnDeletarSim}
+                                            onClick={() => confirmarDeletarPrec(g.id, p.id)}
+                                          >
+                                            Sim
+                                          </button>{" "}
+                                          <button
+                                            className={styles.btnDeletarNao}
+                                            onClick={() => setConfirmarDeletar(null)}
+                                          >
+                                            Não
+                                          </button>
                                         </span>
                                       ) : (
                                         <span className={styles.acoesCelula}>
-                                          <button className={styles.btnEditar} onClick={() => abrirEditar(g, p)}>Editar</button>
-                                          <button className={styles.btnDeletar} onClick={() => setConfirmarDeletar(p.id)}>×</button>
+                                          <button
+                                            className={styles.btnEditar}
+                                            onClick={() => abrirEditar(g, p)}
+                                          >
+                                            Editar
+                                          </button>
+                                          <button
+                                            className={styles.btnDeletar}
+                                            onClick={() => setConfirmarDeletar(p.id)}
+                                          >
+                                            ×
+                                          </button>
                                         </span>
                                       )}
                                     </td>
@@ -409,27 +534,49 @@ export default function PrecificacaoPage() {
         <div className={`sc-card ${styles.secao}`}>
           <div className={styles.secaoHeader}>
             <h2 className={styles.secaoTitulo}>Resumo</h2>
-            <button className={styles.btnSecundario} onClick={exportarCSV}>Exportar CSV</button>
+            <button className={styles.btnSecundario} onClick={exportarCSV}>
+              Exportar CSV
+            </button>
           </div>
           <table className={styles.tabelaResumo}>
             <thead>
               <tr>
-                <th>Modelo</th><th>Tam.</th><th>Faixa</th><th>Custo</th>
-                <th>Imposto</th><th>Preço</th><th>Lucro</th><th>Margem</th>
+                <th>Modelo</th>
+                <th>Tam.</th>
+                <th>Faixa</th>
+                <th>Custo</th>
+                <th>Imposto</th>
+                <th>Preço</th>
+                <th>Lucro</th>
+                <th>Margem</th>
               </tr>
             </thead>
             <tbody>
               {resumo.map((r, i) => (
                 <tr key={i}>
                   <td>{r.grupo}</td>
-                  <td><span className={styles.tamanhoTag}>{r.tamanho}</span></td>
-                  <td><span className={r.faixa === "plus" ? styles.faixaPlus : styles.faixaPadrao}>{r.faixa === "plus" ? "Plus" : "Padrão"}</span></td>
+                  <td>
+                    <span className={styles.tamanhoTag}>{r.tamanho}</span>
+                  </td>
+                  <td>
+                    <span className={r.faixa === "plus" ? styles.faixaPlus : styles.faixaPadrao}>
+                      {r.faixa === "plus" ? "Plus" : "Padrão"}
+                    </span>
+                  </td>
                   <td>{R(r.custo)}</td>
                   <td>{R(r.imposto)}</td>
                   <td className={styles.precoDestaque}>{R(r.preco)}</td>
                   <td>{R(r.lucro)}</td>
                   <td>
-                    <span className={r.margem >= 0.5 ? styles.margemBoa : r.margem >= 0.3 ? styles.margemMedia : styles.margemBaixa}>
+                    <span
+                      className={
+                        r.margem >= 0.5
+                          ? styles.margemBoa
+                          : r.margem >= 0.3
+                            ? styles.margemMedia
+                            : styles.margemBaixa
+                      }
+                    >
                       {Pct(r.margem)}
                     </span>
                   </td>
@@ -443,19 +590,23 @@ export default function PrecificacaoPage() {
       {/* ══ Modal ══ */}
       {modal && (
         <Modal
-          titulo={modal.modo === "criar"
-            ? `Nova precificação — ${modal.grupoNome}`
-            : `Editar — ${modal.grupoNome} · ${modal.prec.tamanho}`}
+          titulo={
+            modal.modo === "criar"
+              ? `Nova precificação — ${modal.grupoNome}`
+              : `Editar — ${modal.grupoNome} · ${modal.prec.tamanho}`
+          }
           onFechar={() => setModal(null)}
         >
           <div className={styles.modalForm}>
-
             {modal.modo === "criar" && (
               <div className={styles.campo}>
                 <label className={styles.label}>Tamanho</label>
-                <input className={styles.input} placeholder="P, M, G, 38, 40…"
+                <input
+                  className={styles.input}
+                  placeholder="P, M, G, 38, 40…"
                   value={form.tamanho}
-                  onChange={(e) => setForm((f) => ({ ...f, tamanho: e.target.value }))} />
+                  onChange={(e) => setForm((f) => ({ ...f, tamanho: e.target.value }))}
+                />
               </div>
             )}
 
@@ -465,12 +616,14 @@ export default function PrecificacaoPage() {
               <div className={styles.toggle}>
                 <button
                   className={`${styles.toggleBtn} ${form.faixa_tamanho === "padrao" ? styles.toggleAtivo : ""}`}
-                  onClick={() => setForm((f) => ({ ...f, faixa_tamanho: "padrao" }))}>
+                  onClick={() => setForm((f) => ({ ...f, faixa_tamanho: "padrao" }))}
+                >
                   Padrão
                 </button>
                 <button
                   className={`${styles.toggleBtn} ${form.faixa_tamanho === "plus" ? styles.toggleAtivo : ""}`}
-                  onClick={() => setForm((f) => ({ ...f, faixa_tamanho: "plus" }))}>
+                  onClick={() => setForm((f) => ({ ...f, faixa_tamanho: "plus" }))}
+                >
                   Plus
                 </button>
               </div>
@@ -480,16 +633,28 @@ export default function PrecificacaoPage() {
             <div className={styles.campo}>
               <label className={styles.label}>Custo do tecido</label>
               <div className={styles.toggle}>
-                <button className={`${styles.toggleBtn} ${tipoTecidoAtivo === "kg" ? styles.toggleAtivo : ""}`}
-                  onClick={() => setForm((f) => ({ ...f, usar_kg: true, usar_custo_encaixe: false }))}>
+                <button
+                  className={`${styles.toggleBtn} ${tipoTecidoAtivo === "kg" ? styles.toggleAtivo : ""}`}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, usar_kg: true, usar_custo_encaixe: false }))
+                  }
+                >
                   Por kg
                 </button>
-                <button className={`${styles.toggleBtn} ${tipoTecidoAtivo === "manual" ? styles.toggleAtivo : ""}`}
-                  onClick={() => setForm((f) => ({ ...f, usar_kg: false, usar_custo_encaixe: false }))}>
+                <button
+                  className={`${styles.toggleBtn} ${tipoTecidoAtivo === "manual" ? styles.toggleAtivo : ""}`}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, usar_kg: false, usar_custo_encaixe: false }))
+                  }
+                >
                   Manual
                 </button>
-                <button className={`${styles.toggleBtn} ${tipoTecidoAtivo === "encaixe" ? styles.toggleAtivo : ""}`}
-                  onClick={() => setForm((f) => ({ ...f, usar_kg: false, usar_custo_encaixe: true }))}>
+                <button
+                  className={`${styles.toggleBtn} ${tipoTecidoAtivo === "encaixe" ? styles.toggleAtivo : ""}`}
+                  onClick={() =>
+                    setForm((f) => ({ ...f, usar_kg: false, usar_custo_encaixe: true }))
+                  }
+                >
                   Encaixe
                 </button>
               </div>
@@ -497,34 +662,58 @@ export default function PrecificacaoPage() {
                 <div className={styles.grade2}>
                   <div className={styles.campo}>
                     <label className={styles.labelSub}>Valor/kg (R$)</label>
-                    <input type="number" step="0.01" className={styles.input} placeholder="0,00"
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      placeholder="0,00"
                       value={form.valor_kg_tecido}
-                      onChange={(e) => setForm((f) => ({ ...f, valor_kg_tecido: e.target.value }))} />
+                      onChange={(e) => setForm((f) => ({ ...f, valor_kg_tecido: e.target.value }))}
+                    />
                   </div>
                   <div className={styles.campo}>
                     <label className={styles.labelSub}>Peças/kg</label>
-                    <input type="number" step="0.001" className={styles.input} placeholder="0,000"
+                    <input
+                      type="number"
+                      step="0.001"
+                      className={styles.input}
+                      placeholder="0,000"
                       value={form.pecas_por_kg}
-                      onChange={(e) => setForm((f) => ({ ...f, pecas_por_kg: e.target.value }))} />
+                      onChange={(e) => setForm((f) => ({ ...f, pecas_por_kg: e.target.value }))}
+                    />
                   </div>
                 </div>
               ) : (
-                <input type="number" step="0.01" className={styles.input} placeholder="R$ 0,00"
-                  value={form.usar_custo_encaixe ? form.custo_tecido_encaixe : form.custo_tecido_manual}
-                  onChange={(e) => setForm((f) =>
-                    form.usar_custo_encaixe
-                      ? { ...f, custo_tecido_encaixe: e.target.value }
-                      : { ...f, custo_tecido_manual: e.target.value }
-                  )} />
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.input}
+                  placeholder="R$ 0,00"
+                  value={
+                    form.usar_custo_encaixe ? form.custo_tecido_encaixe : form.custo_tecido_manual
+                  }
+                  onChange={(e) =>
+                    setForm((f) =>
+                      form.usar_custo_encaixe
+                        ? { ...f, custo_tecido_encaixe: e.target.value }
+                        : { ...f, custo_tecido_manual: e.target.value }
+                    )
+                  }
+                />
               )}
             </div>
 
             {/* Costura */}
             <div className={styles.campo}>
               <label className={styles.label}>Custo costura/peça (R$)</label>
-              <input type="number" step="0.01" className={styles.input} placeholder="0,00"
+              <input
+                type="number"
+                step="0.01"
+                className={styles.input}
+                placeholder="0,00"
                 value={form.custo_costura}
-                onChange={(e) => setForm((f) => ({ ...f, custo_costura: e.target.value }))} />
+                onChange={(e) => setForm((f) => ({ ...f, custo_costura: e.target.value }))}
+              />
             </div>
 
             {/* Linha */}
@@ -536,9 +725,16 @@ export default function PrecificacaoPage() {
                     <span className={styles.labelDica}> — {R(calc.custo_metro_overlock)}/m</span>
                   )}
                 </label>
-                <input type="number" step="0.01" className={styles.input} placeholder="0,00"
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.input}
+                  placeholder="0,00"
                   value={form.metros_linha_overlock}
-                  onChange={(e) => setForm((f) => ({ ...f, metros_linha_overlock: e.target.value }))} />
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, metros_linha_overlock: e.target.value }))
+                  }
+                />
               </div>
               <div className={styles.campo}>
                 <label className={styles.label}>
@@ -547,18 +743,29 @@ export default function PrecificacaoPage() {
                     <span className={styles.labelDica}> — {R(calc.custo_metro_reta)}/m</span>
                   )}
                 </label>
-                <input type="number" step="0.01" className={styles.input} placeholder="0,00"
+                <input
+                  type="number"
+                  step="0.01"
+                  className={styles.input}
+                  placeholder="0,00"
                   value={form.metros_linha_reta}
-                  onChange={(e) => setForm((f) => ({ ...f, metros_linha_reta: e.target.value }))} />
+                  onChange={(e) => setForm((f) => ({ ...f, metros_linha_reta: e.target.value }))}
+                />
               </div>
             </div>
 
             {/* Peças por viagem */}
             <div className={styles.campo}>
-              <label className={styles.label}>Peças por viagem <span className={styles.labelDica}>(para rateio gasolina)</span></label>
-              <input type="number" step="1" className={styles.input}
+              <label className={styles.label}>
+                Peças por viagem <span className={styles.labelDica}>(para rateio gasolina)</span>
+              </label>
+              <input
+                type="number"
+                step="1"
+                className={styles.input}
                 value={form.pecas_por_viagem}
-                onChange={(e) => setForm((f) => ({ ...f, pecas_por_viagem: e.target.value }))} />
+                onChange={(e) => setForm((f) => ({ ...f, pecas_por_viagem: e.target.value }))}
+              />
             </div>
 
             {/* Margem */}
@@ -567,19 +774,37 @@ export default function PrecificacaoPage() {
                 <label className={styles.label}>Margem desejada</label>
                 <span className={styles.margemValor}>{form.margem_desejada}%</span>
               </div>
-              <input type="range" min="0" max="90" step="1" className={styles.slider}
+              <input
+                type="range"
+                min="0"
+                max="90"
+                step="1"
+                className={styles.slider}
                 value={form.margem_desejada}
-                onChange={(e) => setForm((f) => ({ ...f, margem_desejada: e.target.value }))} />
-              <div className={styles.sliderLabels}><span>0%</span><span>45%</span><span>90%</span></div>
+                onChange={(e) => setForm((f) => ({ ...f, margem_desejada: e.target.value }))}
+              />
+              <div className={styles.sliderLabels}>
+                <span>0%</span>
+                <span>45%</span>
+                <span>90%</span>
+              </div>
             </div>
 
             {/* Preview breakdown */}
             <div className={styles.preview}>
               <div className={styles.previewRow}>
-                <span>Tecido{form.usar_kg && form.pecas_por_kg ? ` (${parseFloat(form.pecas_por_kg) > 0 ? (1/parseFloat(form.pecas_por_kg)).toFixed(3) : "?"}kg)` : ""}</span>
+                <span>
+                  Tecido
+                  {form.usar_kg && form.pecas_por_kg
+                    ? ` (${parseFloat(form.pecas_por_kg) > 0 ? (1 / parseFloat(form.pecas_por_kg)).toFixed(3) : "?"}kg)`
+                    : ""}
+                </span>
                 <span>{R(calc.custo_tecido)}</span>
               </div>
-              <div className={styles.previewRow}><span>Costura</span><span>{R(calc.custo_costura)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Costura</span>
+                <span>{R(calc.custo_costura)}</span>
+              </div>
               <div className={styles.previewRow}>
                 <span>Overlock ({form.metros_linha_overlock || 0}m)</span>
                 <span>{R(calc.custo_overlock)}</span>
@@ -588,40 +813,87 @@ export default function PrecificacaoPage() {
                 <span>Reta ({form.metros_linha_reta || 0}m)</span>
                 <span>{R(calc.custo_reta)}</span>
               </div>
-              <div className={styles.previewRow}><span>Gasolina</span><span>{R(calc.custo_gasolina)}</span></div>
-              <div className={styles.previewRow}><span>Saquinho</span><span>{R(calc.custo_saquinho)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Gasolina</span>
+                <span>{R(calc.custo_gasolina)}</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>Saquinho</span>
+                <span>{R(calc.custo_saquinho)}</span>
+              </div>
               <div className={styles.previewRow}>
                 <span>Caixa (÷{custos?.pecas_por_caixa || 50} peças)</span>
                 <span>{R(calc.custo_caixa)}</span>
               </div>
-              <div className={styles.previewRow}><span>Etiqueta</span><span>{R(calc.custo_etiqueta)}</span></div>
-              <div className={`${styles.previewRow} ${styles.previewSubtotal}`}><span>Custo base</span><span>{R(calc.custo_base)}</span></div>
-              <div className={styles.previewRow}><span>Imposto ({config?.aliquota_simples != null ? `${parseFloat(config.aliquota_simples).toFixed(2)}%` : "—"})</span><span>{R(calc.imposto)}</span></div>
-              <div className={`${styles.previewRow} ${styles.previewTotal}`}><span>Preço sugerido</span><span>{R(calc.preco)}</span></div>
+              <div className={styles.previewRow}>
+                <span>Etiqueta</span>
+                <span>{R(calc.custo_etiqueta)}</span>
+              </div>
+              <div className={`${styles.previewRow} ${styles.previewSubtotal}`}>
+                <span>Custo base</span>
+                <span>{R(calc.custo_base)}</span>
+              </div>
+              <div className={styles.previewRow}>
+                <span>
+                  Imposto (
+                  {config?.aliquota_simples != null
+                    ? `${parseFloat(config.aliquota_simples).toFixed(2)}%`
+                    : "—"}
+                  )
+                </span>
+                <span>{R(calc.imposto)}</span>
+              </div>
+              <div className={`${styles.previewRow} ${styles.previewTotal}`}>
+                <span>Preço sugerido</span>
+                <span>{R(calc.preco)}</span>
+              </div>
             </div>
 
             {/* Preço final + lucro */}
             <div className={styles.campo}>
-              <label className={styles.label}>Preço final <span className={styles.labelDica}>(vazio = usar sugerido)</span></label>
-              <input type="number" step="0.01" className={styles.input} placeholder="R$ 0,00"
+              <label className={styles.label}>
+                Preço final <span className={styles.labelDica}>(vazio = usar sugerido)</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                className={styles.input}
+                placeholder="R$ 0,00"
                 value={form.preco_venda_final}
-                onChange={(e) => setForm((f) => ({ ...f, preco_venda_final: e.target.value, preco_final_manual: true }))} />
-              {calc.lucro != null && (() => {
-                const precoFinal = form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : calc.preco;
-                const lucroFinal = precoFinal && calc.custo_base ? precoFinal - calc.custo_base - (precoFinal * ((parseFloat(config?.aliquota_simples) || 0) / 100)) : calc.lucro;
-                const margemFinal = precoFinal > 0 ? lucroFinal / precoFinal : null;
-                return (
-                  <span className={styles.lucroInfo}>
-                    Lucro: {R(lucroFinal)} {margemFinal != null ? `(${(margemFinal * 100).toFixed(1)}%)` : ""}
-                  </span>
-                );
-              })()}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    preco_venda_final: e.target.value,
+                    preco_final_manual: true,
+                  }))
+                }
+              />
+              {calc.lucro != null &&
+                (() => {
+                  const precoFinal =
+                    form.preco_venda_final !== "" ? parseFloat(form.preco_venda_final) : calc.preco;
+                  const lucroFinal =
+                    precoFinal && calc.custo_base
+                      ? precoFinal -
+                        calc.custo_base -
+                        precoFinal * ((parseFloat(config?.aliquota_simples) || 0) / 100)
+                      : calc.lucro;
+                  const margemFinal = precoFinal > 0 ? lucroFinal / precoFinal : null;
+                  return (
+                    <span className={styles.lucroInfo}>
+                      Lucro: {R(lucroFinal)}{" "}
+                      {margemFinal != null ? `(${(margemFinal * 100).toFixed(1)}%)` : ""}
+                    </span>
+                  );
+                })()}
             </div>
 
             {erroModal && <p className={styles.erroInline}>{erroModal}</p>}
 
             <div className={styles.modalAcoes}>
-              <button className={styles.btnSecundario} onClick={() => setModal(null)}>Cancelar</button>
+              <button className={styles.btnSecundario} onClick={() => setModal(null)}>
+                Cancelar
+              </button>
               <button className={styles.btnPrimario} onClick={salvarModal} disabled={salvando}>
                 {salvando ? "Salvando…" : "Salvar"}
               </button>

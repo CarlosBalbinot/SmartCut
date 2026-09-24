@@ -23,7 +23,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: #f5f5f5; color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: #f5f5f5;
+  color: var(--sc-text-primary);
+}
 
 /* ── Menu lateral interno ──────────────────────────────────────────────────── */
 
@@ -59,7 +62,9 @@
   background: none;
   border: none;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   position: relative;
 }
 
@@ -160,7 +165,9 @@
   margin: 0;
 }
 
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 
 /* ── Form grid ───────────────────────────────────────────────────────────────── */
 
@@ -193,7 +200,9 @@
   box-sizing: border-box;
 }
 
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 /* ── Mensagens ───────────────────────────────────────────────────────────────── */
 
@@ -240,8 +249,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed;  }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -254,7 +268,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Custos Fixos ────────────────────────────────────────────────────────────── */
 
@@ -283,7 +299,9 @@
   align-items: flex-end;
 }
 
-.custoRow .field { flex: 1; }
+.custoRow .field {
+  flex: 1;
+}
 
 /* Caixa de resultado calculado */
 .custoCalc {
@@ -405,7 +423,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPill:hover { background: var(--sc-action-hover); }
+.btnPill:hover {
+  background: var(--sc-action-hover);
+}
 
 .tabelasEmptyLeft {
   padding: 1.25rem 1rem;
@@ -494,7 +514,10 @@
   justify-content: center;
   font-size: 12px;
   color: var(--sc-text-secondary);
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
   line-height: 1;
 }
 
@@ -529,9 +552,13 @@
   transition: color 0.12s;
 }
 
-.inativasToggle:hover { color: var(--sc-text-secondary); }
+.inativasToggle:hover {
+  color: var(--sc-text-secondary);
+}
 
-.inativaCard { opacity: 0.65; }
+.inativaCard {
+  opacity: 0.65;
+}
 
 /* Badges de status das tabelas */
 
@@ -635,11 +662,16 @@
   border-bottom: 2px solid var(--sc-border);
 }
 
-.prodTr { }
+.prodTr {
+}
 
-.prodTr:hover { background: var(--sc-bg-secondary); }
+.prodTr:hover {
+  background: var(--sc-bg-secondary);
+}
 
-.prodTr:hover .prodRemoveBtn { visibility: visible; }
+.prodTr:hover .prodRemoveBtn {
+  visibility: visible;
+}
 
 .prodTd {
   padding: 9px 10px;
@@ -679,7 +711,9 @@
   transition: color 0.12s;
 }
 
-.prodRemoveBtn:hover { color: var(--sc-danger-text); }
+.prodRemoveBtn:hover {
+  color: var(--sc-danger-text);
+}
 
 /* ── Vendedores — layout dois painéis ───────────────────────────────────────── */
 
@@ -723,7 +757,9 @@
   transition: background 0.12s;
 }
 
-.vendedorItem:hover { background: var(--sc-bg-secondary); }
+.vendedorItem:hover {
+  background: var(--sc-bg-secondary);
+}
 
 .vendedorItemSel {
   background: var(--sc-bg-secondary);
@@ -755,7 +791,9 @@
   white-space: nowrap;
 }
 
-.vendedorItemInativo { opacity: 0.55; }
+.vendedorItemInativo {
+  opacity: 0.55;
+}
 
 .vendedorEmpty {
   display: block;
@@ -812,7 +850,9 @@
   transition: color 0.12s;
 }
 
-.drawerClose:hover { color: var(--sc-text-primary); }
+.drawerClose:hover {
+  color: var(--sc-text-primary);
+}
 
 /* ── Abas ───────────────────────────────────────────────────────────────────── */
 
@@ -833,12 +873,16 @@
   font-weight: 500;
   color: var(--sc-text-secondary);
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
   margin-bottom: -1px;
   white-space: nowrap;
 }
 
-.tabBtn:hover { color: var(--sc-text-primary); }
+.tabBtn:hover {
+  color: var(--sc-text-primary);
+}
 
 .tabBtnActive {
   color: var(--sc-text-primary);
@@ -995,7 +1039,9 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
-.modalPillWide { width: 480px; }
+.modalPillWide {
+  width: 480px;
+}
 
 .modalPillTitle {
   font-size: 1.05rem;
@@ -1022,8 +1068,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPillPrimary:hover    { background: var(--sc-action-hover); }
-.btnPillPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPillPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPillPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnPillSecondary {
   background: transparent;
@@ -1036,4 +1087,6 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPillSecondary:hover { background: var(--sc-surface-hover); }
+.btnPillSecondary:hover {
+  background: var(--sc-surface-hover);
+}

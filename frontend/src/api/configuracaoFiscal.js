@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1/configuracao-empresa`;
 
 async function request(path, options = {}) {

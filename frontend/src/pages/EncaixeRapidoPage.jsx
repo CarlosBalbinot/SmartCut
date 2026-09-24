@@ -9,8 +9,13 @@ import styles from "./EncaixeRapidoPage.module.css";
 const TAMANHOS_BASE = ["P", "M", "G", "GG"];
 const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
 const TAM_KEY = {
-  P: "qtd_p", M: "qtd_m", G: "qtd_g", GG: "qtd_gg",
-  G1: "qtd_g1", G2: "qtd_g2", G3: "qtd_g3",
+  P: "qtd_p",
+  M: "qtd_m",
+  G: "qtd_g",
+  GG: "qtd_gg",
+  G1: "qtd_g1",
+  G2: "qtd_g2",
+  G3: "qtd_g3",
 };
 const QTD_KEYS = ["qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_g3"];
 
@@ -18,42 +23,63 @@ const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
 const ITEM_VAZIO = {
-  searchQuery: "", searchResults: [], selectedGrupo: null,
+  searchQuery: "",
+  searchResults: [],
+  selectedGrupo: null,
   tecido_id: "",
-  qtd_p: "", qtd_m: "", qtd_g: "", qtd_gg: "",
-  qtd_g1: "", qtd_g2: "", qtd_g3: "",
+  qtd_p: "",
+  qtd_m: "",
+  qtd_g: "",
+  qtd_gg: "",
+  qtd_g1: "",
+  qtd_g2: "",
+  qtd_g3: "",
 };
 
 const TM_VAZIO = {
-  tmModeloId: "", tmCores: [], tmCorId: "", tmLotes: [], tmLoteId: "", tmErr: null,
+  tmModeloId: "",
+  tmCores: [],
+  tmCorId: "",
+  tmLotes: [],
+  tmLoteId: "",
+  tmErr: null,
 };
 
 export default function EncaixeRapidoPage() {
   const navigate = useNavigate();
 
-  const [nome, setNome]               = useState("");
-  const [modelos, setModelos]         = useState([]);
-  const [tecidos, setTecidos]         = useState([]);
+  const [nome, setNome] = useState("");
+  const [modelos, setModelos] = useState([]);
+  const [tecidos, setTecidos] = useState([]);
   const [tecidoModal, setTecidoModal] = useState(null);
-  const [pecas, setPecas]             = useState([]);
+  const [pecas, setPecas] = useState([]);
 
-  const [itemModal, setItemModal]     = useState(null);
-  const [gerando, setGerando]         = useState(false);
-  const [resultado, setResultado]     = useState(null);
-  const [avisos, setAvisos]           = useState([]);
-  const [erroGeral, setErroGeral]     = useState(null);
-  const [erroModal, setErroModal]     = useState(null);
-  const searchTimer                   = useRef(null);
+  const [itemModal, setItemModal] = useState(null);
+  const [gerando, setGerando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [avisos, setAvisos] = useState([]);
+  const [erroGeral, setErroGeral] = useState(null);
+  const [erroModal, setErroModal] = useState(null);
+  const searchTimer = useRef(null);
 
   useEffect(() => {
-    getModelos().then((m) => setModelos(m || [])).catch(() => {});
+    getModelos()
+      .then((m) => setModelos(m || []))
+      .catch(() => {});
   }, []);
 
   // ── Tecido modal handlers ──────────────────────────────────────────────────
   const abrirTecidoModal = () => setTecidoModal({ ...TM_VAZIO });
 
   const handleTmModelo = async (id) => {
-    setTecidoModal((m) => ({ ...m, tmModeloId: id, tmCores: [], tmCorId: "", tmLotes: [], tmLoteId: "" }));
+    setTecidoModal((m) => ({
+      ...m,
+      tmModeloId: id,
+      tmCores: [],
+      tmCorId: "",
+      tmLotes: [],
+      tmLoteId: "",
+    }));
     if (!id) return;
     try {
       const cs = (await getCoresDoModelo(id)) || [];
@@ -80,26 +106,32 @@ export default function EncaixeRapidoPage() {
       return;
     }
     const modelo = modelos.find((m) => m.id === tmModeloId);
-    const cor    = tmCores.find((c) => c.id === tmCorId);
-    const lote   = tmLotes.find((l) => l.id === tmLoteId);
-    setTecidos((ts) => [...ts, {
-      _id:            `tm-${Date.now()}-${Math.random()}`,
-      modelo_id:      modelo.id,
-      modelo_nome:    modelo.nome,
-      cor_id:         cor.id,
-      cor_nome:       cor.nome_cor,
-      cor_largura_cm: cor.largura_util_cm,
-      lote_id:        lote.id,
-      lote_codigo:    lote.codigo_lote,
-      lote_peso_kg:   lote.peso_disponivel_kg,
-    }]);
+    const cor = tmCores.find((c) => c.id === tmCorId);
+    const lote = tmLotes.find((l) => l.id === tmLoteId);
+    setTecidos((ts) => [
+      ...ts,
+      {
+        _id: `tm-${Date.now()}-${Math.random()}`,
+        modelo_id: modelo.id,
+        modelo_nome: modelo.nome,
+        cor_id: cor.id,
+        cor_nome: cor.nome_cor,
+        cor_largura_cm: cor.largura_util_cm,
+        lote_id: lote.id,
+        lote_codigo: lote.codigo_lote,
+        lote_peso_kg: lote.peso_disponivel_kg,
+      },
+    ]);
     setTecidoModal(null);
   };
 
   const removerTecido = (_id) => setTecidos((ts) => ts.filter((t) => t._id !== _id));
 
   // ── Item modal handlers ────────────────────────────────────────────────────
-  const abrirItemModal = () => { setItemModal({ ...ITEM_VAZIO }); setErroModal(null); };
+  const abrirItemModal = () => {
+    setItemModal({ ...ITEM_VAZIO });
+    setErroModal(null);
+  };
 
   const handleSearchChange = (query) => {
     setItemModal((m) => ({ ...m, searchQuery: query, selectedGrupo: null, searchResults: [] }));
@@ -116,37 +148,54 @@ export default function EncaixeRapidoPage() {
   const selecionarGrupo = (grupo) => {
     setItemModal((m) => ({
       ...m,
-      searchQuery:   `${grupo.codigo ? grupo.codigo + " — " : ""}${grupo.nome}`,
+      searchQuery: `${grupo.codigo ? grupo.codigo + " — " : ""}${grupo.nome}`,
       searchResults: [],
       selectedGrupo: grupo,
-      qtd_p: "", qtd_m: "", qtd_g: "", qtd_gg: "",
-      qtd_g1: "", qtd_g2: "", qtd_g3: "",
+      qtd_p: "",
+      qtd_m: "",
+      qtd_g: "",
+      qtd_gg: "",
+      qtd_g1: "",
+      qtd_g2: "",
+      qtd_g3: "",
     }));
   };
 
   const handleConfirmarItem = () => {
-    if (!itemModal.selectedGrupo)  { setErroModal("Selecione uma referência."); return; }
-    if (!itemModal.tecido_id)      { setErroModal("Selecione o tecido desta peça."); return; }
+    if (!itemModal.selectedGrupo) {
+      setErroModal("Selecione uma referência.");
+      return;
+    }
+    if (!itemModal.tecido_id) {
+      setErroModal("Selecione o tecido desta peça.");
+      return;
+    }
     const qtdTotal = QTD_KEYS.reduce((s, k) => s + (parseInt(itemModal[k]) || 0), 0);
-    if (qtdTotal === 0)            { setErroModal("Informe ao menos uma quantidade."); return; }
+    if (qtdTotal === 0) {
+      setErroModal("Informe ao menos uma quantidade.");
+      return;
+    }
 
-    const isPlus  = itemModal.selectedGrupo.tem_plus;
+    const isPlus = itemModal.selectedGrupo.tem_plus;
     const tamCols = isPlus ? TAMANHOS_PLUS : TAMANHOS_BASE;
-    const qtds    = Object.fromEntries(
+    const qtds = Object.fromEntries(
       tamCols.map((t) => [TAM_KEY[t], parseInt(itemModal[TAM_KEY[t]]) || 0])
     );
 
     const tecSel = tecidos.find((t) => t._id === itemModal.tecido_id);
-    setPecas((ps) => [...ps, {
-      _id:          `${Date.now()}-${Math.random()}`,
-      grupo_id:     itemModal.selectedGrupo.id,
-      grupo_nome:   itemModal.selectedGrupo.nome,
-      grupo_codigo: itemModal.selectedGrupo.codigo,
-      tem_plus:     isPlus,
-      cor:          tecSel?.cor_nome ?? "",
-      tecido_id:    itemModal.tecido_id,
-      ...qtds,
-    }]);
+    setPecas((ps) => [
+      ...ps,
+      {
+        _id: `${Date.now()}-${Math.random()}`,
+        grupo_id: itemModal.selectedGrupo.id,
+        grupo_nome: itemModal.selectedGrupo.nome,
+        grupo_codigo: itemModal.selectedGrupo.codigo,
+        tem_plus: isPlus,
+        cor: tecSel?.cor_nome ?? "",
+        tecido_id: itemModal.tecido_id,
+        ...qtds,
+      },
+    ]);
     setItemModal(null);
   };
 
@@ -168,35 +217,47 @@ export default function EncaixeRapidoPage() {
 
   // ── Gerar encaixe ─────────────────────────────────────────────────────────
   const handleGerar = async () => {
-    if (tecidos.length === 0)            { setErroGeral("Adicione ao menos um tecido."); return; }
-    if (pecas.length === 0)              { setErroGeral("Adicione ao menos uma peça."); return; }
-    if (pecas.some((p) => !p.tecido_id)) { setErroGeral("Todas as peças precisam ter um tecido."); return; }
-    setGerando(true); setErroGeral(null); setResultado(null); setAvisos([]);
+    if (tecidos.length === 0) {
+      setErroGeral("Adicione ao menos um tecido.");
+      return;
+    }
+    if (pecas.length === 0) {
+      setErroGeral("Adicione ao menos uma peça.");
+      return;
+    }
+    if (pecas.some((p) => !p.tecido_id)) {
+      setErroGeral("Todas as peças precisam ter um tecido.");
+      return;
+    }
+    setGerando(true);
+    setErroGeral(null);
+    setResultado(null);
+    setAvisos([]);
 
     try {
       await getProximoNumeroPedidoVenda("encaixe_rapido").catch(() => "001");
       const pedido = await createPedidoVenda({
-        tipo:                  "encaixe_rapido",
-        data_emissao:          new Date().toISOString().split("T")[0],
-        prazo_entrega_dias:    0,
-        condicoes:             "avista",
-        observacoes_internas:  nome || null,
-        cliente_razao_social:  nome || "Encaixe Rápido",
+        tipo: "encaixe_rapido",
+        data_emissao: new Date().toISOString().split("T")[0],
+        prazo_entrega_dias: 0,
+        condicoes: "avista",
+        observacoes_internas: nome || null,
+        cliente_razao_social: nome || "Encaixe Rápido",
       });
 
       for (const peca of pecas) {
         const tecido = tecidos.find((t) => t._id === peca.tecido_id);
         await addItemPedidoVenda(pedido.id, {
-          grupo_id:       peca.grupo_id,
-          cor:            peca.cor,
-          lote_id:        tecido?.lote_id ?? null,
-          qtd_p:          peca.qtd_p  || 0,
-          qtd_m:          peca.qtd_m  || 0,
-          qtd_g:          peca.qtd_g  || 0,
-          qtd_gg:         peca.qtd_gg || 0,
-          qtd_g1:         peca.qtd_g1 || 0,
-          qtd_g2:         peca.qtd_g2 || 0,
-          qtd_g3:         peca.qtd_g3 || 0,
+          grupo_id: peca.grupo_id,
+          cor: peca.cor,
+          lote_id: tecido?.lote_id ?? null,
+          qtd_p: peca.qtd_p || 0,
+          qtd_m: peca.qtd_m || 0,
+          qtd_g: peca.qtd_g || 0,
+          qtd_gg: peca.qtd_gg || 0,
+          qtd_g1: peca.qtd_g1 || 0,
+          qtd_g2: peca.qtd_g2 || 0,
+          qtd_g3: peca.qtd_g3 || 0,
           preco_unitario: 0,
         });
       }
@@ -209,12 +270,12 @@ export default function EncaixeRapidoPage() {
 
       if (encaixe?.id) {
         setResultado({
-          encaixe_id:     encaixe.id,
-          pedido_id:      pedido.id,
+          encaixe_id: encaixe.id,
+          pedido_id: pedido.id,
           aproveitamento: encaixe.desperdicio_pct != null ? 100 - encaixe.desperdicio_pct : null,
-          metros:         encaixe.comp_metros != null ? encaixe.comp_metros.toFixed(2) : null,
-          peso:           encaixe.peso_kg,
-          custo:          encaixe.custo_total,
+          metros: encaixe.comp_metros != null ? encaixe.comp_metros.toFixed(2) : null,
+          peso: encaixe.peso_kg,
+          custo: encaixe.custo_total,
         });
         setAvisos(resposta?.avisos ?? []);
       } else {
@@ -227,17 +288,18 @@ export default function EncaixeRapidoPage() {
     }
   };
 
-  const isPlus  = itemModal?.selectedGrupo?.tem_plus;
+  const isPlus = itemModal?.selectedGrupo?.tem_plus;
   const tamForm = isPlus ? TAMANHOS_PLUS : TAMANHOS_BASE;
-  const tmCor   = tecidoModal?.tmCores.find((c) => c.id === tecidoModal.tmCorId);
+  const tmCor = tecidoModal?.tmCores.find((c) => c.id === tecidoModal.tmCorId);
 
   return (
     <div className="sc-page">
-      <div className="sc-page-header"><h1>Encaixe Rápido</h1></div>
+      <div className="sc-page-header">
+        <h1>Encaixe Rápido</h1>
+      </div>
       <div className={styles.cols}>
         {/* ── Coluna esquerda ── */}
         <div className={styles.colLeft}>
-
           <div className="sc-card">
             <p className={styles.sectionLabel}>Configuração do Encaixe</p>
             <label className={styles.field}>
@@ -262,16 +324,21 @@ export default function EncaixeRapidoPage() {
                 {tecidos.map((t) => (
                   <li key={t._id} className={styles.tecidoCard}>
                     <div className={styles.tecidoInfo}>
-                      <span className={styles.tecidoNome}>{t.modelo_nome} — {t.cor_nome}</span>
+                      <span className={styles.tecidoNome}>
+                        {t.modelo_nome} — {t.cor_nome}
+                      </span>
                       <span className={styles.tecidoMeta}>
-                        Lote {t.lote_codigo} · {t.lote_peso_kg} kg disp. · {t.cor_largura_cm} cm largura
+                        Lote {t.lote_codigo} · {t.lote_peso_kg} kg disp. · {t.cor_largura_cm} cm
+                        largura
                       </span>
                     </div>
                     <button
                       className={styles.btnRemovePeca}
                       onClick={() => removerTecido(t._id)}
                       title="Remover tecido"
-                    >×</button>
+                    >
+                      ×
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -308,7 +375,9 @@ export default function EncaixeRapidoPage() {
                         </div>
                         <div className={styles.pecaQtds}>
                           {pecaQtdEntries(peca).map(({ tam, qtd }) => (
-                            <span key={tam} className={styles.tamBadge}>{tam}×{qtd}</span>
+                            <span key={tam} className={styles.tamBadge}>
+                              {tam}×{qtd}
+                            </span>
                           ))}
                         </div>
                       </div>
@@ -316,7 +385,9 @@ export default function EncaixeRapidoPage() {
                         className={styles.btnRemovePeca}
                         onClick={() => removerPeca(peca._id)}
                         title="Remover peça"
-                      >×</button>
+                      >
+                        ×
+                      </button>
                     </li>
                   );
                 })}
@@ -328,11 +399,7 @@ export default function EncaixeRapidoPage() {
             </button>
           </div>
 
-          <button
-            className={styles.btnGerar}
-            onClick={handleGerar}
-            disabled={gerando}
-          >
+          <button className={styles.btnGerar} onClick={handleGerar} disabled={gerando}>
             {gerando ? "Gerando encaixe…" : "Gerar Encaixe"}
           </button>
         </div>
@@ -355,7 +422,8 @@ export default function EncaixeRapidoPage() {
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>✂</div>
               <p className={styles.emptyText}>
-                Configure as peças e clique em<br />
+                Configure as peças e clique em
+                <br />
                 <strong>Gerar Encaixe</strong>
               </p>
             </div>
@@ -363,12 +431,14 @@ export default function EncaixeRapidoPage() {
             <div className={styles.warningState}>
               {avisos.length > 0 ? (
                 avisos.map((aviso, i) => (
-                  <p key={i} className={styles.warningText}>{aviso}</p>
+                  <p key={i} className={styles.warningText}>
+                    {aviso}
+                  </p>
                 ))
               ) : (
                 <p className={styles.warningText}>
-                  Nenhuma peça foi posicionada no tecido. Verifique a largura
-                  útil do tecido selecionado.
+                  Nenhuma peça foi posicionada no tecido. Verifique a largura útil do tecido
+                  selecionado.
                 </p>
               )}
               <button className={styles.btnPrimary} onClick={handleGerar}>
@@ -403,9 +473,7 @@ export default function EncaixeRapidoPage() {
                 <div className={styles.resultMetric}>
                   <span className={styles.resultMetricLabel}>Peso estimado</span>
                   <span className={styles.resultMetricValue}>
-                    {resultado.peso != null
-                      ? `${Number(resultado.peso).toFixed(2)} kg`
-                      : "—"}
+                    {resultado.peso != null ? `${Number(resultado.peso).toFixed(2)} kg` : "—"}
                   </span>
                 </div>
                 <div className={styles.resultMetric}>
@@ -428,8 +496,8 @@ export default function EncaixeRapidoPage() {
                   onClick={async () => {
                     try {
                       const blob = await getPdfEncaixe(resultado.pedido_id);
-                      const url  = URL.createObjectURL(blob);
-                      const a    = document.createElement("a");
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
                       a.href = url;
                       a.download = `corte-encaixe.pdf`;
                       document.body.appendChild(a);
@@ -461,7 +529,9 @@ export default function EncaixeRapidoPage() {
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Adicionar Tecido</h2>
-              <button className={styles.btnClose} onClick={() => setTecidoModal(null)}>×</button>
+              <button className={styles.btnClose} onClick={() => setTecidoModal(null)}>
+                ×
+              </button>
             </div>
 
             <div className={styles.modalBody}>
@@ -475,7 +545,8 @@ export default function EncaixeRapidoPage() {
                   <option value="">— Selecionar modelo —</option>
                   {modelos.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.nome}{m.tipo ? ` (${m.tipo})` : ""}
+                      {m.nome}
+                      {m.tipo ? ` (${m.tipo})` : ""}
                     </option>
                   ))}
                 </select>
@@ -536,12 +607,25 @@ export default function EncaixeRapidoPage() {
 
       {/* ══ MODAL — Adicionar peça ══ */}
       {itemModal && (
-        <div className={styles.overlay} onClick={() => { setItemModal(null); setErroModal(null); }}>
+        <div
+          className={styles.overlay}
+          onClick={() => {
+            setItemModal(null);
+            setErroModal(null);
+          }}
+        >
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Adicionar peça</h2>
-              <button className={styles.btnClose}
-                onClick={() => { setItemModal(null); setErroModal(null); }}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => {
+                  setItemModal(null);
+                  setErroModal(null);
+                }}
+              >
+                ×
+              </button>
             </div>
 
             <div className={styles.modalBody}>
@@ -623,8 +707,13 @@ export default function EncaixeRapidoPage() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary}
-                onClick={() => { setItemModal(null); setErroModal(null); }}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => {
+                  setItemModal(null);
+                  setErroModal(null);
+                }}
+              >
                 Cancelar
               </button>
               <button

@@ -1,0 +1,15 @@
+# Dependências de DESENVOLVIMENTO do backend — Partes 8.1 (testes) e 8.3 (lint).
+# Não entram no runtime de produção. Instalar com:
+#   py -3.12 -m pip install -r requirements-dev.txt
+#
+# Testes (8.1)
+pytest>=8.2,<10
+pytest-cov>=5,<8
+httpx>=0.27,<0.29        # TestClient do FastAPI (já é dependência de runtime via fastapi)
+
+# Lint (8.3)
+ruff>=0.6,<0.17
+pre-commit>=3.8,<5
+
+# Auditoria de dependências (8.2)
+pip-audit>=2.7,<3

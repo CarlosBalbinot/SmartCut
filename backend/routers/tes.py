@@ -17,6 +17,7 @@ _MOD = "fiscal_nfe"
 
 # ── Schemas ─────────────────────────────────────────────────────────────
 
+
 class TESCreate(BaseModel):
     codigo: str = Field(..., max_length=20)
     descricao: str = Field(..., max_length=200)
@@ -89,6 +90,7 @@ class TESResponse(BaseModel):
 
 # ── Rotas ───────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_tes(db: Session = Depends(get_db)):
     rows = db.query(TES).order_by(TES.codigo).all()
@@ -123,7 +125,9 @@ def obter_tes(tes_id: int, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_tes(payload: TESCreate, db: Session = Depends(get_db)):
@@ -139,7 +143,8 @@ def criar_tes(payload: TESCreate, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{tes_id}", response_model=dict,
+    "/{tes_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_tes(tes_id: int, payload: TESUpdate, db: Session = Depends(get_db)):
@@ -158,7 +163,8 @@ def atualizar_tes(tes_id: int, payload: TESUpdate, db: Session = Depends(get_db)
 
 
 @router.delete(
-    "/{tes_id}", response_model=dict,
+    "/{tes_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_tes(tes_id: int, db: Session = Depends(get_db)):

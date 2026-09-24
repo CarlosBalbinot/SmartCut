@@ -58,4 +58,5 @@ def gerar_relatorio(db: Session, encaixe_id: uuid.UUID) -> dict | None:
     if not encaixe or encaixe.status == "deletado":
         return None
     from services.report_service import gerar_pdf
+
     return gerar_pdf(encaixe)

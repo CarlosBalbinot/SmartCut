@@ -21,6 +21,7 @@ Sem chave disponível:
     utilizáveis em leitura e são migrados para o formato cifrado pelo
     `migrar_segredos_legados` assim que houver chave (startup do backend).
 """
+
 from __future__ import annotations
 
 import base64
@@ -38,7 +39,9 @@ def _chave_texto() -> str:
 
     if settings.cert_senha_key:
         return settings.cert_senha_key.strip()
-    return os.environ.get("SMARTCUT_CERT_KEY", "").strip()
+    # Item 10.4: fonte única de configuração (settings) — o Electron injeta
+    # SMARTCUT_CERT_KEY via variável de ambiente, lida pelo pydantic.
+    return settings.smartcut_cert_key.strip()
 
 
 def chave_disponivel() -> bool:
@@ -48,10 +51,7 @@ def chave_disponivel() -> bool:
 def _chave_bytes() -> bytes:
     chave = _chave_texto()
     if not chave:
-        raise ValueError(
-            "Chave de cifragem de segredos não configurada "
-            "(defina CERT_SENHA_KEY no ambiente)."
-        )
+        raise ValueError("Chave de cifragem de segredos não configurada (defina CERT_SENHA_KEY no ambiente).")
     # Aceita os dois formatos gerados na documentação: 64 chars hex ou
     # base64url de 32 bytes (43-44 chars).
     if len(chave) == 64:
@@ -66,8 +66,7 @@ def _chave_bytes() -> bytes:
     except Exception:
         pass
     raise ValueError(
-        "CERT_SENHA_KEY/SMARTCUT_CERT_KEY inválida: esperada chave de 32 bytes "
-        "(base64url ou hex de 64 caracteres)."
+        "CERT_SENHA_KEY/SMARTCUT_CERT_KEY inválida: esperada chave de 32 bytes (base64url ou hex de 64 caracteres)."
     )
 
 
@@ -78,10 +77,7 @@ def cifrar_segredo(plano: str) -> str:
     iv = os.urandom(_IV_BYTES)
     dados = AESGCM(_chave_bytes()).encrypt(iv, plano.encode("utf-8"), None)
     return (
-        _PREFIXO
-        + base64.urlsafe_b64encode(iv).decode("ascii")
-        + ":"
-        + base64.urlsafe_b64encode(dados).decode("ascii")
+        _PREFIXO + base64.urlsafe_b64encode(iv).decode("ascii") + ":" + base64.urlsafe_b64encode(dados).decode("ascii")
     )
 
 
@@ -93,7 +89,7 @@ def decifrar_segredo(armazenado: str | None) -> str:
         return ""
     if armazenado.startswith(_PREFIXO):
         try:
-            _b64iv, _b64dados = armazenado[len(_PREFIXO):].split(":", 1)
+            _b64iv, _b64dados = armazenado[len(_PREFIXO) :].split(":", 1)
             iv = base64.urlsafe_b64decode(_b64iv)
             dados = base64.urlsafe_b64decode(_b64dados)
             return AESGCM(_chave_bytes()).decrypt(iv, dados, None).decode("utf-8")
@@ -118,9 +114,7 @@ def migrar_segredos_legados(db) -> int:
 
     if not chave_disponivel():
         return 0
-    empresas = db.execute(
-        select(Empresa).where(Empresa.certificado_senha.isnot(None))
-    ).scalars().all()
+    empresas = db.execute(select(Empresa).where(Empresa.certificado_senha.isnot(None))).scalars().all()
     migrados = 0
     for emp in empresas:
         valor = emp.certificado_senha

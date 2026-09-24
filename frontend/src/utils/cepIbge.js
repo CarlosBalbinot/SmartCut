@@ -1,9 +1,4 @@
-const normalizar = (s) =>
-  (s || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+const normalizar = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 async function buscarIbge(uf, municipio) {
   if (!uf || !municipio) return "";
@@ -25,7 +20,13 @@ async function buscarIbge(uf, municipio) {
 export async function buscarEnderecoPorCep(cep) {
   const digits = (cep || "").replace(/\D/g, "");
   const resultado = {
-    logradouro: "", bairro: "", complemento: "", cidade: "", uf: "", cep: digits, codigo_ibge: "",
+    logradouro: "",
+    bairro: "",
+    complemento: "",
+    cidade: "",
+    uf: "",
+    cep: digits,
+    codigo_ibge: "",
   };
   if (digits.length !== 8) return resultado;
 

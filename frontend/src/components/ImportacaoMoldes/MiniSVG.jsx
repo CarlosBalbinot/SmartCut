@@ -39,18 +39,11 @@ export default function MiniSVG({ geometria, rotacao_base = 0 }) {
   const vh = h + pad * 2;
   const sw = Math.max(w, h) * 0.014;
 
-  const pontosStr = pontos
-    .map((p) => `${p[0] - minX + pad},${p[1] - minY + pad}`)
-    .join(" ");
+  const pontosStr = pontos.map((p) => `${p[0] - minX + pad},${p[1] - minY + pad}`).join(" ");
 
   return (
     <svg viewBox={`0 0 ${vw} ${vh}`} className={styles.miniSvg}>
-      <polygon
-        points={pontosStr}
-        fill="var(--sc-100)"
-        stroke="var(--sc-700)"
-        strokeWidth={sw}
-      />
+      <polygon points={pontosStr} fill="var(--sc-100)" stroke="var(--sc-700)" strokeWidth={sw} />
     </svg>
   );
 }

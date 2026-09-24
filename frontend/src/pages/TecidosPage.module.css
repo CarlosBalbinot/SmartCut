@@ -93,7 +93,9 @@
   box-sizing: border-box;
 }
 
-.input::placeholder { color: var(--sc-text-muted); }
+.input::placeholder {
+  color: var(--sc-text-muted);
+}
 
 .input:focus {
   border-color: var(--color-primary);
@@ -111,7 +113,7 @@
   justify-content: flex-end;
   margin-top: 4px;
   padding-top: 8px;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .btnSecondary {
@@ -133,13 +135,15 @@
 .btnPrimary {
   padding: 9px 18px;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: 980px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.1s;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
 .btnPrimary:hover:not(:disabled) {
@@ -247,7 +251,7 @@
 
 /* ── Cor accordion ── */
 .coresList {
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding: 8px 0 4px 0;
 }
 
@@ -256,7 +260,7 @@
   border-radius: var(--sc-radius-sm);
   overflow: hidden;
   background-color: var(--sc-surface);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .corHeader {
@@ -293,7 +297,7 @@
 .corEncolhimento {
   font-size: 11px;
   color: var(--sc-text-muted);
-  background: #E8E8ED;
+  background: #e8e8ed;
   padding: 1px 6px;
   border-radius: 100px;
 }
@@ -316,7 +320,7 @@
 
 /* ── Lotes ── */
 .lotesList {
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .loteRow {
@@ -324,7 +328,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px 8px 36px;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   transition: background-color 0.1s;
 }
 
@@ -402,7 +406,7 @@
 
 .badge_intacto {
   background-color: var(--sc-bg-secondary);
-  color: #6E6E73;
+  color: #6e6e73;
 }
 
 .badge_aberto {
@@ -530,7 +534,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 4px;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .linhaHistorico:last-child {

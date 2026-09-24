@@ -29,7 +29,9 @@
   border-radius: var(--sc-radius-md);
   padding: 1.25rem;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .card:hover {
   border-color: var(--color-primary);

@@ -16,7 +16,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: var(--sc-bg-secondary); color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
 
 .title {
   font-size: var(--sc-font-size-page-title);
@@ -68,7 +71,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 .erro {
   margin-top: 1rem;
@@ -110,5 +115,10 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

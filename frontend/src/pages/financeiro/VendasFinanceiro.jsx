@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import { FileText } from "lucide-react";
 import {
-  getVendasFinanceiras, createVendaFinanceira, getVendaFinanceira, uploadAnexo,
-  updateVendaFinanceira, deleteVendaFinanceira,
-  createLancamento, updateLancamento, deleteLancamento,
-  downloadAnexo, deleteAnexo,
-  importarLoteVendas, importarVendaFinal,
+  getVendasFinanceiras,
+  createVendaFinanceira,
+  getVendaFinanceira,
+  uploadAnexo,
+  updateVendaFinanceira,
+  deleteVendaFinanceira,
+  createLancamento,
+  updateLancamento,
+  deleteLancamento,
+  downloadAnexo,
+  deleteAnexo,
+  importarLoteVendas,
+  importarVendaFinal,
   gerarDanfeSimplificada,
 } from "../../api/financeiro";
 import FormularioCompraVenda from "./FormularioCompraVenda";
@@ -28,9 +36,9 @@ const dataFmt = (iso) => {
 const STATUS_LABELS = { PAGO: "Recebido", PENDENTE: "Pendente", CANCELADO: "Cancelado" };
 
 function statusGeralInfo(total, pagas) {
-  if (total === 0) return { label: "—",        cls: "stPendente" };
-  if (pagas === total) return { label: "Quitado", cls: "stQuitado"  };
-  if (pagas > 0)  return { label: `${pagas}/${total} recebidas`, cls: "stParcial"  };
+  if (total === 0) return { label: "—", cls: "stPendente" };
+  if (pagas === total) return { label: "Quitado", cls: "stQuitado" };
+  if (pagas > 0) return { label: `${pagas}/${total} recebidas`, cls: "stParcial" };
   return { label: "Pendente", cls: "stPendente" };
 }
 
@@ -136,37 +144,37 @@ const totalGrupo = (itens) =>
 
 export default function VendasFinanceiro() {
   const { hasPermission } = useAuth();
-  const [vendas,        setVendas]        = useState([]);
-  const [loading,       setLoading]       = useState(false);
-  const [expandedId,    setExpandedId]    = useState(null);
-  const [expandedData,  setExpandedData]  = useState({});
+  const [vendas, setVendas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [expandedData, setExpandedData] = useState({});
   const [loadingExpand, setLoadingExpand] = useState(false);
-  const [modal,         setModal]         = useState(false);
-  const [saving,        setSaving]        = useState(false);
-  const [erro,          setErro]          = useState(null);
+  const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState(null);
 
   // Edit
-  const [modalEditar,    setModalEditar]    = useState(false);
-  const [editandoVenda,  setEditandoVenda]  = useState(null);
-  const [editForm,       setEditForm]       = useState({});
-  const [savingEdit,     setSavingEdit]     = useState(false);
-  const [erroEdit,       setErroEdit]       = useState(null);
+  const [modalEditar, setModalEditar] = useState(false);
+  const [editandoVenda, setEditandoVenda] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [erroEdit, setErroEdit] = useState(null);
 
   // Edit — parcelas e anexos
-  const [editParcelas,        setEditParcelas]        = useState([]);
-  const [parcelasRemovidas,   setParcelasRemovidas]   = useState([]);
-  const [loadingEditParcelas, setLoadingEditParcelas]  = useState(false);
+  const [editParcelas, setEditParcelas] = useState([]);
+  const [parcelasRemovidas, setParcelasRemovidas] = useState([]);
+  const [loadingEditParcelas, setLoadingEditParcelas] = useState(false);
 
   // Delete
-  const [modalExcluir,    setModalExcluir]    = useState(false);
-  const [excluindoVenda,  setExcluindoVenda]  = useState(null);
-  const [deleting,        setDeleting]        = useState(false);
-  const [erroExcluir,     setErroExcluir]     = useState(null);
+  const [modalExcluir, setModalExcluir] = useState(false);
+  const [excluindoVenda, setExcluindoVenda] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState(null);
 
   // Importar XML
   const fileInputRef = useRef(null);
-  const [arquivosXml,    setArquivosXml]    = useState(null);
-  const [modalImportar,  setModalImportar]  = useState(false);
+  const [arquivosXml, setArquivosXml] = useState(null);
+  const [modalImportar, setModalImportar] = useState(false);
   const [resultadoImport, setResultadoImport] = useState(null);
 
   // Gerar DANFE avulsa (a partir de um XML solto, sem importar a nota)
@@ -175,8 +183,7 @@ export default function VendasFinanceiro() {
 
   // Agrupamento por mês — chave do mês → true quando aberto (default: fechado)
   const [mesesAbertos, setMesesAbertos] = useState({});
-  const toggleColapso = (chave) =>
-    setMesesAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
+  const toggleColapso = (chave) => setMesesAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
 
   const recarregarVendas = () => {
     setLoading(true);
@@ -229,7 +236,10 @@ export default function VendasFinanceiro() {
 
   // ── Expand row ────────────────────────────────────────────────────────────
   const handleExpand = async (id) => {
-    if (expandedId === id) { setExpandedId(null); return; }
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
     setExpandedId(id);
     if (expandedData[id]) return;
     setLoadingExpand(true);
@@ -242,11 +252,18 @@ export default function VendasFinanceiro() {
 
   // ── Criar venda ───────────────────────────────────────────────────────────
   const handleSalvar = async (formData, nfFile, boletos) => {
-    if (!formData.cliente?.trim()) { setErro("Informe o cliente."); return; }
-    if (!formData.valor_total || isNaN(formData.valor_total)) {
-      setErro("Informe o valor total."); return;
+    if (!formData.cliente?.trim()) {
+      setErro("Informe o cliente.");
+      return;
     }
-    if (!formData.primeiro_vencimento) { setErro("Informe o primeiro vencimento."); return; }
+    if (!formData.valor_total || isNaN(formData.valor_total)) {
+      setErro("Informe o valor total.");
+      return;
+    }
+    if (!formData.primeiro_vencimento) {
+      setErro("Informe o primeiro vencimento.");
+      return;
+    }
 
     setSaving(true);
     setErro(null);
@@ -261,9 +278,7 @@ export default function VendasFinanceiro() {
 
       if (nfFile && parcelas.length > 0) {
         const tipoNf = tipoAnexoPorArquivo(nfFile);
-        await Promise.all(
-          parcelas.map((p) => uploadAnexo(p.id, nfFile, tipoNf).catch(() => {}))
-        );
+        await Promise.all(parcelas.map((p) => uploadAnexo(p.id, nfFile, tipoNf).catch(() => {})));
       }
 
       for (let i = 0; i < boletos.length; i++) {
@@ -286,10 +301,10 @@ export default function VendasFinanceiro() {
     e.stopPropagation();
     setEditandoVenda(venda);
     setEditForm({
-      cliente:     venda.cliente     || "",
-      descricao:   venda.descricao   || "",
+      cliente: venda.cliente || "",
+      descricao: venda.descricao || "",
       valor_total: venda.valor_total || "",
-      data_venda:  (venda.data_venda || "").split("T")[0],
+      data_venda: (venda.data_venda || "").split("T")[0],
     });
     setErroEdit(null);
     setEditParcelas([]);
@@ -328,7 +343,15 @@ export default function VendasFinanceiro() {
   const addEditParcela = () => {
     setEditParcelas((prev) => [
       ...prev,
-      { key: `novo-${Date.now()}-${prev.length}`, id: null, parcela_numero: null, vencimento: "", valor: "", status: "PENDENTE", anexos: [] },
+      {
+        key: `novo-${Date.now()}-${prev.length}`,
+        id: null,
+        parcela_numero: null,
+        vencimento: "",
+        valor: "",
+        status: "PENDENTE",
+        anexos: [],
+      },
     ]);
   };
 
@@ -342,9 +365,11 @@ export default function VendasFinanceiro() {
     if (!parcela.id || !file) return;
     try {
       const anexo = await uploadAnexo(parcela.id, file, tipo);
-      setEditParcelas((prev) => prev.map((p) => (
-        p.key === parcela.key ? { ...p, anexos: [...(p.anexos || []), anexo] } : p
-      )));
+      setEditParcelas((prev) =>
+        prev.map((p) =>
+          p.key === parcela.key ? { ...p, anexos: [...(p.anexos || []), anexo] } : p
+        )
+      );
     } catch (err) {
       setErroEdit(err.message || "Erro ao anexar arquivo.");
     }
@@ -353,9 +378,13 @@ export default function VendasFinanceiro() {
   const handleRemoverAnexo = async (parcela, anexo) => {
     try {
       await deleteAnexo(anexo.id);
-      setEditParcelas((prev) => prev.map((p) => (
-        p.key === parcela.key ? { ...p, anexos: (p.anexos || []).filter((a) => a.id !== anexo.id) } : p
-      )));
+      setEditParcelas((prev) =>
+        prev.map((p) =>
+          p.key === parcela.key
+            ? { ...p, anexos: (p.anexos || []).filter((a) => a.id !== anexo.id) }
+            : p
+        )
+      );
     } catch (err) {
       setErroEdit(err.message || "Erro ao remover anexo.");
     }
@@ -364,9 +393,9 @@ export default function VendasFinanceiro() {
   const handleDownloadAnexo = async (anexo) => {
     try {
       const blob = await downloadAnexo(anexo.id);
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       a.download = anexo.nome_original || "anexo";
       document.body.appendChild(a);
       a.click();
@@ -392,10 +421,10 @@ export default function VendasFinanceiro() {
     setErroEdit(null);
     try {
       const dados = {
-        cliente:     editForm.cliente.trim() || undefined,
-        descricao:   editForm.descricao.trim()  || null,
+        cliente: editForm.cliente.trim() || undefined,
+        descricao: editForm.descricao.trim() || null,
         valor_total: parseFloat(editForm.valor_total) || undefined,
-        data_venda:  editForm.data_venda       || undefined,
+        data_venda: editForm.data_venda || undefined,
       };
       await updateVendaFinanceira(editandoVenda.id, dados);
 
@@ -447,18 +476,24 @@ export default function VendasFinanceiro() {
       try {
         const full = await getVendaFinanceira(venda.id);
         setExpandedData((prev) => ({ ...prev, [venda.id]: full }));
-        setDocCard((prev) => (prev && prev.venda.id === venda.id ? { ...prev, full, carregando: false } : prev));
+        setDocCard((prev) =>
+          prev && prev.venda.id === venda.id ? { ...prev, full, carregando: false } : prev
+        );
       } catch {
-        setDocCard((prev) => (prev && prev.venda.id === venda.id ? { ...prev, carregando: false } : prev));
+        setDocCard((prev) =>
+          prev && prev.venda.id === venda.id ? { ...prev, carregando: false } : prev
+        );
       }
     }
   };
 
   const handleFecharDocCard = () => setDocCard(null);
 
-  const docCardAnexos = docCard?.full ? extractParcelas(docCard.full).flatMap((p) => p.anexos || []) : [];
+  const docCardAnexos = docCard?.full
+    ? extractParcelas(docCard.full).flatMap((p) => p.anexos || [])
+    : [];
   const docCardAnexoXml = docCardAnexos.find(ehAnexoXml);
-  const docCardAnexoNf  = docCardAnexos.find(ehAnexoNfPdf);
+  const docCardAnexoNf = docCardAnexos.find(ehAnexoNfPdf);
 
   const handleGerarDanfeCard = async () => {
     if (!docCardAnexoXml) return;
@@ -514,7 +549,6 @@ export default function VendasFinanceiro() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="sc-page">
-
       <div className="sc-page-header">
         <h1>Vendas</h1>
         <div className={styles.headerActions}>
@@ -523,7 +557,13 @@ export default function VendasFinanceiro() {
               <button className={styles.btnSecondary} onClick={handleAbrirSeletorXml}>
                 Importar XMLs
               </button>
-              <button className={styles.btnNovo} onClick={() => { setModal(true); setErro(null); }}>
+              <button
+                className={styles.btnNovo}
+                onClick={() => {
+                  setModal(true);
+                  setErro(null);
+                }}
+              >
                 + Nova Venda
               </button>
             </>
@@ -564,182 +604,209 @@ export default function VendasFinanceiro() {
 
       <div className={`sc-card ${styles.tableCard}`}>
         <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th style={{ textAlign: "center" }}>Data</th>
-              <th style={{ textAlign: "center" }}>Valor Total</th>
-              <th style={{ textAlign: "center" }}>Parcelas</th>
-              <th style={{ textAlign: "center" }}>Status</th>
-              <th
-                className={styles.acoesCell}
-                style={{ width: "180px", minWidth: "180px", maxWidth: "180px", textAlign: "center" }}
-              >
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {agruparPorMes(vendas, "data_venda").map((grupo) => {
-              const colapsado = !mesesAbertos[grupo.chave];
-              return (
-                <Fragment key={grupo.chave}>
-                  <tr className={styles.monthHeaderRow}>
-                    <td colSpan={6}>
-                      <div
-                        className={styles.monthHeader}
-                        onClick={() => toggleColapso(grupo.chave)}
-                      >
-                        <span className={styles.monthHeaderChevron}>{colapsado ? "▶" : "▼"}</span>
-                        <span>
-                          {grupo.label} &nbsp;•&nbsp; {grupo.itens.length} nota{grupo.itens.length !== 1 ? "s" : ""} &nbsp;•&nbsp; Total: {moeda(totalGrupo(grupo.itens))}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  {!colapsado && grupo.itens.map((v) => {
-                    const isOpen  = expandedId === v.id;
-                    const cached  = expandedData[v.id];
-                    const parcelas = cached ? extractParcelas(cached) : [];
-                    const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(v, cached);
-                    const st = statusGeralInfo(totalParcelas, parcelasPagas);
-
-                    return (
-                      <Fragment key={v.id}>
-                        <tr
-                          className={styles.trClickable}
-                          onClick={() => handleExpand(v.id)}
-                        >
-                          <td title={v.cliente}>
-                            <div className={styles.fornecedorCell}>
-                              <span className={styles.fornecedorNome}>{v.cliente || "—"}</span>
-                              {v.descricao && <span className={styles.fornecedorSub}>{v.descricao}</span>}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: "center" }}>
-                            <div className={styles.dataCell}>
-                              <span>NF: {dataFmt(v.data_venda)}</span>
-                              <span className={styles.dataCellSub}>Import.: {dataFmt(v.created_at)}</span>
-                            </div>
-                          </td>
-                          <td className={styles.tdValor} style={{ textAlign: "center" }}>{moeda(v.valor_total)}</td>
-                          <td style={{ textAlign: "center" }}>{totalParcelas > 0 ? `${totalParcelas}x` : "—"}</td>
-                          <td style={{ textAlign: "center" }}>
-                            <span className={`${styles.badge} ${styles[st.cls]}`}>{st.label}</span>
-                          </td>
-                          <td
-                            className={styles.acoesCell}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}
-                          >
-                            <div
-                              className={styles.rowActions}
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "6px",
-                                width: "100%",
-                                flexWrap: "nowrap",
-                              }}
-                            >
-                              {hasPermission(MODULO, "editar") && (
-                                <button
-                                  className={styles.btnEditar}
-                                  onClick={(e) => handleAbrirEditar(e, v)}
-                                  title="Editar"
-                                  style={{ height: "30px", padding: "0 10px", fontSize: "13px", flexShrink: 0 }}
-                                >
-                                  Editar
-                                </button>
-                              )}
-                              <button
-                                className={styles.btnIconAction}
-                                onClick={(e) => handleAbrirDocCard(e, v)}
-                                title="Documentos Fiscais"
-                                style={{ height: "30px", width: "30px", flexShrink: 0 }}
-                              >
-                                <FileText size={15} strokeWidth={1.75} />
-                              </button>
-                              {hasPermission(MODULO, "excluir") && (
-                                <button
-                                  className={styles.btnIconDelete}
-                                  onClick={(e) => handleAbrirExcluir(e, v)}
-                                  title="Excluir"
-                                  style={{ height: "30px", width: "30px", flexShrink: 0 }}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {isOpen && (
-                          <tr className={styles.expandRow}>
-                            <td colSpan={6}>
-                              <div className={styles.expandCell}>
-                                {loadingExpand && !cached ? (
-                                  <p className={styles.expandLoading}>Carregando parcelas…</p>
-                                ) : parcelas.length === 0 ? (
-                                  <p className={styles.expandLoading}>Nenhuma parcela encontrada.</p>
-                                ) : (
-                                  <>
-                                    <p className={styles.parcelasTitle}>Parcelas</p>
-                                    <table className={styles.parcelasTable}>
-                                      <thead>
-                                        <tr>
-                                          <th>#</th>
-                                          <th>Vencimento</th>
-                                          <th>Valor</th>
-                                          <th>Status</th>
-                                          <th>Recebido em</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {parcelas.map((p, idx) => {
-                                          const pst = parcelaStatusInfo(p);
-                                          return (
-                                            <tr key={p.id}>
-                                              <td>{p.parcela_numero ?? idx + 1}</td>
-                                              <td>{dataFmt(p.data_vencimento)}</td>
-                                              <td>{moeda(p.valor)}</td>
-                                              <td>
-                                                <span className={`${styles.badge} ${styles[pst.cls]}`}>
-                                                  {pst.label}
-                                                </span>
-                                              </td>
-                                              <td>{dataFmt(p.data_pagamento)}</td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </Fragment>
-              );
-            })}
-
-            {vendas.length === 0 && (
+          <table className={styles.table}>
+            <thead>
               <tr>
-                <td colSpan={6} className={styles.empty}>
-                  {loading ? "Carregando…" : "Nenhuma venda cadastrada."}
-                </td>
+                <th>Cliente</th>
+                <th style={{ textAlign: "center" }}>Data</th>
+                <th style={{ textAlign: "center" }}>Valor Total</th>
+                <th style={{ textAlign: "center" }}>Parcelas</th>
+                <th style={{ textAlign: "center" }}>Status</th>
+                <th
+                  className={styles.acoesCell}
+                  style={{
+                    width: "180px",
+                    minWidth: "180px",
+                    maxWidth: "180px",
+                    textAlign: "center",
+                  }}
+                >
+                  Ações
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {agruparPorMes(vendas, "data_venda").map((grupo) => {
+                const colapsado = !mesesAbertos[grupo.chave];
+                return (
+                  <Fragment key={grupo.chave}>
+                    <tr className={styles.monthHeaderRow}>
+                      <td colSpan={6}>
+                        <div
+                          className={styles.monthHeader}
+                          onClick={() => toggleColapso(grupo.chave)}
+                        >
+                          <span className={styles.monthHeaderChevron}>{colapsado ? "▶" : "▼"}</span>
+                          <span>
+                            {grupo.label} &nbsp;•&nbsp; {grupo.itens.length} nota
+                            {grupo.itens.length !== 1 ? "s" : ""} &nbsp;•&nbsp; Total:{" "}
+                            {moeda(totalGrupo(grupo.itens))}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {!colapsado &&
+                      grupo.itens.map((v) => {
+                        const isOpen = expandedId === v.id;
+                        const cached = expandedData[v.id];
+                        const parcelas = cached ? extractParcelas(cached) : [];
+                        const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(
+                          v,
+                          cached
+                        );
+                        const st = statusGeralInfo(totalParcelas, parcelasPagas);
+
+                        return (
+                          <Fragment key={v.id}>
+                            <tr className={styles.trClickable} onClick={() => handleExpand(v.id)}>
+                              <td title={v.cliente}>
+                                <div className={styles.fornecedorCell}>
+                                  <span className={styles.fornecedorNome}>{v.cliente || "—"}</span>
+                                  {v.descricao && (
+                                    <span className={styles.fornecedorSub}>{v.descricao}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <div className={styles.dataCell}>
+                                  <span>NF: {dataFmt(v.data_venda)}</span>
+                                  <span className={styles.dataCellSub}>
+                                    Import.: {dataFmt(v.created_at)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className={styles.tdValor} style={{ textAlign: "center" }}>
+                                {moeda(v.valor_total)}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                {totalParcelas > 0 ? `${totalParcelas}x` : "—"}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <span className={`${styles.badge} ${styles[st.cls]}`}>
+                                  {st.label}
+                                </span>
+                              </td>
+                              <td
+                                className={styles.acoesCell}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}
+                              >
+                                <div
+                                  className={styles.rowActions}
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "6px",
+                                    width: "100%",
+                                    flexWrap: "nowrap",
+                                  }}
+                                >
+                                  {hasPermission(MODULO, "editar") && (
+                                    <button
+                                      className={styles.btnEditar}
+                                      onClick={(e) => handleAbrirEditar(e, v)}
+                                      title="Editar"
+                                      style={{
+                                        height: "30px",
+                                        padding: "0 10px",
+                                        fontSize: "13px",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                  <button
+                                    className={styles.btnIconAction}
+                                    onClick={(e) => handleAbrirDocCard(e, v)}
+                                    title="Documentos Fiscais"
+                                    style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                                  >
+                                    <FileText size={15} strokeWidth={1.75} />
+                                  </button>
+                                  {hasPermission(MODULO, "excluir") && (
+                                    <button
+                                      className={styles.btnIconDelete}
+                                      onClick={(e) => handleAbrirExcluir(e, v)}
+                                      title="Excluir"
+                                      style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+
+                            {isOpen && (
+                              <tr className={styles.expandRow}>
+                                <td colSpan={6}>
+                                  <div className={styles.expandCell}>
+                                    {loadingExpand && !cached ? (
+                                      <p className={styles.expandLoading}>Carregando parcelas…</p>
+                                    ) : parcelas.length === 0 ? (
+                                      <p className={styles.expandLoading}>
+                                        Nenhuma parcela encontrada.
+                                      </p>
+                                    ) : (
+                                      <>
+                                        <p className={styles.parcelasTitle}>Parcelas</p>
+                                        <table className={styles.parcelasTable}>
+                                          <thead>
+                                            <tr>
+                                              <th>#</th>
+                                              <th>Vencimento</th>
+                                              <th>Valor</th>
+                                              <th>Status</th>
+                                              <th>Recebido em</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {parcelas.map((p, idx) => {
+                                              const pst = parcelaStatusInfo(p);
+                                              return (
+                                                <tr key={p.id}>
+                                                  <td>{p.parcela_numero ?? idx + 1}</td>
+                                                  <td>{dataFmt(p.data_vencimento)}</td>
+                                                  <td>{moeda(p.valor)}</td>
+                                                  <td>
+                                                    <span
+                                                      className={`${styles.badge} ${styles[pst.cls]}`}
+                                                    >
+                                                      {pst.label}
+                                                    </span>
+                                                  </td>
+                                                  <td>{dataFmt(p.data_pagamento)}</td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                  </Fragment>
+                );
+              })}
+
+              {vendas.length === 0 && (
+                <tr>
+                  <td colSpan={6} className={styles.empty}>
+                    {loading ? "Carregando…" : "Nenhuma venda cadastrada."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -761,7 +828,10 @@ export default function VendasFinanceiro() {
       {/* ── Modal: Editar Venda ── */}
       {modalEditar && editandoVenda && (
         <div className={styles.overlay} onClick={() => !savingEdit && setModalEditar(false)}>
-          <div className={`${styles.modal} ${styles.modalLarge}`} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`${styles.modal} ${styles.modalLarge}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar Venda</h2>
               <button
@@ -817,7 +887,9 @@ export default function VendasFinanceiro() {
               {/* ── Parcelas ── */}
               <div className={styles.uploadSection}>
                 <div className={styles.parcelasEditHeader}>
-                  <p className={styles.uploadSectionLabel} style={{ margin: 0 }}>Parcelas</p>
+                  <p className={styles.uploadSectionLabel} style={{ margin: 0 }}>
+                    Parcelas
+                  </p>
                   <button type="button" className={styles.btnAddParcela} onClick={addEditParcela}>
                     + Adicionar Parcela
                   </button>
@@ -838,13 +910,17 @@ export default function VendasFinanceiro() {
                         disabled={p.status === "PAGO"}
                       />
                       <input
-                        type="number" min="0" step="0.01"
+                        type="number"
+                        min="0"
+                        step="0.01"
                         className={styles.input}
                         value={p.valor}
                         onChange={updateEditParcela(p.key, "valor")}
                         disabled={p.status === "PAGO"}
                       />
-                      <span className={`${styles.badge} ${styles["st" + (p.status || "PENDENTE")]}`}>
+                      <span
+                        className={`${styles.badge} ${styles["st" + (p.status || "PENDENTE")]}`}
+                      >
                         {STATUS_LABELS[p.status] || "Pendente"}
                       </span>
                       <button
@@ -852,7 +928,11 @@ export default function VendasFinanceiro() {
                         className={styles.btnRemoveParcela}
                         onClick={() => removeEditParcela(p)}
                         disabled={p.status === "PAGO"}
-                        title={p.status === "PAGO" ? "Parcela recebida não pode ser removida" : "Remover parcela"}
+                        title={
+                          p.status === "PAGO"
+                            ? "Parcela recebida não pode ser removida"
+                            : "Remover parcela"
+                        }
                       >
                         ×
                       </button>
@@ -871,7 +951,9 @@ export default function VendasFinanceiro() {
                     const boleto = (p.anexos || []).find((a) => a.tipo === "BOLETO");
                     return (
                       <div key={p.key} className={styles.anexoRow}>
-                        <span className={styles.anexoRowLabel}>Parcela {p.parcela_numero ?? idx + 1}</span>
+                        <span className={styles.anexoRowLabel}>
+                          Parcela {p.parcela_numero ?? idx + 1}
+                        </span>
                         {boleto ? (
                           <>
                             <span className={styles.anexoRowNome} title={boleto.nome_original}>
@@ -1055,8 +1137,7 @@ export default function VendasFinanceiro() {
 
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>
-                Tem certeza que deseja excluir a venda de{" "}
-                <strong>{excluindoVenda.cliente}</strong>?{" "}
+                Tem certeza que deseja excluir a venda de <strong>{excluindoVenda.cliente}</strong>?{" "}
                 Esta ação não pode ser desfeita.
               </p>
               {erroExcluir && <p className={styles.erro}>{erroExcluir}</p>}
@@ -1089,7 +1170,10 @@ export default function VendasFinanceiro() {
           tipo="venda"
           importarLote={importarLoteVendas}
           importarFinal={importarVendaFinal}
-          onFechar={() => { setModalImportar(false); setArquivosXml(null); }}
+          onFechar={() => {
+            setModalImportar(false);
+            setArquivosXml(null);
+          }}
           onConcluido={handleConcluirImportacao}
         />
       )}

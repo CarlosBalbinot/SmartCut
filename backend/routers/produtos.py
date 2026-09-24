@@ -38,6 +38,7 @@ _MOD = "cadastros_produtos"
 
 # ── Produtos ────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_produtos(
     status_produto: str | None = None,
@@ -57,8 +58,10 @@ def listar_produtos(
 # antes de "/{produto_id}" — caso contrário o FastAPI tentaria casar
 # "busca-pedido" com o parâmetro uuid produto_id e devolveria 422.
 
+
 @router.get(
-    "/busca-pedido", response_model=dict,
+    "/busca-pedido",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def busca_pedido_produtos(q: str = "", db: Session = Depends(get_db)):
@@ -69,7 +72,8 @@ def busca_pedido_produtos(q: str = "", db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/{produto_pai_id}/grade-pedido", response_model=dict,
+    "/{produto_pai_id}/grade-pedido",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def grade_pedido_produto(produto_pai_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -82,6 +86,7 @@ def grade_pedido_produto(produto_pai_id: uuid.UUID, db: Session = Depends(get_db
 
 # ── SKUs para o pedido de venda (troca de SKU por código / lupa) ────────
 # Declaradas antes de /{produto_id}: senão "skus" cai na rota com UUID.
+
 
 def _sku_opts():
     return (
@@ -97,11 +102,15 @@ def buscar_sku_ativo_por_codigo(db: Session, codigo: str) -> ProdutoSKU | None:
     codigo = (codigo or "").strip()
     if not codigo:
         return None
-    return db.execute(
-        select(ProdutoSKU)
-        .where(func.lower(ProdutoSKU.codigo) == codigo.lower(), ProdutoSKU.situacao == "Ativo")
-        .options(*_sku_opts())
-    ).scalars().first()
+    return (
+        db.execute(
+            select(ProdutoSKU)
+            .where(func.lower(ProdutoSKU.codigo) == codigo.lower(), ProdutoSKU.situacao == "Ativo")
+            .options(*_sku_opts())
+        )
+        .scalars()
+        .first()
+    )
 
 
 def _sku_out(sku: ProdutoSKU) -> dict:
@@ -118,7 +127,8 @@ def _sku_out(sku: ProdutoSKU) -> dict:
 
 
 @router.get(
-    "/skus/validar", response_model=dict,
+    "/skus/validar",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def validar_sku(codigo: str, db: Session = Depends(get_db)):
@@ -129,7 +139,8 @@ def validar_sku(codigo: str, db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/skus", response_model=dict,
+    "/skus",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def buscar_skus(
@@ -140,9 +151,7 @@ def buscar_skus(
 ):
     """Busca de SKUs filhos ativos por código ou descrição (pai + linha +
     coluna). Cada palavra digitada precisa aparecer em algum dos dois."""
-    skus = db.execute(
-        select(ProdutoSKU).where(ProdutoSKU.situacao == "Ativo").options(*_sku_opts())
-    ).scalars().all()
+    skus = db.execute(select(ProdutoSKU).where(ProdutoSKU.situacao == "Ativo").options(*_sku_opts())).scalars().all()
     termos = busca.lower().split()
     itens = []
     for sku in skus:
@@ -153,7 +162,7 @@ def buscar_skus(
     itens.sort(key=lambda i: i["codigo"])
     return {
         "data": {
-            "itens": itens[offset:offset + limit],
+            "itens": itens[offset : offset + limit],
             "total": len(itens),
             "limit": limit,
             "offset": offset,
@@ -171,7 +180,9 @@ def obter_produto(produto_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_produto(payload: ProdutoCreate, db: Session = Depends(get_db)):
@@ -183,7 +194,8 @@ def criar_produto(payload: ProdutoCreate, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{produto_id}", response_model=dict,
+    "/{produto_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_produto(produto_id: uuid.UUID, payload: ProdutoUpdate, db: Session = Depends(get_db)):
@@ -197,7 +209,8 @@ def atualizar_produto(produto_id: uuid.UUID, payload: ProdutoUpdate, db: Session
 
 
 @router.delete(
-    "/{produto_id}", response_model=dict,
+    "/{produto_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_produto(produto_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -209,28 +222,31 @@ def excluir_produto(produto_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── SKUs (produto filho / grade) ──────────────────────────────────────
 
+
 @router.post(
-    "/{produto_id}/skus/gerar", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/{produto_id}/skus/gerar",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def gerar_skus_produto(produto_id: uuid.UUID, payload: SkuGerarRequest, db: Session = Depends(get_db)):
     try:
-        skus = sku_service.gerar_skus(
-            db, produto_id, [c.model_dump() for c in payload.combinacoes]
-        )
+        skus = sku_service.gerar_skus(db, produto_id, [c.model_dump() for c in payload.combinacoes])
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return {"data": [ProdutoSkuOut.model_validate(s) for s in skus], "error": None}
 
 
 @router.post(
-    "/{produto_id}/skus/sincronizar", response_model=dict,
+    "/{produto_id}/skus/sincronizar",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def sincronizar_skus_produto(produto_id: uuid.UUID, payload: SkuSincronizarRequest, db: Session = Depends(get_db)):
     try:
         resultado = sku_service.sincronizar_skus(
-            db, produto_id,
+            db,
+            produto_id,
             [c.model_dump() for c in payload.combinacoes],
             payload.remover_sku_ids,
         )
@@ -240,21 +256,18 @@ def sincronizar_skus_produto(produto_id: uuid.UUID, payload: SkuSincronizarReque
 
 
 @router.get(
-    "/{produto_id}/skus/", response_model=dict,
+    "/{produto_id}/skus/",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def listar_skus_produto(produto_id: uuid.UUID, db: Session = Depends(get_db)):
-    skus = (
-        db.query(ProdutoSKU)
-        .filter(ProdutoSKU.produto_pai_id == produto_id)
-        .order_by(ProdutoSKU.codigo)
-        .all()
-    )
+    skus = db.query(ProdutoSKU).filter(ProdutoSKU.produto_pai_id == produto_id).order_by(ProdutoSKU.codigo).all()
     return {"data": [ProdutoSkuOut.model_validate(s) for s in skus], "error": None}
 
 
 @router.patch(
-    "/{produto_id}/skus/{sku_id}", response_model=dict,
+    "/{produto_id}/skus/{sku_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_sku_produto(produto_id: uuid.UUID, sku_id: int, payload: SkuUpdate, db: Session = Depends(get_db)):
@@ -276,7 +289,8 @@ def atualizar_sku_produto(produto_id: uuid.UUID, sku_id: int, payload: SkuUpdate
 
 
 @router.post(
-    "/{produto_id}/propagar-preco", response_model=dict,
+    "/{produto_id}/propagar-preco",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def propagar_preco_produto(produto_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -288,7 +302,8 @@ def propagar_preco_produto(produto_id: uuid.UUID, db: Session = Depends(get_db))
 
 
 @router.delete(
-    "/{produto_id}/skus/{sku_id}", response_model=dict,
+    "/{produto_id}/skus/{sku_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_sku_produto(produto_id: uuid.UUID, sku_id: int, db: Session = Depends(get_db)):
@@ -305,6 +320,7 @@ def excluir_sku_produto(produto_id: uuid.UUID, sku_id: int, db: Session = Depend
 
 # ── Grupos de Produto ─────────────────────────────────────────────────
 
+
 @grupos_router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_grupos(situacao: str | None = None, db: Session = Depends(get_db)):
     grupos = grupo_produto_service.listar(db, situacao=situacao)
@@ -312,7 +328,9 @@ def listar_grupos(situacao: str | None = None, db: Session = Depends(get_db)):
 
 
 @grupos_router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_grupo(payload: GrupoProdutoCreate, db: Session = Depends(get_db)):
@@ -321,7 +339,8 @@ def criar_grupo(payload: GrupoProdutoCreate, db: Session = Depends(get_db)):
 
 
 @grupos_router.put(
-    "/{grupo_id}", response_model=dict,
+    "/{grupo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_grupo(grupo_id: uuid.UUID, payload: GrupoProdutoUpdate, db: Session = Depends(get_db)):
@@ -332,7 +351,8 @@ def atualizar_grupo(grupo_id: uuid.UUID, payload: GrupoProdutoUpdate, db: Sessio
 
 
 @grupos_router.delete(
-    "/{grupo_id}", response_model=dict,
+    "/{grupo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_grupo(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -347,6 +367,7 @@ def excluir_grupo(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Linhas de Grade ─────────────────────────────────────────────────────
 
+
 @linhas_grade_router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_linhas(situacao: str | None = None, db: Session = Depends(get_db)):
     linhas = grade_service.listar_linhas(db, situacao=situacao)
@@ -354,7 +375,9 @@ def listar_linhas(situacao: str | None = None, db: Session = Depends(get_db)):
 
 
 @linhas_grade_router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_linha(payload: GradeItemCreate, db: Session = Depends(get_db)):
@@ -364,6 +387,7 @@ def criar_linha(payload: GradeItemCreate, db: Session = Depends(get_db)):
 
 # ── Colunas de Grade ─────────────────────────────────────────────────────
 
+
 @colunas_grade_router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_colunas(situacao: str | None = None, db: Session = Depends(get_db)):
     colunas = grade_service.listar_colunas(db, situacao=situacao)
@@ -371,7 +395,9 @@ def listar_colunas(situacao: str | None = None, db: Session = Depends(get_db)):
 
 
 @colunas_grade_router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_coluna(payload: GradeItemCreate, db: Session = Depends(get_db)):

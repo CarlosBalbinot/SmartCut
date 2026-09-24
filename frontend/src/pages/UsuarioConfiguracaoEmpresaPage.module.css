@@ -16,7 +16,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: var(--sc-bg-secondary); color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
 
 .title {
   font-size: var(--sc-font-size-page-title);
@@ -57,7 +60,9 @@
   color: var(--sc-text-secondary);
   margin-bottom: 0.875rem;
 }
-.grid2 .field { margin-bottom: 0; }
+.grid2 .field {
+  margin-bottom: 0;
+}
 
 .input {
   border: 1px solid var(--sc-border-strong);
@@ -71,8 +76,13 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
-.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.input:focus {
+  border-color: var(--sc-action);
+}
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 .erro {
   margin-top: 1rem;
@@ -114,8 +124,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -128,7 +143,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Logo ── */
 .logoRow {
@@ -179,7 +196,9 @@
   margin: 0;
 }
 
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 
 .cepRow {
   display: flex;
@@ -187,4 +206,6 @@
   gap: 0.75rem;
   margin-bottom: 0.875rem;
 }
-.cepRow .btnSecondary { flex-shrink: 0; }
+.cepRow .btnSecondary {
+  flex-shrink: 0;
+}

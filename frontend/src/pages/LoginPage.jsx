@@ -107,13 +107,17 @@ export default function LoginPage() {
         <div className={styles.formWrap}>
           <h1 className={styles.greeting}>Bem-vindo</h1>
           <p className={styles.greetingSub}>
-            {primeiroAcesso ? "Configure o primeiro administrador do sistema" : "Faça login para continuar"}
+            {primeiroAcesso
+              ? "Configure o primeiro administrador do sistema"
+              : "Faça login para continuar"}
           </p>
 
           {primeiroAcesso ? (
             <form onSubmit={handleSetupSubmit}>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="setup-username">Usuário</label>
+                <label className={styles.label} htmlFor="setup-username">
+                  Usuário
+                </label>
                 <input
                   id="setup-username"
                   className={styles.input}
@@ -123,7 +127,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="setup-nome">Nome completo</label>
+                <label className={styles.label} htmlFor="setup-nome">
+                  Nome completo
+                </label>
                 <input
                   id="setup-nome"
                   className={styles.input}
@@ -133,7 +139,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="setup-senha">Senha</label>
+                <label className={styles.label} htmlFor="setup-senha">
+                  Senha
+                </label>
                 <div className={styles.passwordRow}>
                   <input
                     id="setup-senha"
@@ -155,7 +163,9 @@ export default function LoginPage() {
                 </div>
               </div>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="setup-confirmar">Confirmar senha</label>
+                <label className={styles.label} htmlFor="setup-confirmar">
+                  Confirmar senha
+                </label>
                 <input
                   id="setup-confirmar"
                   type={mostrarSenha ? "text" : "password"}
@@ -173,7 +183,9 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleLoginSubmit}>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="login-username">Usuário</label>
+                <label className={styles.label} htmlFor="login-username">
+                  Usuário
+                </label>
                 <input
                   id="login-username"
                   className={styles.input}
@@ -184,7 +196,9 @@ export default function LoginPage() {
                 />
               </div>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="login-senha">Senha</label>
+                <label className={styles.label} htmlFor="login-senha">
+                  Senha
+                </label>
                 <div className={styles.passwordRow}>
                   <input
                     id="login-senha"

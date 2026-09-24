@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -27,8 +27,7 @@ async function requestForm(path, formData) {
 
 export const getGrupos = () => request("/grupos-molde/");
 
-export const buscarGrupos = (busca) =>
-  request(`/grupos-molde/?busca=${encodeURIComponent(busca)}`);
+export const buscarGrupos = (busca) => request(`/grupos-molde/?busca=${encodeURIComponent(busca)}`);
 
 export const getGrupo = (id) => request(`/grupos-molde/${id}`);
 
@@ -38,8 +37,7 @@ export const importarGrupoMolde = (payload) =>
 export const renomearGrupo = (id, payload) =>
   request(`/grupos-molde/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteGrupo = (id) =>
-  request(`/grupos-molde/${id}`, { method: "DELETE" });
+export const deleteGrupo = (id) => request(`/grupos-molde/${id}`, { method: "DELETE" });
 
 // ── Moldes ────────────────────────────────────────────────────────────
 
@@ -55,10 +53,8 @@ export const bulkImportarMoldes = (payload) =>
 export const updateMolde = (id, payload) =>
   request(`/moldes/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteMolde = (id) =>
-  request(`/moldes/${id}`, { method: "DELETE" });
+export const deleteMolde = (id) => request(`/moldes/${id}`, { method: "DELETE" });
 
 // ── Produtos (para vínculo com o grupo de molde) ────────────────────────
 
-export const buscarProdutos = (termo) =>
-  request(`/produtos/?busca=${encodeURIComponent(termo)}`);
+export const buscarProdutos = (termo) => request(`/produtos/?busca=${encodeURIComponent(termo)}`);

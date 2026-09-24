@@ -1,7 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  BarChart, Bar, PieChart, Pie, Cell, Legend, Tooltip,
-  XAxis, YAxis, CartesianGrid, ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  Tooltip,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
 } from "recharts";
 import { getDashboardResumo } from "../api/dashboard";
 import { useAuth } from "../auth/useAuth";
@@ -17,8 +26,16 @@ function saudacaoPorHora(hora) {
 }
 
 const CORES_FORNECEDOR = [
-  "#2596be", "#6366f1", "#f59e0b", "#22c55e", "#ef4444",
-  "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#64748b",
+  "#2596be",
+  "#6366f1",
+  "#f59e0b",
+  "#22c55e",
+  "#ef4444",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+  "#64748b",
 ];
 
 export default function DashboardPage() {
@@ -42,13 +59,17 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   if (erro) {
     return (
       <div className={styles.estadoErro}>
         <p>Não foi possível carregar o dashboard</p>
-        <button className={styles.btnTentarNovamente} onClick={carregar}>Tentar novamente</button>
+        <button className={styles.btnTentarNovamente} onClick={carregar}>
+          Tentar novamente
+        </button>
       </div>
     );
   }
@@ -66,7 +87,9 @@ export default function DashboardPage() {
   return (
     <div className={styles.page}>
       <div className={styles.saudacao}>
-        <h1 className={styles.saudacaoTitulo}>{saudacao}, {primeiroNome}</h1>
+        <h1 className={styles.saudacaoTitulo}>
+          {saudacao}, {primeiroNome}
+        </h1>
         <p className={styles.saudacaoPeriodo}>{dados.periodo}</p>
       </div>
 
@@ -112,7 +135,15 @@ export default function DashboardPage() {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={compras_fornecedor} dataKey="valor" nameKey="nome" cx="50%" cy="45%" outerRadius={65} label={false}>
+                <Pie
+                  data={compras_fornecedor}
+                  dataKey="valor"
+                  nameKey="nome"
+                  cx="50%"
+                  cy="45%"
+                  outerRadius={65}
+                  label={false}
+                >
                   {compras_fornecedor.map((c, i) => (
                     <Cell key={c.nome} fill={CORES_FORNECEDOR[i % CORES_FORNECEDOR.length]} />
                   ))}

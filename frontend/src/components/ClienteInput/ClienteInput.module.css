@@ -16,7 +16,9 @@
   border-radius: var(--sc-radius-sm);
   background: var(--sc-surface);
   overflow: hidden;
-  transition: border-color 0.1s, box-shadow 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
 .campo:focus-within {
   border-color: var(--color-primary);
@@ -44,13 +46,18 @@
   color: var(--sc-text-primary);
 }
 .codigo::placeholder,
-.razao::placeholder { color: var(--sc-text-muted); font-size: 0.75rem; }
+.razao::placeholder {
+  color: var(--sc-text-muted);
+  font-size: 0.75rem;
+}
 
 .codigo {
   flex: 0 0 170px;
   border-right: 1px solid var(--sc-border);
 }
-.codigo:read-only { cursor: default; }
+.codigo:read-only {
+  cursor: default;
+}
 
 .razao {
   flex: 1;
@@ -60,7 +67,9 @@
   color: var(--sc-text-secondary);
   cursor: default;
 }
-.campoLeitura .razao { padding-right: 10px; }
+.campoLeitura .razao {
+  padding-right: 10px;
+}
 
 /* Erro: campo levemente vermelho; mensagem só no tooltip (title). */
 .campoErro,
@@ -86,7 +95,10 @@
   color: var(--sc-text-muted);
   cursor: pointer;
 }
-.lupa:hover { color: var(--color-primary); background: var(--sc-surface-hover); }
+.lupa:hover {
+  color: var(--color-primary);
+  background: var(--sc-surface-hover);
+}
 
 .verCadastro {
   flex-shrink: 0;
@@ -101,13 +113,15 @@
   text-underline-offset: 2px;
   cursor: pointer;
 }
-.verCadastro:hover { color: var(--color-primary); }
+.verCadastro:hover {
+  color: var(--color-primary);
+}
 
 /* ── Modal de busca (mesmo padrão do TesInput) ── */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,7 +136,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .modalHead {
@@ -149,7 +163,10 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .modalScroll {
   overflow-y: auto;
@@ -171,7 +188,9 @@
   outline: none;
   transition: border-color 0.15s;
 }
-.busca:focus { border-color: var(--color-primary); }
+.busca:focus {
+  border-color: var(--color-primary);
+}
 
 .lista {
   max-height: 380px;
@@ -209,17 +228,33 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tabela tbody tr { cursor: pointer; }
-.tabela tbody tr:last-child td { border-bottom: none; }
-.tabela tbody tr:hover td { background: var(--sc-bg-secondary); }
+.tabela tbody tr {
+  cursor: pointer;
+}
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+.tabela tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.colCodigo { width: 80px; }
-.colDoc    { width: 170px; }
-.colCidade { width: 170px; }
+.colCodigo {
+  width: 80px;
+}
+.colDoc {
+  width: 170px;
+}
+.colCidade {
+  width: 170px;
+}
 
-.linhaSelecionada td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
+.linhaSelecionada td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
 .linhaAtiva td,
-.linhaAtiva:hover td { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+.linhaAtiva:hover td {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
 
 .vazio {
   padding: 2rem !important;
@@ -250,7 +285,10 @@
   color: var(--color-primary);
   cursor: pointer;
 }
-.btnMais:disabled { opacity: 0.5; cursor: default; }
+.btnMais:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 .modalActions {
   display: flex;
@@ -270,7 +308,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .btnPrimary {
   background: var(--color-primary);
@@ -282,5 +322,10 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnPrimary:hover:not(:disabled) { filter: brightness(0.95); }
-.btnPrimary:disabled { opacity: 0.5; cursor: default; }
+.btnPrimary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

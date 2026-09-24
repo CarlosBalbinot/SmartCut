@@ -15,7 +15,9 @@
   line-height: 1;
   cursor: pointer;
 }
-.btnNav:hover { background: var(--sc-surface-hover); }
+.btnNav:hover {
+  background: var(--sc-surface-hover);
+}
 
 .mesLabel {
   font-size: 0.95rem;
@@ -45,8 +47,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -58,8 +65,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover    { background: var(--sc-surface-hover); }
-.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .erro {
   margin-bottom: 1rem;
@@ -91,9 +103,15 @@
   gap: 0.2rem;
 }
 
-.resumoBorderSucesso { border-left-color: var(--sc-success-text); }
-.resumoBorderPerigo  { border-left-color: var(--sc-danger-text); }
-.resumoBorderNeutro  { border-left-color: var(--sc-action); }
+.resumoBorderSucesso {
+  border-left-color: var(--sc-success-text);
+}
+.resumoBorderPerigo {
+  border-left-color: var(--sc-danger-text);
+}
+.resumoBorderNeutro {
+  border-left-color: var(--sc-action);
+}
 
 .resumoLabel {
   font-size: 0.72rem;
@@ -182,10 +200,17 @@
   white-space: nowrap;
 }
 
-.table tr:last-child td { border-bottom: none; }
-.table tbody tr:hover td { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.tdValor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tdValor {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 .empty {
   text-align: center;
@@ -203,9 +228,17 @@
   cursor: pointer;
   padding: 0.15rem 0;
 }
-.btnLink:hover { text-decoration: underline; }
-.btnLink:disabled { color: var(--sc-text-muted); cursor: default; text-decoration: none; }
+.btnLink:hover {
+  text-decoration: underline;
+}
+.btnLink:disabled {
+  color: var(--sc-text-muted);
+  cursor: default;
+  text-decoration: none;
+}
 
 @media (max-width: 900px) {
-  .resumoGrid { grid-template-columns: repeat(2, 1fr); }
+  .resumoGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 #  Modelo de Tecido
 # ─────────────────────────────────────────────────────────────────────
 
+
 class ModeloCreate(BaseModel):
     nome: str = Field(..., max_length=100)
     tipo: str | None = Field(None, max_length=50)
@@ -33,6 +34,7 @@ class ModeloOut(BaseModel):
 # ─────────────────────────────────────────────────────────────────────
 #  Cor de Tecido
 # ─────────────────────────────────────────────────────────────────────
+
 
 class CorCreate(BaseModel):
     nome_cor: str = Field(..., max_length=50)
@@ -63,6 +65,7 @@ class CorOut(BaseModel):
 # ─────────────────────────────────────────────────────────────────────
 #  Lote de Tecido
 # ─────────────────────────────────────────────────────────────────────
+
 
 class LoteCreate(BaseModel):
     codigo_lote: str = Field(..., max_length=50)
@@ -97,6 +100,7 @@ class LoteOut(BaseModel):
 #  Consumo de Lote
 # ─────────────────────────────────────────────────────────────────────
 
+
 class ConsumoCreate(BaseModel):
     encaixe_id: uuid.UUID | None = None
     pedido_id: uuid.UUID | None = None
@@ -122,8 +126,10 @@ class ConsumoOut(BaseModel):
 #  Schemas de saída compostos (hierarquia completa)
 # ─────────────────────────────────────────────────────────────────────
 
+
 class LoteComCorOut(LoteOut):
     """Lote com dados da cor e do modelo (para uso no pedido)."""
+
     cor_nome: str
     modelo_nome: str
     largura_util_cm: float

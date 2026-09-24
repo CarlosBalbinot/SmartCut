@@ -11,6 +11,7 @@ from database import Base
 #  Hierarquia: Modelo → Cor → Lote
 # ─────────────────────────────────────────────────────────────────────
 
+
 class ModeloTecido(Base):
     __tablename__ = "modelos_tecido"
 
@@ -61,12 +62,15 @@ class ConsumoLote(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lote_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=False)
-    encaixe_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("encaixes.id", ondelete="SET NULL"), nullable=True)
-    pedido_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True)
+    encaixe_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("encaixes.id", ondelete="SET NULL"), nullable=True
+    )
+    pedido_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
+    )
     peso_planejado_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     peso_retalho_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     data_consumo: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     observacao: Mapped[str | None] = mapped_column(Text)
 
     lote: Mapped["LoteTecido"] = relationship(back_populates="consumos")
-

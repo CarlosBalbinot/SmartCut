@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
-from schemas.tecido_schema import CorCreate, CorOut, ModeloComCoresOut, ModeloCreate, ModeloOut, ModeloUpdate
+from schemas.tecido_schema import CorCreate, ModeloCreate, ModeloUpdate
 from services import cor_service, modelo_service
 
 router = APIRouter(prefix="/api/v1/modelos-tecido", tags=["modelos-tecido"])
@@ -27,7 +27,9 @@ def obter_modelo(modelo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_modelo(payload: ModeloCreate, db: Session = Depends(get_db)):
@@ -36,7 +38,8 @@ def criar_modelo(payload: ModeloCreate, db: Session = Depends(get_db)):
 
 
 @router.patch(
-    "/{modelo_id}", response_model=dict,
+    "/{modelo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_modelo(modelo_id: uuid.UUID, payload: ModeloUpdate, db: Session = Depends(get_db)):
@@ -47,7 +50,8 @@ def atualizar_modelo(modelo_id: uuid.UUID, payload: ModeloUpdate, db: Session = 
 
 
 @router.delete(
-    "/{modelo_id}", response_model=dict,
+    "/{modelo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_modelo(modelo_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -59,8 +63,10 @@ def deletar_modelo(modelo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Cores de um modelo ────────────────────────────────────────────────
 
+
 @router.get(
-    "/{modelo_id}/cores", response_model=dict,
+    "/{modelo_id}/cores",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def listar_cores(modelo_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -69,7 +75,9 @@ def listar_cores(modelo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/{modelo_id}/cores", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/{modelo_id}/cores",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_cor(modelo_id: uuid.UUID, payload: CorCreate, db: Session = Depends(get_db)):

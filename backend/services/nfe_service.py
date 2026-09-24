@@ -13,7 +13,11 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 from sqlalchemy.orm import Session
 
@@ -38,8 +42,15 @@ NSMAP = {None: NFE_NS}
 # abaixo sem depender de caminho relativo à raiz do projeto.
 _NFE_BASE = "uploads/nfe"
 _PASTAS_NFE = [
-    "Enviadas", "Geradas", "Retorno", "Recibos", "RetCanceladas",
-    "SolicCancelamento", "CartasDeCorrecaoEnviadas", "LotesGerados", "Schemas",
+    "Enviadas",
+    "Geradas",
+    "Retorno",
+    "Recibos",
+    "RetCanceladas",
+    "SolicCancelamento",
+    "CartasDeCorrecaoEnviadas",
+    "LotesGerados",
+    "Schemas",
 ]
 
 _URLS_SEFAZ_RS = {
@@ -65,6 +76,7 @@ _MODFRETE_POR_TIPO = {
 # ─────────────────────────────────────────────────────────────────────────
 # FUNÇÃO 1 — estrutura de pastas
 # ─────────────────────────────────────────────────────────────────────────
+
 
 def criar_pastas_nfe() -> None:
     for nome in _PASTAS_NFE:
@@ -94,6 +106,7 @@ def pasta_certificados_padrao() -> str:
 # FUNÇÃO 2 — numeração sequencial por série
 # ─────────────────────────────────────────────────────────────────────────
 
+
 def proximo_numero(db: Session, empresa: Empresa, serie: str) -> int:
     """Incrementa e persiste o contador certo (NF-e ou NFC-e) conforme a
     série informada bater com nfe_serie_padrao/nfce_serie_padrao da Empresa.
@@ -112,6 +125,7 @@ def proximo_numero(db: Session, empresa: Empresa, serie: str) -> int:
 # ─────────────────────────────────────────────────────────────────────────
 # Chave de acesso
 # ─────────────────────────────────────────────────────────────────────────
+
 
 def _somente_digitos(v) -> str:
     return "".join(c for c in str(v or "") if c.isdigit())
@@ -152,6 +166,7 @@ def montar_chave_acesso(empresa: Empresa, nfe: NotaFiscal, cnf: str) -> str:
 # FUNÇÃO 3 — montagem do XML
 # ─────────────────────────────────────────────────────────────────────────
 
+
 def _sub(parent, tag, text=None):
     el = etree.SubElement(parent, tag)
     if text is not None:
@@ -165,8 +180,13 @@ def _valor(v) -> str:
 
 def _quantidade_item(item: ItemPedido) -> int:
     return (
-        (item.qtd_p or 0) + (item.qtd_m or 0) + (item.qtd_g or 0) + (item.qtd_gg or 0)
-        + (item.qtd_g1 or 0) + (item.qtd_g2 or 0) + (item.qtd_g3 or 0)
+        (item.qtd_p or 0)
+        + (item.qtd_m or 0)
+        + (item.qtd_g or 0)
+        + (item.qtd_gg or 0)
+        + (item.qtd_g1 or 0)
+        + (item.qtd_g2 or 0)
+        + (item.qtd_g3 or 0)
     )
 
 
@@ -405,6 +425,7 @@ def montar_xml_nfe(pedido: PedidoVenda | None, nfe: NotaFiscal, empresa: Empresa
 # FUNÇÃO 4 — assinatura digital
 # ─────────────────────────────────────────────────────────────────────────
 
+
 class _NFeXMLSigner:
     """signxml bloqueia SHA1 por padrão (considerado inseguro), mas o
     perfil de assinatura da NF-e exige RSA-SHA1/SHA1/C14N-1.0 — não há
@@ -457,8 +478,11 @@ def _assinar_elemento(root, elemento_com_id, empresa: Empresa):
         c14n_algorithm=CanonicalizationMethod.CANONICAL_XML_1_0,
     )
     return signer.sign(
-        root, key=private_key, cert=[certificate],
-        reference_uri=f"#{elemento_id}", id_attribute="Id",
+        root,
+        key=private_key,
+        cert=[certificate],
+        reference_uri=f"#{elemento_id}",
+        id_attribute="Id",
     )
 
 
@@ -479,7 +503,10 @@ def assinar_xml(xml_str: str, empresa: Empresa) -> str:
 # não foi implementado nesta versão.
 # ─────────────────────────────────────────────────────────────────────────
 
-def _montar_evento(empresa: Empresa, nfe: NotaFiscal, tp_evento: str, n_seq_evento: str, detalhe_tag: str, detalhe_conteudo: dict) -> str:
+
+def _montar_evento(
+    empresa: Empresa, nfe: NotaFiscal, tp_evento: str, n_seq_evento: str, detalhe_tag: str, detalhe_conteudo: dict
+) -> str:
     cnpj = _somente_digitos(empresa.cnpj).zfill(14)
     dh_evento = datetime.now().strftime("%Y-%m-%dT%H:%M:%S-03:00")
     id_evento = f"ID{tp_evento}{nfe.chave_acesso}{n_seq_evento.zfill(2)}"
@@ -513,7 +540,10 @@ def montar_evento_cancelamento(empresa: Empresa, nfe: NotaFiscal, justificativa:
     if len(justificativa) < 15:
         raise ValueError("Justificativa de cancelamento deve ter no mínimo 15 caracteres.")
     return _montar_evento(
-        empresa, nfe, tp_evento="110111", n_seq_evento="1",
+        empresa,
+        nfe,
+        tp_evento="110111",
+        n_seq_evento="1",
         detalhe_tag="evCancNFe",
         detalhe_conteudo={
             "descEvento": "Cancelamento",
@@ -527,7 +557,10 @@ def montar_evento_cce(empresa: Empresa, nfe: NotaFiscal, correcao: str) -> str:
     if len(correcao) < 15:
         raise ValueError("Texto da carta de correção deve ter no mínimo 15 caracteres.")
     return _montar_evento(
-        empresa, nfe, tp_evento="110110", n_seq_evento="1",
+        empresa,
+        nfe,
+        tp_evento="110110",
+        n_seq_evento="1",
         detalhe_tag="evCCe",
         detalhe_conteudo={
             "descEvento": "Carta de Correção",
@@ -549,6 +582,7 @@ def montar_evento_cce(empresa: Empresa, nfe: NotaFiscal, correcao: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────
 # FUNÇÃO 5 — transmissão SEFAZ-RS
 # ─────────────────────────────────────────────────────────────────────────
+
 
 def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
     """Envia o lote (de 1 NF-e) para o webservice de autorização da
@@ -581,8 +615,10 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
         encryption_algorithm=serialization.NoEncryption(),
     )
 
-    with tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as cert_f, \
-         tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as key_f:
+    with (
+        tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as cert_f,
+        tempfile.NamedTemporaryFile(suffix=".pem", delete=False) as key_f,
+    ):
         cert_f.write(cert_pem)
         key_f.write(key_pem)
         cert_path, key_path = cert_f.name, key_f.name
@@ -596,7 +632,7 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
         lote_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>'
             '<enviNFe xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">'
-            f'<idLote>1</idLote><indSinc>1</indSinc>{xml_assinado}</enviNFe>'
+            f"<idLote>1</idLote><indSinc>1</indSinc>{xml_assinado}</enviNFe>"
         )
         resposta = client.service.nfeAutorizacaoLote(nfeDadosMsg=lote_xml)
         resposta_str = str(resposta)
@@ -615,8 +651,10 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
             dh_recbto = dh_el.text if dh_el is not None else None
 
         return {
-            "cStat": cstat, "xMotivo": xmotivo,
-            "protocolo": protocolo, "dhRecbto": dh_recbto,
+            "cStat": cstat,
+            "xMotivo": xmotivo,
+            "protocolo": protocolo,
+            "dhRecbto": dh_recbto,
             "raw": resposta_str,
         }
     finally:
@@ -631,8 +669,12 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
 _D_TITULO = ParagraphStyle("d_titulo", fontName="Helvetica-Bold", fontSize=11, leading=14)
 _D_N = ParagraphStyle("d_n", fontName="Helvetica", fontSize=8, leading=10)
 _D_B = ParagraphStyle("d_b", fontName="Helvetica-Bold", fontSize=8, leading=10)
-_D_LBL = ParagraphStyle("d_lbl", fontName="Helvetica-Bold", fontSize=6, leading=7.5, textColor=colors.Color(0.4, 0.4, 0.4))
-_D_HDR = ParagraphStyle("d_hdr", fontName="Helvetica-Bold", fontSize=7.5, leading=9, alignment=1, textColor=colors.white)
+_D_LBL = ParagraphStyle(
+    "d_lbl", fontName="Helvetica-Bold", fontSize=6, leading=7.5, textColor=colors.Color(0.4, 0.4, 0.4)
+)
+_D_HDR = ParagraphStyle(
+    "d_hdr", fontName="Helvetica-Bold", fontSize=7.5, leading=9, alignment=1, textColor=colors.white
+)
 _D_CAP = ParagraphStyle("d_cap", fontName="Helvetica", fontSize=7, leading=9, alignment=1)
 
 
@@ -655,8 +697,12 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=12 * mm, rightMargin=12 * mm, topMargin=12 * mm, bottomMargin=12 * mm,
+        buf,
+        pagesize=A4,
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
     )
     w = doc.width
     story = []
@@ -666,6 +712,7 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
     if empresa.logo_path and os.path.exists(empresa.logo_path):
         try:
             from reportlab.platypus import Image as RLImage
+
             logo_cell = RLImage(empresa.logo_path, width=32 * mm, height=20 * mm)
         except Exception:
             pass
@@ -673,7 +720,10 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
     emit_lines = [
         Paragraph(empresa.razao_social or "", _D_B),
         Paragraph(f"CNPJ: {empresa.cnpj or '-'}  IE: {empresa.ie or '-'}", _D_N),
-        Paragraph(f"{empresa.endereco or ''}, {empresa.endereco_numero or ''} - {empresa.cidade or ''}/{empresa.uf_emitente}", _D_N),
+        Paragraph(
+            f"{empresa.endereco or ''}, {empresa.endereco_numero or ''} - {empresa.cidade or ''}/{empresa.uf_emitente}",
+            _D_N,
+        ),
     ]
     nfe_lines = [
         Paragraph("DANFE", _D_TITULO),
@@ -682,13 +732,19 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
         Paragraph("HOMOLOGAÇÃO" if empresa.ambiente_sefaz == "Homologacao" else "PRODUÇÃO", _D_B),
     ]
     hdr = Table([[logo_cell, emit_lines, nfe_lines]], colWidths=[w * 0.25, w * 0.45, w * 0.30])
-    hdr.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
-        ("LINEAFTER", (0, 0), (1, 0), 0.4, colors.black),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    hdr.setStyle(
+        TableStyle(
+            [
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
+                ("LINEAFTER", (0, 0), (1, 0), 0.4, colors.black),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     story.append(hdr)
     story.append(Spacer(1, 3 * mm))
 
@@ -710,29 +766,38 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
     story.append(Spacer(1, 3 * mm))
 
     # Itens
-    rows = [[Paragraph(h, _D_HDR) for h in
-             ["Código", "Descrição", "NCM", "CFOP", "Qtd", "Un", "V.Unit", "V.Total"]]]
+    rows = [[Paragraph(h, _D_HDR) for h in ["Código", "Descrição", "NCM", "CFOP", "Qtd", "Un", "V.Unit", "V.Total"]]]
     for det in root.findall(".//n:det", ns):
         prod = det.find("n:prod", ns)
 
-        def _p(tag):
+        def _p(tag, prod=prod):
             el = prod.find(f"n:{tag}", ns)
             return el.text if el is not None else ""
 
-        rows.append([
-            Paragraph(_p("cProd"), _D_N), Paragraph(_p("xProd"), _D_N),
-            Paragraph(_p("NCM"), _D_N), Paragraph(_p("CFOP"), _D_N),
-            Paragraph(_p("qCom"), _D_N), Paragraph(_p("uCom"), _D_N),
-            Paragraph(_brl(_p("vUnCom")), _D_N), Paragraph(_brl(_p("vProd")), _D_N),
-        ])
+        rows.append(
+            [
+                Paragraph(_p("cProd"), _D_N),
+                Paragraph(_p("xProd"), _D_N),
+                Paragraph(_p("NCM"), _D_N),
+                Paragraph(_p("CFOP"), _D_N),
+                Paragraph(_p("qCom"), _D_N),
+                Paragraph(_p("uCom"), _D_N),
+                Paragraph(_brl(_p("vUnCom")), _D_N),
+                Paragraph(_brl(_p("vProd")), _D_N),
+            ]
+        )
     col_w = [w * 0.10, w * 0.30, w * 0.10, w * 0.08, w * 0.10, w * 0.08, w * 0.12, w * 0.12]
     itens_t = Table(rows, colWidths=col_w, repeatRows=1)
-    itens_t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.2, 0.2, 0.2)),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
-        ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.Color(0.8, 0.8, 0.8)),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
+    itens_t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.Color(0.2, 0.2, 0.2)),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
+                ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.Color(0.8, 0.8, 0.8)),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ]
+        )
+    )
     story.append(itens_t)
     story.append(Spacer(1, 3 * mm))
 
@@ -741,17 +806,27 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
     v_desc = _get(".//n:total/n:ICMSTot/n:vDesc") or "0.00"
     v_frete = _get(".//n:total/n:ICMSTot/n:vFrete") or "0.00"
     v_nf = _get(".//n:total/n:ICMSTot/n:vNF") or "0.00"
-    tot = Table([[
-        Paragraph(f"Produtos: {_brl(v_prod)}", _D_N),
-        Paragraph(f"Frete: {_brl(v_frete)}", _D_N),
-        Paragraph(f"Desconto: {_brl(v_desc)}", _D_N),
-        Paragraph(f"<b>TOTAL: {_brl(v_nf)}</b>", _D_B),
-    ]], colWidths=[w * 0.25] * 4)
-    tot.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.Color(0.96, 0.96, 0.96)),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
-        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
+    tot = Table(
+        [
+            [
+                Paragraph(f"Produtos: {_brl(v_prod)}", _D_N),
+                Paragraph(f"Frete: {_brl(v_frete)}", _D_N),
+                Paragraph(f"Desconto: {_brl(v_desc)}", _D_N),
+                Paragraph(f"<b>TOTAL: {_brl(v_nf)}</b>", _D_B),
+            ]
+        ],
+        colWidths=[w * 0.25] * 4,
+    )
+    tot.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.Color(0.96, 0.96, 0.96)),
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.black),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
     story.append(tot)
     story.append(Spacer(1, 3 * mm))
 

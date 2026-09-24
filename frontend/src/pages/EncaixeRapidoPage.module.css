@@ -158,7 +158,9 @@
   padding: 1px 5px;
   border-radius: 4px;
   flex-shrink: 0;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .btnRemovePeca:hover {
@@ -176,7 +178,9 @@
   color: var(--sc-text-muted);
   font-size: 0.82rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .btnAddPeca:hover {
@@ -188,7 +192,7 @@
 .btnGerar {
   width: 100%;
   background: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: var(--sc-radius-sm);
   padding: 10px;
@@ -196,7 +200,9 @@
   font-weight: 500;
   cursor: pointer;
   margin-top: 0.5rem;
-  transition: filter 0.15s, opacity 0.15s;
+  transition:
+    filter 0.15s,
+    opacity 0.15s;
 }
 
 .btnGerar:hover:not(:disabled) {
@@ -246,7 +252,9 @@
 }
 
 @keyframes encaixeRapidoSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Error state (coluna direita) ── */
@@ -388,9 +396,14 @@
   white-space: nowrap;
 }
 
-.btnPrimary:hover:not(:disabled) { filter: brightness(0.92); }
+.btnPrimary:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
 
-.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   display: inline-flex;
@@ -408,7 +421,9 @@
   white-space: nowrap;
 }
 
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .btnDownload {
   display: inline-flex;
@@ -426,7 +441,9 @@
   white-space: nowrap;
 }
 
-.btnDownload:hover { background: var(--sc-surface-hover); }
+.btnDownload:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Modal ── */
 .overlay {
@@ -475,7 +492,9 @@
   padding: 3px 8px;
   border-radius: 6px;
   line-height: 1;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .btnClose:hover {
@@ -531,7 +550,9 @@
   color: var(--sc-text-primary);
 }
 
-.acItem:hover { background: var(--sc-surface-hover); }
+.acItem:hover {
+  background: var(--sc-surface-hover);
+}
 
 .acCod {
   font-family: monospace;
@@ -543,7 +564,9 @@
   flex-shrink: 0;
 }
 
-.acNome { flex: 1; }
+.acNome {
+  flex: 1;
+}
 
 .acPlus {
   font-size: 10px;
@@ -555,7 +578,9 @@
 }
 
 /* ── Tamanhos ── */
-.tamSection { margin: 0.75rem 0; }
+.tamSection {
+  margin: 0.75rem 0;
+}
 
 .tamLabel {
   font-size: 12px;
@@ -596,7 +621,9 @@
   transition: border-color 0.15s;
 }
 
-.tamInput:focus { border-color: var(--color-primary); }
+.tamInput:focus {
+  border-color: var(--color-primary);
+}
 
 .erroModal {
   font-size: 12px;

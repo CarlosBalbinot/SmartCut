@@ -1,0 +1,55 @@
+# Pre-commit — Parte 8.3 (lint, formatação, whitespace e scan de segredos).
+#
+# Instalar uma vez (backend deps já incluem pre-commit):
+#   py -3.12 -m pip install -r backend\requirements-dev.txt
+#   pre-commit install
+#
+# Hooks locais do frontend usam os scripts npm do projeto (mesma versão das
+# devDependencies) em vez de espelhos desatualizados (ex.: mirrors-prettier
+# foi arquivado e não acompanha mais o prettier atual).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Código vendido/de terceiros não é normalizado (não é nosso).
+        exclude: ^backend/services/nesting/
+      - id: end-of-file-fixer
+        exclude: ^backend/services/nesting/
+      - id: check-yaml
+      - id: check-added-large-files
+
+  # Backend: Ruff (lint + formato) — versão alinhada ao requirements-dev.txt
+  # (ruff>=0.6,<0.17 → v0.16.8 instalado).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8
+    hooks:
+      - id: ruff
+        name: ruff (lint backend)
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        name: ruff format (backend)
+        files: ^backend/
+
+  # Frontend: ESLint + Prettier via scripts npm do projeto.
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint (frontend)
+        language: system
+        entry: npm --prefix frontend run lint
+        files: ^frontend/.*\.(js|jsx)$
+        pass_filenames: false
+      - id: prettier
+        name: prettier (frontend)
+        language: system
+        entry: npm --prefix frontend run format:check
+        files: ^frontend/.*\.(js|jsx|css)$
+        pass_filenames: false
+
+  # Scan de segredos: falha se um segredo real for adicionado ao repo.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks

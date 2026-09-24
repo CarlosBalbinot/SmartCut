@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -30,8 +30,7 @@ export const createVendedor = (payload) =>
 export const updateVendedor = (id, payload) =>
   request(`/vendedores/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteVendedor = (id) =>
-  request(`/vendedores/${id}`, { method: "DELETE" });
+export const deleteVendedor = (id) => request(`/vendedores/${id}`, { method: "DELETE" });
 
 export const getDashboardVendedor = (id) => request(`/vendedores/${id}/dashboard`);
 

@@ -7,8 +7,18 @@ from pydantic import BaseModel, ConfigDict, field_validator
 # garantia além do uppercase já aplicado no onChange do frontend (não inclui
 # email, senha, url/homepage ou campos dependentes de busca externa).
 _CAMPOS_UPPER = (
-    "razao_social", "nome_fantasia", "endereco", "numero", "complemento",
-    "bairro", "cidade", "observacoes", "contato", "rg", "ie", "inscricao_municipal",
+    "razao_social",
+    "nome_fantasia",
+    "endereco",
+    "numero",
+    "complemento",
+    "bairro",
+    "cidade",
+    "observacoes",
+    "contato",
+    "rg",
+    "ie",
+    "inscricao_municipal",
 )
 
 

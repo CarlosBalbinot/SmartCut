@@ -15,13 +15,28 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    HRFlowable, Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table,
+    HRFlowable,
+    Image as RLImage,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
     TableStyle,
 )
 
 MESES_NOME = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
 ]
 
 _PRETO = colors.black
@@ -70,25 +85,28 @@ _ts_base = [
     ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
 ]
 
-_N     = ParagraphStyle("cs_n", fontName="Helvetica", fontSize=8, leading=10)
-_N_R   = ParagraphStyle("cs_n_r", fontName="Helvetica", fontSize=8, leading=10, alignment=2)
-_S     = ParagraphStyle("cs_s", fontName="Helvetica", fontSize=8, leading=10, textColor=_CINZA_TXT)
-_B     = ParagraphStyle("cs_b", fontName="Helvetica-Bold", fontSize=9, leading=11)
+_N = ParagraphStyle("cs_n", fontName="Helvetica", fontSize=8, leading=10)
+_N_R = ParagraphStyle("cs_n_r", fontName="Helvetica", fontSize=8, leading=10, alignment=2)
+_S = ParagraphStyle("cs_s", fontName="Helvetica", fontSize=8, leading=10, textColor=_CINZA_TXT)
+_B = ParagraphStyle("cs_b", fontName="Helvetica-Bold", fontSize=9, leading=11)
 _TITULO = ParagraphStyle("cs_titulo", fontName="Helvetica-Bold", fontSize=14, leading=17)
 _H_SECAO = ParagraphStyle("cs_h_secao", fontName="Helvetica-Bold", fontSize=10, leading=13)
-_H_TAB  = ParagraphStyle("cs_h_tab", fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=_BRANCO)
+_H_TAB = ParagraphStyle("cs_h_tab", fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=_BRANCO)
 _TOTAL_SECAO = ParagraphStyle("cs_total_secao", fontName="Helvetica-Bold", fontSize=8.5, leading=11, alignment=2)
 
 
 def _tabela_style() -> TableStyle:
-    return TableStyle(_ts_base + [
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("BACKGROUND", (0, 0), (-1, 0), _CINZA_TXT),
-        ("TEXTCOLOR", (0, 0), (-1, 0), _BRANCO),
-        ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
-        ("INNERGRID", (0, 0), (-1, -1), 0.3, _CINZA_HEADER),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_BRANCO, _CINZA_CLARO]),
-    ])
+    return TableStyle(
+        _ts_base
+        + [
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("BACKGROUND", (0, 0), (-1, 0), _CINZA_TXT),
+            ("TEXTCOLOR", (0, 0), (-1, 0), _BRANCO),
+            ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
+            ("INNERGRID", (0, 0), (-1, -1), 0.3, _CINZA_HEADER),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_BRANCO, _CINZA_CLARO]),
+        ]
+    )
 
 
 def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
@@ -98,9 +116,12 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=15 * mm, rightMargin=15 * mm,
-        topMargin=14 * mm, bottomMargin=14 * mm,
+        buf,
+        pagesize=A4,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=14 * mm,
+        bottomMargin=14 * mm,
     )
     w = doc.width
     story: list = []
@@ -133,12 +154,14 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
     if notas_venda:
         rows = [[Paragraph(h, _H_TAB) for h in ["Cliente", "NF", "Data", "Valor"]]]
         for v in notas_venda:
-            rows.append([
-                Paragraph(v["cliente"] or "—", _N),
-                Paragraph(v.get("numero_nf") or "—", _N),
-                Paragraph(_data_fmt(v["data_venda"]), _N),
-                Paragraph(_brl(v["valor_total"]), _N_R),
-            ])
+            rows.append(
+                [
+                    Paragraph(v["cliente"] or "—", _N),
+                    Paragraph(v.get("numero_nf") or "—", _N),
+                    Paragraph(_data_fmt(v["data_venda"]), _N),
+                    Paragraph(_brl(v["valor_total"]), _N_R),
+                ]
+            )
         t = Table(rows, colWidths=[w * 0.42, w * 0.16, w * 0.18, w * 0.24], repeatRows=1)
         t.setStyle(_tabela_style())
         story.append(t)
@@ -156,12 +179,14 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
     if notas_compra:
         rows = [[Paragraph(h, _H_TAB) for h in ["Fornecedor", "NF", "Data", "Valor"]]]
         for c in notas_compra:
-            rows.append([
-                Paragraph(c["fornecedor"] or "—", _N),
-                Paragraph(c.get("numero_nf") or "—", _N),
-                Paragraph(_data_fmt(c["data_compra"]), _N),
-                Paragraph(_brl(c["valor_total"]), _N_R),
-            ])
+            rows.append(
+                [
+                    Paragraph(c["fornecedor"] or "—", _N),
+                    Paragraph(c.get("numero_nf") or "—", _N),
+                    Paragraph(_data_fmt(c["data_compra"]), _N),
+                    Paragraph(_brl(c["valor_total"]), _N_R),
+                ]
+            )
         t = Table(rows, colWidths=[w * 0.42, w * 0.16, w * 0.18, w * 0.24], repeatRows=1)
         t.setStyle(_tabela_style())
         story.append(t)
@@ -181,15 +206,18 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
         for b in boletos:
             parcela = (
                 f"{b['parcela_numero']}/{b['parcela_total']}"
-                if b.get("parcela_numero") and b.get("parcela_total") else "Único"
+                if b.get("parcela_numero") and b.get("parcela_total")
+                else "Único"
             )
-            rows.append([
-                Paragraph(b["fornecedor_cliente"] or "—", _N),
-                Paragraph(b.get("numero_nf") or "—", _N),
-                Paragraph(parcela, _N),
-                Paragraph(_data_fmt(b["data_pagamento"]), _N),
-                Paragraph(_brl(b["valor"]), _N_R),
-            ])
+            rows.append(
+                [
+                    Paragraph(b["fornecedor_cliente"] or "—", _N),
+                    Paragraph(b.get("numero_nf") or "—", _N),
+                    Paragraph(parcela, _N),
+                    Paragraph(_data_fmt(b["data_pagamento"]), _N),
+                    Paragraph(_brl(b["valor"]), _N_R),
+                ]
+            )
         t = Table(rows, colWidths=[w * 0.34, w * 0.14, w * 0.14, w * 0.16, w * 0.22], repeatRows=1)
         t.setStyle(_tabela_style())
         story.append(t)
@@ -207,10 +235,15 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
     story.append(Spacer(1, 1 * mm))
     story.append(HRFlowable(width="100%", thickness=0.3, color=_CINZA_HEADER))
     story.append(Spacer(1, 2 * mm))
-    rodape_empresa = " — ".join(filter(None, [
-        empresa.razao_social if empresa else None,
-        f"CNPJ: {empresa.cnpj}" if empresa and empresa.cnpj else None,
-    ]))
+    rodape_empresa = " — ".join(
+        filter(
+            None,
+            [
+                empresa.razao_social if empresa else None,
+                f"CNPJ: {empresa.cnpj}" if empresa and empresa.cnpj else None,
+            ],
+        )
+    )
     story.append(Paragraph(rodape_empresa or "—", _S))
 
     doc.build(story)
@@ -219,16 +252,18 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
 
 # ── PDF de Resumo Interno (minimalista, download avulso) ───────────────────────
 
-_TITULO_INT   = ParagraphStyle("ci_titulo", fontName="Helvetica-Bold", fontSize=13, leading=16)
-_SUB_INT      = ParagraphStyle("ci_sub", fontName="Helvetica", fontSize=9, leading=12, textColor=_CINZA_TXT)
-_H_SECAO_INT  = ParagraphStyle("ci_h_secao", fontName="Helvetica-Bold", fontSize=9.5, leading=13)
-_LINHA        = ParagraphStyle("ci_linha", fontName="Helvetica", fontSize=8.5, leading=11)
-_LINHA_B      = ParagraphStyle("ci_linha_b", fontName="Helvetica-Bold", fontSize=9, leading=12)
-_VALOR        = ParagraphStyle("ci_valor", fontName="Helvetica", fontSize=8.5, leading=11, alignment=2)
-_VALOR_B      = ParagraphStyle("ci_valor_b", fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=2)
-_VALOR_CINZA  = ParagraphStyle("ci_valor_cinza", fontName="Helvetica", fontSize=8.5, leading=11, alignment=2, textColor=_CINZA_TXT)
-_LABEL_CINZA  = ParagraphStyle("ci_label_cinza", fontName="Helvetica", fontSize=8.5, leading=11, textColor=_CINZA_TXT)
-_N_CINZA      = ParagraphStyle("ci_n_cinza", fontName="Helvetica-Oblique", fontSize=8, leading=10, textColor=_CINZA_TXT)
+_TITULO_INT = ParagraphStyle("ci_titulo", fontName="Helvetica-Bold", fontSize=13, leading=16)
+_SUB_INT = ParagraphStyle("ci_sub", fontName="Helvetica", fontSize=9, leading=12, textColor=_CINZA_TXT)
+_H_SECAO_INT = ParagraphStyle("ci_h_secao", fontName="Helvetica-Bold", fontSize=9.5, leading=13)
+_LINHA = ParagraphStyle("ci_linha", fontName="Helvetica", fontSize=8.5, leading=11)
+_LINHA_B = ParagraphStyle("ci_linha_b", fontName="Helvetica-Bold", fontSize=9, leading=12)
+_VALOR = ParagraphStyle("ci_valor", fontName="Helvetica", fontSize=8.5, leading=11, alignment=2)
+_VALOR_B = ParagraphStyle("ci_valor_b", fontName="Helvetica-Bold", fontSize=9, leading=12, alignment=2)
+_VALOR_CINZA = ParagraphStyle(
+    "ci_valor_cinza", fontName="Helvetica", fontSize=8.5, leading=11, alignment=2, textColor=_CINZA_TXT
+)
+_LABEL_CINZA = ParagraphStyle("ci_label_cinza", fontName="Helvetica", fontSize=8.5, leading=11, textColor=_CINZA_TXT)
+_N_CINZA = ParagraphStyle("ci_n_cinza", fontName="Helvetica-Oblique", fontSize=8, leading=10, textColor=_CINZA_TXT)
 
 
 def _linha_valor(w: float, label: str, valor, negrito: bool = False, cinza: bool = False) -> Table:
@@ -242,12 +277,16 @@ def _linha_valor(w: float, label: str, valor, negrito: bool = False, cinza: bool
         [[Paragraph(label, label_style), Paragraph(_brl(valor), valor_style)]],
         colWidths=[w - 32 * mm, 32 * mm],
     )
-    t.setStyle(TableStyle([
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 1.5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ]
+        )
+    )
     return t
 
 
@@ -258,9 +297,12 @@ def gerar_resumo_interno_pdf(dados: dict, empresa=None) -> bytes:
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=18 * mm, rightMargin=18 * mm,
-        topMargin=16 * mm, bottomMargin=16 * mm,
+        buf,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
     )
     w = doc.width
     story: list = []
@@ -337,6 +379,7 @@ def gerar_resumo_interno_pdf(dados: dict, empresa=None) -> bytes:
 
 
 # ── Pacote ZIP contábil ──────────────────────────────────────────────────────────
+
 
 def montar_pacote_zip(dados: dict, empresa=None) -> bytes:
     mes, ano = dados["mes"], dados["ano"]

@@ -24,24 +24,37 @@ export default function UsuarioConfiguracaoUsuarioPage() {
     setErro(null);
     setSucesso(false);
 
-    if (!form.nome_completo.trim()) { setErro("Nome completo é obrigatório."); return; }
-    if (!form.username.trim())      { setErro("Login é obrigatório."); return; }
+    if (!form.nome_completo.trim()) {
+      setErro("Nome completo é obrigatório.");
+      return;
+    }
+    if (!form.username.trim()) {
+      setErro("Login é obrigatório.");
+      return;
+    }
 
     const querTrocarSenha = form.senha_nova || form.senha_confirmar || form.senha_atual;
     if (querTrocarSenha) {
-      if (!form.senha_atual)                          { setErro("Informe a senha atual."); return; }
-      if (!form.senha_nova)                            { setErro("Informe a nova senha."); return; }
-      if (form.senha_nova !== form.senha_confirmar)     { setErro("As senhas não conferem."); return; }
+      if (!form.senha_atual) {
+        setErro("Informe a senha atual.");
+        return;
+      }
+      if (!form.senha_nova) {
+        setErro("Informe a nova senha.");
+        return;
+      }
+      if (form.senha_nova !== form.senha_confirmar) {
+        setErro("As senhas não conferem.");
+        return;
+      }
     }
 
     setSaving(true);
     try {
       await atualizarMe({
         nome_completo: form.nome_completo.trim(),
-        username:      form.username.trim(),
-        ...(querTrocarSenha
-          ? { senha_atual: form.senha_atual, senha_nova: form.senha_nova }
-          : {}),
+        username: form.username.trim(),
+        ...(querTrocarSenha ? { senha_atual: form.senha_atual, senha_nova: form.senha_nova } : {}),
       });
       setForm((f) => ({ ...f, senha_atual: "", senha_nova: "", senha_confirmar: "" }));
       setSucesso(true);
@@ -65,7 +78,11 @@ export default function UsuarioConfiguracaoUsuarioPage() {
         <div className={styles.grid2}>
           <label className={styles.field}>
             <span>Nome completo</span>
-            <input className={styles.input} value={form.nome_completo} onChange={set("nome_completo")} />
+            <input
+              className={styles.input}
+              value={form.nome_completo}
+              onChange={set("nome_completo")}
+            />
           </label>
           <label className={styles.field}>
             <span>Login</span>
@@ -73,20 +90,37 @@ export default function UsuarioConfiguracaoUsuarioPage() {
           </label>
         </div>
 
-        <p className={styles.secLabel} style={{ marginTop: "1.5rem" }}>Trocar senha</p>
+        <p className={styles.secLabel} style={{ marginTop: "1.5rem" }}>
+          Trocar senha
+        </p>
         <div className={styles.grid2}>
           <label className={styles.field}>
             <span>Senha atual</span>
-            <input type="password" className={styles.input} value={form.senha_atual} onChange={set("senha_atual")} />
+            <input
+              type="password"
+              className={styles.input}
+              value={form.senha_atual}
+              onChange={set("senha_atual")}
+            />
           </label>
           <div />
           <label className={styles.field}>
             <span>Nova senha</span>
-            <input type="password" className={styles.input} value={form.senha_nova} onChange={set("senha_nova")} />
+            <input
+              type="password"
+              className={styles.input}
+              value={form.senha_nova}
+              onChange={set("senha_nova")}
+            />
           </label>
           <label className={styles.field}>
             <span>Confirmar nova senha</span>
-            <input type="password" className={styles.input} value={form.senha_confirmar} onChange={set("senha_confirmar")} />
+            <input
+              type="password"
+              className={styles.input}
+              value={form.senha_confirmar}
+              onChange={set("senha_confirmar")}
+            />
           </label>
         </div>
 

@@ -63,12 +63,20 @@
   white-space: nowrap;
 }
 
-.num { text-align: right !important; }
+.num {
+  text-align: right !important;
+}
 
-.linhaPai:hover td { background: var(--sc-bg-secondary); }
-.linhaPai:hover .btnRemover { visibility: visible; }
+.linhaPai:hover td {
+  background: var(--sc-bg-secondary);
+}
+.linhaPai:hover .btnRemover {
+  visibility: visible;
+}
 
-.descricao { color: var(--sc-text-secondary); }
+.descricao {
+  color: var(--sc-text-secondary);
+}
 
 .btnToggle {
   display: inline-flex;
@@ -81,10 +89,17 @@
   cursor: pointer;
   color: var(--sc-text-muted);
 }
-.btnToggle:hover { color: var(--color-primary); }
+.btnToggle:hover {
+  color: var(--color-primary);
+}
 
-.chevron { flex-shrink: 0; transition: transform 0.15s; }
-.chevronAberto { transform: rotate(90deg); }
+.chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.chevronAberto {
+  transform: rotate(90deg);
+}
 
 .refBadge {
   display: inline-block;
@@ -110,8 +125,12 @@
 }
 
 /* SKUs (accordion) */
-.linhaSku td { background: var(--sc-bg-tertiary); }
-.linhaSku td:first-child { padding-left: 34px; }
+.linhaSku td {
+  background: var(--sc-bg-tertiary);
+}
+.linhaSku td:first-child {
+  padding-left: 34px;
+}
 
 .skuCodigo {
   font-family: monospace;
@@ -130,9 +149,14 @@
   padding: 4px 12px 8px 34px;
   text-align: right;
 }
-.linhaSkuRodape .skuInfoInline { margin-right: 10px; }
+.linhaSkuRodape .skuInfoInline {
+  margin-right: 10px;
+}
 
-.acoes { text-align: right; overflow: visible !important; }
+.acoes {
+  text-align: right;
+  overflow: visible !important;
+}
 
 /* ── Campo de preço inline ── */
 .campo {
@@ -148,10 +172,17 @@
   text-transform: uppercase;
   color: var(--sc-text-primary);
   outline: none;
-  transition: border-color 0.1s, box-shadow 0.1s, background 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s,
+    background 0.1s;
 }
-.campo::placeholder { color: var(--sc-text-muted); }
-.campo:hover:not(:read-only) { border-color: var(--sc-border-strong); }
+.campo::placeholder {
+  color: var(--sc-text-muted);
+}
+.campo:hover:not(:read-only) {
+  border-color: var(--sc-border-strong);
+}
 .campo:focus:not(:read-only) {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -198,7 +229,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .btnLink {
   background: none;
@@ -208,8 +241,13 @@
   color: var(--color-primary);
   cursor: pointer;
 }
-.btnLink:hover:not(:disabled) { text-decoration: underline; }
-.btnLink:disabled { color: var(--sc-text-muted); cursor: default; }
+.btnLink:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.btnLink:disabled {
+  color: var(--sc-text-muted);
+  cursor: default;
+}
 
 .btnRemover {
   visibility: hidden;
@@ -221,9 +259,15 @@
   padding: 0 4px;
   line-height: 1;
 }
-.btnRemover:hover { color: var(--sc-danger-text); }
+.btnRemover:hover {
+  color: var(--sc-danger-text);
+}
 
-.confirmar { display: inline-flex; align-items: center; gap: 4px; }
+.confirmar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 
 .btnSim {
   background: var(--sc-danger-text);
@@ -294,10 +338,18 @@
   outline: none;
   transition: border-color 0.15s;
 }
-.inputModal:focus { border-color: var(--color-primary); }
-.inputNum { text-align: right; font-variant-numeric: tabular-nums; }
+.inputModal:focus {
+  border-color: var(--color-primary);
+}
+.inputNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
-.buscaWrap { position: relative; margin-bottom: 16px; }
+.buscaWrap {
+  position: relative;
+  margin-bottom: 16px;
+}
 
 .dropdown {
   position: absolute;
@@ -322,9 +374,15 @@
   font-size: var(--sc-font-size-body);
   border-bottom: 1px solid var(--sc-border);
 }
-.dropdownItem { cursor: pointer; }
-.dropdownItem:hover { background: var(--sc-bg-secondary); }
-.dropdownInfo { color: var(--sc-text-muted); }
+.dropdownItem {
+  cursor: pointer;
+}
+.dropdownItem:hover {
+  background: var(--sc-bg-secondary);
+}
+.dropdownInfo {
+  color: var(--sc-text-muted);
+}
 
 .produtoSel {
   display: flex;
@@ -343,7 +401,10 @@
   color: var(--sc-text-primary);
 }
 
-.linhaPrecos { display: flex; gap: 12px; }
+.linhaPrecos {
+  display: flex;
+  gap: 12px;
+}
 
 .modalAcoes {
   display: flex;
@@ -362,9 +423,16 @@
   font-weight: 600;
   cursor: pointer;
 }
-.btnPillPrimary:hover:not(:disabled) { filter: brightness(0.95); }
-.btnPillPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btnErro { box-shadow: 0 0 0 2px var(--sc-danger-text); }
+.btnPillPrimary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.btnPillPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnErro {
+  box-shadow: 0 0 0 2px var(--sc-danger-text);
+}
 
 .btnPillSecondary {
   background: transparent;
@@ -376,4 +444,6 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnPillSecondary:hover { background: var(--sc-surface-hover); }
+.btnPillSecondary:hover {
+  background: var(--sc-surface-hover);
+}

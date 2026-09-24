@@ -20,20 +20,30 @@
   max-width: 400px;
   padding: 12px 36px 12px 14px;
   border-radius: var(--sc-radius-md);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
   font-size: 13px;
   font-weight: 500;
   overflow: hidden;
   pointer-events: all;
-  background: #FFFFFF;
+  background: #ffffff;
   color: var(--sc-text-primary);
 }
 
 /* ── Variantes ── */
-.toast_sucesso { border-left: 4px solid var(--sc-success-text); }
-.toast_erro    { border-left: 4px solid var(--sc-danger-text); }
-.toast_aviso   { border-left: 4px solid #FF9F0A; }
-.toast_info    { border-left: 4px solid var(--sc-info-text); }
+.toast_sucesso {
+  border-left: 4px solid var(--sc-success-text);
+}
+.toast_erro {
+  border-left: 4px solid var(--sc-danger-text);
+}
+.toast_aviso {
+  border-left: 4px solid #ff9f0a;
+}
+.toast_info {
+  border-left: 4px solid var(--sc-info-text);
+}
 
 /* ── Ícone ── */
 .icone {
@@ -42,10 +52,18 @@
   flex-shrink: 0;
 }
 
-.toast_sucesso .icone { color: var(--sc-success-text); }
-.toast_erro    .icone { color: var(--sc-danger-text); }
-.toast_aviso   .icone { color: #FF9F0A; }
-.toast_info    .icone { color: var(--sc-info-text); }
+.toast_sucesso .icone {
+  color: var(--sc-success-text);
+}
+.toast_erro .icone {
+  color: var(--sc-danger-text);
+}
+.toast_aviso .icone {
+  color: #ff9f0a;
+}
+.toast_info .icone {
+  color: var(--sc-info-text);
+}
 
 /* ── Texto ── */
 .mensagem {
@@ -70,7 +88,9 @@
   color: inherit;
 }
 
-.fechar:hover { opacity: 0.8; }
+.fechar:hover {
+  opacity: 0.8;
+}
 
 /* ── Barra de progresso ── */
 .barra {
@@ -84,26 +104,58 @@
   opacity: 0.3;
 }
 
-.barra_sucesso { background-color: var(--sc-success-text); }
-.barra_erro    { background-color: var(--sc-danger-text); }
-.barra_aviso   { background-color: #FF9F0A; }
-.barra_info    { background-color: var(--sc-info-text); }
+.barra_sucesso {
+  background-color: var(--sc-success-text);
+}
+.barra_erro {
+  background-color: var(--sc-danger-text);
+}
+.barra_aviso {
+  background-color: #ff9f0a;
+}
+.barra_info {
+  background-color: var(--sc-info-text);
+}
 
 @keyframes progresso {
-  from { transform: scaleX(1); }
-  to   { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 /* ── Animações ── */
-.entrando { animation: entrar 0.25s ease forwards; }
-.saindo   { animation: sair 0.25s ease forwards; }
+.entrando {
+  animation: entrar 0.25s ease forwards;
+}
+.saindo {
+  animation: sair 0.25s ease forwards;
+}
 
 @keyframes entrar {
-  from { opacity: 0; transform: translateX(40px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes sair {
-  from { opacity: 1; transform: translateX(0); max-height: 100px; margin-bottom: 0; }
-  to   { opacity: 0; transform: translateX(40px); max-height: 0; margin-bottom: -10px; }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 100px;
+    margin-bottom: 0;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+    max-height: 0;
+    margin-bottom: -10px;
+  }
 }

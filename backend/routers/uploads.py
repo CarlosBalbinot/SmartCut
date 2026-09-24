@@ -28,7 +28,7 @@ def _tem_permissao(db: Session, usuario: Usuario, modulo: str, acao: str) -> boo
             Permissao.usuario_id == usuario.id,
             Permissao.modulo == modulo,
             Permissao.acao == acao,
-            Permissao.permitido == True,
+            Permissao.permitido == True,  # noqa: E712 — expressão SQL
         )
         .first()
         is not None

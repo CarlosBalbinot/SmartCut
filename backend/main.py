@@ -2,15 +2,53 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from config import settings
 
-# Logger de erro do servidor: o uvicorn configura handlers para ele, então a
-# exceção completa vai para o log (item 2.5).
-logger = logging.getLogger("uvicorn.error")
+# Item 9.2: logging estruturado (timestamp, nível, módulo, request_id).
+from logging_conf import RequestIdMiddleware, instalar_logging, request_id_var
+
+from routers import (
+    auth,
+    catalogos,
+    clientes,
+    condicoes_pagamento,
+    configuracao_empresa,
+    configuracao_grade,
+    cores_tecido,
+    dashboard,
+    encaixes,
+    financeiro,
+    grupos_molde,
+    grupos_preco,
+    leads,
+    lotes_tecido,
+    modelos_tecido,
+    moldes,
+    nfe,
+    pedidos_venda,
+    precificacoes,
+    produtos,
+    tabelas_grade,
+    tabelas_preco,
+    tes,
+    transportadoras,
+    uploads,
+    usuarios,
+    vendedores,
+    vendedor_painel,
+)
+
+# Item 9.2: logging estruturado (timestamp, nível, módulo, request_id) ativado
+# na importação do app — vale para main, routers, services e o handler 500.
+instalar_logging()
+
+# Logger do app: flui para o raiz configurado em instalar_logging() (9.2) —
+# a exceção completa (traceback) vai para o log, nunca para a resposta.
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -57,32 +95,6 @@ async def lifespan(app: FastAPI):
     finally:
         parar_backup_automatico()
 
-from routers import encaixes, grupos_molde, moldes
-from routers import modelos_tecido, cores_tecido, lotes_tecido
-from routers import precificacoes
-from routers import (
-    configuracao_empresa,
-    tabelas_preco,
-    grupos_preco,
-    vendedores,
-    pedidos_venda,
-    auth,
-    vendedor_painel,
-    catalogos,
-    leads,
-)
-from routers import financeiro
-from routers import dashboard
-from routers import clientes
-from routers import produtos
-from routers import transportadoras
-from routers import usuarios
-from routers import tes
-from routers import nfe
-from routers import condicoes_pagamento
-from routers import tabelas_grade
-from routers import configuracao_grade
-from routers import uploads
 
 app = FastAPI(
     title="SmartCut API",
@@ -102,71 +114,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers legados ───────────────────────────────────────────────────
-app.include_router(moldes.router)
-app.include_router(grupos_molde.router)
-app.include_router(encaixes.router)
+# Item 9.2: request_id por requisição — presente em cada linha de log do
+# request (filtro/contextvar) e devolvido no header X-Request-ID da resposta,
+# permitindo rastrear um erro de produção reportado pelo usuário.
+# Adicionado depois do CORS (é o middleware mais externo).
+app.add_middleware(RequestIdMiddleware)
 
-# ── Routers nova hierarquia de tecidos ────────────────────────────────
-app.include_router(modelos_tecido.router)
-app.include_router(cores_tecido.router)
-app.include_router(lotes_tecido.router)
+# ── Registro declarativo de routers (item 10.3) ─────────────────────────────
+# A ORDEM abaixo é a precedência de rotas do FastAPI (primeiro registro resolve
+# primeiro) — NÃO reordenar sem comparar as rotas registradas.
+# `eh_legado=True` = módulos da arquitetura antiga (molde/encaixe) mantidos por
+# compatibilidade; os demais grupos são a arquitetura atual.
+REGISTRO_DE_ROUTERS: list[tuple[str, bool, list[APIRouter]]] = [
+    # ("grupo de domínio", eh_legado, [routers...])
+    (
+        "Legado — moldes/encaixes (arquitetura antiga, mantidos)",
+        True,
+        [
+            moldes.router,
+            grupos_molde.router,
+            encaixes.router,
+        ],
+    ),
+    (
+        "Hierarquia de tecidos",
+        False,
+        [
+            modelos_tecido.router,
+            cores_tecido.router,
+            lotes_tecido.router,
+        ],
+    ),
+    ("Precificação", False, [precificacoes.router]),
+    (
+        "Vendas",
+        False,
+        [
+            configuracao_empresa.router,
+            tabelas_preco.router,
+            grupos_preco.router,
+            vendedores.router,
+            pedidos_venda.router,
+        ],
+    ),
+    ("Auth", False, [auth.router]),
+    ("Painel do vendedor", False, [vendedor_painel.router]),
+    ("Catálogos e Leads", False, [catalogos.router, leads.router]),
+    ("Financeiro", False, [financeiro.router]),
+    ("Dashboard", False, [dashboard.router]),
+    ("Clientes", False, [clientes.router]),
+    (
+        "Produtos e grades",
+        False,
+        [
+            produtos.router,
+            produtos.grupos_router,
+            produtos.linhas_grade_router,
+            produtos.colunas_grade_router,
+        ],
+    ),
+    ("Transportadoras", False, [transportadoras.router]),
+    ("Auth administrativo e Usuários", False, [auth.router_admin, usuarios.router]),
+    ("Fiscal (TES/NF-e)", False, [tes.router, nfe.router]),
+    ("Condições de Pagamento", False, [condicoes_pagamento.router]),
+    ("Tabelas de Grade", False, [tabelas_grade.router, configuracao_grade.router]),
+    ("Uploads autenticados (item 2.1)", False, [uploads.router]),
+]
 
-# ── Precificação ──────────────────────────────────────────────────────
-app.include_router(precificacoes.router)
-
-# ── Vendas ────────────────────────────────────────────────────────────
-app.include_router(configuracao_empresa.router)
-app.include_router(tabelas_preco.router)
-app.include_router(grupos_preco.router)
-app.include_router(vendedores.router)
-app.include_router(pedidos_venda.router)
-
-# ── Auth ──────────────────────────────────────────────────────────────
-app.include_router(auth.router)
-
-# ── Painel do vendedor ────────────────────────────────────────────────
-app.include_router(vendedor_painel.router)
-
-# ── Catálogos e Leads ─────────────────────────────────────────────────
-app.include_router(catalogos.router)
-app.include_router(leads.router)
-
-# ── Financeiro ────────────────────────────────────────────────────────────────
-app.include_router(financeiro.router)
-
-# ── Dashboard ─────────────────────────────────────────────────────────────────
-app.include_router(dashboard.router)
-
-# ── Clientes ──────────────────────────────────────────────────────────────────
-app.include_router(clientes.router)
-
-# ── Produtos ──────────────────────────────────────────────────────────────────
-app.include_router(produtos.router)
-app.include_router(produtos.grupos_router)
-app.include_router(produtos.linhas_grade_router)
-app.include_router(produtos.colunas_grade_router)
-
-# ── Transportadoras ─────────────────────────────────────────────────────────
-app.include_router(transportadoras.router)
-
-# ── Auth administrativo e Usuários ───────────────────────────────────────────
-app.include_router(auth.router_admin)
-app.include_router(usuarios.router)
-
-# ── Fiscal ────────────────────────────────────────────────────────────────────
-app.include_router(tes.router)
-app.include_router(nfe.router)
-
-# ── Condições de Pagamento ───────────────────────────────────────────────────
-app.include_router(condicoes_pagamento.router)
-
-# ── Tabelas de Grade ──────────────────────────────────────────────────────────
-app.include_router(tabelas_grade.router)
-app.include_router(configuracao_grade.router)
-
-# ── Uploads autenticados (item 2.1) ───────────────────────────────────────────
-app.include_router(uploads.router)
+for grupo, eh_legado, routers_do_grupo in REGISTRO_DE_ROUTERS:
+    if eh_legado:
+        logger.info("Registrando routers legados do grupo '%s'", grupo)
+    for router in routers_do_grupo:
+        app.include_router(router)
 
 
 os.makedirs(settings.upload_dir, exist_ok=True)
@@ -185,9 +204,12 @@ async def generic_exception_handler(request: Request, exc: Exception):
         request.url.path,
         exc_info=(type(exc), exc, exc.__traceback__),
     )
+    # O header X-Request-ID (adicionado pelo RequestIdMiddleware) permite ao
+    # usuário repassar o id — a mesma linha existe no log com o traceback.
     return JSONResponse(
         status_code=500,
         content={"data": None, "error": "Erro interno"},
+        headers={"X-Request-ID": request_id_var.get()},
     )
 
 

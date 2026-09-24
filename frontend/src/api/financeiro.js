@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/financeiro`;
 
 async function request(path, options = {}) {
@@ -50,13 +50,11 @@ export const createContaBancaria = (dados) =>
 export const updateContaBancaria = (id, dados) =>
   request(`/contas-bancarias/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
-export const deleteContaBancaria = (id) =>
-  request(`/contas-bancarias/${id}`, { method: "DELETE" });
+export const deleteContaBancaria = (id) => request(`/contas-bancarias/${id}`, { method: "DELETE" });
 
 // ── Saldo ─────────────────────────────────────────────────────────────────────
 
-export const getSaldoContas = (mes, ano) =>
-  request(`/saldo-contas?mes=${mes}&ano=${ano}`);
+export const getSaldoContas = (mes, ano) => request(`/saldo-contas?mes=${mes}&ano=${ano}`);
 
 export const upsertSaldoInicial = (dados) =>
   request("/saldo-inicial", { method: "POST", body: JSON.stringify(dados) });
@@ -66,8 +64,7 @@ export const upsertSaldoInicial = (dados) =>
 export const createTransferencia = (dados) =>
   request("/transferencias", { method: "POST", body: JSON.stringify(dados) });
 
-export const getTransferencias = (mes, ano) =>
-  request(`/transferencias?mes=${mes}&ano=${ano}`);
+export const getTransferencias = (mes, ano) => request(`/transferencias?mes=${mes}&ano=${ano}`);
 
 // ── Lançamentos ───────────────────────────────────────────────────────────────
 
@@ -86,8 +83,7 @@ export const createLancamento = (dados) =>
 export const updateLancamento = (id, dados) =>
   request(`/lancamentos/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
-export const deleteLancamento = (id) =>
-  request(`/lancamentos/${id}`, { method: "DELETE" });
+export const deleteLancamento = (id) => request(`/lancamentos/${id}`, { method: "DELETE" });
 
 export const confirmarPagamento = (id, contaId, dataPagamento) =>
   request(`/lancamentos/${id}/confirmar-pagamento`, {
@@ -107,8 +103,7 @@ export const getCompra = (id) => request(`/compras/${id}`);
 export const updateCompra = (id, dados) =>
   request(`/compras/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
-export const deleteCompra = (id) =>
-  request(`/compras/${id}`, { method: "DELETE" });
+export const deleteCompra = (id) => request(`/compras/${id}`, { method: "DELETE" });
 
 export const importarXmlCompra = (arquivo) => {
   const fd = new FormData();
@@ -161,10 +156,10 @@ export const gerarDanfeSimplificada = async (arquivoXml) => {
   const formData = new FormData();
   formData.append("arquivo", arquivoXml);
 
-  const response = await apiFetch(
-    `${API_BASE}/api/financeiro/danfe-simplificada`,
-    { method: "POST", body: formData }
-  );
+  const response = await apiFetch(`${API_BASE}/api/financeiro/danfe-simplificada`, {
+    method: "POST",
+    body: formData,
+  });
 
   if (!response.ok) throw new Error("Erro ao gerar DANFE");
 
@@ -181,14 +176,11 @@ export const uploadAnexo = (lancamentoId, arquivo, tipo) => {
   return requestForm(`/lancamentos/${lancamentoId}/anexos`, fd);
 };
 
-export const getAnexos = (lancamentoId) =>
-  request(`/lancamentos/${lancamentoId}/anexos`);
+export const getAnexos = (lancamentoId) => request(`/lancamentos/${lancamentoId}/anexos`);
 
-export const downloadAnexo = (anexoId) =>
-  requestBlob(`/anexos/${anexoId}/download`);
+export const downloadAnexo = (anexoId) => requestBlob(`/anexos/${anexoId}/download`);
 
-export const deleteAnexo = (anexoId) =>
-  request(`/anexos/${anexoId}`, { method: "DELETE" });
+export const deleteAnexo = (anexoId) => request(`/anexos/${anexoId}`, { method: "DELETE" });
 
 // ── Projeção ──────────────────────────────────────────────────────────────────
 
@@ -197,8 +189,7 @@ export const getProjecao = (mesInicio, anoInicio, meses = 3) =>
 
 // ── Metas ─────────────────────────────────────────────────────────────────────
 
-export const getMetas = (ano) =>
-  request(`/metas${ano != null ? `?ano=${ano}` : ""}`);
+export const getMetas = (ano) => request(`/metas${ano != null ? `?ano=${ano}` : ""}`);
 
 export const createMeta = (dados) =>
   request("/metas", { method: "POST", body: JSON.stringify(dados) });
@@ -208,8 +199,7 @@ export const updateMeta = (id, dados) =>
 
 // ── Contabilidade ─────────────────────────────────────────────────────────────
 
-export const getContabilidade = (mes, ano) =>
-  request(`/contabilidade?mes=${mes}&ano=${ano}`);
+export const getContabilidade = (mes, ano) => request(`/contabilidade?mes=${mes}&ano=${ano}`);
 
 async function requestBlobPost(path, body) {
   const res = await apiFetch(`${BASE_URL}${path}`, {

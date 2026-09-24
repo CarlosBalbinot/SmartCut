@@ -5,14 +5,26 @@
  */
 import { useMemo, useState } from "react";
 import Modal from "../Modal/Modal";
-import SetaFioArrastavel, { CATEGORIA_LABEL, anguloInicial, anguloParaCategoria } from "../SetaFioArrastavel";
+import SetaFioArrastavel, {
+  CATEGORIA_LABEL,
+  anguloInicial,
+  anguloParaCategoria,
+} from "../SetaFioArrastavel";
 import styles from "./EditarMoldeModal.module.css";
 
 const TAMANHOS_DISPONIVEIS = ["PP", "P", "M", "G", "GG", "XGG"];
 
 // ── Componente principal ─────────────────────────────────────────────
 
-export default function EditarMoldeModal({ molde, onClose, onSalvar, onExcluir, podeExcluir, salvando, erro }) {
+export default function EditarMoldeModal({
+  molde,
+  onClose,
+  onSalvar,
+  onExcluir,
+  podeExcluir,
+  salvando,
+  erro,
+}) {
   const [nome, setNome] = useState(molde.nome ?? "");
   const [peca, setPeca] = useState(molde.peca ?? "");
   const [tamanho, setTamanho] = useState(molde.tamanho ?? "");
@@ -73,7 +85,11 @@ export default function EditarMoldeModal({ molde, onClose, onSalvar, onExcluir, 
 
           <div className={styles.campo}>
             <label className={styles.label}>Tamanho</label>
-            <select className={styles.select} value={tamanho} onChange={(e) => setTamanho(e.target.value)}>
+            <select
+              className={styles.select}
+              value={tamanho}
+              onChange={(e) => setTamanho(e.target.value)}
+            >
               <option value="">—</option>
               {TAMANHOS_DISPONIVEIS.map((t) => (
                 <option key={t} value={t}>
@@ -95,7 +111,11 @@ export default function EditarMoldeModal({ molde, onClose, onSalvar, onExcluir, 
 
           <div className={styles.campo}>
             <label className={styles.label}>Tipo de corte</label>
-            <select className={styles.select} value={tipoCorte} onChange={(e) => setTipoCorte(e.target.value)}>
+            <select
+              className={styles.select}
+              value={tipoCorte}
+              onChange={(e) => setTipoCorte(e.target.value)}
+            >
               <option value="simples">Simples (1 peça, sem espelho)</option>
               <option value="par">Par (2 peças espelhadas)</option>
               <option value="par_sem_espelho">Par sem espelho (2 peças)</option>
@@ -104,7 +124,12 @@ export default function EditarMoldeModal({ molde, onClose, onSalvar, onExcluir, 
 
           <div className={styles.acoes}>
             {podeExcluir && (
-              <button type="button" className={styles.btnExcluir} onClick={onExcluir} disabled={salvando}>
+              <button
+                type="button"
+                className={styles.btnExcluir}
+                onClick={onExcluir}
+                disabled={salvando}
+              >
                 Excluir esta peça
               </button>
             )}

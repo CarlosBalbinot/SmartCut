@@ -2,9 +2,7 @@ import math
 from typing import Any
 
 
-def criar_zona_exclusao(
-    x_cm: float, y_cm: float, raio_cm: float, num_pontos: int = 32
-) -> dict[str, Any]:
+def criar_zona_exclusao(x_cm: float, y_cm: float, raio_cm: float, num_pontos: int = 32) -> dict[str, Any]:
     """Gera um polígono circular de exclusão a partir de coordenadas e raio.
 
     Retorna a geometria como dicionário compatível com o campo geometria_json

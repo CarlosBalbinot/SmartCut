@@ -1,4 +1,4 @@
-import { tokenStore } from './tokenStore';
+import { tokenStore } from "./tokenStore";
 
 // Arquivo de utilitários compartilhados da camada de API do frontend.
 // Todos os métodos por domínio vivem em src/api/*.js (um módulo por domínio),
@@ -12,15 +12,19 @@ import { tokenStore } from './tokenStore';
 // vier 401 (token ausente/expirado/inválido), limpa a sessão e redireciona
 // para /login.
 export async function apiFetch(url, options = {}) {
-  const token = await tokenStore.obter('admin');
+  const token = await tokenStore.obter("admin");
   const headers = { ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...options, headers, credentials: options.credentials ?? 'include' });
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    credentials: options.credentials ?? "include",
+  });
 
   if (res.status === 401) {
-    await tokenStore.limpar('admin');
-    window.location.hash = '/login';
+    await tokenStore.limpar("admin");
+    window.location.hash = "/login";
   }
 
   return res;
@@ -30,13 +34,16 @@ export async function apiFetch(url, options = {}) {
 // HTTPException passa direto; lista de validação do pydantic, resposta 5xx
 // ou sem JSON e qualquer coisa com cara de erro de banco viram mensagem
 // genérica — nunca mostrar erro técnico cru na tela.
-const _ERRO_TECNICO = /sqlalchemy|sqlite|psycopg|integrityerror|operationalerror|traceback|\b(select|insert|update|delete)\b.+\b(from|into|set|where)\b/i;
+const _ERRO_TECNICO =
+  /sqlalchemy|sqlite|psycopg|integrityerror|operationalerror|traceback|\b(select|insert|update|delete)\b.+\b(from|into|set|where)\b/i;
 
 export function mensagemErro(json, status) {
   const msg = json?.error || json?.detail;
   if (status >= 500) return "Não foi possível concluir a operação. Tente novamente.";
   if (Array.isArray(msg)) return "Dados inválidos. Verifique os campos.";
-  if (typeof msg !== "string" || !msg.trim()) return `Não foi possível concluir a operação (erro ${status}).`;
-  if (_ERRO_TECNICO.test(msg)) return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";
+  if (typeof msg !== "string" || !msg.trim())
+    return `Não foi possível concluir a operação (erro ${status}).`;
+  if (_ERRO_TECNICO.test(msg))
+    return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";
   return msg;
 }

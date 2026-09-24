@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -11,9 +11,9 @@
 }
 
 .modal {
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border-radius: var(--sc-radius-xl);
-  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
   width: 100%;
   max-width: 540px;
   max-height: 90vh;
@@ -55,7 +55,7 @@
 }
 
 .fechar:hover {
-  background-color: #F5F5F7;
+  background-color: #f5f5f7;
 }
 
 /* Body do modal */

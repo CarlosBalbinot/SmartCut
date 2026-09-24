@@ -16,6 +16,7 @@ Fluxo principal (gerar_encaixe):
        f. Salva um ou mais registros Encaixe no banco.
   4. Retorna lista de dicts resumindo os encaixes criados.
 """
+
 from __future__ import annotations
 
 import math
@@ -43,17 +44,19 @@ _MULT: dict[str, int] = {"simples": 1, "par": 2, "par_sem_espelho": 2}
 
 # ── DTO normalizado ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class TecidoNesting:
     """Dados normalizados para nesting, independente de nova hierarquia ou legado."""
+
     nome: str
     largura_util_cm: float
     gramatura_g_m2: float
     valor_por_kg: float
     encolhimento_pct: float
     max_camadas: int
-    lote_id: uuid.UUID | None       # nova hierarquia
-    tecido_id: uuid.UUID | None     # legado
+    lote_id: uuid.UUID | None  # nova hierarquia
+    tecido_id: uuid.UUID | None  # legado
 
     @classmethod
     def de_lote(cls, lote: LoteTecido) -> "TecidoNesting":
@@ -86,6 +89,7 @@ class TecidoNesting:
 
 # ── Rotações permitidas por sentido do fio ───────────────────────────────────
 
+
 def _rotacoes(sentido_fio: str | None) -> list[int]:
     """Converte sentido_fio em lista de rotações (graus) permitidas."""
     if sentido_fio == "vertical":
@@ -98,6 +102,7 @@ def _rotacoes(sentido_fio: str | None) -> list[int]:
 
 
 # ── Extração de polígono do molde ────────────────────────────────────────────
+
 
 def _poligono(molde: Molde) -> list[list[float]]:
     return build_polygon(molde.geometria_json, molde.area_cm2)
@@ -112,14 +117,11 @@ def _rotate_polygon(pts: list[list[float]], angle_deg: int) -> list[list[float]]
     cx = (min(xs) + max(xs)) / 2
     cy = (min(ys) + max(ys)) / 2
     import math as _math
+
     rad = angle_deg * _math.pi / 180
     cos_a = _math.cos(rad)
     sin_a = _math.sin(rad)
-    return [
-        [cx + (x - cx) * cos_a - (y - cy) * sin_a,
-         cy + (x - cx) * sin_a + (y - cy) * cos_a]
-        for x, y in pts
-    ]
+    return [[cx + (x - cx) * cos_a - (y - cy) * sin_a, cy + (x - cx) * sin_a + (y - cy) * cos_a] for x, y in pts]
 
 
 def _poligono_rotacionado(molde: Molde) -> list[list[float]]:
@@ -132,8 +134,13 @@ def _poligono_rotacionado(molde: Molde) -> list[list[float]]:
 
 # (campo de quantidade no ItemPedido, tamanho correspondente do Molde)
 TAMANHOS: list[tuple[str, str]] = [
-    ("qtd_p", "P"), ("qtd_m", "M"), ("qtd_g", "G"), ("qtd_gg", "GG"),
-    ("qtd_g1", "G1"), ("qtd_g2", "G2"), ("qtd_g3", "G3"),
+    ("qtd_p", "P"),
+    ("qtd_m", "M"),
+    ("qtd_g", "G"),
+    ("qtd_gg", "GG"),
+    ("qtd_g1", "G1"),
+    ("qtd_g2", "G2"),
+    ("qtd_g3", "G3"),
 ]
 
 
@@ -192,6 +199,7 @@ def _agrupar_por_lote(
 
 # ── Geração de encaixes para um tecido ──────────────────────────────────────
 
+
 def _gerar_para_tecido(
     db: Session,
     pedido: Pedido,
@@ -213,12 +221,14 @@ def _gerar_para_tecido(
         qty_plano = math.ceil(qtd * mult / num_camadas)
         if qty_plano <= 0:
             continue
-        parts.append({
-            "id": str(molde.id),
-            "polygon": _poligono_rotacionado(molde),
-            "quantity": qty_plano,
-            "rotations": _rotacoes(molde.sentido_fio),
-        })
+        parts.append(
+            {
+                "id": str(molde.id),
+                "polygon": _poligono_rotacionado(molde),
+                "quantity": qty_plano,
+                "rotations": _rotacoes(molde.sentido_fio),
+            }
+        )
 
     if not parts:
         return [], avisos
@@ -245,13 +255,9 @@ def _gerar_para_tecido(
     encaixes_criados: list[dict] = []
 
     if result["width_used"] > MAX_ENFESTO_CM:
-        encaixes_criados.extend(
-            _dividir_em_lotes(db, pedido, tecido, parts, largura, num_camadas, pecas=pares)
-        )
+        encaixes_criados.extend(_dividir_em_lotes(db, pedido, tecido, parts, largura, num_camadas, pecas=pares))
     else:
-        enc = _salvar_encaixe(
-            db, pedido, tecido, result, num_camadas, largura, parts, pecas=pares
-        )
+        enc = _salvar_encaixe(db, pedido, tecido, result, num_camadas, largura, parts, pecas=pares)
         encaixes_criados.append(enc)
 
     return encaixes_criados, avisos
@@ -278,9 +284,7 @@ def _dividir_em_lotes(
             bin_height_cm=MAX_ENFESTO_CM,
             parts=lote,
         )
-        enc = _salvar_encaixe(
-            db, pedido, tecido, result, num_camadas, largura, lote, pecas=pecas
-        )
+        enc = _salvar_encaixe(db, pedido, tecido, result, num_camadas, largura, lote, pecas=pecas)
         encaixes.append(enc)
 
     return encaixes
@@ -385,6 +389,7 @@ def _salvar_encaixe(
 
 # ── Ponto de entrada público ─────────────────────────────────────────────────
 
+
 def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
     """Gera encaixes automáticos para todos os lotes de tecido do pedido.
 
@@ -400,13 +405,11 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
     pedido = (
         db.query(Pedido)
         .options(
+            selectinload(Pedido.itens).selectinload(ItemPedido.grupo).selectinload(GrupoMolde.moldes),
             selectinload(Pedido.itens)
-                .selectinload(ItemPedido.grupo)
-                .selectinload(GrupoMolde.moldes),
-            selectinload(Pedido.itens)
-                .selectinload(ItemPedido.lote)
-                .selectinload(LoteTecido.cor)
-                .selectinload(CorTecido.modelo),
+            .selectinload(ItemPedido.lote)
+            .selectinload(LoteTecido.cor)
+            .selectinload(CorTecido.modelo),
         )
         .filter(Pedido.id == pedido_id)
         .first()
@@ -422,8 +425,7 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
 
     if not grupos:
         raise ValueError(
-            "Nenhuma peça foi vinculada a um tecido. "
-            "Selecione um tecido para cada peça antes de gerar o encaixe."
+            "Nenhuma peça foi vinculada a um tecido. Selecione um tecido para cada peça antes de gerar o encaixe."
         )
 
     resultado: list[dict] = []
@@ -436,6 +438,7 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
 
 
 # ── Legado: mantido para compatibilidade com chamadas existentes ─────────────
+
 
 def validar_sentido_fio(rotacao_graus: float, sentido_fio: str) -> bool:
     """Valida se a rotação aplicada respeita o sentido do fio do molde."""

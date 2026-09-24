@@ -96,17 +96,24 @@ export default function TESPage() {
     }
   }, []);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   useEffect(() => {
     getFiscal()
-      .then((d) => { if (d?.regime_tributario) setRegimeTributario(d.regime_tributario); })
+      .then((d) => {
+        if (d?.regime_tributario) setRegimeTributario(d.regime_tributario);
+      })
       .catch(() => {});
   }, []);
 
   const usaCstIcms = regimeTributario === "Lucro Presumido" || regimeTributario === "Lucro Real";
 
-  const abrirNovo = () => { setModal({ ...VAZIO }); setErro(null); };
+  const abrirNovo = () => {
+    setModal({ ...VAZIO });
+    setErro(null);
+  };
 
   const abrirEditar = (t) => {
     setModal({
@@ -134,20 +141,42 @@ export default function TESPage() {
     setErro(null);
   };
 
-  const fecharModal = () => { setModal(null); setErro(null); };
+  const fecharModal = () => {
+    setModal(null);
+    setErro(null);
+  };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
   const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
   const setCheck = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.checked }));
 
   const handleSalvar = async () => {
-    if (!modal.codigo.trim()) { setErro("Código é obrigatório."); return; }
-    if (!modal.descricao.trim()) { setErro("Descrição é obrigatória."); return; }
-    if (!modal.natureza_operacao.trim()) { setErro("Natureza da operação é obrigatória."); return; }
-    if (!modal.cfop.trim()) { setErro("CFOP é obrigatório."); return; }
-    if (!modal.pis_cst.trim()) { setErro("CST do PIS é obrigatório."); return; }
-    if (!modal.cofins_cst.trim()) { setErro("CST do COFINS é obrigatório."); return; }
+    if (!modal.codigo.trim()) {
+      setErro("Código é obrigatório.");
+      return;
+    }
+    if (!modal.descricao.trim()) {
+      setErro("Descrição é obrigatória.");
+      return;
+    }
+    if (!modal.natureza_operacao.trim()) {
+      setErro("Natureza da operação é obrigatória.");
+      return;
+    }
+    if (!modal.cfop.trim()) {
+      setErro("CFOP é obrigatório.");
+      return;
+    }
+    if (!modal.pis_cst.trim()) {
+      setErro("CST do PIS é obrigatório.");
+      return;
+    }
+    if (!modal.cofins_cst.trim()) {
+      setErro("CST do COFINS é obrigatório.");
+      return;
+    }
 
-    setSaving(true); setErro(null);
+    setSaving(true);
+    setErro(null);
     try {
       const payload = {
         codigo: modal.codigo.trim(),
@@ -186,7 +215,10 @@ export default function TESPage() {
 
   const handleExcluir = async (id) => {
     if (!window.confirm("Deseja excluir este TES?")) return;
-    try { await excluir(id); await carregar(); } catch {}
+    try {
+      await excluir(id);
+      await carregar();
+    } catch {}
   };
 
   return (
@@ -194,7 +226,9 @@ export default function TESPage() {
       <div className="sc-page-header">
         <h1>TES</h1>
         {hasPermission(MODULO, "criar") && (
-          <button className={styles.btnNovo} onClick={abrirNovo}>+ Novo TES</button>
+          <button className={styles.btnNovo} onClick={abrirNovo}>
+            + Novo TES
+          </button>
         )}
       </div>
 
@@ -213,39 +247,58 @@ export default function TESPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className={styles.empty}>Carregando…</td></tr>
-            ) : lista.length === 0 ? (
-              <tr><td colSpan={7} className={styles.empty}>Nenhum TES cadastrado.</td></tr>
-            ) : lista.map((t) => (
-              <tr key={t.id}>
-                <td className={styles.tdMono}>{t.codigo}</td>
-                <td>{t.descricao}</td>
-                <td>
-                  <span className={`${styles.badge} ${t.tipo === "Entrada" ? styles.badge_entrada : styles.badge_saida}`}>
-                    {t.tipo}
-                  </span>
-                </td>
-                <td className={styles.tdMono}>{t.cfop}</td>
-                <td className={styles.tdMono}>{t.csosn}</td>
-                <td>
-                  <span className={`${styles.badge} ${t.situacao === "Ativo" ? styles.badge_ativo : styles.badge_inativo}`}>
-                    {t.situacao}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.actions}>
-                    {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => abrirEditar(t)}>Editar</button>
-                    )}
-                    {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(t.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Carregando…
                 </td>
               </tr>
-            ))}
+            ) : lista.length === 0 ? (
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Nenhum TES cadastrado.
+                </td>
+              </tr>
+            ) : (
+              lista.map((t) => (
+                <tr key={t.id}>
+                  <td className={styles.tdMono}>{t.codigo}</td>
+                  <td>{t.descricao}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${t.tipo === "Entrada" ? styles.badge_entrada : styles.badge_saida}`}
+                    >
+                      {t.tipo}
+                    </span>
+                  </td>
+                  <td className={styles.tdMono}>{t.cfop}</td>
+                  <td className={styles.tdMono}>{t.csosn}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${t.situacao === "Ativo" ? styles.badge_ativo : styles.badge_inativo}`}
+                    >
+                      {t.situacao}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      {hasPermission(MODULO, "editar") && (
+                        <button className={styles.btnLink} onClick={() => abrirEditar(t)}>
+                          Editar
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={`${styles.btnLink} ${styles.btnDanger}`}
+                          onClick={() => handleExcluir(t.id)}
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -255,7 +308,9 @@ export default function TESPage() {
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modal.id ? "Editar TES" : "Novo TES"}</h2>
-              <button className={styles.btnClose} onClick={fecharModal}>×</button>
+              <button className={styles.btnClose} onClick={fecharModal}>
+                ×
+              </button>
             </div>
 
             <div className={styles.modalBody}>
@@ -263,7 +318,12 @@ export default function TESPage() {
               <div className={styles.fieldGrid}>
                 <label className={styles.field}>
                   <span>Código *</span>
-                  <input className={styles.input} value={modal.codigo} onChange={setF("codigo")} placeholder="Ex: 5102" />
+                  <input
+                    className={styles.input}
+                    value={modal.codigo}
+                    onChange={setF("codigo")}
+                    placeholder="Ex: 5102"
+                  />
                 </label>
 
                 <label className={styles.field}>
@@ -276,22 +336,42 @@ export default function TESPage() {
 
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição *</span>
-                  <input className={styles.input} value={modal.descricao} onChange={setFUpper("descricao")} placeholder="Ex: Venda de mercadoria" />
+                  <input
+                    className={styles.input}
+                    value={modal.descricao}
+                    onChange={setFUpper("descricao")}
+                    placeholder="Ex: Venda de mercadoria"
+                  />
                 </label>
 
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Natureza da Operação *</span>
-                  <input className={styles.input} value={modal.natureza_operacao} onChange={setFUpper("natureza_operacao")} placeholder="Texto que vai para o XML da NF-e" />
+                  <input
+                    className={styles.input}
+                    value={modal.natureza_operacao}
+                    onChange={setFUpper("natureza_operacao")}
+                    placeholder="Texto que vai para o XML da NF-e"
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>CFOP *</span>
-                  <input className={styles.input} value={modal.cfop} onChange={setFUpper("cfop")} placeholder="Ex: 5102" maxLength={10} />
+                  <input
+                    className={styles.input}
+                    value={modal.cfop}
+                    onChange={setFUpper("cfop")}
+                    placeholder="Ex: 5102"
+                    maxLength={10}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>Situação</span>
-                  <select className={styles.input} value={modal.situacao} onChange={setF("situacao")}>
+                  <select
+                    className={styles.input}
+                    value={modal.situacao}
+                    onChange={setF("situacao")}
+                  >
                     <option value="Ativo">Ativo</option>
                     <option value="Inativo">Inativo</option>
                   </select>
@@ -303,9 +383,15 @@ export default function TESPage() {
                 {usaCstIcms ? (
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>CST do ICMS</span>
-                    <select className={styles.input} value={modal.cst_icms} onChange={setF("cst_icms")}>
+                    <select
+                      className={styles.input}
+                      value={modal.cst_icms}
+                      onChange={setF("cst_icms")}
+                    >
                       {CST_ICMS_OPCOES.map((o) => (
-                        <option key={o.valor} value={o.valor}>{o.label}</option>
+                        <option key={o.valor} value={o.valor}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -314,7 +400,9 @@ export default function TESPage() {
                     <span>CSOSN</span>
                     <select className={styles.input} value={modal.csosn} onChange={setF("csosn")}>
                       {CSOSN_OPCOES.map((o) => (
-                        <option key={o.valor} value={o.valor}>{o.label}</option>
+                        <option key={o.valor} value={o.valor}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -324,36 +412,64 @@ export default function TESPage() {
                   <span>Origem da Mercadoria</span>
                   <select className={styles.input} value={modal.origem} onChange={setF("origem")}>
                     {ORIGEM_OPCOES.map((o) => (
-                      <option key={o.valor} value={o.valor}>{o.label}</option>
+                      <option key={o.valor} value={o.valor}>
+                        {o.label}
+                      </option>
                     ))}
                   </select>
                 </label>
 
                 <label className={styles.field}>
                   <span>Modalidade BC ICMS</span>
-                  <select className={styles.input} value={modal.modalidade_bc_icms} onChange={setF("modalidade_bc_icms")}>
+                  <select
+                    className={styles.input}
+                    value={modal.modalidade_bc_icms}
+                    onChange={setF("modalidade_bc_icms")}
+                  >
                     {MODALIDADE_BC_OPCOES.map((o) => (
-                      <option key={o.valor} value={o.valor}>{o.label}</option>
+                      <option key={o.valor} value={o.valor}>
+                        {o.label}
+                      </option>
                     ))}
                   </select>
                 </label>
 
                 <label className={styles.field}>
                   <span>Redução BC ICMS (%)</span>
-                  <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                    value={modal.reducao_bc_icms} onChange={setF("reducao_bc_icms")} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className={styles.input}
+                    value={modal.reducao_bc_icms}
+                    onChange={setF("reducao_bc_icms")}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>Alíquota ICMS (%)</span>
-                  <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                    value={modal.aliquota_icms} onChange={setF("aliquota_icms")} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className={styles.input}
+                    value={modal.aliquota_icms}
+                    onChange={setF("aliquota_icms")}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>Valor ICMS (R$)</span>
-                  <input type="number" step="0.01" min="0" className={styles.input}
-                    value={modal.valor_icms} onChange={setF("valor_icms")} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className={styles.input}
+                    value={modal.valor_icms}
+                    onChange={setF("valor_icms")}
+                  />
                 </label>
               </div>
 
@@ -361,35 +477,69 @@ export default function TESPage() {
               <div className={styles.fieldGrid}>
                 <label className={styles.field}>
                   <span>CST do PIS *</span>
-                  <input className={styles.input} value={modal.pis_cst} onChange={setF("pis_cst")} placeholder="Ex: 01" maxLength={2} />
+                  <input
+                    className={styles.input}
+                    value={modal.pis_cst}
+                    onChange={setF("pis_cst")}
+                    placeholder="Ex: 01"
+                    maxLength={2}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>Alíquota PIS (%)</span>
-                  <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                    value={modal.pis_aliquota} onChange={setF("pis_aliquota")} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className={styles.input}
+                    value={modal.pis_aliquota}
+                    onChange={setF("pis_aliquota")}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>CST do COFINS *</span>
-                  <input className={styles.input} value={modal.cofins_cst} onChange={setF("cofins_cst")} placeholder="Ex: 01" maxLength={2} />
+                  <input
+                    className={styles.input}
+                    value={modal.cofins_cst}
+                    onChange={setF("cofins_cst")}
+                    placeholder="Ex: 01"
+                    maxLength={2}
+                  />
                 </label>
 
                 <label className={styles.field}>
                   <span>Alíquota COFINS (%)</span>
-                  <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                    value={modal.cofins_aliquota} onChange={setF("cofins_aliquota")} />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className={styles.input}
+                    value={modal.cofins_aliquota}
+                    onChange={setF("cofins_aliquota")}
+                  />
                 </label>
               </div>
 
               <p className={`${styles.sectionLabel} ${styles.sectionLabelMt}`}>Comportamento</p>
               <div className={styles.checkRow}>
                 <label className={styles.checkboxField}>
-                  <input type="checkbox" checked={modal.gera_financeiro} onChange={setCheck("gera_financeiro")} />
+                  <input
+                    type="checkbox"
+                    checked={modal.gera_financeiro}
+                    onChange={setCheck("gera_financeiro")}
+                  />
                   <span>Gera lançamento financeiro</span>
                 </label>
                 <label className={styles.checkboxField}>
-                  <input type="checkbox" checked={modal.movimenta_estoque} onChange={setCheck("movimenta_estoque")} />
+                  <input
+                    type="checkbox"
+                    checked={modal.movimenta_estoque}
+                    onChange={setCheck("movimenta_estoque")}
+                  />
                   <span>Movimenta estoque</span>
                 </label>
               </div>
@@ -398,7 +548,9 @@ export default function TESPage() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
+              <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
+                Cancelar
+              </button>
               <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
                 {saving ? "Salvando…" : "Salvar"}
               </button>

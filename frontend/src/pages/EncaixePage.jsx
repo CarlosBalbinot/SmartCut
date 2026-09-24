@@ -7,9 +7,21 @@ import styles from "./EncaixePage.module.css";
 
 // Paleta de cores para os moldes no canvas
 const PALETTE = [
-  "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
-  "#06b6d4", "#a855f7", "#f43f5e", "#22c55e", "#eab308",
+  "#3b82f6",
+  "#ef4444",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+  "#6366f1",
+  "#84cc16",
+  "#06b6d4",
+  "#a855f7",
+  "#f43f5e",
+  "#22c55e",
+  "#eab308",
 ];
 
 function buildColorMap(placements) {
@@ -59,7 +71,7 @@ function corAproveitamento(v) {
 // ── Explicação automática (compacta) do % de aproveitamento, exibida só no
 // tooltip ao passar o mouse no card — usa dados que já vêm no mapa_json,
 // sem precisar de nada novo do backend. ────────────────────────────────────
-function gerarJustificativa({ aproveitamento, partsCount, placementsCount, larguraCm }) {
+function gerarJustificativa({ aproveitamento, partsCount, placementsCount }) {
   const naoPosicionadas =
     partsCount != null && placementsCount != null ? partsCount - placementsCount : 0;
 
@@ -288,7 +300,9 @@ export default function EncaixePage() {
               onClick={() => setListaAberta((v) => !v)}
             >
               <span>Peças no enfesto</span>
-              <span className={`${styles.pecasChevron} ${listaAberta ? styles.pecasChevronAberto : ""}`}>
+              <span
+                className={`${styles.pecasChevron} ${listaAberta ? styles.pecasChevronAberto : ""}`}
+              >
                 ›
               </span>
             </button>
@@ -302,9 +316,7 @@ export default function EncaixePage() {
                       type="button"
                       key={p.id}
                       className={`${styles.pecaItem} ${pecaSelecionada === p.id ? styles.pecaItemAtivo : ""}`}
-                      onClick={() =>
-                        setPecaSelecionada((atual) => (atual === p.id ? null : p.id))
-                      }
+                      onClick={() => setPecaSelecionada((atual) => (atual === p.id ? null : p.id))}
                     >
                       <span
                         className={styles.pecaCor}
@@ -325,7 +337,12 @@ export default function EncaixePage() {
           </div>
 
           {/* PDF */}
-          <button type="button" className={styles.btnPdfPainel} onClick={baixarPdf} disabled={gerandoPdf}>
+          <button
+            type="button"
+            className={styles.btnPdfPainel}
+            onClick={baixarPdf}
+            disabled={gerandoPdf}
+          >
             {gerandoPdf ? "Gerando PDF…" : "↓ Baixar PDF de Corte"}
           </button>
         </aside>

@@ -1,5 +1,4 @@
 import re
-import uuid
 
 from sqlalchemy.orm import Session
 
@@ -40,6 +39,7 @@ def criar_coluna(db: Session, payload: GradeItemCreate) -> ColunaGrade:
 
 # ── Geração de código de produto filho (grade) ───────────────────────────
 
+
 def obter_configuracao(db: Session) -> ConfiguracaoGrade:
     """Retorna o registro singleton (id=1) de ConfiguracaoGrade, criando-o
     com os valores padrão do model na primeira chamada."""
@@ -65,8 +65,7 @@ def aplicar_mascara(
     colapsa separadores duplicados/nas pontas deixados por variáveis
     vazias (ex.: "LG--M" → "LG-M")."""
     codigo = (
-        mascara
-        .replace("{GRUPO}", grupo_prefixo or "")
+        mascara.replace("{GRUPO}", grupo_prefixo or "")
         .replace("{SEQ}", str(seq).zfill(tamanho_seq))
         .replace("{COR}", cor_codigo or "")
         .replace("{TAM}", tam_codigo or "")
@@ -86,8 +85,13 @@ def gerar_codigo_filho(
 ) -> str:
     config = obter_configuracao(db)
     return aplicar_mascara(
-        config.mascara, config.separador, config.tamanho_seq,
-        grupo_prefixo, seq, cor_codigo, tam_codigo,
+        config.mascara,
+        config.separador,
+        config.tamanho_seq,
+        grupo_prefixo,
+        seq,
+        cor_codigo,
+        tam_codigo,
     )
 
 
@@ -100,13 +104,10 @@ def proximo_seq_grupo(db: Session, grupo_prefixo: str) -> int:
     esta função quando o model de produto filho existir (próxima etapa).
     """
     prefixo = f"{grupo_prefixo}-"
-    codigos = [
-        row[0] for row in
-        db.query(Produto.codigo).filter(Produto.codigo.like(f"{prefixo}%")).all()
-    ]
+    codigos = [row[0] for row in db.query(Produto.codigo).filter(Produto.codigo.like(f"{prefixo}%")).all()]
     max_val = 0
     for codigo in codigos:
-        m = re.match(r"^\d+", codigo[len(prefixo):])
+        m = re.match(r"^\d+", codigo[len(prefixo) :])
         if m:
             max_val = max(max_val, int(m.group()))
     return max_val + 1

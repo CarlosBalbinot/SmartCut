@@ -3,8 +3,16 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, ForeignKey, Integer, JSON, Numeric,
-    String, Uuid, func,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    Numeric,
+    String,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -45,9 +53,7 @@ class Produto(Base):
     __tablename__ = "produtos"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    grupo_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("grupos_produto.id"), nullable=False
-    )
+    grupo_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("grupos_produto.id"), nullable=False)
     codigo: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
     descricao: Mapped[str] = mapped_column(String(300), nullable=False)
     tipo: Mapped[str | None] = mapped_column(String(50), nullable=True)

@@ -103,11 +103,7 @@ def deletar(db: Session, molde_id: uuid.UUID) -> bool:
         # Vínculo real hoje é a nível de grupo: itens_pedido referencia o
         # grupo de moldes, não o molde individual (PedidoPeca/molde_id foi
         # removido na reestruturação e hoje é código morto).
-        vinculado = (
-            db.query(ItemPedido)
-            .filter(ItemPedido.grupo_id == molde.grupo_id)
-            .first()
-        )
+        vinculado = db.query(ItemPedido).filter(ItemPedido.grupo_id == molde.grupo_id).first()
         if vinculado:
             raise ValueError(
                 "Este molde não pode ser excluído pois está vinculado a um ou "

@@ -1,6 +1,6 @@
 # PROMPT DE EXECUÇÃO — Correção de problemas do SmartCut
 
-Você é um engenheiro de software sênior trabalhando no projeto **SmartCut** (sistema de gestão têxtil: `D:\Estudos - VSC\SmartCut`). Sua tarefa é resolver, **em partes e sequencialmente**, todos os problemas listados abaixo, sem pular nenhum item. Nenhum dos problemas listados é opcional, salvo indicação contrária.
+Você é um engenheiro de software sênior trabalhando no projeto **SmartCut** (sistema de gestão têxtil). Sua tarefa é resolver, **em partes e sequencialmente**, todos os problemas listados abaixo, sem pular nenhum item. Nenhum dos problemas listados é opcional, salvo indicação contrária.
 
 ## Regras gerais de execução (aplicam-se a TODAS as partes)
 

@@ -9,15 +9,13 @@ export function LogoProvider({ children }) {
 
   useEffect(() => {
     getConfiguracaoEmpresa()
-      .then((d) => { if (d?.logo_url) setLogoUrl(urlAbsoluta(d.logo_url)); })
+      .then((d) => {
+        if (d?.logo_url) setLogoUrl(urlAbsoluta(d.logo_url));
+      })
       .catch(() => {});
   }, []);
 
-  return (
-    <LogoContext.Provider value={{ logoUrl, setLogoUrl }}>
-      {children}
-    </LogoContext.Provider>
-  );
+  return <LogoContext.Provider value={{ logoUrl, setLogoUrl }}>{children}</LogoContext.Provider>;
 }
 
 export function useLogo() {

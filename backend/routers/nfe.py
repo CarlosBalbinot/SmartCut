@@ -14,8 +14,14 @@ from middleware.permissions import require_permission
 from models.nfe import STATUS_VALIDOS, NotaFiscal
 from models.pedido import PedidoVenda
 from services.nfe_service import (
-    assinar_xml, criar_pastas_nfe, gerar_danfe, montar_evento_cancelamento,
-    montar_evento_cce, montar_xml_nfe, proximo_numero, transmitir_nfe,
+    assinar_xml,
+    criar_pastas_nfe,
+    gerar_danfe,
+    montar_evento_cancelamento,
+    montar_evento_cce,
+    montar_xml_nfe,
+    proximo_numero,
+    transmitir_nfe,
 )
 from services.venda_service import get_ou_criar_empresa
 
@@ -37,6 +43,7 @@ _XML_CARTAS_CORRECAO = "uploads/nfe/CartasDeCorrecaoEnviadas"
 
 
 # ── Schemas ─────────────────────────────────────────────────────────────
+
 
 class NotaFiscalCreate(BaseModel):
     pedido_id: Optional[uuid.UUID] = None
@@ -90,6 +97,7 @@ class CancelarIn(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
+
 def _get_nfe_ou_404(db: Session, nfe_id: int) -> NotaFiscal:
     nfe = db.get(NotaFiscal, nfe_id)
     if not nfe:
@@ -98,6 +106,7 @@ def _get_nfe_ou_404(db: Session, nfe_id: int) -> NotaFiscal:
 
 
 # ── Rotas ───────────────────────────────────────────────────────────────
+
 
 @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED, dependencies=[Depends(_CRIAR)])
 def criar_nfe(payload: NotaFiscalCreate, db: Session = Depends(get_db)):
@@ -162,8 +171,10 @@ def criar_nfe(payload: NotaFiscalCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=dict, dependencies=[Depends(_VER)])
 def listar_nfe(
-    status_filtro: Optional[str] = None, serie: Optional[str] = None,
-    mes: Optional[str] = None, db: Session = Depends(get_db),
+    status_filtro: Optional[str] = None,
+    serie: Optional[str] = None,
+    mes: Optional[str] = None,
+    db: Session = Depends(get_db),
 ):
     q = select(NotaFiscal)
     if status_filtro:

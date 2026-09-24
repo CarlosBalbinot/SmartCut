@@ -28,7 +28,8 @@ def obter_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/preview", response_model=dict,
+    "/preview",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 async def preview_molde(arquivo: UploadFile = File(...)):
@@ -36,12 +37,14 @@ async def preview_molde(arquivo: UploadFile = File(...)):
     try:
         resultado = await molde_service.preview_arquivo(arquivo)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
     return {"data": resultado, "error": None}
 
 
 @router.post(
-    "/bulk", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/bulk",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def importar_bulk(payload: BulkImportCreate, db: Session = Depends(get_db)):
@@ -51,7 +54,8 @@ def importar_bulk(payload: BulkImportCreate, db: Session = Depends(get_db)):
 
 
 @router.patch(
-    "/{molde_id}", response_model=dict,
+    "/{molde_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_molde(
@@ -66,7 +70,8 @@ def atualizar_molde(
 
 
 @router.delete(
-    "/{molde_id}", response_model=dict,
+    "/{molde_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):

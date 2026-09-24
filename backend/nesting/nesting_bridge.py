@@ -3,6 +3,7 @@
 Serializa o job em JSON, passa via stdin ao nest_worker.js e desserializa
 o resultado. Todas as coordenadas são em centímetros.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,7 +15,7 @@ from typing import Any
 
 from config import settings
 
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     _WORKER = Path(sys._MEIPASS) / "nesting" / "nest_worker.js"
 else:
     _WORKER = Path(__file__).parent / "nest_worker.js"
@@ -82,13 +83,10 @@ def executar(
             timeout=settings.nesting_timeout_sec,
         )
     except FileNotFoundError:
-        raise RuntimeError(
-            "Node.js não encontrado. Instale o Node.js para usar o motor de nesting."
-        )
+        raise RuntimeError("Node.js não encontrado. Instale o Node.js para usar o motor de nesting.")
     except subprocess.TimeoutExpired:
         raise RuntimeError(
-            f"Motor de nesting excedeu o limite de tempo "
-            f"({settings.nesting_timeout_sec}s). Reduza o número de peças."
+            f"Motor de nesting excedeu o limite de tempo ({settings.nesting_timeout_sec}s). Reduza o número de peças."
         )
 
     if proc.returncode != 0:

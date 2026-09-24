@@ -81,6 +81,7 @@ _CONTABIL = "financeiro_contabilidade"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _add_meses(d: date, meses: int) -> date:
     """Avança d em `meses` meses, respeitando limites de dias por mês."""
     month = d.month - 1 + meses
@@ -105,19 +106,21 @@ def _gerar_lancamentos(
     valor_parcela = (valor_total / parcelas).quantize(Decimal("0.01"))
     for i in range(parcelas):
         desc = descricao if parcelas == 1 else f"{descricao} ({i + 1}/{parcelas})"
-        db.add(Lancamento(
-            tipo=tipo,
-            descricao=desc,
-            valor=valor_parcela,
-            valor_original=valor_parcela,
-            data_vencimento=_add_meses(primeiro_vencimento, i),
-            status="PENDENTE",
-            parcela_numero=i + 1 if parcelas > 1 else None,
-            parcela_total=parcelas if parcelas > 1 else None,
-            categoria_id=categoria_id,
-            compra_id=compra_id,
-            venda_id=venda_id,
-        ))
+        db.add(
+            Lancamento(
+                tipo=tipo,
+                descricao=desc,
+                valor=valor_parcela,
+                valor_original=valor_parcela,
+                data_vencimento=_add_meses(primeiro_vencimento, i),
+                status="PENDENTE",
+                parcela_numero=i + 1 if parcelas > 1 else None,
+                parcela_total=parcelas if parcelas > 1 else None,
+                categoria_id=categoria_id,
+                compra_id=compra_id,
+                venda_id=venda_id,
+            )
+        )
 
 
 _NFE_NS = "{http://www.portalfiscal.inf.br/nfe}"
@@ -172,9 +175,7 @@ def _parse_nfe_xml(conteudo: bytes, party_tag: str = "emit") -> dict:
     valor_total_raw = _nfe_text(total, "vNF")
 
     if not fornecedor or not valor_total_raw or not data_emissao_raw:
-        raise ValueError(
-            "Não foi possível ler o nome da contraparte, valor total ou data de emissão do XML."
-        )
+        raise ValueError("Não foi possível ler o nome da contraparte, valor total ou data de emissão do XML.")
 
     try:
         data_emissao = datetime.strptime(data_emissao_raw[:10], "%Y-%m-%d").date()
@@ -195,11 +196,13 @@ def _parse_nfe_xml(conteudo: bytes, party_tag: str = "emit") -> dict:
         if not d_venc or not v_dup:
             continue
         try:
-            parcelas.append({
-                "numero": _find_text_any_ns(dup, "nDup") or f"{i:03d}",
-                "vencimento": datetime.strptime(d_venc[:10], "%Y-%m-%d").date(),
-                "valor": Decimal(v_dup),
-            })
+            parcelas.append(
+                {
+                    "numero": _find_text_any_ns(dup, "nDup") or f"{i:03d}",
+                    "vencimento": datetime.strptime(d_venc[:10], "%Y-%m-%d").date(),
+                    "valor": Decimal(v_dup),
+                }
+            )
         except (ValueError, InvalidOperation):
             continue
 
@@ -372,23 +375,20 @@ def _parse_nfe_danfe(conteudo: bytes) -> dict:
     }
 
 
-async def _processar_lote_xml(
-    arquivos: list[UploadFile], party_tag: str
-) -> list[ImportacaoXMLResultOut]:
+async def _processar_lote_xml(arquivos: list[UploadFile], party_tag: str) -> list[ImportacaoXMLResultOut]:
     resultados = []
     for arquivo in arquivos:
         try:
             conteudo = await arquivo.read()
             dados = _parse_nfe_xml(conteudo, party_tag=party_tag)
-            resultados.append(
-                ImportacaoXMLResultOut(sucesso=True, dados=NFeImportadaOut(**dados), erro=None)
-            )
+            resultados.append(ImportacaoXMLResultOut(sucesso=True, dados=NFeImportadaOut(**dados), erro=None))
         except ValueError as e:
             resultados.append(ImportacaoXMLResultOut(sucesso=False, dados=None, erro=str(e)))
         except Exception:
             resultados.append(
                 ImportacaoXMLResultOut(
-                    sucesso=False, dados=None,
+                    sucesso=False,
+                    dados=None,
                     erro=f"Falha ao processar '{arquivo.filename}'.",
                 )
             )
@@ -397,11 +397,10 @@ async def _processar_lote_xml(
 
 # ── Contas Bancárias ──────────────────────────────────────────────────────────
 
+
 @router.get("/contas-bancarias", dependencies=[Depends(require_permission(_FLUXO, "ver"))])
 def listar_contas(db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(ContaBancaria).order_by(ContaBancaria.nome)
-    ).scalars().all()
+    rows = db.execute(select(ContaBancaria).order_by(ContaBancaria.nome)).scalars().all()
     return {"data": [ContaBancariaOut.model_validate(r) for r in rows], "error": None}
 
 
@@ -418,9 +417,7 @@ def criar_conta(payload: ContaBancariaCreate, db: Session = Depends(get_db)):
     "/contas-bancarias/{conta_id}",
     dependencies=[Depends(require_permission(_FLUXO, "editar"))],
 )
-def atualizar_conta(
-    conta_id: uuid.UUID, payload: ContaBancariaUpdate, db: Session = Depends(get_db)
-):
+def atualizar_conta(conta_id: uuid.UUID, payload: ContaBancariaUpdate, db: Session = Depends(get_db)):
     conta = db.get(ContaBancaria, conta_id)
     if not conta:
         raise HTTPException(status_code=404, detail="Conta não encontrada")
@@ -446,23 +443,32 @@ def deletar_conta(conta_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Saldo por Conta ───────────────────────────────────────────────────────────
 
+
 @router.get("/saldo-contas", dependencies=[Depends(require_permission(_FLUXO, "ver"))])
 def saldo_contas(mes: int, ano: int, db: Session = Depends(get_db)):
-    contas = db.execute(
-        select(ContaBancaria)
-        .where(ContaBancaria.ativo == True)  # noqa: E712
-        .order_by(ContaBancaria.nome)
-    ).scalars().all()
+    contas = (
+        db.execute(
+            select(ContaBancaria)
+            .where(ContaBancaria.ativo == True)  # noqa: E712
+            .order_by(ContaBancaria.nome)
+        )
+        .scalars()
+        .all()
+    )
 
     result = []
     for conta in contas:
-        saldo_row = db.execute(
-            select(SaldoInicialConta).where(
-                SaldoInicialConta.conta_bancaria_id == conta.id,
-                SaldoInicialConta.mes == mes,
-                SaldoInicialConta.ano == ano,
+        saldo_row = (
+            db.execute(
+                select(SaldoInicialConta).where(
+                    SaldoInicialConta.conta_bancaria_id == conta.id,
+                    SaldoInicialConta.mes == mes,
+                    SaldoInicialConta.ano == ano,
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         saldo_inicial = saldo_row.valor if saldo_row else Decimal("0")
 
         entradas = db.execute(
@@ -487,15 +493,17 @@ def saldo_contas(mes: int, ano: int, db: Session = Depends(get_db)):
 
         total_entradas = Decimal(str(entradas or 0))
         total_saidas = Decimal(str(saidas or 0))
-        result.append(SaldoContaOut(
-            conta_id=conta.id,
-            conta_nome=conta.nome,
-            conta_tipo=conta.tipo,
-            saldo_inicial=saldo_inicial,
-            total_entradas=total_entradas,
-            total_saidas=total_saidas,
-            saldo_atual=saldo_inicial + total_entradas - total_saidas,
-        ))
+        result.append(
+            SaldoContaOut(
+                conta_id=conta.id,
+                conta_nome=conta.nome,
+                conta_tipo=conta.tipo,
+                saldo_inicial=saldo_inicial,
+                total_entradas=total_entradas,
+                total_saidas=total_saidas,
+                saldo_atual=saldo_inicial + total_entradas - total_saidas,
+            )
+        )
 
     return {"data": result, "error": None}
 
@@ -506,13 +514,17 @@ def upsert_saldo_inicial(payload: SaldoInicialUpsert, db: Session = Depends(get_
     if not conta:
         raise HTTPException(status_code=404, detail="Conta não encontrada")
 
-    saldo = db.execute(
-        select(SaldoInicialConta).where(
-            SaldoInicialConta.conta_bancaria_id == payload.conta_bancaria_id,
-            SaldoInicialConta.mes == payload.mes,
-            SaldoInicialConta.ano == payload.ano,
+    saldo = (
+        db.execute(
+            select(SaldoInicialConta).where(
+                SaldoInicialConta.conta_bancaria_id == payload.conta_bancaria_id,
+                SaldoInicialConta.mes == payload.mes,
+                SaldoInicialConta.ano == payload.ano,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
     if saldo:
         saldo.valor = payload.valor
@@ -539,6 +551,7 @@ def upsert_saldo_inicial(payload: SaldoInicialUpsert, db: Session = Depends(get_
 
 
 # ── Transferências entre contas ───────────────────────────────────────────────
+
 
 @router.post("/transferencias", dependencies=[Depends(require_permission(_FLUXO, "criar"))])
 def criar_transferencia(payload: TransferenciaCreate, db: Session = Depends(get_db)):
@@ -595,20 +608,24 @@ def criar_transferencia(payload: TransferenciaCreate, db: Session = Depends(get_
 
 @router.get("/transferencias", dependencies=[Depends(require_permission(_FLUXO, "ver"))])
 def listar_transferencias(mes: int, ano: int, db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(Lancamento)
-        .where(
-            Lancamento.transferencia_id.isnot(None),
-            extract("month", Lancamento.data_vencimento) == mes,
-            extract("year", Lancamento.data_vencimento) == ano,
+    rows = (
+        db.execute(
+            select(Lancamento)
+            .where(
+                Lancamento.transferencia_id.isnot(None),
+                extract("month", Lancamento.data_vencimento) == mes,
+                extract("year", Lancamento.data_vencimento) == ano,
+            )
+            .options(selectinload(Lancamento.conta_bancaria))
+            .order_by(Lancamento.data_vencimento)
         )
-        .options(selectinload(Lancamento.conta_bancaria))
-        .order_by(Lancamento.data_vencimento)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     grupos: dict[uuid.UUID, dict] = {}
-    for l in rows:
-        grupos.setdefault(l.transferencia_id, {})[l.tipo] = l
+    for lancamento in rows:
+        grupos.setdefault(lancamento.transferencia_id, {})[lancamento.tipo] = lancamento
 
     resultado = []
     for transferencia_id, pernas in grupos.items():
@@ -619,22 +636,25 @@ def listar_transferencias(mes: int, ano: int, db: Session = Depends(get_db)):
         descricao = None
         if " — " in saida.descricao:
             descricao = saida.descricao.split(" — ", 1)[1]
-        resultado.append(TransferenciaOut(
-            transferencia_id=transferencia_id,
-            data=saida.data_vencimento,
-            conta_origem_id=saida.conta_bancaria_id,
-            conta_origem_nome=saida.conta_bancaria.nome if saida.conta_bancaria else "",
-            conta_destino_id=entrada.conta_bancaria_id,
-            conta_destino_nome=entrada.conta_bancaria.nome if entrada.conta_bancaria else "",
-            valor=saida.valor,
-            descricao=descricao,
-        ))
+        resultado.append(
+            TransferenciaOut(
+                transferencia_id=transferencia_id,
+                data=saida.data_vencimento,
+                conta_origem_id=saida.conta_bancaria_id,
+                conta_origem_nome=saida.conta_bancaria.nome if saida.conta_bancaria else "",
+                conta_destino_id=entrada.conta_bancaria_id,
+                conta_destino_nome=entrada.conta_bancaria.nome if entrada.conta_bancaria else "",
+                valor=saida.valor,
+                descricao=descricao,
+            )
+        )
 
     resultado.sort(key=lambda t: t.data)
     return {"data": resultado, "error": None}
 
 
 # ── Lançamentos ───────────────────────────────────────────────────────────────
+
 
 @router.get("/lancamentos", dependencies=[Depends(require_permission(_FLUXO, "ver"))])
 def listar_lancamentos(
@@ -669,9 +689,7 @@ def criar_lancamento(payload: LancamentoCreate, db: Session = Depends(get_db)):
     "/lancamentos/{lancamento_id}",
     dependencies=[Depends(require_permission(_FLUXO, "editar"))],
 )
-def atualizar_lancamento(
-    lancamento_id: uuid.UUID, payload: LancamentoUpdate, db: Session = Depends(get_db)
-):
+def atualizar_lancamento(lancamento_id: uuid.UUID, payload: LancamentoUpdate, db: Session = Depends(get_db)):
     lancamento = db.get(Lancamento, lancamento_id)
     if not lancamento:
         raise HTTPException(status_code=404, detail="Lançamento não encontrado")
@@ -717,34 +735,36 @@ def confirmar_pagamento(
 
 # ── Compras Financeiras ───────────────────────────────────────────────────────
 
+
 @router.get("/compras", dependencies=[Depends(require_permission(_COMPRAS, "ver"))])
 def listar_compras(db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(CompraFinanceira).order_by(CompraFinanceira.data_compra.desc())
-    ).scalars().all()
+    rows = db.execute(select(CompraFinanceira).order_by(CompraFinanceira.data_compra.desc())).scalars().all()
 
     resultado = []
     for r in rows:
-        total_parcelas = db.execute(
-            select(func.count(Lancamento.id)).where(Lancamento.compra_id == r.id)
-        ).scalar() or 0
-        parcelas_pagas = db.execute(
-            select(func.count(Lancamento.id)).where(
-                Lancamento.compra_id == r.id,
-                Lancamento.status == "PAGO",
+        total_parcelas = db.execute(select(func.count(Lancamento.id)).where(Lancamento.compra_id == r.id)).scalar() or 0
+        parcelas_pagas = (
+            db.execute(
+                select(func.count(Lancamento.id)).where(
+                    Lancamento.compra_id == r.id,
+                    Lancamento.status == "PAGO",
+                )
+            ).scalar()
+            or 0
+        )
+        resultado.append(
+            CompraFinanceiraOut(
+                id=r.id,
+                fornecedor=r.fornecedor,
+                descricao=r.descricao,
+                valor_total=r.valor_total,
+                data_compra=r.data_compra,
+                nf_pdf_path=r.nf_pdf_path,
+                created_at=r.created_at,
+                total_parcelas=total_parcelas,
+                parcelas_pagas=parcelas_pagas,
             )
-        ).scalar() or 0
-        resultado.append(CompraFinanceiraOut(
-            id=r.id,
-            fornecedor=r.fornecedor,
-            descricao=r.descricao,
-            valor_total=r.valor_total,
-            data_compra=r.data_compra,
-            nf_pdf_path=r.nf_pdf_path,
-            created_at=r.created_at,
-            total_parcelas=total_parcelas,
-            parcelas_pagas=parcelas_pagas,
-        ))
+        )
 
     return {"data": resultado, "error": None}
 
@@ -820,18 +840,20 @@ def criar_compra_importada(payload: CompraImportarXMLCreate, db: Session = Depen
     descricao_base = payload.descricao or payload.fornecedor
     for i, parcela in enumerate(payload.parcelas, start=1):
         desc = descricao_base if total == 1 else f"{descricao_base} ({i}/{total})"
-        db.add(Lancamento(
-            tipo="PAGAR",
-            descricao=desc,
-            valor=parcela.valor,
-            valor_original=parcela.valor,
-            data_vencimento=parcela.vencimento,
-            status="PENDENTE",
-            parcela_numero=i if total > 1 else None,
-            parcela_total=total if total > 1 else None,
-            categoria_id=payload.categoria_id,
-            compra_id=compra.id,
-        ))
+        db.add(
+            Lancamento(
+                tipo="PAGAR",
+                descricao=desc,
+                valor=parcela.valor,
+                valor_original=parcela.valor,
+                data_vencimento=parcela.vencimento,
+                status="PENDENTE",
+                parcela_numero=i if total > 1 else None,
+                parcela_total=total if total > 1 else None,
+                categoria_id=payload.categoria_id,
+                compra_id=compra.id,
+            )
+        )
 
     db.commit()
     db.refresh(compra)
@@ -843,13 +865,15 @@ def criar_compra_importada(payload: CompraImportarXMLCreate, db: Session = Depen
     dependencies=[Depends(require_permission(_COMPRAS, "ver"))],
 )
 def get_compra(compra_id: uuid.UUID, db: Session = Depends(get_db)):
-    compra = db.execute(
-        select(CompraFinanceira)
-        .where(CompraFinanceira.id == compra_id)
-        .options(
-            selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos)
+    compra = (
+        db.execute(
+            select(CompraFinanceira)
+            .where(CompraFinanceira.id == compra_id)
+            .options(selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos))
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not compra:
         raise HTTPException(status_code=404, detail="Compra não encontrada")
     return {"data": CompraComLancamentosOut.model_validate(compra), "error": None}
@@ -859,14 +883,16 @@ def get_compra(compra_id: uuid.UUID, db: Session = Depends(get_db)):
     "/compras/{compra_id}",
     dependencies=[Depends(require_permission(_COMPRAS, "editar"))],
 )
-def atualizar_compra(
-    compra_id: uuid.UUID, payload: CompraUpdate, db: Session = Depends(get_db)
-):
-    compra = db.execute(
-        select(CompraFinanceira)
-        .where(CompraFinanceira.id == compra_id)
-        .options(selectinload(CompraFinanceira.lancamentos))
-    ).scalars().first()
+def atualizar_compra(compra_id: uuid.UUID, payload: CompraUpdate, db: Session = Depends(get_db)):
+    compra = (
+        db.execute(
+            select(CompraFinanceira)
+            .where(CompraFinanceira.id == compra_id)
+            .options(selectinload(CompraFinanceira.lancamentos))
+        )
+        .scalars()
+        .first()
+    )
     if not compra:
         raise HTTPException(status_code=404, detail="Compra não encontrada")
 
@@ -893,17 +919,19 @@ def atualizar_compra(
     dependencies=[Depends(require_permission(_COMPRAS, "excluir"))],
 )
 def deletar_compra(compra_id: uuid.UUID, db: Session = Depends(get_db)):
-    compra = db.execute(
-        select(CompraFinanceira)
-        .where(CompraFinanceira.id == compra_id)
-        .options(
-            selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos)
+    compra = (
+        db.execute(
+            select(CompraFinanceira)
+            .where(CompraFinanceira.id == compra_id)
+            .options(selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos))
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not compra:
         raise HTTPException(status_code=404, detail="Compra não encontrada")
 
-    pagas = [l for l in compra.lancamentos if l.status == "PAGO"]
+    pagas = [lancamento for lancamento in compra.lancamentos if lancamento.status == "PAGO"]
     if pagas:
         raise HTTPException(
             status_code=400,
@@ -928,34 +956,36 @@ def deletar_compra(compra_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Vendas Financeiras ────────────────────────────────────────────────────────
 
+
 @router.get("/vendas-financeiras", dependencies=[Depends(require_permission(_VENDAS, "ver"))])
 def listar_vendas(db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(VendaFinanceira).order_by(VendaFinanceira.data_venda.desc())
-    ).scalars().all()
+    rows = db.execute(select(VendaFinanceira).order_by(VendaFinanceira.data_venda.desc())).scalars().all()
 
     resultado = []
     for r in rows:
-        total_parcelas = db.execute(
-            select(func.count(Lancamento.id)).where(Lancamento.venda_id == r.id)
-        ).scalar() or 0
-        parcelas_pagas = db.execute(
-            select(func.count(Lancamento.id)).where(
-                Lancamento.venda_id == r.id,
-                Lancamento.status == "PAGO",
+        total_parcelas = db.execute(select(func.count(Lancamento.id)).where(Lancamento.venda_id == r.id)).scalar() or 0
+        parcelas_pagas = (
+            db.execute(
+                select(func.count(Lancamento.id)).where(
+                    Lancamento.venda_id == r.id,
+                    Lancamento.status == "PAGO",
+                )
+            ).scalar()
+            or 0
+        )
+        resultado.append(
+            VendaFinanceiraOut(
+                id=r.id,
+                cliente=r.cliente,
+                descricao=r.descricao,
+                valor_total=r.valor_total,
+                data_venda=r.data_venda,
+                nf_pdf_path=r.nf_pdf_path,
+                created_at=r.created_at,
+                total_parcelas=total_parcelas,
+                parcelas_pagas=parcelas_pagas,
             )
-        ).scalar() or 0
-        resultado.append(VendaFinanceiraOut(
-            id=r.id,
-            cliente=r.cliente,
-            descricao=r.descricao,
-            valor_total=r.valor_total,
-            data_venda=r.data_venda,
-            nf_pdf_path=r.nf_pdf_path,
-            created_at=r.created_at,
-            total_parcelas=total_parcelas,
-            parcelas_pagas=parcelas_pagas,
-        ))
+        )
 
     return {"data": resultado, "error": None}
 
@@ -1031,18 +1061,20 @@ def criar_venda_importada(payload: VendaImportarXMLCreate, db: Session = Depends
     descricao_base = payload.descricao or payload.cliente
     for i, parcela in enumerate(payload.parcelas, start=1):
         desc = descricao_base if total == 1 else f"{descricao_base} ({i}/{total})"
-        db.add(Lancamento(
-            tipo="RECEBER",
-            descricao=desc,
-            valor=parcela.valor,
-            valor_original=parcela.valor,
-            data_vencimento=parcela.vencimento,
-            status="PENDENTE",
-            parcela_numero=i if total > 1 else None,
-            parcela_total=total if total > 1 else None,
-            categoria_id=payload.categoria_id,
-            venda_id=venda.id,
-        ))
+        db.add(
+            Lancamento(
+                tipo="RECEBER",
+                descricao=desc,
+                valor=parcela.valor,
+                valor_original=parcela.valor,
+                data_vencimento=parcela.vencimento,
+                status="PENDENTE",
+                parcela_numero=i if total > 1 else None,
+                parcela_total=total if total > 1 else None,
+                categoria_id=payload.categoria_id,
+                venda_id=venda.id,
+            )
+        )
 
     db.commit()
     db.refresh(venda)
@@ -1054,13 +1086,15 @@ def criar_venda_importada(payload: VendaImportarXMLCreate, db: Session = Depends
     dependencies=[Depends(require_permission(_VENDAS, "ver"))],
 )
 def get_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
-    venda = db.execute(
-        select(VendaFinanceira)
-        .where(VendaFinanceira.id == venda_id)
-        .options(
-            selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos)
+    venda = (
+        db.execute(
+            select(VendaFinanceira)
+            .where(VendaFinanceira.id == venda_id)
+            .options(selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos))
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
     return {"data": VendaComLancamentosOut.model_validate(venda), "error": None}
@@ -1070,14 +1104,16 @@ def get_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
     "/vendas-financeiras/{venda_id}",
     dependencies=[Depends(require_permission(_VENDAS, "editar"))],
 )
-def atualizar_venda(
-    venda_id: uuid.UUID, payload: VendaUpdate, db: Session = Depends(get_db)
-):
-    venda = db.execute(
-        select(VendaFinanceira)
-        .where(VendaFinanceira.id == venda_id)
-        .options(selectinload(VendaFinanceira.lancamentos))
-    ).scalars().first()
+def atualizar_venda(venda_id: uuid.UUID, payload: VendaUpdate, db: Session = Depends(get_db)):
+    venda = (
+        db.execute(
+            select(VendaFinanceira)
+            .where(VendaFinanceira.id == venda_id)
+            .options(selectinload(VendaFinanceira.lancamentos))
+        )
+        .scalars()
+        .first()
+    )
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
 
@@ -1104,17 +1140,19 @@ def atualizar_venda(
     dependencies=[Depends(require_permission(_VENDAS, "excluir"))],
 )
 def deletar_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
-    venda = db.execute(
-        select(VendaFinanceira)
-        .where(VendaFinanceira.id == venda_id)
-        .options(
-            selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos)
+    venda = (
+        db.execute(
+            select(VendaFinanceira)
+            .where(VendaFinanceira.id == venda_id)
+            .options(selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos))
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not venda:
         raise HTTPException(status_code=404, detail="Venda não encontrada")
 
-    pagas = [l for l in venda.lancamentos if l.status == "PAGO"]
+    pagas = [lancamento for lancamento in venda.lancamentos if lancamento.status == "PAGO"]
     if pagas:
         raise HTTPException(
             status_code=400,
@@ -1139,13 +1177,12 @@ def deletar_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── DANFE Simplificada ────────────────────────────────────────────────────────
 
+
 @router.post(
     "/danfe-simplificada",
     dependencies=[Depends(require_permission(_VENDAS, "gerar"))],
 )
-async def gerar_danfe_simplificada(
-    arquivo: UploadFile = File(...), db: Session = Depends(get_db)
-):
+async def gerar_danfe_simplificada(arquivo: UploadFile = File(...), db: Session = Depends(get_db)):
     conteudo = await arquivo.read()
     try:
         dados = _parse_nfe_danfe(conteudo)
@@ -1167,6 +1204,7 @@ async def gerar_danfe_simplificada(
 # Anexos pertencem a lançamentos (financeiro_fluxo), mas na prática também
 # são enviados a partir das telas de Compras e Vendas (ImportarXMLModal) —
 # ver relatório final.
+
 
 @router.post(
     "/lancamentos/{lancamento_id}/anexos",
@@ -1213,11 +1251,15 @@ def listar_anexos(lancamento_id: uuid.UUID, db: Session = Depends(get_db)):
     lancamento = db.get(Lancamento, lancamento_id)
     if not lancamento:
         raise HTTPException(status_code=404, detail="Lançamento não encontrado")
-    rows = db.execute(
-        select(AnexoLancamento)
-        .where(AnexoLancamento.lancamento_id == lancamento_id)
-        .order_by(AnexoLancamento.created_at)
-    ).scalars().all()
+    rows = (
+        db.execute(
+            select(AnexoLancamento)
+            .where(AnexoLancamento.lancamento_id == lancamento_id)
+            .order_by(AnexoLancamento.created_at)
+        )
+        .scalars()
+        .all()
+    )
     return {"data": [AnexoLancamentoOut.model_validate(r) for r in rows], "error": None}
 
 
@@ -1258,6 +1300,7 @@ def deletar_anexo(anexo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Projeção em Cascata ───────────────────────────────────────────────────────
 # Não consumido por nenhuma página do frontend hoje (ver relatório final).
+
 
 @router.get("/projecao", dependencies=[Depends(require_permission(_FLUXO, "ver"))])
 def projecao(
@@ -1302,27 +1345,32 @@ def projecao(
             )
         ).scalar()
 
-        count = db.execute(
-            select(func.count(Lancamento.id)).where(
-                extract("month", Lancamento.data_vencimento) == mes,
-                extract("year", Lancamento.data_vencimento) == ano,
-            )
-        ).scalar() or 0
+        count = (
+            db.execute(
+                select(func.count(Lancamento.id)).where(
+                    extract("month", Lancamento.data_vencimento) == mes,
+                    extract("year", Lancamento.data_vencimento) == ano,
+                )
+            ).scalar()
+            or 0
+        )
 
         total_entrar = Decimal(str(entrar or 0))
         total_sair = Decimal(str(sair or 0))
         saldo_final = saldo_inicial + total_entrar - total_sair
         saldo_cascata = saldo_final
 
-        resultado.append(ProjecaoMesOut(
-            mes=mes,
-            ano=ano,
-            saldo_inicial=saldo_inicial,
-            total_previsto_entrar=total_entrar,
-            total_previsto_sair=total_sair,
-            saldo_final_projetado=saldo_final,
-            lancamentos_count=count,
-        ))
+        resultado.append(
+            ProjecaoMesOut(
+                mes=mes,
+                ano=ano,
+                saldo_inicial=saldo_inicial,
+                total_previsto_entrar=total_entrar,
+                total_previsto_sair=total_sair,
+                saldo_final_projetado=saldo_final,
+                lancamentos_count=count,
+            )
+        )
 
     return {"data": resultado, "error": None}
 
@@ -1360,10 +1408,7 @@ def _serie_mensal_compras(db: Session, meses: int = 12) -> list[dict]:
     ).all()
     mapa = {r.chave: float(r.total or 0) for r in rows}
 
-    return [
-        {"mes": m, "ano": a, "total": mapa.get(f"{a:04d}-{m:02d}", 0.0)}
-        for a, m in chaves
-    ]
+    return [{"mes": m, "ano": a, "total": mapa.get(f"{a:04d}-{m:02d}", 0.0)} for a, m in chaves]
 
 
 def _serie_mensal_por_fornecedor(db: Session, fornecedores: list[str], meses: int = 12) -> list[dict]:
@@ -1417,12 +1462,16 @@ def metricas_compras(
         data_inicio = hoje.replace(day=1)
         data_fim = date(hoje.year, hoje.month, monthrange(hoje.year, hoje.month)[1])
 
-    compras_periodo = db.execute(
-        select(CompraFinanceira).where(
-            CompraFinanceira.data_compra >= data_inicio,
-            CompraFinanceira.data_compra <= data_fim,
+    compras_periodo = (
+        db.execute(
+            select(CompraFinanceira).where(
+                CompraFinanceira.data_compra >= data_inicio,
+                CompraFinanceira.data_compra <= data_fim,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     total_compras = sum(float(c.valor_total or 0) for c in compras_periodo)
 
@@ -1443,20 +1492,16 @@ def metricas_compras(
     # sobre os últimos 12 meses (mesma janela do gráfico mensal).
     chaves_12m = _ultimos_meses(12)
     data_min_12m = date(chaves_12m[0][0], chaves_12m[0][1], 1)
-    compras_12m = db.execute(
-        select(CompraFinanceira).where(CompraFinanceira.data_compra >= data_min_12m)
-    ).scalars().all()
+    compras_12m = (
+        db.execute(select(CompraFinanceira).where(CompraFinanceira.data_compra >= data_min_12m)).scalars().all()
+    )
 
     fornecedor_vol: dict[str, dict] = {}
     for c in compras_12m:
-        agg = fornecedor_vol.setdefault(
-            c.fornecedor, {"fornecedor": c.fornecedor, "total_nfs": 0, "total_valor": 0.0}
-        )
+        agg = fornecedor_vol.setdefault(c.fornecedor, {"fornecedor": c.fornecedor, "total_nfs": 0, "total_valor": 0.0})
         agg["total_nfs"] += 1
         agg["total_valor"] += float(c.valor_total or 0)
-    volume_tecido_por_fornecedor = sorted(
-        fornecedor_vol.values(), key=lambda x: x["total_valor"], reverse=True
-    )[:5]
+    volume_tecido_por_fornecedor = sorted(fornecedor_vol.values(), key=lambda x: x["total_valor"], reverse=True)[:5]
     top5_nomes = [f["fornecedor"] for f in volume_tecido_por_fornecedor]
 
     return {
@@ -1510,20 +1555,23 @@ def metricas_resultado(db: Session = Depends(get_db)):
         chave = f"{a:04d}-{m:02d}"
         receita = receita_map.get(chave, 0.0)
         despesa = despesa_map.get(chave, 0.0)
-        resultado_por_mes.append({
-            "mes": m,
-            "ano": a,
-            "label": f"{MESES_ABREV[m - 1]}/{str(a)[2:]}",
-            "receita": receita,
-            "despesa": despesa,
-            "lucro": receita - despesa,
-        })
+        resultado_por_mes.append(
+            {
+                "mes": m,
+                "ano": a,
+                "label": f"{MESES_ABREV[m - 1]}/{str(a)[2:]}",
+                "receita": receita,
+                "despesa": despesa,
+                "lucro": receita - despesa,
+            }
+        )
 
     return {"data": {"resultado_por_mes": resultado_por_mes}, "error": None}
 
 
 # ── Metas ─────────────────────────────────────────────────────────────────────
 # Não consumido por nenhuma página do frontend hoje (ver relatório final).
+
 
 @router.get("/metas", dependencies=[Depends(require_permission(_PAINEL, "ver"))])
 def listar_metas(ano: Optional[int] = None, db: Session = Depends(get_db)):
@@ -1548,9 +1596,7 @@ def criar_meta(payload: MetaMensalCreate, db: Session = Depends(get_db)):
     "/metas/{meta_id}",
     dependencies=[Depends(require_permission(_PAINEL, "editar"))],
 )
-def atualizar_meta(
-    meta_id: uuid.UUID, payload: MetaMensalUpdate, db: Session = Depends(get_db)
-):
+def atualizar_meta(meta_id: uuid.UUID, payload: MetaMensalUpdate, db: Session = Depends(get_db)):
     meta = db.get(MetaMensal, meta_id)
     if not meta:
         raise HTTPException(status_code=404, detail="Meta não encontrada")
@@ -1563,6 +1609,7 @@ def atualizar_meta(
 
 # ── Contabilidade ─────────────────────────────────────────────────────────────
 
+
 def _anexo_nf_pdf(lancamentos: list[Lancamento]) -> Optional[AnexoLancamento]:
     """Primeiro anexo tipo='NF' que não seja, na prática, um XML (mesma regra
     usada no frontend para distinguir o PDF da NF do XML estruturado)."""
@@ -1574,108 +1621,126 @@ def _anexo_nf_pdf(lancamentos: list[Lancamento]) -> Optional[AnexoLancamento]:
 
 
 def _dados_contabilidade(db: Session, mes: int, ano: int) -> dict:
-    vendas = db.execute(
-        select(VendaFinanceira)
-        .where(
-            extract("month", VendaFinanceira.data_venda) == mes,
-            extract("year", VendaFinanceira.data_venda) == ano,
+    vendas = (
+        db.execute(
+            select(VendaFinanceira)
+            .where(
+                extract("month", VendaFinanceira.data_venda) == mes,
+                extract("year", VendaFinanceira.data_venda) == ano,
+            )
+            .options(selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos))
+            .order_by(VendaFinanceira.data_venda)
         )
-        .options(selectinload(VendaFinanceira.lancamentos).selectinload(Lancamento.anexos))
-        .order_by(VendaFinanceira.data_venda)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     notas_venda = []
     for v in vendas:
         anexo = _anexo_nf_pdf(v.lancamentos)
         if not anexo:
             continue
-        notas_venda.append({
-            "id": v.id,
-            "cliente": v.cliente,
-            "numero_nf": v.numero_nf,
-            "data_venda": v.data_venda,
-            "valor_total": v.valor_total,
-            "nf_pdf_path": anexo.arquivo_path,
-            "nf_nome": anexo.nome_original,
-        })
-
-    compras = db.execute(
-        select(CompraFinanceira)
-        .where(
-            extract("month", CompraFinanceira.data_compra) == mes,
-            extract("year", CompraFinanceira.data_compra) == ano,
+        notas_venda.append(
+            {
+                "id": v.id,
+                "cliente": v.cliente,
+                "numero_nf": v.numero_nf,
+                "data_venda": v.data_venda,
+                "valor_total": v.valor_total,
+                "nf_pdf_path": anexo.arquivo_path,
+                "nf_nome": anexo.nome_original,
+            }
         )
-        .options(selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos))
-        .order_by(CompraFinanceira.data_compra)
-    ).scalars().all()
+
+    compras = (
+        db.execute(
+            select(CompraFinanceira)
+            .where(
+                extract("month", CompraFinanceira.data_compra) == mes,
+                extract("year", CompraFinanceira.data_compra) == ano,
+            )
+            .options(selectinload(CompraFinanceira.lancamentos).selectinload(Lancamento.anexos))
+            .order_by(CompraFinanceira.data_compra)
+        )
+        .scalars()
+        .all()
+    )
 
     notas_compra = []
     for c in compras:
         anexo = _anexo_nf_pdf(c.lancamentos)
         if not anexo:
             continue
-        notas_compra.append({
-            "id": c.id,
-            "fornecedor": c.fornecedor,
-            "numero_nf": c.numero_nf,
-            "data_compra": c.data_compra,
-            "valor_total": c.valor_total,
-            "nf_pdf_path": anexo.arquivo_path,
-            "nf_nome": anexo.nome_original,
-        })
-
-    lancs_pagos = db.execute(
-        select(Lancamento)
-        .where(
-            Lancamento.status == "PAGO",
-            extract("month", Lancamento.data_pagamento) == mes,
-            extract("year", Lancamento.data_pagamento) == ano,
+        notas_compra.append(
+            {
+                "id": c.id,
+                "fornecedor": c.fornecedor,
+                "numero_nf": c.numero_nf,
+                "data_compra": c.data_compra,
+                "valor_total": c.valor_total,
+                "nf_pdf_path": anexo.arquivo_path,
+                "nf_nome": anexo.nome_original,
+            }
         )
-        .options(
-            selectinload(Lancamento.anexos),
-            selectinload(Lancamento.compra)
+
+    lancs_pagos = (
+        db.execute(
+            select(Lancamento)
+            .where(
+                Lancamento.status == "PAGO",
+                extract("month", Lancamento.data_pagamento) == mes,
+                extract("year", Lancamento.data_pagamento) == ano,
+            )
+            .options(
+                selectinload(Lancamento.anexos),
+                selectinload(Lancamento.compra)
                 .selectinload(CompraFinanceira.lancamentos)
                 .selectinload(Lancamento.anexos),
-            selectinload(Lancamento.venda)
+                selectinload(Lancamento.venda)
                 .selectinload(VendaFinanceira.lancamentos)
                 .selectinload(Lancamento.anexos),
+            )
+            .order_by(Lancamento.data_pagamento)
         )
-        .order_by(Lancamento.data_pagamento)
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     boletos_pagos = []
-    for l in lancs_pagos:
-        boleto = next((a for a in l.anexos if a.tipo == "BOLETO"), None)
+    for lancamento in lancs_pagos:
+        boleto = next((a for a in lancamento.anexos if a.tipo == "BOLETO"), None)
         if not boleto:
             continue
 
-        if l.compra:
-            fornecedor_cliente = l.compra.fornecedor
-            numero_nf = l.compra.numero_nf
-            nf_anexo = _anexo_nf_pdf(l.compra.lancamentos)
-        elif l.venda:
-            fornecedor_cliente = l.venda.cliente
-            numero_nf = l.venda.numero_nf
-            nf_anexo = _anexo_nf_pdf(l.venda.lancamentos)
+        if lancamento.compra:
+            fornecedor_cliente = lancamento.compra.fornecedor
+            numero_nf = lancamento.compra.numero_nf
+            nf_anexo = _anexo_nf_pdf(lancamento.compra.lancamentos)
+        elif lancamento.venda:
+            fornecedor_cliente = lancamento.venda.cliente
+            numero_nf = lancamento.venda.numero_nf
+            nf_anexo = _anexo_nf_pdf(lancamento.venda.lancamentos)
         else:
-            fornecedor_cliente = l.descricao
+            fornecedor_cliente = lancamento.descricao
             numero_nf = None
             nf_anexo = None
 
-        boletos_pagos.append({
-            "lancamento_id": l.id,
-            "descricao": l.descricao,
-            "fornecedor_cliente": fornecedor_cliente,
-            "numero_nf": numero_nf,
-            "data_pagamento": l.data_pagamento,
-            "valor": l.valor,
-            "parcela_numero": l.parcela_numero,
-            "parcela_total": l.parcela_total,
-            "boleto_pdf_path": boleto.arquivo_path,
-            "boleto_nome": boleto.nome_original,
-            "nf_pdf_path": nf_anexo.arquivo_path if nf_anexo else None,
-            "nf_nome": nf_anexo.nome_original if nf_anexo else None,
-        })
+        boletos_pagos.append(
+            {
+                "lancamento_id": lancamento.id,
+                "descricao": lancamento.descricao,
+                "fornecedor_cliente": fornecedor_cliente,
+                "numero_nf": numero_nf,
+                "data_pagamento": lancamento.data_pagamento,
+                "valor": lancamento.valor,
+                "parcela_numero": lancamento.parcela_numero,
+                "parcela_total": lancamento.parcela_total,
+                "boleto_pdf_path": boleto.arquivo_path,
+                "boleto_nome": boleto.nome_original,
+                "nf_pdf_path": nf_anexo.arquivo_path if nf_anexo else None,
+                "nf_nome": nf_anexo.nome_original if nf_anexo else None,
+            }
+        )
 
     return {
         "mes": mes,

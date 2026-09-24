@@ -42,34 +42,37 @@ export default function useResizableColumns(chave, larguraPadrao, minimos = {}) 
     }
   }, [chave, larguras]);
 
-  const iniciarArrasto = useCallback((coluna) => (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const th = e.currentTarget.parentElement;
-    const inicioX = e.clientX;
-    // Coluna flexível ainda não tem largura salva — parte da renderizada.
-    const inicioLargura = th ? th.getBoundingClientRect().width : LARGURA_MINIMA;
-    const minimo = Math.max(LARGURA_MINIMA, minimosRef.current[coluna] || 0);
+  const iniciarArrasto = useCallback(
+    (coluna) => (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const th = e.currentTarget.parentElement;
+      const inicioX = e.clientX;
+      // Coluna flexível ainda não tem largura salva — parte da renderizada.
+      const inicioLargura = th ? th.getBoundingClientRect().width : LARGURA_MINIMA;
+      const minimo = Math.max(LARGURA_MINIMA, minimosRef.current[coluna] || 0);
 
-    const aoMover = (ev) => {
-      const nova = Math.max(minimo, Math.round(inicioLargura + ev.clientX - inicioX));
-      setLarguras((prev) => (prev[coluna] === nova ? prev : { ...prev, [coluna]: nova }));
-    };
-    const aoSoltar = () => {
-      window.removeEventListener("mousemove", aoMover);
-      window.removeEventListener("mouseup", aoSoltar);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      setArrastando(null);
-    };
+      const aoMover = (ev) => {
+        const nova = Math.max(minimo, Math.round(inicioLargura + ev.clientX - inicioX));
+        setLarguras((prev) => (prev[coluna] === nova ? prev : { ...prev, [coluna]: nova }));
+      };
+      const aoSoltar = () => {
+        window.removeEventListener("mousemove", aoMover);
+        window.removeEventListener("mouseup", aoSoltar);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        setArrastando(null);
+      };
 
-    window.addEventListener("mousemove", aoMover);
-    window.addEventListener("mouseup", aoSoltar);
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    setArrastando(coluna);
-  }, []);
+      window.addEventListener("mousemove", aoMover);
+      window.addEventListener("mouseup", aoSoltar);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      setArrastando(coluna);
+    },
+    []
+  );
 
   const restaurar = useCallback((coluna) => {
     setLarguras((prev) => ({ ...prev, [coluna]: padraoRef.current[coluna] ?? null }));

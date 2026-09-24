@@ -18,6 +18,7 @@ O `alembic_version` fica registrado nos casos em que é possível; a partir
 daí evolução futura chega por migração e é aplicada nas duas famílias de
 banco do projeto: SQLite (desktop) e Postgres (Docker dev/prod).
 """
+
 import logging
 import sys
 from pathlib import Path
@@ -29,7 +30,7 @@ from sqlalchemy import create_engine, inspect, text
 
 from database import resolver_url
 
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger(__name__)
 
 
 def _diretorio_app() -> Path:
@@ -46,9 +47,7 @@ def _config_alembic() -> Config:
     ini = raiz / "alembic.ini"
     script_loc = raiz / "alembic"
     if not ini.exists() or not script_loc.exists():
-        raise RuntimeError(
-            "Arquivos do Alembic (alembic.ini/alembic/) não encontrados junto ao backend."
-        )
+        raise RuntimeError("Arquivos do Alembic (alembic.ini/alembic/) não encontrados junto ao backend.")
     cfg = Config(str(ini))
     cfg.set_main_option("script_location", str(script_loc))
     return cfg

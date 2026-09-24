@@ -3,6 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const { spawnBackend, killBackend } = require('./backend.js');
+// item 9.2: log do processo principal com rotação simples em userData/smartcut.log.
+const logger = require('./logger.js');
 // item 6.2: atualização automática (canal latest.yml do electron-builder).
 const { autoUpdater } = require('electron-updater');
 
@@ -44,7 +46,6 @@ const CSP_PRODUCAO = [
 ].join('; ');
 
 let mainWindow = null;
-let logPath = null;
 let comprasPath = null;
 
 function ensureComprasFolder() {
@@ -58,17 +59,14 @@ function ensureComprasFolder() {
 }
 
 function log(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
-  process.stdout.write(line);
-  if (logPath) {
-    try { fs.appendFileSync(logPath, line); } catch (_) {}
-  }
+  logger.info(msg);
 }
 
 function initLog() {
   try {
-    logPath = path.join(app.getPath('userData'), 'smartcut.log');
-    fs.writeFileSync(logPath, '');
+    // item 9.2: arquivo em userData/smartcut.log com rotação (tamanho máx. →
+    // N backups). Mantém o histórico entre reinícios; não trunca no boot.
+    logger.init(app.getPath('userData'));
     log(`isPackaged: ${app.isPackaged}`);
     log(`resourcesPath: ${process.resourcesPath}`);
     log(`__dirname: ${__dirname}`);
@@ -148,6 +146,9 @@ ipcMain.handle('open-compras-folder', () => shell.openPath(comprasPath || ensure
 // ex.: DANFE Simplificada) — não existe arquivo real por trás delas fora do
 // contexto do renderer. Por isso o PDF chega aqui em base64, é salvo num
 // arquivo temporário e aberto com o aplicativo padrão do sistema.
+//
+// item 9.2: o conteúdo do PDF (base64Data) NUNCA é logado — só o caminho do
+// arquivo temporário e, em caso de falha, a mensagem de erro do shell.
 ipcMain.handle('open-pdf-blob', async (event, base64Data, filename) => {
   const tempDir = path.join(app.getPath('temp'), 'smartcut');
   fs.mkdirSync(tempDir, { recursive: true });
@@ -162,7 +163,7 @@ ipcMain.handle('open-pdf-blob', async (event, base64Data, filename) => {
 // Item 4.1: o usuário escolhe o certificado digital com o diálogo nativo —
 // o .pfx fica em local fora da árvore de código (ex.: userData/Certificados)
 // e o caminho é gravado apenas na configuração da empresa. Nada de caminho
-// relativo à raiz do projeto.
+// relativo à raiz do projeto. item 9.2: o caminho escolhido não é logado.
 ipcMain.handle('selecionar-certificado', async () => {
   try {
     const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];

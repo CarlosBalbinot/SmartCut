@@ -10,9 +10,7 @@ from database import Base
 class Molde(Base):
     __tablename__ = "moldes"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     arquivo_path: Mapped[str | None] = mapped_column(String(500))
     formato: Mapped[str | None] = mapped_column(String(10))
@@ -30,9 +28,7 @@ class Molde(Base):
         ForeignKey("grupos_molde.id", ondelete="SET NULL"),
         nullable=True,
     )
-    criado_em: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     grupo: Mapped["GrupoMolde | None"] = relationship(  # noqa: F821
         back_populates="moldes"

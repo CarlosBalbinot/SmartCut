@@ -1,6 +1,7 @@
 import logging
 import secrets
 import sys
+from pathlib import Path
 
 from pydantic import PrivateAttr
 from pydantic_settings import BaseSettings
@@ -37,7 +38,20 @@ class Settings(BaseSettings):
     # aqui fica vazia. Nunca derive de SECRET_KEY (efêmera no desktop).
     cert_senha_key: str = ""
 
-    model_config = {"env_file": ".env"}
+    # ── Item 10.4: fonte ÚNICA de configuração (settings do pydantic) ──────
+    # Variáveis antes lidas via os.getenv espalhado agora vêm daqui; o arquivo
+    # .env carregado é sempre backend/.env (caminho absoluto relativo a este
+    # arquivo — independente do CWD, inclusive no Docker). Prioridade:
+    # variável de ambiente do processo > backend/.env > defaults.
+
+    # SMARTCUT_DB_PATH — caminho do smartcut.db injetado pelo Electron
+    # empacotado (userData). Vazio = usa DATABASE_URL normalmente.
+    smartcut_db_path: str = ""
+    # SMARTCUT_CERT_KEY — chave de cifragem dos segredos em repouso injetada
+    # pelo Electron (item 4.2). Vazio fora do desktop.
+    smartcut_cert_key: str = ""
+
+    model_config = {"env_file": str(Path(__file__).resolve().parent / ".env")}
 
     _segredo_efemero: str | None = PrivateAttr(default=None)
 

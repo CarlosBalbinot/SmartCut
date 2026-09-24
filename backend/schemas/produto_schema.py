@@ -17,6 +17,7 @@ _CAMPOS_UPPER = ("descricao", "marca", "classe")
 
 # ── Grupo de Produto ───────────────────────────────────────────────────
 
+
 class GrupoProdutoCreate(BaseModel):
     nome: str = Field(..., max_length=150)
     prefixo: str = Field(..., min_length=1, max_length=4)
@@ -42,6 +43,7 @@ class GrupoProdutoOut(BaseModel):
 
 # ── Linha / Coluna de Grade ─────────────────────────────────────────────
 
+
 class GradeItemCreate(BaseModel):
     nome: str = Field(..., max_length=100)
     situacao: Situacao = "ativo"
@@ -56,6 +58,7 @@ class GradeItemOut(BaseModel):
 
 
 # ── Produto ───────────────────────────────────────────────────────────
+
 
 class ProdutoBase(BaseModel):
     grupo_id: uuid.UUID
@@ -183,6 +186,7 @@ class ProdutoOut(ProdutoBase):
 
 # ── SKU (produto filho / combinação de grade) ────────────────────────────
 
+
 class ComboItem(BaseModel):
     linha_item_id: int | None = None
     coluna_item_id: int | None = None
@@ -237,6 +241,7 @@ class SkuSincronizarResponse(BaseModel):
 # ver produto_service.listar_sellable. `id` de um SKU é "sku-<int>" (string)
 # pois ProdutoSKU.id não é UUID; use produto_pai_id/sku_id para ações.
 
+
 class ProdutoListagemOut(BaseModel):
     id: str
     codigo: str
@@ -259,6 +264,7 @@ class ProdutoListagemOut(BaseModel):
 # produto_service.busca_pedido. Usado pelo Passo 1 do modal de adicionar
 # item em PedidoVendaDetalhePage.
 
+
 class ProdutoBuscaPedidoOut(BaseModel):
     tipo: Literal["pai", "avulso"]
     id: str
@@ -275,6 +281,7 @@ class ProdutoBuscaPedidoOut(BaseModel):
 
 
 # ── Grade de um produto pai, para o Passo 2 do modal de adicionar item ────
+
 
 class GradeEixoItemOut(BaseModel):
     id: int

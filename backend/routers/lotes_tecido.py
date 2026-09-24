@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
-from schemas.tecido_schema import LoteOut, LoteUpdate
+from schemas.tecido_schema import LoteUpdate
 from services import lote_service
 
 router = APIRouter(prefix="/api/v1/lotes-tecido", tags=["lotes-tecido"])
@@ -14,6 +14,7 @@ _MOD = "tecidos"
 
 
 # ── Rotas fixas antes das rotas com parâmetro ─────────────────────────
+
 
 @router.get("/alertas", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def alertas(db: Session = Depends(get_db)):
@@ -27,7 +28,8 @@ def historico(db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/proximo-codigo", response_model=dict,
+    "/proximo-codigo",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def proximo_codigo(db: Session = Depends(get_db)):
@@ -35,6 +37,7 @@ def proximo_codigo(db: Session = Depends(get_db)):
 
 
 # ── CRUD por lote_id ──────────────────────────────────────────────────
+
 
 @router.get("/{lote_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def obter_lote(lote_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -45,7 +48,8 @@ def obter_lote(lote_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.patch(
-    "/{lote_id}", response_model=dict,
+    "/{lote_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_lote(lote_id: uuid.UUID, payload: LoteUpdate, db: Session = Depends(get_db)):
@@ -56,7 +60,8 @@ def atualizar_lote(lote_id: uuid.UUID, payload: LoteUpdate, db: Session = Depend
 
 
 @router.post(
-    "/{lote_id}/arquivar", response_model=dict,
+    "/{lote_id}/arquivar",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def arquivar_lote(lote_id: uuid.UUID, db: Session = Depends(get_db)):

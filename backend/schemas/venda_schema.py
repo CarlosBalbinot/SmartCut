@@ -9,12 +9,19 @@ from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 # salvar — segunda garantia além do uppercase já aplicado no onChange do
 # frontend (ver VendedorCreate/VendedorUpdate mais abaixo).
 _VENDEDOR_CAMPOS_UPPER = (
-    "nome", "nome_fantasia", "endereco", "numero", "complemento",
-    "bairro", "municipio", "descricao",
+    "nome",
+    "nome_fantasia",
+    "endereco",
+    "numero",
+    "complemento",
+    "bairro",
+    "municipio",
+    "descricao",
 )
 
 
 # ── Empresa ───────────────────────────────────────────────────────────────
+
 
 class EmpresaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -96,6 +103,7 @@ class TestarCertificadoIn(BaseModel):
 
 # ── TabelaPreco ───────────────────────────────────────────────────────────
 
+
 class TabelaPrecoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -138,6 +146,7 @@ class TabelaPrecoItemCreate(BaseModel):
 
 # ── PrecoReferencia ───────────────────────────────────────────────────────
 
+
 class PrecoReferenciaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -169,6 +178,7 @@ class PrecoReferenciaUpdate(BaseModel):
 
 
 # ── Vendedor ──────────────────────────────────────────────────────────────
+
 
 class VendedorOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -270,6 +280,7 @@ class VendedorUpdate(BaseModel):
 
 # ── ItemPedidoVenda ───────────────────────────────────────────────────────
 
+
 class ItemPedidoVendaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -327,6 +338,7 @@ class ItemPedidoVendaCreate(BaseModel):
 # /pedidos-venda/{id}/itens/bulk. Independente de ItemPedidoVendaCreate
 # acima (que continua servindo o item legado por GrupoMolde).
 
+
 class ItemBulkCreate(BaseModel):
     produto_id: UUID
     sku_id: Optional[int] = None
@@ -341,6 +353,7 @@ class ItensBulkCreateRequest(BaseModel):
 
 
 # ── PedidoVenda ───────────────────────────────────────────────────────────
+
 
 # Campos fiscais/financeiros/transporte novos, compartilhados entre Create
 # e Update para não duplicar a lista (todos opcionais nos dois — a Create

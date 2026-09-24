@@ -17,12 +17,12 @@ const TIPO_REGISTRO_LABEL = { cliente: "Cliente", fornecedor: "Fornecedor", ambo
 
 export default function ClientesPage() {
   const { hasPermission } = useAuth();
-  const [clientes, setClientes]       = useState([]);
-  const [busca, setBusca]             = useState("");
-  const [filtroTipo, setFiltroTipo]   = useState("");
-  const [loading, setLoading]         = useState(true);
+  const [clientes, setClientes] = useState([]);
+  const [busca, setBusca] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
+  const [loading, setLoading] = useState(true);
   // Modal de cadastro: null = fechado; { id: null } = novo; { id } = editar.
-  const [modal, setModal]             = useState(null);
+  const [modal, setModal] = useState(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -35,14 +35,19 @@ export default function ClientesPage() {
     }
   }, [busca, filtroTipo]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
-  const abrirNovo   = ()  => setModal({ id: null });
+  const abrirNovo = () => setModal({ id: null });
   const abrirEditar = (c) => setModal({ id: c.id });
 
   const handleExcluir = async (id) => {
     if (!window.confirm("Deseja excluir este cadastro?")) return;
-    try { await deleteCliente(id); await carregar(); } catch {}
+    try {
+      await deleteCliente(id);
+      await carregar();
+    } catch {}
   };
 
   return (
@@ -50,7 +55,9 @@ export default function ClientesPage() {
       <div className="sc-page-header">
         <h1>Clientes</h1>
         {hasPermission(MODULO, "criar") && (
-          <button className={styles.btnNovo} onClick={abrirNovo}>+ Novo Cadastro</button>
+          <button className={styles.btnNovo} onClick={abrirNovo}>
+            + Novo Cadastro
+          </button>
         )}
       </div>
 
@@ -63,7 +70,11 @@ export default function ClientesPage() {
             placeholder="Buscar por nome, CNPJ ou CPF…"
           />
         </div>
-        <select className={styles.select} value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+        <select
+          className={styles.select}
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+        >
           <option value="">Todos</option>
           <option value="cliente">Clientes</option>
           <option value="fornecedor">Fornecedores</option>
@@ -85,35 +96,52 @@ export default function ClientesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className={styles.empty}>Carregando…</td></tr>
-            ) : clientes.length === 0 ? (
-              <tr><td colSpan={7} className={styles.empty}>Nenhum cadastro encontrado.</td></tr>
-            ) : clientes.map((c) => (
-              <tr key={c.id}>
-                <td className={styles.tdMono}>{c.codigo || "—"}</td>
-                <td>{c.razao_social}</td>
-                <td>
-                  <span className={`${styles.badge} ${styles["badge_" + (c.tipo_registro || "cliente")]}`}>
-                    {TIPO_REGISTRO_LABEL[c.tipo_registro] || "Cliente"}
-                  </span>
-                </td>
-                <td className={styles.tdMono}>{displayCnpj(c.cnpj) || c.cpf || "—"}</td>
-                <td>{c.cidade && c.estado ? `${c.cidade} / ${c.estado}` : c.cidade || "—"}</td>
-                <td>{c.telefone || "—"}</td>
-                <td>
-                  <div className={styles.actions}>
-                    {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => abrirEditar(c)}>Editar</button>
-                    )}
-                    {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(c.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Carregando…
                 </td>
               </tr>
-            ))}
+            ) : clientes.length === 0 ? (
+              <tr>
+                <td colSpan={7} className={styles.empty}>
+                  Nenhum cadastro encontrado.
+                </td>
+              </tr>
+            ) : (
+              clientes.map((c) => (
+                <tr key={c.id}>
+                  <td className={styles.tdMono}>{c.codigo || "—"}</td>
+                  <td>{c.razao_social}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${styles["badge_" + (c.tipo_registro || "cliente")]}`}
+                    >
+                      {TIPO_REGISTRO_LABEL[c.tipo_registro] || "Cliente"}
+                    </span>
+                  </td>
+                  <td className={styles.tdMono}>{displayCnpj(c.cnpj) || c.cpf || "—"}</td>
+                  <td>{c.cidade && c.estado ? `${c.cidade} / ${c.estado}` : c.cidade || "—"}</td>
+                  <td>{c.telefone || "—"}</td>
+                  <td>
+                    <div className={styles.actions}>
+                      {hasPermission(MODULO, "editar") && (
+                        <button className={styles.btnLink} onClick={() => abrirEditar(c)}>
+                          Editar
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={`${styles.btnLink} ${styles.btnDanger}`}
+                          onClick={() => handleExcluir(c.id)}
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -122,7 +150,10 @@ export default function ClientesPage() {
         <ClienteFormModal
           clienteId={modal.id}
           onClose={() => setModal(null)}
-          onSaved={async () => { await carregar(); setModal(null); }}
+          onSaved={async () => {
+            await carregar();
+            setModal(null);
+          }}
         />
       )}
     </div>

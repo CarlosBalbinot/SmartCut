@@ -6,15 +6,14 @@ const os = require('os');
 const crypto = require('crypto');
 const { app, safeStorage } = require('electron');
 
+// item 9.2: mesmo logger do main.js (rotação em userData/smartcut.log). O
+// build-backend (PyInstaller) é rotulado com [backend.js] para contexto.
+const logger = require('./logger.js');
+
 let backendProcess = null;
 
 function log(msg) {
-  const line = `[${new Date().toISOString()}] [backend.js] ${msg}\n`;
-  process.stdout.write(line);
-  try {
-    const logPath = path.join(app.getPath('userData'), 'smartcut.log');
-    fs.appendFileSync(logPath, line);
-  } catch (_) {}
+  logger.info(`[backend.js] ${msg}`);
 }
 
 function findPython() {

@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1/tes`;
 
 async function request(path, options = {}) {
@@ -22,8 +22,7 @@ export const listar = () => request("/");
 
 export const buscarPorId = (id) => request(`/${id}`);
 
-export const criar = (dados) =>
-  request("/", { method: "POST", body: JSON.stringify(dados) });
+export const criar = (dados) => request("/", { method: "POST", body: JSON.stringify(dados) });
 
 export const atualizar = (id, dados) =>
   request(`/${id}`, { method: "PUT", body: JSON.stringify(dados) });
@@ -31,5 +30,4 @@ export const atualizar = (id, dados) =>
 export const excluir = (id) => request(`/${id}`, { method: "DELETE" });
 
 // Validação por código digitado (usada pelo TesInput). 404 = código inexistente.
-export const validarTes = (codigo) =>
-  request(`/validar?codigo=${encodeURIComponent(codigo)}`);
+export const validarTes = (codigo) => request(`/validar?codigo=${encodeURIComponent(codigo)}`);

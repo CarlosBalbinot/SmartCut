@@ -9,9 +9,33 @@ import styles from "./UsuarioConfiguracoesFiscaisPage.module.css";
 const electron = typeof window !== "undefined" ? window.electronAPI : undefined;
 
 const UFS = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
-  "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
-  "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ];
 
 const VAZIO = {
@@ -40,22 +64,24 @@ export default function UsuarioConfiguracoesFiscaisPage() {
   const [resultadoTeste, setResultadoTeste] = useState(null);
 
   useEffect(() => {
-    getFiscal().then((data) => {
-      if (!data) return;
-      setForm({
-        regime_tributario: data.regime_tributario,
-        uf_emitente: data.uf_emitente,
-        ambiente_sefaz: data.ambiente_sefaz,
-        certificado_path: data.certificado_path || "",
-        certificado_senha: "",
-        nfe_serie_padrao: data.nfe_serie_padrao,
-        nfe_numero_atual: data.nfe_numero_atual,
-        nfce_serie_padrao: data.nfce_serie_padrao,
-        nfce_numero_atual: data.nfce_numero_atual,
-      });
-      setTemSenhaSalva(Boolean(data.certificado_senha));
-      setCertificadoValido(Boolean(data.certificado_valido));
-    }).catch(() => {});
+    getFiscal()
+      .then((data) => {
+        if (!data) return;
+        setForm({
+          regime_tributario: data.regime_tributario,
+          uf_emitente: data.uf_emitente,
+          ambiente_sefaz: data.ambiente_sefaz,
+          certificado_path: data.certificado_path || "",
+          certificado_senha: "",
+          nfe_serie_padrao: data.nfe_serie_padrao,
+          nfe_numero_atual: data.nfe_numero_atual,
+          nfce_serie_padrao: data.nfce_serie_padrao,
+          nfce_numero_atual: data.nfce_numero_atual,
+        });
+        setTemSenhaSalva(Boolean(data.certificado_senha));
+        setCertificadoValido(Boolean(data.certificado_valido));
+      })
+      .catch(() => {});
   }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -119,14 +145,17 @@ export default function UsuarioConfiguracoesFiscaisPage() {
       <h1 className={styles.title}>Configurações Fiscais</h1>
 
       <div className={styles.card}>
-
         {/* EMPRESA */}
         <div className={styles.secao}>
           <p className={styles.secLabel}>Empresa</p>
           <div className={styles.grid2}>
             <label className={styles.field}>
               <span>Regime Tributário</span>
-              <select className={styles.select} value={form.regime_tributario} onChange={set("regime_tributario")}>
+              <select
+                className={styles.select}
+                value={form.regime_tributario}
+                onChange={set("regime_tributario")}
+              >
                 <option value="Simples Nacional">Simples Nacional</option>
                 <option value="Lucro Presumido">Lucro Presumido</option>
                 <option value="Lucro Real">Lucro Real</option>
@@ -134,13 +163,25 @@ export default function UsuarioConfiguracoesFiscaisPage() {
             </label>
             <label className={styles.field}>
               <span>UF Emitente</span>
-              <select className={styles.select} value={form.uf_emitente} onChange={set("uf_emitente")}>
-                {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
+              <select
+                className={styles.select}
+                value={form.uf_emitente}
+                onChange={set("uf_emitente")}
+              >
+                {UFS.map((uf) => (
+                  <option key={uf} value={uf}>
+                    {uf}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.field}>
               <span>Ambiente SEFAZ</span>
-              <select className={styles.select} value={form.ambiente_sefaz} onChange={set("ambiente_sefaz")}>
+              <select
+                className={styles.select}
+                value={form.ambiente_sefaz}
+                onChange={set("ambiente_sefaz")}
+              >
                 <option value="Homologacao">Homologação</option>
                 <option value="Producao">Produção</option>
               </select>
@@ -175,7 +216,9 @@ export default function UsuarioConfiguracoesFiscaisPage() {
                   Selecionar arquivo…
                 </button>
               )}
-              <p className={styles.hint}>Escolha o arquivo do certificado digital no computador (fora da pasta do projeto)</p>
+              <p className={styles.hint}>
+                Escolha o arquivo do certificado digital no computador (fora da pasta do projeto)
+              </p>
             </label>
             <label className={styles.field}>
               <span>Senha do certificado</span>
@@ -201,11 +244,17 @@ export default function UsuarioConfiguracoesFiscaisPage() {
 
           <div className={styles.statusRow}>
             {!form.certificado_path.trim() ? (
-              <span className={`${styles.badge} ${styles.badgeNeutral}`}>Nenhum certificado configurado</span>
+              <span className={`${styles.badge} ${styles.badgeNeutral}`}>
+                Nenhum certificado configurado
+              </span>
             ) : certificadoValido ? (
-              <span className={`${styles.badge} ${styles.badgeSuccess}`}>Certificado encontrado</span>
+              <span className={`${styles.badge} ${styles.badgeSuccess}`}>
+                Certificado encontrado
+              </span>
             ) : (
-              <span className={`${styles.badge} ${styles.badgeDanger}`}>Arquivo não encontrado</span>
+              <span className={`${styles.badge} ${styles.badgeDanger}`}>
+                Arquivo não encontrado
+              </span>
             )}
           </div>
 
@@ -219,7 +268,9 @@ export default function UsuarioConfiguracoesFiscaisPage() {
           </button>
 
           {resultadoTeste && (
-            <p className={`${styles.testeResultado} ${resultadoTeste.valido ? styles.testeSucesso : styles.testeErro}`}>
+            <p
+              className={`${styles.testeResultado} ${resultadoTeste.valido ? styles.testeSucesso : styles.testeErro}`}
+            >
               {resultadoTeste.valido
                 ? `Válido — Titular: ${resultadoTeste.titular || "—"} | Vence: ${resultadoTeste.validade || "—"}`
                 : resultadoTeste.erro}
@@ -233,21 +284,45 @@ export default function UsuarioConfiguracoesFiscaisPage() {
           <div className={styles.grid2}>
             <label className={styles.field}>
               <span>Série NF-e padrão</span>
-              <input className={styles.input} value={form.nfe_serie_padrao} onChange={set("nfe_serie_padrao")} />
+              <input
+                className={styles.input}
+                value={form.nfe_serie_padrao}
+                onChange={set("nfe_serie_padrao")}
+              />
             </label>
             <label className={styles.field}>
               <span>Número atual NF-e</span>
-              <input type="number" min="0" className={styles.input} value={form.nfe_numero_atual} onChange={set("nfe_numero_atual")} />
-              <p className={styles.hint}>O próximo número emitido será {(parseInt(form.nfe_numero_atual, 10) || 0) + 1}</p>
+              <input
+                type="number"
+                min="0"
+                className={styles.input}
+                value={form.nfe_numero_atual}
+                onChange={set("nfe_numero_atual")}
+              />
+              <p className={styles.hint}>
+                O próximo número emitido será {(parseInt(form.nfe_numero_atual, 10) || 0) + 1}
+              </p>
             </label>
             <label className={styles.field}>
               <span>Série NFC-e padrão</span>
-              <input className={styles.input} value={form.nfce_serie_padrao} onChange={set("nfce_serie_padrao")} />
+              <input
+                className={styles.input}
+                value={form.nfce_serie_padrao}
+                onChange={set("nfce_serie_padrao")}
+              />
             </label>
             <label className={styles.field}>
               <span>Número atual NFC-e</span>
-              <input type="number" min="0" className={styles.input} value={form.nfce_numero_atual} onChange={set("nfce_numero_atual")} />
-              <p className={styles.hint}>O próximo número emitido será {(parseInt(form.nfce_numero_atual, 10) || 0) + 1}</p>
+              <input
+                type="number"
+                min="0"
+                className={styles.input}
+                value={form.nfce_numero_atual}
+                onChange={set("nfce_numero_atual")}
+              />
+              <p className={styles.hint}>
+                O próximo número emitido será {(parseInt(form.nfce_numero_atual, 10) || 0) + 1}
+              </p>
             </label>
           </div>
         </div>

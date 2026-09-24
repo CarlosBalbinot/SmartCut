@@ -6,7 +6,7 @@
   background-color: var(--sc-bg-secondary);
   border-radius: var(--sc-radius-lg);
   overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .toolbar {
@@ -15,7 +15,7 @@
   gap: 12px;
   padding: 8px 12px;
   background-color: var(--sc-surface);
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -64,7 +64,10 @@
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .btnGrade:hover {
@@ -73,12 +76,12 @@
 
 .btnGradeAtivo {
   background: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border-color: var(--color-primary);
 }
 
 .btnGradeAtivo:hover {
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .stageWrap {

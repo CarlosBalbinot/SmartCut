@@ -15,7 +15,9 @@
   min-width: 0;
 }
 @media (max-width: 600px) {
-  .searchWrap { flex-basis: 100%; }
+  .searchWrap {
+    flex-basis: 100%;
+  }
 }
 .searchWrap::before {
   content: "";
@@ -53,7 +55,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.busca:focus { border-color: var(--sc-action); }
+.busca:focus {
+  border-color: var(--sc-action);
+}
 
 .statusFiltro {
   border: 1px solid var(--sc-border-strong);
@@ -66,7 +70,9 @@
   outline: none;
   width: 160px;
 }
-.statusFiltro:focus { border-color: var(--sc-action); }
+.statusFiltro:focus {
+  border-color: var(--sc-action);
+}
 
 /* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
 .tableCard {
@@ -85,24 +91,48 @@
   table-layout: fixed;
 }
 
-.table th:nth-child(1)  { width: 80px; }
+.table th:nth-child(1) {
+  width: 80px;
+}
 /* nth-child(3) = Cliente: sem width — ocupa o espaço restante da tabela */
-.table th:nth-child(2)  { width: 100px; }
-.table th:nth-child(4)  { width: 120px; }
-.table th:nth-child(5)  { width: 120px; }
-.table th:nth-child(6)  { width: 100px; }
-.table th:nth-child(7)  { width: 110px; }
-.table th:nth-child(8)  { width: 110px; }
-.table th:nth-child(9)  { width: 110px; }
-.table th:nth-child(10) { width: 40px; }
+.table th:nth-child(2) {
+  width: 100px;
+}
+.table th:nth-child(4) {
+  width: 120px;
+}
+.table th:nth-child(5) {
+  width: 120px;
+}
+.table th:nth-child(6) {
+  width: 100px;
+}
+.table th:nth-child(7) {
+  width: 110px;
+}
+.table th:nth-child(8) {
+  width: 110px;
+}
+.table th:nth-child(9) {
+  width: 110px;
+}
+.table th:nth-child(10) {
+  width: 40px;
+}
 
 /* Vendedor, Tabela Preço, Condição, Total, Comissão, Status: centralizados */
-.table th:nth-child(4), .table td:nth-child(4),
-.table th:nth-child(5), .table td:nth-child(5),
-.table th:nth-child(6), .table td:nth-child(6),
-.table th:nth-child(7), .table td:nth-child(7),
-.table th:nth-child(8), .table td:nth-child(8),
-.table th:nth-child(9), .table td:nth-child(9) {
+.table th:nth-child(4),
+.table td:nth-child(4),
+.table th:nth-child(5),
+.table td:nth-child(5),
+.table th:nth-child(6),
+.table td:nth-child(6),
+.table th:nth-child(7),
+.table td:nth-child(7),
+.table th:nth-child(8),
+.table td:nth-child(8),
+.table th:nth-child(9),
+.table td:nth-child(9) {
   text-align: center;
 }
 
@@ -143,8 +173,12 @@
   white-space: nowrap;
 }
 
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover td     { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
 .num {
   font-family: monospace;
@@ -171,9 +205,21 @@
   border: 1px solid transparent;
 }
 
-.stCancelado { background: var(--sc-danger-bg);     color: var(--sc-danger-text);    border-color: var(--sc-danger-border); }
-.stAberto    { background: var(--color-primary-light, var(--sc-info-bg)); color: var(--color-primary); border-color: var(--color-primary); }
-.stFechado   { background: var(--sc-success-bg);    color: var(--sc-success-text);   border-color: var(--sc-success-border); }
+.stCancelado {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+  border-color: var(--sc-danger-border);
+}
+.stAberto {
+  background: var(--color-primary-light, var(--sc-info-bg));
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.stFechado {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+  border-color: var(--sc-success-border);
+}
 
 /* ── Botão de ação do cabeçalho (fora do modal) ── */
 .btnNovo {
@@ -188,8 +234,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* Buttons (também usados dentro dos modais — não alterados) */
 .btnPrimary {
@@ -203,8 +254,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPrimary:hover   { background: var(--sc-action-hover); }
-.btnPrimary:disabled{ opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -216,7 +272,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* Row actions */
 .rowActions {
@@ -236,9 +294,14 @@
   border-radius: var(--sc-radius-sm);
   white-space: nowrap;
 }
-.btnAbrir:hover { background: var(--sc-surface-hover); }
+.btnAbrir:hover {
+  background: var(--sc-surface-hover);
+}
 
-.menuWrap { position: relative; display: inline-block; }
+.menuWrap {
+  position: relative;
+  display: inline-block;
+}
 
 .btnMenu {
   display: inline-flex;
@@ -252,14 +315,17 @@
   border-radius: var(--sc-radius-sm);
   line-height: 1;
 }
-.btnMenu:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnMenu:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .dropdown {
   position: fixed;
   background: white;
   border: 1px solid var(--sc-border-strong);
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 9999;
   width: 160px;
   padding: 0.25rem 0;
@@ -276,13 +342,17 @@
   color: var(--sc-text-primary);
   cursor: pointer;
 }
-.dropItem:hover { background: #f5f5f5; }
+.dropItem:hover {
+  background: #f5f5f5;
+}
 
 .dropItemDanger {
   color: #dc2626;
   border-top: 1px solid var(--sc-border);
 }
-.dropItemDanger:hover { background: #fef2f2; }
+.dropItemDanger:hover {
+  background: #fef2f2;
+}
 
 /* Small modal — delete confirm */
 .modalSm {
@@ -291,7 +361,7 @@
   width: 400px;
   max-width: 90vw;
   padding: 2rem;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .confirmText {
@@ -312,7 +382,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnDanger:hover { background: var(--sc-danger-bg); }
+.btnDanger:hover {
+  background: var(--sc-danger-bg);
+}
 
 .btnClose {
   background: none;
@@ -324,13 +396,16 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* Modal */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -345,7 +420,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 /* Modal de Novo Pedido — mais largo, grid de campos sem scroll */
@@ -414,7 +489,9 @@
   background: var(--sc-surface);
   transition: border-color 0.15s;
 }
-.condicaoField:hover { border-color: var(--color-primary); }
+.condicaoField:hover {
+  border-color: var(--color-primary);
+}
 
 .condicaoFieldText {
   flex: 1;
@@ -424,7 +501,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.condicaoFieldPlaceholder { color: var(--sc-text-muted); }
+.condicaoFieldPlaceholder {
+  color: var(--sc-text-muted);
+}
 
 .condicaoFieldClear {
   background: none;
@@ -437,7 +516,10 @@
   border-radius: 4px;
   flex-shrink: 0;
 }
-.condicaoFieldClear:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.condicaoFieldClear:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .condicaoFieldIcon {
   color: var(--sc-text-muted);
@@ -453,7 +535,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .condicaoLista {
@@ -469,14 +551,20 @@
   cursor: pointer;
   border-left: 3px solid transparent;
 }
-.condicaoItem:last-child { border-bottom: none; }
-.condicaoItem:hover { background: var(--sc-bg-secondary); }
+.condicaoItem:last-child {
+  border-bottom: none;
+}
+.condicaoItem:hover {
+  background: var(--sc-bg-secondary);
+}
 
 .condicaoItemSelecionada {
   background: rgba(37, 150, 190, 0.08);
   border-left: 3px solid var(--color-primary);
 }
-.condicaoItemSelecionada:hover { background: rgba(37, 150, 190, 0.08); }
+.condicaoItemSelecionada:hover {
+  background: rgba(37, 150, 190, 0.08);
+}
 
 .condicaoItemDescricao {
   font-weight: 500;
@@ -496,8 +584,12 @@
   gap: 1rem;
 }
 
-.colSpan2 { grid-column: span 2; }
-.colSpan3 { grid-column: span 3; }
+.colSpan2 {
+  grid-column: span 2;
+}
+.colSpan3 {
+  grid-column: span 3;
+}
 
 .field {
   display: flex;
@@ -518,7 +610,9 @@
   outline: none;
   transition: border-color 0.15s;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 .erro {
   margin: 0.5rem 1.75rem 0;
@@ -569,7 +663,9 @@
   font-size: 0.875rem;
   color: var(--sc-text-secondary);
 }
-.viewGrid strong { color: var(--sc-text-primary); }
+.viewGrid strong {
+  color: var(--sc-text-primary);
+}
 
 .viewFooter {
   border-top: 1px solid var(--sc-border);

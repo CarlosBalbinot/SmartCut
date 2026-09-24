@@ -13,7 +13,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: linear-gradient(135deg, #1C1B19 0%, #3D3A36 100%);
+  background: linear-gradient(135deg, #1c1b19 0%, #3d3a36 100%);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -29,7 +29,7 @@
 
 .subtitulo {
   font-size: 13px;
-  color: #B5B2AE;
+  color: #b5b2ae;
   margin: 0;
 }
 
@@ -85,12 +85,12 @@
 }
 
 .cardMetaSuccess {
-  background: #0A2E1A;
+  background: #0a2e1a;
 }
 
 .cardMetaSuccess .cardLabel,
 .cardMetaSuccess .progressMeta {
-  color: #6EE7A0;
+  color: #6ee7a0;
 }
 
 .cardMetaSuccess .cardValueLarge {
@@ -137,8 +137,8 @@
 .successMsg {
   font-size: 13px;
   font-weight: 600;
-  color: #1A7F37;
-  background: #E8F8E8;
+  color: #1a7f37;
+  background: #e8f8e8;
   padding: 8px 12px;
   border-radius: var(--sc-radius-sm);
   margin: 0;
@@ -147,8 +147,8 @@
 .warningMsg {
   font-size: 13px;
   font-weight: 500;
-  color: #B45309;
-  background: #FFF8E8;
+  color: #b45309;
+  background: #fff8e8;
   padding: 8px 12px;
   border-radius: var(--sc-radius-sm);
   margin: 0;
@@ -190,7 +190,7 @@
 .bonusStatusOk {
   font-size: 12px;
   font-weight: 600;
-  color: #1A7F37;
+  color: #1a7f37;
   margin: 0;
 }
 

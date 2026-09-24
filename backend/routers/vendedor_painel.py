@@ -42,7 +42,10 @@ def perfil(
     db: Session = Depends(get_db),
 ):
     v = _get_vendedor(db, vendedor_id)
-    return {"data": {"nome": v.nome, "vendedor_nome": v.nome, "name": v.nome, "telefone": v.telefone, "email": v.email}, "error": None}
+    return {
+        "data": {"nome": v.nome, "vendedor_nome": v.nome, "name": v.nome, "telefone": v.telefone, "email": v.email},
+        "error": None,
+    }
 
 
 @router.get("/dashboard")
@@ -116,9 +119,7 @@ def dashboard(
         },
         "bonus_logistica_atingido": total_vendido_mes >= meta.meta_ativacao,
         "bonus_expansao_quantidade": (
-            math.floor(novos_clientes_mes / meta.meta_novos_clientes)
-            if meta.meta_novos_clientes
-            else 0
+            math.floor(novos_clientes_mes / meta.meta_novos_clientes) if meta.meta_novos_clientes else 0
         ),
         "ultimos_3_pedidos": [
             {"numero": p.numero, "cliente": p.cliente_razao_social, "total": p.total_pedido, "status": p.status}
@@ -137,10 +138,10 @@ def listar_catalogos(
         db.query(Catalogo, TabelaPreco.nome.label("tabela_nome"))
         .join(CatalogoVendedor, CatalogoVendedor.catalogo_id == Catalogo.id)
         .outerjoin(TabelaPreco, TabelaPreco.id == Catalogo.tabela_preco_id)
-        .filter(CatalogoVendedor.vendedor_id == v.id, Catalogo.ativo == True)
+        .filter(CatalogoVendedor.vendedor_id == v.id, Catalogo.ativo == True)  # noqa: E712 — expressão SQL
         .all()
     )
-    
+
     catalogos = [
         {
             "id": str(cat.id),
@@ -198,10 +199,7 @@ def listar_pedidos(
 ):
     v = _get_vendedor(db, vendedor_id)
     pedidos = (
-        db.query(PedidoVenda)
-        .filter(PedidoVenda.vendedor_id == v.id)
-        .order_by(PedidoVenda.data_emissao.desc())
-        .all()
+        db.query(PedidoVenda).filter(PedidoVenda.vendedor_id == v.id).order_by(PedidoVenda.data_emissao.desc()).all()
     )
     cache: dict = {}
 
@@ -210,7 +208,7 @@ def listar_pedidos(
             "numero": p.numero,
             "data": p.data_emissao,
             "cliente": p.cliente_razao_social,
-            "total": float(p.total_pedido), 
+            "total": float(p.total_pedido),
             "comissao": float(_comissao_pedido(p, db, cache)),
             "status": p.status,
         }
@@ -225,12 +223,7 @@ def listar_leads(
     db: Session = Depends(get_db),
 ):
     v = _get_vendedor(db, vendedor_id)
-    leads = (
-        db.query(Lead)
-        .filter(Lead.vendedor_id == v.id)
-        .order_by(Lead.criado_em.desc())
-        .all()
-    )
+    leads = db.query(Lead).filter(Lead.vendedor_id == v.id).order_by(Lead.criado_em.desc()).all()
     data_leads = [
         {
             "id": str(lead.id),
@@ -262,11 +255,7 @@ def atualizar_lead(
     db: Session = Depends(get_db),
 ):
     v = _get_vendedor(db, vendedor_id)
-    lead = (
-        db.query(Lead)
-        .filter(Lead.id == lead_id, Lead.vendedor_id == v.id)
-        .first()
-    )
+    lead = db.query(Lead).filter(Lead.id == lead_id, Lead.vendedor_id == v.id).first()
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead não encontrado")
 

@@ -25,6 +25,7 @@ Algoritmo:
      mantendo todos os polígonos aceitos de cada grupo — não só o maior
      (permite peças com furo interno, por exemplo).
 """
+
 from __future__ import annotations
 
 import math
@@ -61,9 +62,7 @@ def parse_ads(caminho: str, chain_tol: float = _DEFAULT_CHAIN_TOL) -> list[dict[
         data = f.read()
 
     if not data.startswith(b"CADZ"):
-        raise ValueError(
-            f"Arquivo ADS inválido: cabeçalho 'CADZ' não encontrado em '{caminho}'."
-        )
+        raise ValueError(f"Arquivo ADS inválido: cabeçalho 'CADZ' não encontrado em '{caminho}'.")
 
     # ── 1. Pula a miniatura JPEG embutida ───────────────────────────────────
     jpeg_end = _find_jpeg_end(data)
@@ -89,10 +88,7 @@ def parse_ads(caminho: str, chain_tol: float = _DEFAULT_CHAIN_TOL) -> list[dict[
     for gi, segmentos_grupo in enumerate(grupos, start=1):
         polygons = _chain_segments_to_polygons(segmentos_grupo, tol=chain_tol, group_label=gi)
         pecas_grupo, idx = _polygons_to_pecas(polygons, start_idx=idx)
-        print(
-            f"[ADS] grupo {gi}: {len(segmentos_grupo)} segmentos -> "
-            f"{len(pecas_grupo)} poligonos aceitos"
-        )
+        print(f"[ADS] grupo {gi}: {len(segmentos_grupo)} segmentos -> {len(pecas_grupo)} poligonos aceitos")
         pecas.extend(pecas_grupo)
 
     print(f"[ADS] total: {len(pecas)} poligonos extraidos")
@@ -132,8 +128,7 @@ def _scan_other_markers(payload: bytes) -> None:
                 if all(math.isfinite(v) and _COORD_MIN < v < _COORD_MAX for v in vals):
                     counts[count] = counts.get(count, 0) + 1
                     if count not in samples:
-                        pts = [(round(vals[k * 2], 4), round(vals[k * 2 + 1], 4))
-                               for k in range(count // 2)]
+                        pts = [(round(vals[k * 2], 4), round(vals[k * 2 + 1], 4)) for k in range(count // 2)]
                         samples[count] = pts
         i += 1
     if counts:
@@ -180,8 +175,10 @@ def _extract_grouped_segments(
             if end <= n:
                 x0, y0, x1, y1 = struct.unpack_from("<4d", data, i + 4)
                 if (
-                    _valid_coord(x0) and _valid_coord(y0)
-                    and _valid_coord(x1) and _valid_coord(y1)
+                    _valid_coord(x0)
+                    and _valid_coord(y0)
+                    and _valid_coord(x1)
+                    and _valid_coord(y1)
                     and math.hypot(x1 - x0, y1 - y0) > 1e-6
                 ):
                     current.append(((x0, y0), (x1, y1)))

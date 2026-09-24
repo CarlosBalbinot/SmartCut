@@ -1,5 +1,3 @@
-from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
@@ -14,8 +12,10 @@ config = context.config
 # SMARTCUT_DB_PATH aponta para userData; Docker/dev: DATABASE_URL/settings).
 config.set_main_option("sqlalchemy.url", resolver_url())
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# Logging (Parte 9.2): NÃO aplicamos o fileConfig do alembic.ini de propósito —
+# ele criaria um handler "generic" duplicado, fora do formato estruturado com
+# request_id. O logging já vem configurado pelo app (logging_conf.py) e os
+# registros do alembic fluem pelo handler raiz do backend.
 
 target_metadata = Base.metadata
 

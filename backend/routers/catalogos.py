@@ -23,20 +23,22 @@ _MOD = "cadastros_vendedores"
 
 @router.get("/", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar(db: Session = Depends(get_db)):
-    rows = db.execute(select(Catalogo).where(Catalogo.ativo == True)).scalars().all()
+    rows = db.execute(select(Catalogo).where(Catalogo.ativo == True)).scalars().all()  # noqa: E712 — expressão SQL
     result = []
     for cat in rows:
         tabela_nome = None
         if cat.tabela_preco_id:
             t = db.get(TabelaPreco, cat.tabela_preco_id)
             tabela_nome = t.nome if t else None
-        result.append({
-            "id": str(cat.id),
-            "nome": cat.nome,
-            "tabela_preco_id": str(cat.tabela_preco_id) if cat.tabela_preco_id else None,
-            "tabela_preco_nome": tabela_nome,
-            "arquivo_path": cat.arquivo_path,
-        })
+        result.append(
+            {
+                "id": str(cat.id),
+                "nome": cat.nome,
+                "tabela_preco_id": str(cat.tabela_preco_id) if cat.tabela_preco_id else None,
+                "tabela_preco_nome": tabela_nome,
+                "arquivo_path": cat.arquivo_path,
+            }
+        )
     return {"data": result, "error": None}
 
 
@@ -84,11 +86,7 @@ def deletar(catalogo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 @router.get("/{catalogo_id}/vendedores", dependencies=[Depends(require_permission(_MOD, "ver"))])
 def listar_vendedores(catalogo_id: uuid.UUID, db: Session = Depends(get_db)):
-    acessos = (
-        db.execute(select(CatalogoVendedor).where(CatalogoVendedor.catalogo_id == catalogo_id))
-        .scalars()
-        .all()
-    )
+    acessos = db.execute(select(CatalogoVendedor).where(CatalogoVendedor.catalogo_id == catalogo_id)).scalars().all()
     return {"data": [str(a.vendedor_id) for a in acessos], "error": None}
 
 

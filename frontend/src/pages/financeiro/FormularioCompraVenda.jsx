@@ -22,8 +22,8 @@ const FORM_VAZIO = {
  *   onFechar — () => void
  */
 export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, onFechar }) {
-  const isCompra  = tipo === "compra";
-  const [form, setForm]     = useState(FORM_VAZIO);
+  const isCompra = tipo === "compra";
+  const [form, setForm] = useState(FORM_VAZIO);
   const [nfFile, setNfFile] = useState(null);
   const [boletos, setBoletos] = useState([null]);
 
@@ -39,33 +39,37 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
 
   const handleBoleto = (i) => (e) => {
     const file = e.target.files[0] ?? null;
-    setBoletos((prev) => { const next = [...prev]; next[i] = file; return next; });
+    setBoletos((prev) => {
+      const next = [...prev];
+      next[i] = file;
+      return next;
+    });
   };
 
   const handleSubmit = () => {
     const parceiro = form.parceiro.trim();
     const formData = {
       ...(isCompra ? { fornecedor: parceiro } : { cliente: parceiro }),
-      descricao:           form.descricao.trim() || null,
-      numero_nf:           form.numero_nf.trim() || null,
-      valor_total:         parseFloat(form.valor_total),
+      descricao: form.descricao.trim() || null,
+      numero_nf: form.numero_nf.trim() || null,
+      valor_total: parseFloat(form.valor_total),
       ...(isCompra ? { data_compra: hojeISO() } : { data_venda: hojeISO() }),
-      parcelas:            numParcelas,
+      parcelas: numParcelas,
       primeiro_vencimento: form.primeiro_vencimento,
     };
     onSalvar(formData, nfFile, boletos.slice(0, numParcelas));
   };
 
   const parceiroLabel = isCompra ? "Fornecedor" : "Cliente";
-  const btnLabel      = saving ? "Salvando…" : isCompra ? "Criar Compra" : "Criar Venda";
+  const btnLabel = saving ? "Salvando…" : isCompra ? "Criar Compra" : "Criar Venda";
 
   return (
     <>
       <div className={styles.modalHead}>
-        <h2 className={styles.modalTitle}>
-          {isCompra ? "Nova Compra" : "Nova Venda"}
-        </h2>
-        <button className={styles.btnClose} onClick={onFechar} disabled={saving}>×</button>
+        <h2 className={styles.modalTitle}>{isCompra ? "Nova Compra" : "Nova Venda"}</h2>
+        <button className={styles.btnClose} onClick={onFechar} disabled={saving}>
+          ×
+        </button>
       </div>
 
       <div className={styles.modalBody}>
@@ -131,7 +135,9 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
               onChange={handleParcelasChange}
             >
               {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>{i + 1}x</option>
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}x
+                </option>
               ))}
             </select>
           </label>

@@ -50,11 +50,10 @@ def _formatar_numero_nf(numero: Optional[str]) -> str:
 
 def _agrupar_chave(chave: str) -> str:
     limpo = "".join(ch for ch in chave if ch.isdigit())
-    return " ".join(limpo[i:i + 4] for i in range(0, len(limpo), 4))
+    return " ".join(limpo[i : i + 4] for i in range(0, len(limpo), 4))
 
 
-def _retangulo(c: canvas.Canvas, x0: float, y0: float, x1: float, y1: float,
-               largura_linha: float, fill=None) -> None:
+def _retangulo(c: canvas.Canvas, x0: float, y0: float, x1: float, y1: float, largura_linha: float, fill=None) -> None:
     if fill is not None:
         c.setFillColor(fill)
         c.rect(x0, y0, x1 - x0, y1 - y0, stroke=0, fill=1)
@@ -63,8 +62,7 @@ def _retangulo(c: canvas.Canvas, x0: float, y0: float, x1: float, y1: float,
     c.rect(x0, y0, x1 - x0, y1 - y0, stroke=1, fill=0)
 
 
-def _texto_centralizado(c: canvas.Canvas, texto: str, y_baseline: float,
-                         font_name: str, font_size: float) -> None:
+def _texto_centralizado(c: canvas.Canvas, texto: str, y_baseline: float, font_name: str, font_size: float) -> None:
     c.setFont(font_name, font_size)
     c.setFillColor(_PRETO)
     c.drawCentredString(_CX, y_baseline, texto)
@@ -89,18 +87,18 @@ def gerar_danfe_simplificada_pdf(dados: dict, empresa=None) -> bytes:
     y_top = _PAGE_H - _MARGEM
 
     # ── Borda externa envolvendo todas as seções ─────────────────────────────────
-    altura_total = (
-        _ALT_CABECALHO + _ALT_IDENT + _ALT_CHAVE + _ALT_PROTOCOLO
-        + _ALT_EMITENTE + _ALT_DEST + 5 * _GAP
-    )
+    altura_total = _ALT_CABECALHO + _ALT_IDENT + _ALT_CHAVE + _ALT_PROTOCOLO + _ALT_EMITENTE + _ALT_DEST + 5 * _GAP
     _retangulo(c, _X0, y_top - altura_total, _X1, y_top, _BORDA_EXTERNA, fill=_BRANCO)
 
     # ── 1. Cabeçalho ──────────────────────────────────────────────────────────
     y_bottom = y_top - _ALT_CABECALHO
     _retangulo(c, _X0, y_bottom, _X1, y_top, _BORDA_INTERNA, fill=_BRANCO)
     _texto_centralizado(
-        c, "DANFE SIMPLIFICADO - ETIQUETA",
-        y_bottom + (_ALT_CABECALHO - 10 * 0.7) / 2, "Helvetica-Bold", 10,
+        c,
+        "DANFE SIMPLIFICADO - ETIQUETA",
+        y_bottom + (_ALT_CABECALHO - 10 * 0.7) / 2,
+        "Helvetica-Bold",
+        10,
     )
     y_top = y_bottom - _GAP
 
@@ -151,8 +149,11 @@ def gerar_danfe_simplificada_pdf(dados: dict, empresa=None) -> bytes:
     label_row_h = 0.6 * cm
     _retangulo(c, _X0, y_top - label_row_h, _X1, y_top, _BORDA_INTERNA, fill=_CINZA_LABEL)
     _texto_centralizado(
-        c, "PROTOCOLO DE AUTORIZAÇÃO DE USO",
-        y_top - label_row_h / 2 - 0.09 * cm, "Helvetica-Bold", 7,
+        c,
+        "PROTOCOLO DE AUTORIZAÇÃO DE USO",
+        y_top - label_row_h / 2 - 0.09 * cm,
+        "Helvetica-Bold",
+        7,
     )
 
     protocolo = dados.get("protocolo")
@@ -178,17 +179,25 @@ def gerar_danfe_simplificada_pdf(dados: dict, empresa=None) -> bytes:
     c.drawString(x_txt, y_top - _PAD_INTERNO - 0.16 * cm, "DADOS DO EMITENTE")
 
     _linha_mista(
-        c, [("RAZÃO SOCIAL: ", True), (emit.get("nome") or "—", False)],
-        x_txt, y_top - _PAD_INTERNO - 0.46 * cm, 6.5,
+        c,
+        [("RAZÃO SOCIAL: ", True), (emit.get("nome") or "—", False)],
+        x_txt,
+        y_top - _PAD_INTERNO - 0.46 * cm,
+        6.5,
     )
     _linha_mista(
         c,
         [
-            ("CNPJ: ", True), (emit.get("documento") or "—", False),
-            ("   IE: ", True), (emit.get("ie") or "—", False),
-            ("   UF: ", True), (emit.get("uf") or "—", False),
+            ("CNPJ: ", True),
+            (emit.get("documento") or "—", False),
+            ("   IE: ", True),
+            (emit.get("ie") or "—", False),
+            ("   UF: ", True),
+            (emit.get("uf") or "—", False),
         ],
-        x_txt, y_top - _PAD_INTERNO - 0.76 * cm, 6.5,
+        x_txt,
+        y_top - _PAD_INTERNO - 0.76 * cm,
+        6.5,
     )
     y_top = y_bottom - _GAP
 
@@ -203,20 +212,29 @@ def gerar_danfe_simplificada_pdf(dados: dict, empresa=None) -> bytes:
     c.drawString(x_txt, y_top - _PAD_INTERNO - 0.16 * cm, "DADOS DO DESTINATÁRIO")
 
     _linha_mista(
-        c, [("NOME: ", True), (dest.get("nome") or "—", False)],
-        x_txt, y_top - _PAD_INTERNO - 0.46 * cm, 6.5,
+        c,
+        [("NOME: ", True), (dest.get("nome") or "—", False)],
+        x_txt,
+        y_top - _PAD_INTERNO - 0.46 * cm,
+        6.5,
     )
     _linha_mista(
-        c, [("CPF/CNPJ: ", True), (dest.get("documento") or "—", False)],
-        x_txt, y_top - _PAD_INTERNO - 0.76 * cm, 6.5,
+        c,
+        [("CPF/CNPJ: ", True), (dest.get("documento") or "—", False)],
+        x_txt,
+        y_top - _PAD_INTERNO - 0.76 * cm,
+        6.5,
     )
     endereco_dest = (
         f"{dest.get('logradouro') or '—'}, {dest.get('numero') or 's/n'} - "
         f"{dest.get('municipio') or '—'}/{dest.get('uf') or '—'} - CEP: {dest.get('cep') or '—'}"
     )
     _linha_mista(
-        c, [("ENDEREÇO: ", True), (endereco_dest, False)],
-        x_txt, y_top - _PAD_INTERNO - 1.06 * cm, 6.5,
+        c,
+        [("ENDEREÇO: ", True), (endereco_dest, False)],
+        x_txt,
+        y_top - _PAD_INTERNO - 1.06 * cm,
+        6.5,
     )
 
     c.showPage()

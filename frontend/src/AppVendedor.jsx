@@ -26,7 +26,16 @@ function ProtectedRoute({ children }) {
 
   if (autorizado === null) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", fontFamily: "system-ui, sans-serif", color: "#6E6E73" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          fontFamily: "system-ui, sans-serif",
+          color: "#6E6E73",
+        }}
+      >
         Carregando…
       </div>
     );
@@ -41,19 +50,35 @@ export default function AppVendedor() {
       <Route path="/vendedor/login" element={<LoginVendedorPage />} />
       <Route
         path="/vendedor/dashboard"
-        element={<ProtectedRoute><DashboardVendedorPage /></ProtectedRoute>}
+        element={
+          <ProtectedRoute>
+            <DashboardVendedorPage />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/vendedor/catalogos"
-        element={<ProtectedRoute><CatalogosPage /></ProtectedRoute>}
+        element={
+          <ProtectedRoute>
+            <CatalogosPage />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/vendedor/pedidos"
-        element={<ProtectedRoute><PedidosVendedorPage /></ProtectedRoute>}
+        element={
+          <ProtectedRoute>
+            <PedidosVendedorPage />
+          </ProtectedRoute>
+        }
       />
       <Route
         path="/vendedor/leads"
-        element={<ProtectedRoute><LeadsPage /></ProtectedRoute>}
+        element={
+          <ProtectedRoute>
+            <LeadsPage />
+          </ProtectedRoute>
+        }
       />
       <Route path="/vendedor" element={<Navigate to="/vendedor/dashboard" replace />} />
       <Route path="/vendedor/*" element={<Navigate to="/vendedor/login" replace />} />

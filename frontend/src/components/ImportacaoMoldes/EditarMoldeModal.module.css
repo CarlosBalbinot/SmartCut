@@ -81,7 +81,7 @@
   justify-content: space-between;
   margin-top: auto;
   padding-top: 8px;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .acoesDireita {
@@ -129,13 +129,15 @@
 .btnPrimary {
   padding: 9px 18px;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: 980px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.1s;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
 .btnPrimary:hover:not(:disabled) {

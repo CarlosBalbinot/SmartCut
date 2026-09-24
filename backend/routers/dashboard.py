@@ -15,8 +15,18 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 _VER = require_permission("financeiro_painel", "ver")
 
 MESES_PT = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
 ]
 
 TIPOS_FRETE_A_PAGAR = ("CIF", "Por conta de terceiros")
@@ -30,12 +40,16 @@ def resumo(db: Session = Depends(get_db)):
     periodo = f"{MESES_PT[hoje.month - 1]} {hoje.year}"
 
     # ── Pedidos do mês ───────────────────────────────────────────────────
-    pedidos_mes = db.execute(
-        select(PedidoVenda).where(
-            PedidoVenda.data_emissao >= inicio_mes,
-            PedidoVenda.data_emissao <= fim_mes,
+    pedidos_mes = (
+        db.execute(
+            select(PedidoVenda).where(
+                PedidoVenda.data_emissao >= inicio_mes,
+                PedidoVenda.data_emissao <= fim_mes,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     total_mes = len(pedidos_mes)
     fechados_mes = [p for p in pedidos_mes if p.status == "Fechado"]
@@ -55,20 +69,21 @@ def resumo(db: Session = Depends(get_db)):
     for p in pedidos_mes:
         semana_num = (p.data_emissao.day - 1) // 7 + 1
         semanas[semana_num] += 1
-    evolucao_semanal = [
-        {"semana": f"Semana {i}", "pedidos": semanas[i]}
-        for i in range(1, num_semanas + 1)
-    ]
+    evolucao_semanal = [{"semana": f"Semana {i}", "pedidos": semanas[i]} for i in range(1, num_semanas + 1)]
 
     # ── Compras por fornecedor no mês (todas, sem limite) ─────────────────
     # CompraFinanceira.fornecedor é string livre (sem FK para uma tabela de
     # fornecedores), então o agrupamento é feito pelo próprio texto.
-    compras_mes = db.execute(
-        select(CompraFinanceira).where(
-            CompraFinanceira.data_compra >= inicio_mes,
-            CompraFinanceira.data_compra <= fim_mes,
+    compras_mes = (
+        db.execute(
+            select(CompraFinanceira).where(
+                CompraFinanceira.data_compra >= inicio_mes,
+                CompraFinanceira.data_compra <= fim_mes,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     fornecedor_map: dict[str, float] = {}
     for c in compras_mes:
         fornecedor_map[c.fornecedor] = fornecedor_map.get(c.fornecedor, 0.0) + float(c.valor_total or 0)
@@ -80,9 +95,7 @@ def resumo(db: Session = Depends(get_db)):
 
     # ── Top 5 clientes por quantidade de pedidos — últimos 90 dias ────────
     data_inicio_top = hoje - timedelta(days=90)
-    pedidos_90d = db.execute(
-        select(PedidoVenda).where(PedidoVenda.data_emissao >= data_inicio_top)
-    ).scalars().all()
+    pedidos_90d = db.execute(select(PedidoVenda).where(PedidoVenda.data_emissao >= data_inicio_top)).scalars().all()
     cliente_map: dict[str, dict] = {}
     for p in pedidos_90d:
         nome = p.cliente_razao_social or "Sem nome"

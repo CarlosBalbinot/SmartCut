@@ -18,20 +18,13 @@ def listar(db: Session, busca: str = "") -> list[dict]:
     query = db.query(GrupoMolde).options(*_OPTS)
     if busca:
         termo = f"%{busca}%"
-        query = query.filter(
-            or_(GrupoMolde.nome.ilike(termo), GrupoMolde.codigo.ilike(termo))
-        )
+        query = query.filter(or_(GrupoMolde.nome.ilike(termo), GrupoMolde.codigo.ilike(termo)))
     grupos = query.order_by(GrupoMolde.criado_em.desc()).all()
     return [_grupo_to_dict(g) for g in grupos]
 
 
 def obter(db: Session, grupo_id: uuid.UUID) -> dict | None:
-    grupo = (
-        db.query(GrupoMolde)
-        .options(*_OPTS)
-        .filter(GrupoMolde.id == grupo_id)
-        .first()
-    )
+    grupo = db.query(GrupoMolde).options(*_OPTS).filter(GrupoMolde.id == grupo_id).first()
     return _grupo_to_dict(grupo) if grupo else None
 
 

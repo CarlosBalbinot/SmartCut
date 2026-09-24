@@ -45,16 +45,21 @@ function toItem(resultado, idx) {
  *   onConcluido   — (sucesso: number, falhas: number) => void
  */
 export default function ImportarXMLModal({
-  arquivos, tipo = "compra", importarLote, importarFinal, onFechar, onConcluido,
+  arquivos,
+  tipo = "compra",
+  importarLote,
+  importarFinal,
+  onFechar,
+  onConcluido,
 }) {
   const isCompra = tipo === "compra";
   const parceiroLabel = isCompra ? "Fornecedor" : "Cliente";
   const campoParceiro = isCompra ? "fornecedor" : "cliente";
-  const campoData     = isCompra ? "data_compra" : "data_venda";
+  const campoData = isCompra ? "data_compra" : "data_venda";
 
   const [carregando, setCarregando] = useState(true);
-  const [erroGeral,  setErroGeral]  = useState(null);
-  const [itens,      setItens]      = useState([]);
+  const [erroGeral, setErroGeral] = useState(null);
+  const [itens, setItens] = useState([]);
   const [importando, setImportando] = useState(false);
 
   useEffect(() => {
@@ -70,7 +75,9 @@ export default function ImportarXMLModal({
   };
 
   const toggleExpandido = (key) => {
-    setItens((prev) => prev.map((it) => (it.key === key ? { ...it, expandido: !it.expandido } : it)));
+    setItens((prev) =>
+      prev.map((it) => (it.key === key ? { ...it, expandido: !it.expandido } : it))
+    );
   };
 
   const updateCampo = (key, campo) => (e) => {
@@ -80,40 +87,50 @@ export default function ImportarXMLModal({
 
   const updateParcela = (key, idx, campo) => (e) => {
     const valor = e.target.value;
-    setItens((prev) => prev.map((it) => {
-      if (it.key !== key) return it;
-      return { ...it, parcelas: it.parcelas.map((p, i) => (i === idx ? { ...p, [campo]: valor } : p)) };
-    }));
+    setItens((prev) =>
+      prev.map((it) => {
+        if (it.key !== key) return it;
+        return {
+          ...it,
+          parcelas: it.parcelas.map((p, i) => (i === idx ? { ...p, [campo]: valor } : p)),
+        };
+      })
+    );
   };
 
   const addParcela = (key) => (e) => {
     e.stopPropagation();
-    setItens((prev) => prev.map((it) => (
-      it.key === key
-        ? { ...it, parcelas: [...it.parcelas, { vencimento: hojeISO(), valor: "" }] }
-        : it
-    )));
+    setItens((prev) =>
+      prev.map((it) =>
+        it.key === key
+          ? { ...it, parcelas: [...it.parcelas, { vencimento: hojeISO(), valor: "" }] }
+          : it
+      )
+    );
   };
 
   const removeParcela = (key, idx) => (e) => {
     e.stopPropagation();
-    setItens((prev) => prev.map((it) => (
-      it.key === key ? { ...it, parcelas: it.parcelas.filter((_, i) => i !== idx) } : it
-    )));
+    setItens((prev) =>
+      prev.map((it) =>
+        it.key === key ? { ...it, parcelas: it.parcelas.filter((_, i) => i !== idx) } : it
+      )
+    );
   };
 
   const totalSelecionados = itens.filter((it) => it.sucesso && it.incluir).length;
 
   const handleConfirmar = async () => {
     const selecionados = itens.filter((it) => it.sucesso && it.incluir);
-    const invalido = selecionados.some((it) =>
-      it.parcelas.length === 0 ||
-      it.parcelas.some((p) => !p.vencimento || !p.valor || isNaN(parseFloat(p.valor)))
+    const invalido = selecionados.some(
+      (it) =>
+        it.parcelas.length === 0 ||
+        it.parcelas.some((p) => !p.vencimento || !p.valor || isNaN(parseFloat(p.valor)))
     );
     if (invalido) {
       setErroGeral(
         "Existe uma NF selecionada com parcela sem data de vencimento ou valor. " +
-        "Preencha os campos ou desmarque a NF."
+          "Preencha os campos ou desmarque a NF."
       );
       return;
     }
@@ -166,7 +183,9 @@ export default function ImportarXMLModal({
           <h2 className={styles.modalTitle}>
             Revisar Importação de NFs {isCompra ? "— Compras" : "— Vendas"}
           </h2>
-          <button className={styles.btnClose} onClick={onFechar} disabled={importando}>×</button>
+          <button className={styles.btnClose} onClick={onFechar} disabled={importando}>
+            ×
+          </button>
         </div>
 
         <div className={styles.modalBody}>
@@ -188,14 +207,20 @@ export default function ImportarXMLModal({
                 {itens.map((it) => {
                   if (!it.sucesso) {
                     return (
-                      <div key={it.key} className={`${styles.importCard} ${styles.importErrorCard}`}>
+                      <div
+                        key={it.key}
+                        className={`${styles.importCard} ${styles.importErrorCard}`}
+                      >
                         <p className={styles.importErrorText}>✕ {it.erro}</p>
                       </div>
                     );
                   }
                   return (
                     <div key={it.key} className={styles.importCard}>
-                      <div className={styles.importCardHeader} onClick={() => toggleExpandido(it.key)}>
+                      <div
+                        className={styles.importCardHeader}
+                        onClick={() => toggleExpandido(it.key)}
+                      >
                         <input
                           type="checkbox"
                           className={styles.importCheckbox}
@@ -204,10 +229,18 @@ export default function ImportarXMLModal({
                           onClick={(e) => e.stopPropagation()}
                         />
                         <div className={styles.importSummary}>
-                          <span><strong>{parceiroLabel}:</strong> {it.fornecedor || "—"}</span>
-                          <span><strong>NF:</strong> {it.numero_nf || "—"}</span>
-                          <span><strong>Data:</strong> {dataFmt(it.data_emissao)}</span>
-                          <span><strong>Total:</strong> {moeda(it.valor_total)}</span>
+                          <span>
+                            <strong>{parceiroLabel}:</strong> {it.fornecedor || "—"}
+                          </span>
+                          <span>
+                            <strong>NF:</strong> {it.numero_nf || "—"}
+                          </span>
+                          <span>
+                            <strong>Data:</strong> {dataFmt(it.data_emissao)}
+                          </span>
+                          <span>
+                            <strong>Total:</strong> {moeda(it.valor_total)}
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -231,7 +264,9 @@ export default function ImportarXMLModal({
                             <label className={styles.field}>
                               <span>Valor Total</span>
                               <input
-                                type="number" min="0" step="0.01"
+                                type="number"
+                                min="0"
+                                step="0.01"
                                 className={styles.input}
                                 value={it.valor_total}
                                 onChange={updateCampo(it.key, "valor_total")}
@@ -264,7 +299,9 @@ export default function ImportarXMLModal({
                                   onChange={updateParcela(it.key, idx, "vencimento")}
                                 />
                                 <input
-                                  type="number" min="0" step="0.01"
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
                                   className={styles.input}
                                   value={p.valor}
                                   onChange={updateParcela(it.key, idx, "valor")}

@@ -18,11 +18,10 @@ const ROTACOES = [
 
 function BotoesRotacao({ rotacaoAtual, onChange }) {
   function aplicar(delta) {
-    onChange(((rotacaoAtual + delta) % 360 + 360) % 360);
+    onChange((((rotacaoAtual + delta) % 360) + 360) % 360);
   }
   const deg = rotacaoAtual ?? 0;
-  const indicador =
-    deg === 0 ? "Rotação: 0°" : `Rotação: ${deg > 0 ? "+" : ""}${deg}°`;
+  const indicador = deg === 0 ? "Rotação: 0°" : `Rotação: ${deg > 0 ? "+" : ""}${deg}°`;
 
   return (
     <div className={styles.rotacaoWrap}>
@@ -54,8 +53,8 @@ function BotoesRotacao({ rotacaoAtual, onChange }) {
 // ── Botões de tipo de corte ──────────────────────────────────────────
 
 const TIPOS_CORTE = [
-  { valor: "simples",         label: "1 peça" },
-  { valor: "par",             label: "2 peças espelhadas" },
+  { valor: "simples", label: "1 peça" },
+  { valor: "par", label: "2 peças espelhadas" },
   { valor: "par_sem_espelho", label: "2 peças sem espelho" },
 ];
 
@@ -86,8 +85,7 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
   const rotacaoBase = parte.rotacao_base ?? 0;
 
   // Peça representativa para a seta: o maior tamanho com geometria disponível
-  const pecaRepresentativa =
-    [...parte.pecas].reverse().find((p) => p.geometria_json) ?? null;
+  const pecaRepresentativa = [...parte.pecas].reverse().find((p) => p.geometria_json) ?? null;
 
   return (
     <div className={styles.card}>
@@ -144,18 +142,12 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
               Orientar peça
               <span className={styles.labelDica}> — gire até ficar como no tecido</span>
             </label>
-            <BotoesRotacao
-              rotacaoAtual={rotacaoBase}
-              onChange={(v) => set("rotacao_base", v)}
-            />
+            <BotoesRotacao rotacaoAtual={rotacaoBase} onChange={(v) => set("rotacao_base", v)} />
           </div>
 
           <div className={styles.controleItem}>
             <label className={styles.label}>Tipo de corte</label>
-            <BotoesTipoCorte
-              valor={parte.tipo_corte}
-              onChange={(v) => set("tipo_corte", v)}
-            />
+            <BotoesTipoCorte valor={parte.tipo_corte} onChange={(v) => set("tipo_corte", v)} />
           </div>
         </div>
       </div>

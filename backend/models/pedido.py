@@ -20,7 +20,12 @@ DESCONTO_TIPOS = ("PERCENTUAL", "VALOR")
 COMISSAO_ORIGENS = ("VINCULO", "PADRAO_VENDEDOR", "SEM_VENDEDOR", "NENHUMA")
 
 TIPO_FRETE_VALIDOS = (
-    "Sem Frete", "CIF", "FOB", "Por conta de terceiros", "Próprio", "Sem Ocorrência",
+    "Sem Frete",
+    "CIF",
+    "FOB",
+    "Por conta de terceiros",
+    "Próprio",
+    "Sem Ocorrência",
 )
 
 
@@ -64,9 +69,7 @@ class PedidoVenda(Base):
     # partir do cadastro ao criar o pedido ou trocar o cliente (ver
     # routers/pedidos_venda._aplicar_snapshot_cliente). Nulo em pedidos de
     # cliente não cadastrado, que mantêm a cópia digitada.
-    cliente_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("clientes.id"), nullable=True
-    )
+    cliente_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("clientes.id"), nullable=True)
     cliente_razao_social: Mapped[str | None] = mapped_column(String(200))
     cliente_cnpj: Mapped[str | None] = mapped_column(String(20))
     cliente_ie: Mapped[str | None] = mapped_column(String(30))
@@ -90,9 +93,7 @@ class PedidoVenda(Base):
     comissao_valor: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     # Snapshot do % (0–100) usado no último cálculo de comissao_valor e de
     # onde ele veio — ver COMISSAO_ORIGENS.
-    comissao_pct: Mapped[Decimal] = mapped_column(
-        Numeric(5, 2), nullable=False, default=0, server_default="0"
-    )
+    comissao_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, default=0, server_default="0")
     comissao_origem: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # ── Fiscal / Financeiro ──────────────────────────────────────────────
@@ -121,9 +122,7 @@ class PedidoVenda(Base):
     # Não listado no escopo original da Parte 1a, mas necessário para a
     # Aba Transporte pedida na Parte 2b — sem estes campos a aba não tem
     # onde persistir.
-    transportadora_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("transportadoras.id"), nullable=True
-    )
+    transportadora_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("transportadoras.id"), nullable=True)
     tipo_frete: Mapped[str | None] = mapped_column(String(30), nullable=True)
     peso_liquido: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     peso_bruto: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -151,19 +150,13 @@ class ItemPedido(Base):
     __tablename__ = "itens_pedido"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    pedido_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False
-    )
+    pedido_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False)
     # Nullable: itens do catálogo fiscal novo (produto_id/sku_id, ver abaixo)
     # não pertencem a um GrupoMolde — só itens legados de corte preenchem
     # este campo (ver models/pedido.py — Item pai vs. avulso no fluxo novo).
-    grupo_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=True
-    )
+    grupo_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("grupos_molde.id"), nullable=True)
     cor: Mapped[str | None] = mapped_column(String(50))
-    lote_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=True
-    )
+    lote_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=True)
     qtd_p: Mapped[int] = mapped_column(Integer, default=0)
     qtd_m: Mapped[int] = mapped_column(Integer, default=0)
     qtd_g: Mapped[int] = mapped_column(Integer, default=0)
@@ -181,14 +174,10 @@ class ItemPedido(Base):
     # Produto do cadastro fiscal (NCM/CEST/unidade/peso) — opcional e
     # coexiste com grupo_id: pedidos de corte legado usam só grupo_id,
     # pedidos de venda fiscal (Fase 4/NF-e) preenchem produto_id também.
-    produto_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("produtos.id"), nullable=True
-    )
+    produto_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), ForeignKey("produtos.id"), nullable=True)
     # SKU (combinação de grade) do produto acima, quando o item vem de um
     # produto "pai" — item avulso (sem SKUs) preenche só produto_id.
-    sku_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("produtos_sku.id"), nullable=True
-    )
+    sku_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("produtos_sku.id"), nullable=True)
     # Quantidade genérica dos itens do fluxo novo (produto/SKU) — os itens
     # legados de corte usam qtd_p..qtd_g3 em vez deste campo.
     quantidade: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -200,12 +189,8 @@ class ItemPedido(Base):
     # desconto_percentual para quem ainda lê dele (bulk/NF-e).
     desconto_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     desconto_valor: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    desconto_percentual: Mapped[Decimal] = mapped_column(
-        Numeric(7, 4), nullable=False, default=0, server_default="0"
-    )
-    desconto_tipo: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="VALOR", server_default="VALOR"
-    )
+    desconto_percentual: Mapped[Decimal] = mapped_column(Numeric(7, 4), nullable=False, default=0, server_default="0")
+    desconto_tipo: Mapped[str] = mapped_column(String(10), nullable=False, default="VALOR", server_default="VALOR")
     acrescimo_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     acrescimo_valor: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
@@ -250,6 +235,11 @@ class ItemPedido(Base):
         if self.produto_id and not self.grupo_id:
             return self.quantidade
         return (
-            (self.qtd_p or 0) + (self.qtd_m or 0) + (self.qtd_g or 0)
-            + (self.qtd_gg or 0) + (self.qtd_g1 or 0) + (self.qtd_g2 or 0) + (self.qtd_g3 or 0)
+            (self.qtd_p or 0)
+            + (self.qtd_m or 0)
+            + (self.qtd_g or 0)
+            + (self.qtd_gg or 0)
+            + (self.qtd_g1 or 0)
+            + (self.qtd_g2 or 0)
+            + (self.qtd_g3 or 0)
         )

@@ -1,0 +1,154 @@
+# CI — Parte 9.1 do PROMPT-CORRECOES.md
+#
+# Jobs (o critério de aceitação da 9.1):
+#   1. backend  : Python 3.12 + ruff (lint/formato) + pytest (cobertura);
+#   2. frontend : Node 22 + npm ci + lint + testes (vitest) + build;
+#   3. desktop  : build do instalador Windows SEM assinatura — roda apenas em
+#                 tags (`npm run dist` + upload de artefato);
+#   4. secrets  : gitleaks (mesma rev do pre-commit) — falha se algum segredo
+#                 existir no histórico do git.
+#
+# O lint de formato (ruff format --check e prettier) está coberto na parte 8.3
+# pelo pre-commit; aqui rodamos ruff/pytest/vitest/build como porta de entrada.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (ruff + pytest)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff check)
+        run: python -m ruff check .
+
+      - name: Formato (ruff format --check)
+        run: python -m ruff format --check .
+
+      - name: Testes (pytest + cobertura)
+        run: python -m pytest --cov --cov-report=term-missing
+
+  frontend:
+    name: Frontend (lint + testes + build)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Testes (vitest)
+        run: npm test
+
+      - name: Build (vite)
+        run: npm run build
+
+  desktop:
+    name: Build desktop (tags — sem assinatura)
+    # Job opcional da 9.1: só roda quando alguém publica uma tag (ex.: v1.0.2).
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: write # upload de artefato (instalador + canal de atualização)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências do frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Instalar dependências do backend (+ PyInstaller p/ o build)
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install "pyinstaller>=6.10,<7"
+
+      # `npm run dist` roda predist (build do frontend + PyInstaller do backend)
+      # e depois electron-builder --win sem assinatura (CSC_IDENTITY_AUTO_DISCOVERY=false).
+      - name: Build do instalador
+        run: npm run dist
+
+      - name: Upload (instalador + canal de atualização latest.yml)
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartcut-windows
+          path: |
+            release/*.exe
+            release/latest*.yml
+          if-no-files-found: error
+          retention-days: 30
+
+  secrets:
+    name: Scan de segredos (gitleaks)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # histórico completo — o detect varre todos os commits
+
+      - name: Instalar gitleaks (v8.30.1 — mesma rev do pre-commit)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+
+      - name: Detect (falha se algum segredo estiver no histórico)
+        run: gitleaks detect --source . --redact --exit-code 1

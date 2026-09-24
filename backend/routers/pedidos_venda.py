@@ -21,16 +21,30 @@ from models.venda import PrecoReferencia, TabelaPreco, Vendedor
 from routers.produtos import buscar_sku_ativo_por_codigo
 from routers.tes import buscar_tes_por_codigo
 from schemas.venda_schema import (
-    ItemPedidoVendaCreate, ItemPedidoVendaOut, ItensBulkCreateRequest,
-    PedidoVendaCreate, PedidoVendaOut, PedidoVendaUpdate, PedidoStatusUpdate,
+    ItemPedidoVendaCreate,
+    ItemPedidoVendaOut,
+    ItensBulkCreateRequest,
+    PedidoVendaCreate,
+    PedidoVendaOut,
+    PedidoVendaUpdate,
+    PedidoStatusUpdate,
 )
 from services.pdf_venda_service import (
-    gerar_pdf_corte, gerar_pdf_pedido, nome_arquivo_corte, nome_arquivo_pedido,
+    gerar_pdf_corte,
+    gerar_pdf_pedido,
+    nome_arquivo_corte,
+    nome_arquivo_pedido,
 )
 from services.venda_service import (
-    SNAPSHOT_CLIENTE, aplicar_snapshot_cliente, pedido_sincronizavel,
-    aplicar_comissao, calcular_subtotal_itens, get_ou_criar_empresa, proximo_numero,
-    recalcular_pedido, resolver_preco_item,
+    SNAPSHOT_CLIENTE,
+    aplicar_snapshot_cliente,
+    pedido_sincronizavel,
+    aplicar_comissao,
+    calcular_subtotal_itens,
+    get_ou_criar_empresa,
+    proximo_numero,
+    recalcular_pedido,
+    resolver_preco_item,
 )
 
 router = APIRouter(prefix="/api/v1/pedidos-venda", tags=["pedidos_venda"])
@@ -42,6 +56,7 @@ _EXCLUIR = require_permission("pedidos_excluir", "ver")
 
 
 # ── Schemas inline (campos ausentes no venda_schema.py) ──────────────────────
+
 
 class _PedidoCreate(PedidoVendaCreate):
     tipo: str = "venda"
@@ -149,9 +164,7 @@ _ITEM_DIRETO_OPTS = [
 
 
 def _load_com_itens(db: Session, pedido_id: uuid.UUID) -> PedidoVenda | None:
-    return db.execute(
-        select(PedidoVenda).where(PedidoVenda.id == pedido_id).options(*_ITEM_OPTS)
-    ).scalars().first()
+    return db.execute(select(PedidoVenda).where(PedidoVenda.id == pedido_id).options(*_ITEM_OPTS)).scalars().first()
 
 
 def _cliente_ativo(db: Session, cliente_id: int) -> Cliente:
@@ -208,15 +221,20 @@ def _aplicar_desconto(item: ItemPedido, limitar: bool = False) -> None:
 
 
 def _itens_com_grupo(db: Session, pedido_id: uuid.UUID):
-    return db.execute(
-        select(ItemPedido)
-        .where(ItemPedido.pedido_id == pedido_id)
-        .options(*_ITEM_DIRETO_OPTS)
-        .order_by(ItemPedido.id)
-    ).scalars().all()
+    return (
+        db.execute(
+            select(ItemPedido)
+            .where(ItemPedido.pedido_id == pedido_id)
+            .options(*_ITEM_DIRETO_OPTS)
+            .order_by(ItemPedido.id)
+        )
+        .scalars()
+        .all()
+    )
 
 
 # ── Número sequencial ─────────────────────────────────────────────────────────
+
 
 @router.get("/proximo-numero", dependencies=[Depends(_VER)])
 def get_proximo_numero(tipo: str = "venda", db: Session = Depends(get_db)):
@@ -228,6 +246,7 @@ def get_proximo_numero(tipo: str = "venda", db: Session = Depends(get_db)):
 # daquele router com consumo real no frontend (PainelFinanceiro). Os demais
 # (resumo-corte, relatorio-pdf, duplicar, tecidos/peças do pedido) ficaram sem
 # consumo e foram descartados junto com a interface antiga de pedidos.
+
 
 def _ultimos_meses(n: int) -> list[tuple[int, int]]:
     """Lista (ano, mes) dos últimos `n` meses, do mais antigo ao atual."""
@@ -257,10 +276,7 @@ def _serie_mensal_pedidos(db: Session, meses: int = 12) -> list[dict]:
     ).all()
     mapa = {r.chave: float(r.total or 0) for r in rows}
 
-    return [
-        {"mes": m, "ano": a, "total": mapa.get(f"{a:04d}-{m:02d}", 0.0)}
-        for a, m in chaves
-    ]
+    return [{"mes": m, "ano": a, "total": mapa.get(f"{a:04d}-{m:02d}", 0.0)} for a, m in chaves]
 
 
 def _serie_semanal_pedidos(db: Session, semanas: int = 8) -> list[dict]:
@@ -307,13 +323,17 @@ def metricas_vendas(
         data_inicio = hoje.replace(day=1)
         data_fim = date(hoje.year, hoje.month, calendar.monthrange(hoje.year, hoje.month)[1])
 
-    pedidos_periodo = db.execute(
-        select(PedidoVenda).where(
-            PedidoVenda.tipo == "venda",
-            PedidoVenda.data_emissao >= data_inicio,
-            PedidoVenda.data_emissao <= data_fim,
+    pedidos_periodo = (
+        db.execute(
+            select(PedidoVenda).where(
+                PedidoVenda.tipo == "venda",
+                PedidoVenda.data_emissao >= data_inicio,
+                PedidoVenda.data_emissao <= data_fim,
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     total_faturado = sum(float(p.total_pedido or 0) for p in pedidos_periodo)
     total_pedidos = len(pedidos_periodo)
@@ -342,6 +362,7 @@ def metricas_vendas(
 
 # ── CRUD pedidos ──────────────────────────────────────────────────────────────
 
+
 @router.get("/", dependencies=[Depends(_VER)])
 def listar(tipo: str | None = None, db: Session = Depends(get_db)):
     """Lista com os nomes já resolvidos (vendedor, tabela, condição de
@@ -367,13 +388,15 @@ def listar(tipo: str | None = None, db: Session = Depends(get_db)):
     data = []
     for pedido, vendedor_nome, tabela_nome, condicao_desc in db.execute(q).all():
         d = _PedidoVendaOut.model_validate(pedido).model_dump()
-        d.update({
-            "vendedor_nome": vendedor_nome,
-            "tabela_preco_nome": tabela_nome,
-            "condicao_pagamento_descricao": condicao_desc,
-            "tipo_preco": pedido.condicoes,
-            "total": d["total_pedido"],
-        })
+        d.update(
+            {
+                "vendedor_nome": vendedor_nome,
+                "tabela_preco_nome": tabela_nome,
+                "condicao_pagamento_descricao": condicao_desc,
+                "tipo_preco": pedido.condicoes,
+                "total": d["total_pedido"],
+            }
+        )
         data.append(d)
     return {"data": data, "error": None}
 
@@ -416,9 +439,7 @@ def get_one(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.patch("/{pedido_id}", dependencies=[Depends(_EDITAR)])
-def atualizar(
-    pedido_id: uuid.UUID, payload: _PedidoUpdate, db: Session = Depends(get_db)
-):
+def atualizar(pedido_id: uuid.UUID, payload: _PedidoUpdate, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -485,15 +506,11 @@ def _validar_transicao_status(atual: str, novo: str, nfe_id: int | None) -> None
                 detail="Não é possível reabrir um pedido com NF-e emitida.",
             )
         return
-    raise HTTPException(
-        status_code=400, detail=f"Transição de {atual} para {novo} não permitida."
-    )
+    raise HTTPException(status_code=400, detail=f"Transição de {atual} para {novo} não permitida.")
 
 
 @router.patch("/{pedido_id}/status", dependencies=[Depends(_EDITAR)])
-def alterar_status(
-    pedido_id: uuid.UUID, payload: PedidoStatusUpdate, db: Session = Depends(get_db)
-):
+def alterar_status(pedido_id: uuid.UUID, payload: PedidoStatusUpdate, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -519,6 +536,7 @@ def deletar(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Itens ─────────────────────────────────────────────────────────────────────
 
+
 @router.post("/{pedido_id}/itens", dependencies=[Depends(_EDITAR)])
 def adicionar_item(
     pedido_id: uuid.UUID,
@@ -536,8 +554,12 @@ def adicionar_item(
     if preco_unit is None:
         produto = db.get(Produto, payload.produto_id) if payload.produto_id else None
         preco_unit, _ = resolver_preco_item(
-            db, None, pedido.tabela_preco_id, pedido.condicoes or "",
-            produto=produto, grupo_id=payload.grupo_id,
+            db,
+            None,
+            pedido.tabela_preco_id,
+            pedido.condicoes or "",
+            produto=produto,
+            grupo_id=payload.grupo_id,
         )
 
     # TES do item: usa o que veio explícito no payload; senão cai para o
@@ -599,12 +621,18 @@ def editar_item(
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    item = db.execute(
-        select(ItemPedido).where(
-            ItemPedido.id == item_id,
-            ItemPedido.pedido_id == pedido_id,
-        ).options(*_ITEM_DIRETO_OPTS)
-    ).scalars().first()
+    item = (
+        db.execute(
+            select(ItemPedido)
+            .where(
+                ItemPedido.id == item_id,
+                ItemPedido.pedido_id == pedido_id,
+            )
+            .options(*_ITEM_DIRETO_OPTS)
+        )
+        .scalars()
+        .first()
+    )
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
     _exigir_aberto(pedido)
@@ -618,9 +646,7 @@ def editar_item(
     if "desconto_pct" in dados:
         dados.setdefault("desconto_percentual", dados.pop("desconto_pct"))
     if "desconto" in dados and "desconto_percentual" in dados:
-        raise HTTPException(
-            status_code=422, detail="Informe desconto (R$) ou desconto_percentual, não os dois."
-        )
+        raise HTTPException(status_code=422, detail="Informe desconto (R$) ou desconto_percentual, não os dois.")
 
     if "tes_codigo" in dados:
         codigo = (dados.pop("tes_codigo") or "").strip()
@@ -645,7 +671,10 @@ def editar_item(
         item.descricao = _descricao_padrao(item)
         if "preco_unitario" not in dados:
             preco, preco_origem = resolver_preco_item(
-                db, sku, pedido.tabela_preco_id, pedido.condicoes or "",
+                db,
+                sku,
+                pedido.tabela_preco_id,
+                pedido.condicoes or "",
             )
             # Sem preço em lugar nenhum: mantém o atual (preco_origem=None
             # na resposta sinaliza isso para a tela).
@@ -699,8 +728,17 @@ def editar_item(
             setattr(item, field, val)
 
     campos_valor = {
-        "quantidade", "preco_unitario", "_desconto", "_troca_sku",
-        "qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_g3",
+        "quantidade",
+        "preco_unitario",
+        "_desconto",
+        "_troca_sku",
+        "qtd_p",
+        "qtd_m",
+        "qtd_g",
+        "qtd_gg",
+        "qtd_g1",
+        "qtd_g2",
+        "qtd_g3",
     }
     if campos_valor & dados.keys():
         _aplicar_desconto(item)
@@ -711,9 +749,7 @@ def editar_item(
     db.refresh(item)
     db.refresh(pedido)
     item.preco_origem = preco_origem
-    itens = db.execute(
-        select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)
-    ).scalars().all()
+    itens = db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)).scalars().all()
     return {
         "data": {
             "item": _ItemOut.model_validate(item),
@@ -750,8 +786,12 @@ def aplicar_tabela(
     sem_preco: list[str] = []
     for item in pedido.itens:
         preco, origem = resolver_preco_item(
-            db, item.sku, payload.tabela_preco_id, pedido.condicoes or "",
-            produto=item.produto, grupo_id=item.grupo_id,
+            db,
+            item.sku,
+            payload.tabela_preco_id,
+            pedido.condicoes or "",
+            produto=item.produto,
+            grupo_id=item.grupo_id,
         )
         if origem not in _ORIGENS_TABELA:
             sem_preco.append(item.ref_codigo or item.descricao or str(item.id))
@@ -775,15 +815,17 @@ def aplicar_tabela(
 
 
 @router.delete("/{pedido_id}/itens/{item_id}", dependencies=[Depends(_EDITAR)])
-def remover_item(
-    pedido_id: uuid.UUID, item_id: uuid.UUID, db: Session = Depends(get_db)
-):
-    item = db.execute(
-        select(ItemPedido).where(
-            ItemPedido.id == item_id,
-            ItemPedido.pedido_id == pedido_id,
+def remover_item(pedido_id: uuid.UUID, item_id: uuid.UUID, db: Session = Depends(get_db)):
+    item = (
+        db.execute(
+            select(ItemPedido).where(
+                ItemPedido.id == item_id,
+                ItemPedido.pedido_id == pedido_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
     db.delete(item)
@@ -823,7 +865,10 @@ def adicionar_itens_bulk(
             # payload (a tela já manda sku.preco_manual > pai.preco_venda).
             preco_unit = Decimal(str(it.preco_unitario))
             preco, origem = resolver_preco_item(
-                db, sku, pedido.tabela_preco_id, pedido.condicoes or "",
+                db,
+                sku,
+                pedido.tabela_preco_id,
+                pedido.condicoes or "",
                 produto=db.get(Produto, it.produto_id),
             )
             if origem in _ORIGENS_TABELA:
@@ -862,6 +907,7 @@ def adicionar_itens_bulk(
 
 # ── PDFs ──────────────────────────────────────────────────────────────────────
 
+
 @router.get("/{pedido_id}/pdf-pedido", dependencies=[Depends(_VER)])
 def pdf_pedido(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
@@ -873,12 +919,16 @@ def pdf_pedido(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     precos_ref = {}
     grupo_ids = {item.grupo_id for item in itens if item.grupo_id is not None}
     if pedido.tabela_preco_id and grupo_ids:
-        refs = db.execute(
-            select(PrecoReferencia).where(
-                PrecoReferencia.tabela_id == pedido.tabela_preco_id,
-                PrecoReferencia.grupo_id.in_(grupo_ids),
+        refs = (
+            db.execute(
+                select(PrecoReferencia).where(
+                    PrecoReferencia.tabela_id == pedido.tabela_preco_id,
+                    PrecoReferencia.grupo_id.in_(grupo_ids),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         precos_ref = {str(r.grupo_id): r for r in refs}
 
     pdf_bytes = gerar_pdf_pedido(pedido, itens, empresa, precos_ref)
@@ -908,6 +958,7 @@ def pdf_corte(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 # ── Encaixe (placeholder) ─────────────────────────────────────────────────────
+
 
 @router.post("/{pedido_id}/gerar-encaixe", status_code=202, dependencies=[Depends(_EDITAR)])
 def gerar_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):

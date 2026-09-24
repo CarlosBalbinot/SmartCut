@@ -52,6 +52,7 @@ def _pode_listar(
 # Sem comissao_pct: a comissão agora é por vendedor + tabela
 # (VendedorTabelaComissao). Se o cliente ainda mandar o campo, é ignorado.
 
+
 class _TabelaPrecoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -73,8 +74,7 @@ class _TabelaPrecoUpdate(BaseModel):
 def listar(db: Session = Depends(get_db)):
     rows = db.execute(select(TabelaPreco).order_by(TabelaPreco.nome)).scalars().all()
     counts_raw = db.execute(
-        select(PrecoReferencia.tabela_id, func.count(PrecoReferencia.id))
-        .group_by(PrecoReferencia.tabela_id)
+        select(PrecoReferencia.tabela_id, func.count(PrecoReferencia.id)).group_by(PrecoReferencia.tabela_id)
     ).all()
     counts = {tabela_id: cnt for tabela_id, cnt in counts_raw}
     result = []
@@ -126,12 +126,16 @@ def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Sessio
     tabela = db.get(TabelaPreco, tabela_id)
     if not tabela:
         raise HTTPException(status_code=404, detail="Tabela não encontrada")
-    existing = db.execute(
-        select(PrecoReferencia).where(
-            PrecoReferencia.tabela_id == tabela_id,
-            PrecoReferencia.grupo_id == payload.grupo_id,
+    existing = (
+        db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.tabela_id == tabela_id,
+                PrecoReferencia.grupo_id == payload.grupo_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if existing:
         existing.preco_avista = payload.preco_avista
         existing.preco_aprazo = payload.preco_aprazo
@@ -139,15 +143,17 @@ def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Sessio
         existing.preco_avista_plus = payload.preco_avista_plus
         existing.preco_aprazo_plus = payload.preco_aprazo_plus
     else:
-        db.add(PrecoReferencia(
-            tabela_id=tabela_id,
-            grupo_id=payload.grupo_id,
-            preco_avista=payload.preco_avista,
-            preco_aprazo=payload.preco_aprazo,
-            tem_plus_size=payload.tem_plus_size or False,
-            preco_avista_plus=payload.preco_avista_plus,
-            preco_aprazo_plus=payload.preco_aprazo_plus,
-        ))
+        db.add(
+            PrecoReferencia(
+                tabela_id=tabela_id,
+                grupo_id=payload.grupo_id,
+                preco_avista=payload.preco_avista,
+                preco_aprazo=payload.preco_aprazo,
+                tem_plus_size=payload.tem_plus_size or False,
+                preco_avista_plus=payload.preco_avista_plus,
+                preco_aprazo_plus=payload.preco_aprazo_plus,
+            )
+        )
     db.commit()
     return {"data": None, "error": None}
 
@@ -157,12 +163,16 @@ def upsert_item(tabela_id: uuid.UUID, payload: TabelaPrecoItemCreate, db: Sessio
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def remover_item(tabela_id: uuid.UUID, grupo_id: uuid.UUID, db: Session = Depends(get_db)):
-    existing = db.execute(
-        select(PrecoReferencia).where(
-            PrecoReferencia.tabela_id == tabela_id,
-            PrecoReferencia.grupo_id == grupo_id,
+    existing = (
+        db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.tabela_id == tabela_id,
+                PrecoReferencia.grupo_id == grupo_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not existing:
         raise HTTPException(status_code=404, detail="Item não encontrado")
     db.delete(existing)
@@ -174,6 +184,7 @@ def remover_item(tabela_id: uuid.UUID, grupo_id: uuid.UUID, db: Session = Depend
 # Convivem com os preços por grupo acima (PrecoReferencia, legado). Na
 # resolução do preço do item (venda_service.resolver_preco_item) o preço do
 # SKU vence o do produto pai, que vence o do grupo.
+
 
 class _PrecoProdutoIn(BaseModel):
     produto_id: Optional[uuid.UUID] = None
@@ -192,7 +203,11 @@ class _PrecoProdutoIn(BaseModel):
 
 
 _CAMPOS_PRECO = (
-    "preco_avista", "preco_aprazo", "tem_plus_size", "preco_avista_plus", "preco_aprazo_plus",
+    "preco_avista",
+    "preco_aprazo",
+    "tem_plus_size",
+    "preco_avista_plus",
+    "preco_aprazo_plus",
 )
 
 
@@ -226,21 +241,29 @@ def _preco_produto_out(pp: PrecoTabelaProduto) -> dict:
 
 
 def _listar_precos_produto(db: Session, tabela_id: uuid.UUID) -> list[dict]:
-    rows = db.execute(
-        select(PrecoTabelaProduto)
-        .where(PrecoTabelaProduto.tabela_preco_id == tabela_id)
-        .options(
-            selectinload(PrecoTabelaProduto.produto),
-            selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.produto_pai),
-            selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.linha_item),
-            selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.coluna_item),
+    rows = (
+        db.execute(
+            select(PrecoTabelaProduto)
+            .where(PrecoTabelaProduto.tabela_preco_id == tabela_id)
+            .options(
+                selectinload(PrecoTabelaProduto.produto),
+                selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.produto_pai),
+                selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.linha_item),
+                selectinload(PrecoTabelaProduto.sku).selectinload(ProdutoSKU.coluna_item),
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     # Produto pai seguido dos próprios SKUs, em ordem de código.
     itens = [_preco_produto_out(pp) for pp in rows]
-    itens.sort(key=lambda i: (
-        str(i["produto_pai_id"] or ""), i["tipo"] != "PRODUTO", i["codigo"] or "",
-    ))
+    itens.sort(
+        key=lambda i: (
+            str(i["produto_pai_id"] or ""),
+            i["tipo"] != "PRODUTO",
+            i["codigo"] or "",
+        )
+    )
     return itens
 
 
@@ -291,14 +314,22 @@ def upsert_precos_produto(
             chave = ("sku", linha.sku_id)
             filtro = PrecoTabelaProduto.sku_id == linha.sku_id
 
-        registro = pendentes.get(chave) or db.execute(
-            select(PrecoTabelaProduto).where(
-                PrecoTabelaProduto.tabela_preco_id == tabela_id, filtro,
+        registro = (
+            pendentes.get(chave)
+            or db.execute(
+                select(PrecoTabelaProduto).where(
+                    PrecoTabelaProduto.tabela_preco_id == tabela_id,
+                    filtro,
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if registro is None:
             registro = PrecoTabelaProduto(
-                tabela_preco_id=tabela_id, produto_id=linha.produto_id, sku_id=linha.sku_id,
+                tabela_preco_id=tabela_id,
+                produto_id=linha.produto_id,
+                sku_id=linha.sku_id,
             )
             db.add(registro)
         for campo in _CAMPOS_PRECO:

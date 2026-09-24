@@ -28,7 +28,7 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
   // não está digitando nem com erro pendente.
   useEffect(() => {
     if (!focado && !erro) setTexto(codigoAtual);
-  }, [codigoAtual]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [codigoAtual]);
 
   const aplicar = async (tes) => {
     setSalvando(true);
@@ -47,8 +47,16 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
 
   const validar = async () => {
     const codigo = texto.trim().toUpperCase();
-    if (!codigo) { setTexto(codigoAtual); setErro(null); return true; }
-    if (codigo === codigoAtual.toUpperCase()) { setTexto(codigoAtual); setErro(null); return true; }
+    if (!codigo) {
+      setTexto(codigoAtual);
+      setErro(null);
+      return true;
+    }
+    if (codigo === codigoAtual.toUpperCase()) {
+      setTexto(codigoAtual);
+      setErro(null);
+      return true;
+    }
     let tes;
     try {
       tes = await validarTes(codigo);
@@ -98,7 +106,10 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
           title={erro || atual?.descricao || ""}
           placeholder={readOnly ? "" : "CÓDIGO"}
           onChange={(e) => setTexto(e.target.value.toUpperCase())}
-          onFocus={(e) => { setFocado(true); e.target.select(); }}
+          onFocus={(e) => {
+            setFocado(true);
+            e.target.select();
+          }}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
         />
@@ -112,22 +123,37 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setModalAberto(true)}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-              strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
               <circle cx="7" cy="7" r="4.5" />
               <line x1="10.5" y1="10.5" x2="14" y2="14" />
             </svg>
           </button>
         )}
       </div>
-      {erro && <div className={styles.erro} title={erro}>{erro}</div>}
+      {erro && (
+        <div className={styles.erro} title={erro}>
+          {erro}
+        </div>
+      )}
 
       {modalAberto && (
         <TesModal
           tesList={tesList}
           selecionadoId={tesId}
           onSelecionar={selecionarNoModal}
-          onFechar={() => { setModalAberto(false); inputRef.current?.focus(); }}
+          onFechar={() => {
+            setModalAberto(false);
+            inputRef.current?.focus();
+          }}
         />
       )}
     </div>
@@ -149,7 +175,7 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
   useEffect(() => {
     const idx = tesList.findIndex((t) => t.id === selecionadoId);
     setAtivo(idx >= 0 ? idx : 0);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     listaRef.current?.querySelector(`[data-idx="${ativo}"]`)?.scrollIntoView({ block: "nearest" });
@@ -157,7 +183,8 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
-      e.preventDefault(); e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
       onFechar();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -174,16 +201,21 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
   return ReactDOM.createPortal(
     <div
       className={styles.overlay}
-      onMouseDown={(e) => { overlayMouseDown.current = e.target; }}
+      onMouseDown={(e) => {
+        overlayMouseDown.current = e.target;
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget) onFechar();
+        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget)
+          onFechar();
       }}
       onKeyDown={handleKeyDown}
     >
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>Selecionar TES</h2>
-          <button className={styles.btnClose} onClick={onFechar} aria-label="Fechar">×</button>
+          <button className={styles.btnClose} onClick={onFechar} aria-label="Fechar">
+            ×
+          </button>
         </div>
 
         <div className={styles.modalScroll}>
@@ -191,7 +223,10 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
             className={styles.busca}
             placeholder="BUSCAR POR CÓDIGO OU DESCRIÇÃO..."
             value={busca}
-            onChange={(e) => { setBusca(e.target.value.toUpperCase()); setAtivo(0); }}
+            onChange={(e) => {
+              setBusca(e.target.value.toUpperCase());
+              setAtivo(0);
+            }}
             autoFocus
           />
 
@@ -206,20 +241,26 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
               </thead>
               <tbody>
                 {filtradas.length === 0 ? (
-                  <tr><td colSpan={3} className={styles.vazio}>Nenhuma TES encontrada.</td></tr>
-                ) : filtradas.map((t, idx) => (
-                  <tr
-                    key={t.id}
-                    data-idx={idx}
-                    className={`${idx === ativo ? styles.linhaAtiva : ""} ${t.id === selecionadoId ? styles.linhaSelecionada : ""}`}
-                    onClick={() => setAtivo(idx)}
-                    onDoubleClick={() => onSelecionar(t)}
-                  >
-                    <td title={t.codigo}>{t.codigo}</td>
-                    <td title={t.descricao}>{t.descricao}</td>
-                    <td title={t.cfop}>{t.cfop}</td>
+                  <tr>
+                    <td colSpan={3} className={styles.vazio}>
+                      Nenhuma TES encontrada.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  filtradas.map((t, idx) => (
+                    <tr
+                      key={t.id}
+                      data-idx={idx}
+                      className={`${idx === ativo ? styles.linhaAtiva : ""} ${t.id === selecionadoId ? styles.linhaSelecionada : ""}`}
+                      onClick={() => setAtivo(idx)}
+                      onDoubleClick={() => onSelecionar(t)}
+                    >
+                      <td title={t.codigo}>{t.codigo}</td>
+                      <td title={t.descricao}>{t.descricao}</td>
+                      <td title={t.cfop}>{t.cfop}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -227,7 +268,9 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
         </div>
 
         <div className={styles.modalActions}>
-          <button className={styles.btnSecondary} onClick={onFechar}>Cancelar</button>
+          <button className={styles.btnSecondary} onClick={onFechar}>
+            Cancelar
+          </button>
           <button
             className={styles.btnPrimary}
             disabled={!filtradas[ativo]}
@@ -238,6 +281,6 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }

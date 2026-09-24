@@ -1,11 +1,19 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import { FileText } from "lucide-react";
 import {
-  getCompras, createCompra, getCompra, uploadAnexo,
-  updateCompra, deleteCompra,
-  createLancamento, updateLancamento, deleteLancamento,
-  downloadAnexo, deleteAnexo,
-  importarLoteCompras, importarCompraFinal,
+  getCompras,
+  createCompra,
+  getCompra,
+  uploadAnexo,
+  updateCompra,
+  deleteCompra,
+  createLancamento,
+  updateLancamento,
+  deleteLancamento,
+  downloadAnexo,
+  deleteAnexo,
+  importarLoteCompras,
+  importarCompraFinal,
 } from "../../api/financeiro";
 import FormularioCompraVenda from "./FormularioCompraVenda";
 import ImportarXMLModal from "./ImportarXMLModal";
@@ -27,9 +35,9 @@ const dataFmt = (iso) => {
 const STATUS_LABELS = { PAGO: "Pago", PENDENTE: "Pendente", CANCELADO: "Cancelado" };
 
 function statusGeralInfo(total, pagas) {
-  if (total === 0) return { label: "—",        cls: "stPendente" };
-  if (pagas === total) return { label: "Quitado", cls: "stQuitado"  };
-  if (pagas > 0)  return { label: `${pagas}/${total} pagas`, cls: "stParcial"  };
+  if (total === 0) return { label: "—", cls: "stPendente" };
+  if (pagas === total) return { label: "Quitado", cls: "stQuitado" };
+  if (pagas > 0) return { label: `${pagas}/${total} pagas`, cls: "stParcial" };
   return { label: "Pendente", cls: "stPendente" };
 }
 
@@ -111,43 +119,42 @@ const totalGrupo = (itens) =>
 
 export default function ComprasFinanceiro() {
   const { hasPermission } = useAuth();
-  const [compras,       setCompras]       = useState([]);
-  const [loading,       setLoading]       = useState(false);
-  const [expandedId,    setExpandedId]    = useState(null);
-  const [expandedData,  setExpandedData]  = useState({});
+  const [compras, setCompras] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+  const [expandedData, setExpandedData] = useState({});
   const [loadingExpand, setLoadingExpand] = useState(false);
-  const [modal,         setModal]         = useState(false);
-  const [saving,        setSaving]        = useState(false);
-  const [erro,          setErro]          = useState(null);
+  const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState(null);
 
   // Edit
-  const [modalEditar,    setModalEditar]    = useState(false);
+  const [modalEditar, setModalEditar] = useState(false);
   const [editandoCompra, setEditandoCompra] = useState(null);
-  const [editForm,       setEditForm]       = useState({});
-  const [savingEdit,     setSavingEdit]     = useState(false);
-  const [erroEdit,       setErroEdit]       = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [erroEdit, setErroEdit] = useState(null);
 
   // Edit — parcelas e anexos
-  const [editParcelas,        setEditParcelas]        = useState([]);
-  const [parcelasRemovidas,   setParcelasRemovidas]   = useState([]);
-  const [loadingEditParcelas, setLoadingEditParcelas]  = useState(false);
+  const [editParcelas, setEditParcelas] = useState([]);
+  const [parcelasRemovidas, setParcelasRemovidas] = useState([]);
+  const [loadingEditParcelas, setLoadingEditParcelas] = useState(false);
 
   // Delete
-  const [modalExcluir,    setModalExcluir]    = useState(false);
+  const [modalExcluir, setModalExcluir] = useState(false);
   const [excluindoCompra, setExcluindoCompra] = useState(null);
-  const [deleting,        setDeleting]        = useState(false);
-  const [erroExcluir,     setErroExcluir]     = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState(null);
 
   // Importar XML
   const fileInputRef = useRef(null);
-  const [arquivosXml,    setArquivosXml]    = useState(null);
-  const [modalImportar,  setModalImportar]  = useState(false);
+  const [arquivosXml, setArquivosXml] = useState(null);
+  const [modalImportar, setModalImportar] = useState(false);
   const [resultadoImport, setResultadoImport] = useState(null);
 
   // Agrupamento por mês — chave do mês → true quando aberto (default: fechado)
   const [mesesAbertos, setMesesAbertos] = useState({});
-  const toggleColapso = (chave) =>
-    setMesesAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
+  const toggleColapso = (chave) => setMesesAbertos((prev) => ({ ...prev, [chave]: !prev[chave] }));
 
   const recarregarCompras = () => {
     setLoading(true);
@@ -182,7 +189,10 @@ export default function ComprasFinanceiro() {
 
   // ── Expand row ────────────────────────────────────────────────────────────
   const handleExpand = async (id) => {
-    if (expandedId === id) { setExpandedId(null); return; }
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
     setExpandedId(id);
     if (expandedData[id]) return;
     setLoadingExpand(true);
@@ -195,11 +205,18 @@ export default function ComprasFinanceiro() {
 
   // ── Criar compra ──────────────────────────────────────────────────────────
   const handleSalvar = async (formData, nfFile, boletos) => {
-    if (!formData.fornecedor?.trim()) { setErro("Informe o fornecedor."); return; }
-    if (!formData.valor_total || isNaN(formData.valor_total)) {
-      setErro("Informe o valor total."); return;
+    if (!formData.fornecedor?.trim()) {
+      setErro("Informe o fornecedor.");
+      return;
     }
-    if (!formData.primeiro_vencimento) { setErro("Informe o primeiro vencimento."); return; }
+    if (!formData.valor_total || isNaN(formData.valor_total)) {
+      setErro("Informe o valor total.");
+      return;
+    }
+    if (!formData.primeiro_vencimento) {
+      setErro("Informe o primeiro vencimento.");
+      return;
+    }
 
     setSaving(true);
     setErro(null);
@@ -214,9 +231,7 @@ export default function ComprasFinanceiro() {
 
       if (nfFile && parcelas.length > 0) {
         const tipoNf = tipoAnexoPorArquivo(nfFile);
-        await Promise.all(
-          parcelas.map((p) => uploadAnexo(p.id, nfFile, tipoNf).catch(() => {}))
-        );
+        await Promise.all(parcelas.map((p) => uploadAnexo(p.id, nfFile, tipoNf).catch(() => {})));
       }
 
       for (let i = 0; i < boletos.length; i++) {
@@ -239,8 +254,8 @@ export default function ComprasFinanceiro() {
     e.stopPropagation();
     setEditandoCompra(compra);
     setEditForm({
-      fornecedor:  compra.fornecedor  || "",
-      descricao:   compra.descricao   || "",
+      fornecedor: compra.fornecedor || "",
+      descricao: compra.descricao || "",
       valor_total: compra.valor_total || "",
       data_compra: (compra.data_compra || "").split("T")[0],
     });
@@ -281,7 +296,15 @@ export default function ComprasFinanceiro() {
   const addEditParcela = () => {
     setEditParcelas((prev) => [
       ...prev,
-      { key: `novo-${Date.now()}-${prev.length}`, id: null, parcela_numero: null, vencimento: "", valor: "", status: "PENDENTE", anexos: [] },
+      {
+        key: `novo-${Date.now()}-${prev.length}`,
+        id: null,
+        parcela_numero: null,
+        vencimento: "",
+        valor: "",
+        status: "PENDENTE",
+        anexos: [],
+      },
     ]);
   };
 
@@ -295,9 +318,11 @@ export default function ComprasFinanceiro() {
     if (!parcela.id || !file) return;
     try {
       const anexo = await uploadAnexo(parcela.id, file, tipo);
-      setEditParcelas((prev) => prev.map((p) => (
-        p.key === parcela.key ? { ...p, anexos: [...(p.anexos || []), anexo] } : p
-      )));
+      setEditParcelas((prev) =>
+        prev.map((p) =>
+          p.key === parcela.key ? { ...p, anexos: [...(p.anexos || []), anexo] } : p
+        )
+      );
     } catch (err) {
       setErroEdit(err.message || "Erro ao anexar arquivo.");
     }
@@ -306,9 +331,13 @@ export default function ComprasFinanceiro() {
   const handleRemoverAnexo = async (parcela, anexo) => {
     try {
       await deleteAnexo(anexo.id);
-      setEditParcelas((prev) => prev.map((p) => (
-        p.key === parcela.key ? { ...p, anexos: (p.anexos || []).filter((a) => a.id !== anexo.id) } : p
-      )));
+      setEditParcelas((prev) =>
+        prev.map((p) =>
+          p.key === parcela.key
+            ? { ...p, anexos: (p.anexos || []).filter((a) => a.id !== anexo.id) }
+            : p
+        )
+      );
     } catch (err) {
       setErroEdit(err.message || "Erro ao remover anexo.");
     }
@@ -317,9 +346,9 @@ export default function ComprasFinanceiro() {
   const handleDownloadAnexo = async (anexo) => {
     try {
       const blob = await downloadAnexo(anexo.id);
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       a.download = anexo.nome_original || "anexo";
       document.body.appendChild(a);
       a.click();
@@ -345,10 +374,10 @@ export default function ComprasFinanceiro() {
     setErroEdit(null);
     try {
       const dados = {
-        fornecedor:  editForm.fornecedor.trim() || undefined,
-        descricao:   editForm.descricao.trim()  || null,
+        fornecedor: editForm.fornecedor.trim() || undefined,
+        descricao: editForm.descricao.trim() || null,
         valor_total: parseFloat(editForm.valor_total) || undefined,
-        data_compra: editForm.data_compra       || undefined,
+        data_compra: editForm.data_compra || undefined,
       };
       await updateCompra(editandoCompra.id, dados);
 
@@ -400,18 +429,24 @@ export default function ComprasFinanceiro() {
       try {
         const full = await getCompra(compra.id);
         setExpandedData((prev) => ({ ...prev, [compra.id]: full }));
-        setDocCard((prev) => (prev && prev.compra.id === compra.id ? { ...prev, full, carregando: false } : prev));
+        setDocCard((prev) =>
+          prev && prev.compra.id === compra.id ? { ...prev, full, carregando: false } : prev
+        );
       } catch {
-        setDocCard((prev) => (prev && prev.compra.id === compra.id ? { ...prev, carregando: false } : prev));
+        setDocCard((prev) =>
+          prev && prev.compra.id === compra.id ? { ...prev, carregando: false } : prev
+        );
       }
     }
   };
 
   const handleFecharDocCard = () => setDocCard(null);
 
-  const docCardAnexos = docCard?.full ? extractParcelas(docCard.full).flatMap((p) => p.anexos || []) : [];
+  const docCardAnexos = docCard?.full
+    ? extractParcelas(docCard.full).flatMap((p) => p.anexos || [])
+    : [];
   const docCardAnexoXml = docCardAnexos.find(ehAnexoXml);
-  const docCardAnexoNf  = docCardAnexos.find(ehAnexoNfPdf);
+  const docCardAnexoNf = docCardAnexos.find(ehAnexoNfPdf);
 
   const handleDownloadXmlCard = () => {
     if (docCardAnexoXml) handleDownloadAnexo(docCardAnexoXml);
@@ -453,7 +488,6 @@ export default function ComprasFinanceiro() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="sc-page">
-
       <div className="sc-page-header">
         <h1>Compras</h1>
         <div className={styles.headerActions}>
@@ -462,7 +496,13 @@ export default function ComprasFinanceiro() {
               <button className={styles.btnSecondary} onClick={handleAbrirSeletorXml}>
                 Importar XMLs
               </button>
-              <button className={styles.btnNovo} onClick={() => { setModal(true); setErro(null); }}>
+              <button
+                className={styles.btnNovo}
+                onClick={() => {
+                  setModal(true);
+                  setErro(null);
+                }}
+              >
                 + Nova Compra
               </button>
             </>
@@ -487,182 +527,211 @@ export default function ComprasFinanceiro() {
 
       <div className={`sc-card ${styles.tableCard}`}>
         <div className={styles.tableWrapper}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Fornecedor</th>
-              <th style={{ textAlign: "center" }}>Data</th>
-              <th style={{ textAlign: "center" }}>Valor Total</th>
-              <th style={{ textAlign: "center" }}>Parcelas</th>
-              <th style={{ textAlign: "center" }}>Status</th>
-              <th
-                className={styles.acoesCell}
-                style={{ width: "180px", minWidth: "180px", maxWidth: "180px", textAlign: "center" }}
-              >
-                Ações
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {agruparPorMes(compras, "data_compra").map((grupo) => {
-              const colapsado = !mesesAbertos[grupo.chave];
-              return (
-                <Fragment key={grupo.chave}>
-                  <tr className={styles.monthHeaderRow}>
-                    <td colSpan={6}>
-                      <div
-                        className={styles.monthHeader}
-                        onClick={() => toggleColapso(grupo.chave)}
-                      >
-                        <span className={styles.monthHeaderChevron}>{colapsado ? "▶" : "▼"}</span>
-                        <span>
-                          {grupo.label} &nbsp;•&nbsp; {grupo.itens.length} nota{grupo.itens.length !== 1 ? "s" : ""} &nbsp;•&nbsp; Total: {moeda(totalGrupo(grupo.itens))}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  {!colapsado && grupo.itens.map((c) => {
-                    const isOpen  = expandedId === c.id;
-                    const cached  = expandedData[c.id];
-                    const parcelas = cached ? extractParcelas(cached) : [];
-                    const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(c, cached);
-                    const st = statusGeralInfo(totalParcelas, parcelasPagas);
-
-                    return (
-                      <Fragment key={c.id}>
-                        <tr
-                          className={styles.trClickable}
-                          onClick={() => handleExpand(c.id)}
-                        >
-                          <td title={c.fornecedor}>
-                            <div className={styles.fornecedorCell}>
-                              <span className={styles.fornecedorNome}>{c.fornecedor || "—"}</span>
-                              {c.descricao && <span className={styles.fornecedorSub}>{c.descricao}</span>}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: "center" }}>
-                            <div className={styles.dataCell}>
-                              <span>NF: {dataFmt(c.data_compra)}</span>
-                              <span className={styles.dataCellSub}>Import.: {dataFmt(c.created_at)}</span>
-                            </div>
-                          </td>
-                          <td className={styles.tdValor} style={{ textAlign: "center" }}>{moeda(c.valor_total)}</td>
-                          <td style={{ textAlign: "center" }}>{totalParcelas > 0 ? `${totalParcelas}x` : "—"}</td>
-                          <td style={{ textAlign: "center" }}>
-                            <span className={`${styles.badge} ${styles[st.cls]}`}>{st.label}</span>
-                          </td>
-                          <td
-                            className={styles.acoesCell}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}
-                          >
-                            <div
-                              className={styles.rowActions}
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: "6px",
-                                width: "100%",
-                                flexWrap: "nowrap",
-                              }}
-                            >
-                              {hasPermission(MODULO, "editar") && (
-                                <button
-                                  className={styles.btnEditar}
-                                  onClick={(e) => handleAbrirEditar(e, c)}
-                                  title="Editar"
-                                  style={{ height: "30px", padding: "0 10px", fontSize: "13px", flexShrink: 0 }}
-                                >
-                                  Editar
-                                </button>
-                              )}
-                              <button
-                                className={styles.btnIconAction}
-                                onClick={(e) => handleAbrirDocCard(e, c)}
-                                title="Documentos Fiscais"
-                                style={{ height: "30px", width: "30px", flexShrink: 0 }}
-                              >
-                                <FileText size={15} strokeWidth={1.75} />
-                              </button>
-                              {hasPermission(MODULO, "excluir") && (
-                                <button
-                                  className={styles.btnIconDelete}
-                                  onClick={(e) => handleAbrirExcluir(e, c)}
-                                  title="Excluir"
-                                  style={{ height: "30px", width: "30px", flexShrink: 0 }}
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-
-                        {isOpen && (
-                          <tr className={styles.expandRow}>
-                            <td colSpan={6}>
-                              <div className={styles.expandCell}>
-                                {loadingExpand && !cached ? (
-                                  <p className={styles.expandLoading}>Carregando parcelas…</p>
-                                ) : parcelas.length === 0 ? (
-                                  <p className={styles.expandLoading}>Nenhuma parcela encontrada.</p>
-                                ) : (
-                                  <>
-                                    <p className={styles.parcelasTitle}>Parcelas</p>
-                                    <table className={styles.parcelasTable}>
-                                      <thead>
-                                        <tr>
-                                          <th>#</th>
-                                          <th>Vencimento</th>
-                                          <th>Valor</th>
-                                          <th>Status</th>
-                                          <th>Pago em</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {parcelas.map((p, idx) => {
-                                          const pst = parcelaStatusInfo(p);
-                                          return (
-                                            <tr key={p.id}>
-                                              <td>{p.parcela_numero ?? idx + 1}</td>
-                                              <td>{dataFmt(p.data_vencimento)}</td>
-                                              <td>{moeda(p.valor)}</td>
-                                              <td>
-                                                <span className={`${styles.badge} ${styles[pst.cls]}`}>
-                                                  {pst.label}
-                                                </span>
-                                              </td>
-                                              <td>{dataFmt(p.data_pagamento)}</td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </Fragment>
-              );
-            })}
-
-            {compras.length === 0 && (
+          <table className={styles.table}>
+            <thead>
               <tr>
-                <td colSpan={6} className={styles.empty}>
-                  {loading ? "Carregando…" : "Nenhuma compra cadastrada."}
-                </td>
+                <th>Fornecedor</th>
+                <th style={{ textAlign: "center" }}>Data</th>
+                <th style={{ textAlign: "center" }}>Valor Total</th>
+                <th style={{ textAlign: "center" }}>Parcelas</th>
+                <th style={{ textAlign: "center" }}>Status</th>
+                <th
+                  className={styles.acoesCell}
+                  style={{
+                    width: "180px",
+                    minWidth: "180px",
+                    maxWidth: "180px",
+                    textAlign: "center",
+                  }}
+                >
+                  Ações
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {agruparPorMes(compras, "data_compra").map((grupo) => {
+                const colapsado = !mesesAbertos[grupo.chave];
+                return (
+                  <Fragment key={grupo.chave}>
+                    <tr className={styles.monthHeaderRow}>
+                      <td colSpan={6}>
+                        <div
+                          className={styles.monthHeader}
+                          onClick={() => toggleColapso(grupo.chave)}
+                        >
+                          <span className={styles.monthHeaderChevron}>{colapsado ? "▶" : "▼"}</span>
+                          <span>
+                            {grupo.label} &nbsp;•&nbsp; {grupo.itens.length} nota
+                            {grupo.itens.length !== 1 ? "s" : ""} &nbsp;•&nbsp; Total:{" "}
+                            {moeda(totalGrupo(grupo.itens))}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {!colapsado &&
+                      grupo.itens.map((c) => {
+                        const isOpen = expandedId === c.id;
+                        const cached = expandedData[c.id];
+                        const parcelas = cached ? extractParcelas(cached) : [];
+                        const { total: totalParcelas, pagas: parcelasPagas } = contarParcelas(
+                          c,
+                          cached
+                        );
+                        const st = statusGeralInfo(totalParcelas, parcelasPagas);
+
+                        return (
+                          <Fragment key={c.id}>
+                            <tr className={styles.trClickable} onClick={() => handleExpand(c.id)}>
+                              <td title={c.fornecedor}>
+                                <div className={styles.fornecedorCell}>
+                                  <span className={styles.fornecedorNome}>
+                                    {c.fornecedor || "—"}
+                                  </span>
+                                  {c.descricao && (
+                                    <span className={styles.fornecedorSub}>{c.descricao}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <div className={styles.dataCell}>
+                                  <span>NF: {dataFmt(c.data_compra)}</span>
+                                  <span className={styles.dataCellSub}>
+                                    Import.: {dataFmt(c.created_at)}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className={styles.tdValor} style={{ textAlign: "center" }}>
+                                {moeda(c.valor_total)}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                {totalParcelas > 0 ? `${totalParcelas}x` : "—"}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <span className={`${styles.badge} ${styles[st.cls]}`}>
+                                  {st.label}
+                                </span>
+                              </td>
+                              <td
+                                className={styles.acoesCell}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ width: "180px", minWidth: "180px", maxWidth: "180px" }}
+                              >
+                                <div
+                                  className={styles.rowActions}
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "6px",
+                                    width: "100%",
+                                    flexWrap: "nowrap",
+                                  }}
+                                >
+                                  {hasPermission(MODULO, "editar") && (
+                                    <button
+                                      className={styles.btnEditar}
+                                      onClick={(e) => handleAbrirEditar(e, c)}
+                                      title="Editar"
+                                      style={{
+                                        height: "30px",
+                                        padding: "0 10px",
+                                        fontSize: "13px",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      Editar
+                                    </button>
+                                  )}
+                                  <button
+                                    className={styles.btnIconAction}
+                                    onClick={(e) => handleAbrirDocCard(e, c)}
+                                    title="Documentos Fiscais"
+                                    style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                                  >
+                                    <FileText size={15} strokeWidth={1.75} />
+                                  </button>
+                                  {hasPermission(MODULO, "excluir") && (
+                                    <button
+                                      className={styles.btnIconDelete}
+                                      onClick={(e) => handleAbrirExcluir(e, c)}
+                                      title="Excluir"
+                                      style={{ height: "30px", width: "30px", flexShrink: 0 }}
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+
+                            {isOpen && (
+                              <tr className={styles.expandRow}>
+                                <td colSpan={6}>
+                                  <div className={styles.expandCell}>
+                                    {loadingExpand && !cached ? (
+                                      <p className={styles.expandLoading}>Carregando parcelas…</p>
+                                    ) : parcelas.length === 0 ? (
+                                      <p className={styles.expandLoading}>
+                                        Nenhuma parcela encontrada.
+                                      </p>
+                                    ) : (
+                                      <>
+                                        <p className={styles.parcelasTitle}>Parcelas</p>
+                                        <table className={styles.parcelasTable}>
+                                          <thead>
+                                            <tr>
+                                              <th>#</th>
+                                              <th>Vencimento</th>
+                                              <th>Valor</th>
+                                              <th>Status</th>
+                                              <th>Pago em</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {parcelas.map((p, idx) => {
+                                              const pst = parcelaStatusInfo(p);
+                                              return (
+                                                <tr key={p.id}>
+                                                  <td>{p.parcela_numero ?? idx + 1}</td>
+                                                  <td>{dataFmt(p.data_vencimento)}</td>
+                                                  <td>{moeda(p.valor)}</td>
+                                                  <td>
+                                                    <span
+                                                      className={`${styles.badge} ${styles[pst.cls]}`}
+                                                    >
+                                                      {pst.label}
+                                                    </span>
+                                                  </td>
+                                                  <td>{dataFmt(p.data_pagamento)}</td>
+                                                </tr>
+                                              );
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                  </Fragment>
+                );
+              })}
+
+              {compras.length === 0 && (
+                <tr>
+                  <td colSpan={6} className={styles.empty}>
+                    {loading ? "Carregando…" : "Nenhuma compra cadastrada."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -684,7 +753,10 @@ export default function ComprasFinanceiro() {
       {/* ── Modal: Editar Compra ── */}
       {modalEditar && editandoCompra && (
         <div className={styles.overlay} onClick={() => !savingEdit && setModalEditar(false)}>
-          <div className={`${styles.modal} ${styles.modalLarge}`} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`${styles.modal} ${styles.modalLarge}`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar Compra</h2>
               <button
@@ -740,7 +812,9 @@ export default function ComprasFinanceiro() {
               {/* ── Parcelas ── */}
               <div className={styles.uploadSection}>
                 <div className={styles.parcelasEditHeader}>
-                  <p className={styles.uploadSectionLabel} style={{ margin: 0 }}>Parcelas</p>
+                  <p className={styles.uploadSectionLabel} style={{ margin: 0 }}>
+                    Parcelas
+                  </p>
                   <button type="button" className={styles.btnAddParcela} onClick={addEditParcela}>
                     + Adicionar Parcela
                   </button>
@@ -761,13 +835,17 @@ export default function ComprasFinanceiro() {
                         disabled={p.status === "PAGO"}
                       />
                       <input
-                        type="number" min="0" step="0.01"
+                        type="number"
+                        min="0"
+                        step="0.01"
                         className={styles.input}
                         value={p.valor}
                         onChange={updateEditParcela(p.key, "valor")}
                         disabled={p.status === "PAGO"}
                       />
-                      <span className={`${styles.badge} ${styles["st" + (p.status || "PENDENTE")]}`}>
+                      <span
+                        className={`${styles.badge} ${styles["st" + (p.status || "PENDENTE")]}`}
+                      >
                         {STATUS_LABELS[p.status] || "Pendente"}
                       </span>
                       <button
@@ -775,7 +853,11 @@ export default function ComprasFinanceiro() {
                         className={styles.btnRemoveParcela}
                         onClick={() => removeEditParcela(p)}
                         disabled={p.status === "PAGO"}
-                        title={p.status === "PAGO" ? "Parcela paga não pode ser removida" : "Remover parcela"}
+                        title={
+                          p.status === "PAGO"
+                            ? "Parcela paga não pode ser removida"
+                            : "Remover parcela"
+                        }
                       >
                         ×
                       </button>
@@ -794,7 +876,9 @@ export default function ComprasFinanceiro() {
                     const boleto = (p.anexos || []).find((a) => a.tipo === "BOLETO");
                     return (
                       <div key={p.key} className={styles.anexoRow}>
-                        <span className={styles.anexoRowLabel}>Parcela {p.parcela_numero ?? idx + 1}</span>
+                        <span className={styles.anexoRowLabel}>
+                          Parcela {p.parcela_numero ?? idx + 1}
+                        </span>
                         {boleto ? (
                           <>
                             <span className={styles.anexoRowNome} title={boleto.nome_original}>
@@ -934,7 +1018,9 @@ export default function ComprasFinanceiro() {
                       </label>
                     );
                   }
-                  return <p className={styles.expandLoading}>Salve a compra para anexar o DANFE.</p>;
+                  return (
+                    <p className={styles.expandLoading}>Salve a compra para anexar o DANFE.</p>
+                  );
                 })()}
               </div>
 
@@ -979,8 +1065,7 @@ export default function ComprasFinanceiro() {
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>
                 Tem certeza que deseja excluir a compra de{" "}
-                <strong>{excluindoCompra.fornecedor}</strong>?{" "}
-                Esta ação não pode ser desfeita.
+                <strong>{excluindoCompra.fornecedor}</strong>? Esta ação não pode ser desfeita.
               </p>
               {erroExcluir && <p className={styles.erro}>{erroExcluir}</p>}
             </div>
@@ -1012,7 +1097,10 @@ export default function ComprasFinanceiro() {
           tipo="compra"
           importarLote={importarLoteCompras}
           importarFinal={importarCompraFinal}
-          onFechar={() => { setModalImportar(false); setArquivosXml(null); }}
+          onFechar={() => {
+            setModalImportar(false);
+            setArquivosXml(null);
+          }}
           onConcluido={handleConcluirImportacao}
         />
       )}

@@ -63,16 +63,16 @@ const VAZIO = {
 export default function TransportadorasPage() {
   const { hasPermission } = useAuth();
   const [transportadoras, setTransportadoras] = useState([]);
-  const [busca, setBusca]                     = useState("");
-  const [filtroBloqueado, setFiltroBloqueado]  = useState("");
-  const [loading, setLoading]                  = useState(true);
-  const [modal, setModal]                      = useState(null);
-  const [aba, setAba]                          = useState("dados");
-  const [abaErro, setAbaErro]                  = useState(null);
-  const [saving, setSaving]                    = useState(false);
-  const [erro, setErro]                        = useState(null);
-  const [cnpjStatus, setCnpjStatus]            = useState(null);
-  const [cepStatus, setCepStatus]              = useState(null);
+  const [busca, setBusca] = useState("");
+  const [filtroBloqueado, setFiltroBloqueado] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [aba, setAba] = useState("dados");
+  const [abaErro, setAbaErro] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState(null);
+  const [cnpjStatus, setCnpjStatus] = useState(null);
+  const [cepStatus, setCepStatus] = useState(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -85,7 +85,9 @@ export default function TransportadorasPage() {
     }
   }, [busca, filtroBloqueado]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   const resetModal = (base) => {
     setModal(base);
@@ -98,33 +100,39 @@ export default function TransportadorasPage() {
 
   const abrirNovo = () => resetModal({ ...VAZIO });
 
-  const abrirEditar = (t) => resetModal({
-    id: t.id,
-    codigo: t.codigo || "",
-    tipo_pessoa: t.tipo_pessoa || "juridica",
-    nome: t.nome || "",
-    nome_fantasia: t.nome_fantasia || "",
-    endereco: t.endereco || "",
-    numero: t.numero || "",
-    complemento: t.complemento || "",
-    bairro: t.bairro || "",
-    municipio: t.municipio || "",
-    estado: t.estado || "",
-    cep: formatCep(t.cep || ""),
-    placa: t.placa || "",
-    telefone: t.telefone || "",
-    fax: t.fax || "",
-    cpf_cnpj: formatCpfCnpj(t.cpf_cnpj || ""),
-    rg_ie: t.rg_ie || "",
-    email: t.email || "",
-    email_nfe: t.email_nfe || "",
-    homepage: t.homepage || "",
-    contato: t.contato || "",
-    bloqueado: !!t.bloqueado,
-    data_cadastro: t.data_cadastro,
-  });
+  const abrirEditar = (t) =>
+    resetModal({
+      id: t.id,
+      codigo: t.codigo || "",
+      tipo_pessoa: t.tipo_pessoa || "juridica",
+      nome: t.nome || "",
+      nome_fantasia: t.nome_fantasia || "",
+      endereco: t.endereco || "",
+      numero: t.numero || "",
+      complemento: t.complemento || "",
+      bairro: t.bairro || "",
+      municipio: t.municipio || "",
+      estado: t.estado || "",
+      cep: formatCep(t.cep || ""),
+      placa: t.placa || "",
+      telefone: t.telefone || "",
+      fax: t.fax || "",
+      cpf_cnpj: formatCpfCnpj(t.cpf_cnpj || ""),
+      rg_ie: t.rg_ie || "",
+      email: t.email || "",
+      email_nfe: t.email_nfe || "",
+      homepage: t.homepage || "",
+      contato: t.contato || "",
+      bloqueado: !!t.bloqueado,
+      data_cadastro: t.data_cadastro,
+    });
 
-  const fecharModal = () => { setModal(null); setErro(null); setCnpjStatus(null); setCepStatus(null); };
+  const fecharModal = () => {
+    setModal(null);
+    setErro(null);
+    setCnpjStatus(null);
+    setCepStatus(null);
+  };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
   const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
 
@@ -136,7 +144,8 @@ export default function TransportadorasPage() {
       setAba("dados");
       return;
     }
-    setSaving(true); setErro(null);
+    setSaving(true);
+    setErro(null);
     try {
       const payload = {
         tipo_pessoa: modal.tipo_pessoa || null,
@@ -176,22 +185,36 @@ export default function TransportadorasPage() {
 
   const handleExcluir = async (id) => {
     if (!window.confirm("Deseja excluir esta transportadora?")) return;
-    try { await transportadorasApi.deletar(id); await carregar(); } catch (e) { alert(e.message); }
+    try {
+      await transportadorasApi.deletar(id);
+      await carregar();
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const consultarCnpj = async () => {
     const digits = stripDigits(modal.cpf_cnpj);
-    if (digits.length !== 14) { setCnpjStatus("invalido"); return; }
+    if (digits.length !== 14) {
+      setCnpjStatus("invalido");
+      return;
+    }
 
     setCnpjStatus("consultando");
     try {
       const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digits}`);
-      if (res.status === 404) { setCnpjStatus("nao_encontrado"); return; }
-      if (!res.ok)            { setCnpjStatus("erro");           return; }
+      if (res.status === 404) {
+        setCnpjStatus("nao_encontrado");
+        return;
+      }
+      if (!res.ok) {
+        setCnpjStatus("erro");
+        return;
+      }
 
       const d = await res.json();
       const tel = (d.ddd_telefone_1 || "").trim();
-      const logradouro  = d.logradouro  || "";
+      const logradouro = d.logradouro || "";
       const complemento = d.complemento || "";
       const cepRaw = (d.cep || "").replace(/\D/g, "");
       const cep = cepRaw.length === 8 ? `${cepRaw.slice(0, 5)}-${cepRaw.slice(5)}` : cepRaw;
@@ -218,14 +241,23 @@ export default function TransportadorasPage() {
 
   const consultarCep = async () => {
     const digits = stripDigits(modal.cep);
-    if (digits.length !== 8) { setCepStatus("invalido"); return; }
+    if (digits.length !== 8) {
+      setCepStatus("invalido");
+      return;
+    }
 
     setCepStatus("consultando");
     try {
       const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      if (!res.ok) { setCepStatus("erro"); return; }
+      if (!res.ok) {
+        setCepStatus("erro");
+        return;
+      }
       const d = await res.json();
-      if (d.erro) { setCepStatus("nao_encontrado"); return; }
+      if (d.erro) {
+        setCepStatus("nao_encontrado");
+        return;
+      }
 
       setModal((m) => ({
         ...m,
@@ -250,7 +282,9 @@ export default function TransportadorasPage() {
       <div className="sc-page-header">
         <h1>Transportadoras</h1>
         {hasPermission(MODULO, "criar") && (
-          <button className={styles.btnNovo} onClick={abrirNovo}>+ Nova Transportadora</button>
+          <button className={styles.btnNovo} onClick={abrirNovo}>
+            + Nova Transportadora
+          </button>
         )}
       </div>
 
@@ -263,7 +297,11 @@ export default function TransportadorasPage() {
             placeholder="Buscar por nome ou CPF/CNPJ…"
           />
         </div>
-        <select className={styles.select} value={filtroBloqueado} onChange={(e) => setFiltroBloqueado(e.target.value)}>
+        <select
+          className={styles.select}
+          value={filtroBloqueado}
+          onChange={(e) => setFiltroBloqueado(e.target.value)}
+        >
           <option value="">Todos</option>
           <option value="false">Não bloqueadas</option>
           <option value="true">Bloqueadas</option>
@@ -284,34 +322,51 @@ export default function TransportadorasPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className={styles.empty}>Carregando…</td></tr>
-            ) : transportadoras.length === 0 ? (
-              <tr><td colSpan={6} className={styles.empty}>Nenhuma transportadora cadastrada.</td></tr>
-            ) : transportadoras.map((t) => (
-              <tr key={t.id}>
-                <td className={styles.tdMono}>{t.codigo || "—"}</td>
-                <td>{t.nome}</td>
-                <td className={styles.tdMono}>{formatCpfCnpj(t.cpf_cnpj || "") || "—"}</td>
-                <td>{t.telefone || "—"}</td>
-                <td>
-                  <span className={`${styles.badge} ${t.bloqueado ? styles.badgeBloqueado : styles.badgeOk}`}>
-                    {t.bloqueado ? "Sim" : "Não"}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.actions}>
-                    {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => abrirEditar(t)}>Editar</button>
-                    )}
-                    {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(t.id)}>
-                        Excluir
-                      </button>
-                    )}
-                  </div>
+              <tr>
+                <td colSpan={6} className={styles.empty}>
+                  Carregando…
                 </td>
               </tr>
-            ))}
+            ) : transportadoras.length === 0 ? (
+              <tr>
+                <td colSpan={6} className={styles.empty}>
+                  Nenhuma transportadora cadastrada.
+                </td>
+              </tr>
+            ) : (
+              transportadoras.map((t) => (
+                <tr key={t.id}>
+                  <td className={styles.tdMono}>{t.codigo || "—"}</td>
+                  <td>{t.nome}</td>
+                  <td className={styles.tdMono}>{formatCpfCnpj(t.cpf_cnpj || "") || "—"}</td>
+                  <td>{t.telefone || "—"}</td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${t.bloqueado ? styles.badgeBloqueado : styles.badgeOk}`}
+                    >
+                      {t.bloqueado ? "Sim" : "Não"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      {hasPermission(MODULO, "editar") && (
+                        <button className={styles.btnLink} onClick={() => abrirEditar(t)}>
+                          Editar
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={`${styles.btnLink} ${styles.btnDanger}`}
+                          onClick={() => handleExcluir(t.id)}
+                        >
+                          Excluir
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -320,8 +375,12 @@ export default function TransportadorasPage() {
         <div className={styles.overlay} onClick={fecharModal}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
-              <h2 className={styles.modalTitle}>{modal.id ? "Editar Transportadora" : "Nova Transportadora"}</h2>
-              <button className={styles.btnClose} onClick={fecharModal}>×</button>
+              <h2 className={styles.modalTitle}>
+                {modal.id ? "Editar Transportadora" : "Nova Transportadora"}
+              </h2>
+              <button className={styles.btnClose} onClick={fecharModal}>
+                ×
+              </button>
             </div>
 
             <div className={styles.tabs}>
@@ -342,12 +401,20 @@ export default function TransportadorasPage() {
                 <div className={styles.fieldGrid}>
                   <label className={styles.field}>
                     <span>Código</span>
-                    <input className={styles.input} value={modal.codigo || "Gerado automaticamente"} readOnly />
+                    <input
+                      className={styles.input}
+                      value={modal.codigo || "Gerado automaticamente"}
+                      readOnly
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Tipo Pessoa</span>
-                    <select className={styles.input} value={modal.tipo_pessoa} onChange={setF("tipo_pessoa")}>
+                    <select
+                      className={styles.input}
+                      value={modal.tipo_pessoa}
+                      onChange={setF("tipo_pessoa")}
+                    >
                       <option value="juridica">Jurídica</option>
                       <option value="fisica">Física</option>
                     </select>
@@ -355,12 +422,21 @@ export default function TransportadorasPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome *</span>
-                    <input className={styles.input} value={modal.nome} onChange={setFUpper("nome")} placeholder="Razão social ou nome" />
+                    <input
+                      className={styles.input}
+                      value={modal.nome}
+                      onChange={setFUpper("nome")}
+                      placeholder="Razão social ou nome"
+                    />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
-                    <input className={styles.input} value={modal.nome_fantasia} onChange={setFUpper("nome_fantasia")} />
+                    <input
+                      className={styles.input}
+                      value={modal.nome_fantasia}
+                      onChange={setFUpper("nome_fantasia")}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -368,7 +444,9 @@ export default function TransportadorasPage() {
                     <input
                       className={styles.input}
                       value={modal.placa}
-                      onChange={(e) => setModal((m) => ({ ...m, placa: e.target.value.toUpperCase() }))}
+                      onChange={(e) =>
+                        setModal((m) => ({ ...m, placa: e.target.value.toUpperCase() }))
+                      }
                       placeholder="ABC1D23"
                       maxLength={10}
                     />
@@ -378,7 +456,11 @@ export default function TransportadorasPage() {
                     <span>Data Cadastro</span>
                     <input
                       className={styles.input}
-                      value={modal.data_cadastro ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR") : "Hoje"}
+                      value={
+                        modal.data_cadastro
+                          ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR")
+                          : "Hoje"
+                      }
                       readOnly
                     />
                   </label>
@@ -402,11 +484,18 @@ export default function TransportadorasPage() {
                       <input
                         className={styles.input}
                         value={modal.cep}
-                        onChange={(e) => { setModal((m) => ({ ...m, cep: formatCep(e.target.value) })); setCepStatus(null); }}
+                        onChange={(e) => {
+                          setModal((m) => ({ ...m, cep: formatCep(e.target.value) }));
+                          setCepStatus(null);
+                        }}
                         placeholder="00000-000"
                         maxLength={9}
                       />
-                      <button className={styles.btnConsultar} onClick={consultarCep} disabled={cepStatus === "consultando"}>
+                      <button
+                        className={styles.btnConsultar}
+                        onClick={consultarCep}
+                        disabled={cepStatus === "consultando"}
+                      >
                         {cepStatus === "consultando" ? "Consultando…" : "Buscar CEP"}
                       </button>
                     </div>
@@ -414,7 +503,13 @@ export default function TransportadorasPage() {
 
                   <label className={styles.field}>
                     <span>Estado (UF)</span>
-                    <input className={styles.input} value={modal.estado} onChange={setF("estado")} placeholder="SP" maxLength={2} />
+                    <input
+                      className={styles.input}
+                      value={modal.estado}
+                      onChange={setF("estado")}
+                      placeholder="SP"
+                      maxLength={2}
+                    />
                   </label>
 
                   {cepStatus === "invalido" && (
@@ -441,24 +536,46 @@ export default function TransportadorasPage() {
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
-                      <input className={styles.input} value={modal.endereco} onChange={setFUpper("endereco")} placeholder="Rua, Av…" />
-                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setFUpper("numero")} placeholder="Nº" />
+                      <input
+                        className={styles.input}
+                        value={modal.endereco}
+                        onChange={setFUpper("endereco")}
+                        placeholder="Rua, Av…"
+                      />
+                      <input
+                        className={`${styles.input} ${styles.inputNumero}`}
+                        value={modal.numero}
+                        onChange={setFUpper("numero")}
+                        placeholder="Nº"
+                      />
                     </div>
                   </div>
 
                   <label className={styles.field}>
                     <span>Complemento</span>
-                    <input className={styles.input} value={modal.complemento} onChange={setFUpper("complemento")} />
+                    <input
+                      className={styles.input}
+                      value={modal.complemento}
+                      onChange={setFUpper("complemento")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Bairro</span>
-                    <input className={styles.input} value={modal.bairro} onChange={setFUpper("bairro")} />
+                    <input
+                      className={styles.input}
+                      value={modal.bairro}
+                      onChange={setFUpper("bairro")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Município</span>
-                    <input className={styles.input} value={modal.municipio} onChange={setFUpper("municipio")} />
+                    <input
+                      className={styles.input}
+                      value={modal.municipio}
+                      onChange={setFUpper("municipio")}
+                    />
                   </label>
                 </div>
               )}
@@ -479,8 +596,14 @@ export default function TransportadorasPage() {
                         placeholder="00.000.000/0000-00"
                         maxLength={18}
                       />
-                      <button className={styles.btnConsultar} onClick={consultarCnpj} disabled={cnpjStatus === "consultando"}>
-                        {cnpjStatus === "consultando" ? "Consultando…" : "Consultar Receita Federal"}
+                      <button
+                        className={styles.btnConsultar}
+                        onClick={consultarCnpj}
+                        disabled={cnpjStatus === "consultando"}
+                      >
+                        {cnpjStatus === "consultando"
+                          ? "Consultando…"
+                          : "Consultar Receita Federal"}
                       </button>
                     </div>
                   </div>
@@ -513,7 +636,12 @@ export default function TransportadorasPage() {
 
                   <label className={styles.field}>
                     <span>Telefone</span>
-                    <input className={styles.input} value={modal.telefone} onChange={setF("telefone")} placeholder="(00) 0000-0000" />
+                    <input
+                      className={styles.input}
+                      value={modal.telefone}
+                      onChange={setF("telefone")}
+                      placeholder="(00) 0000-0000"
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -523,22 +651,43 @@ export default function TransportadorasPage() {
 
                   <label className={styles.field}>
                     <span>E-mail</span>
-                    <input type="email" className={styles.input} value={modal.email} onChange={setF("email")} placeholder="email@empresa.com" />
+                    <input
+                      type="email"
+                      className={styles.input}
+                      value={modal.email}
+                      onChange={setF("email")}
+                      placeholder="email@empresa.com"
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>E-mail NF-e</span>
-                    <input type="email" className={styles.input} value={modal.email_nfe} onChange={setF("email_nfe")} />
+                    <input
+                      type="email"
+                      className={styles.input}
+                      value={modal.email_nfe}
+                      onChange={setF("email_nfe")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Home-Page</span>
-                    <input className={`${styles.input} no-uppercase`} value={modal.homepage} onChange={setF("homepage")} placeholder="https://…" />
+                    <input
+                      className={`${styles.input} no-uppercase`}
+                      value={modal.homepage}
+                      onChange={setF("homepage")}
+                      placeholder="https://…"
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Contato</span>
-                    <input className={styles.input} value={modal.contato} onChange={setFUpper("contato")} placeholder="Nome do contato" />
+                    <input
+                      className={styles.input}
+                      value={modal.contato}
+                      onChange={setFUpper("contato")}
+                      placeholder="Nome do contato"
+                    />
                   </label>
                 </div>
               )}
@@ -547,9 +696,13 @@ export default function TransportadorasPage() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSefaz} onClick={consultarSefaz}>Consultar SEFAZ</button>
+              <button className={styles.btnSefaz} onClick={consultarSefaz}>
+                Consultar SEFAZ
+              </button>
               <div className={styles.modalActionsRight}>
-                <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
+                <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
+                  Cancelar
+                </button>
                 <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
                   {saving ? "Salvando…" : "Salvar"}
                 </button>

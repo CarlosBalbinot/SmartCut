@@ -8,6 +8,7 @@ O segredo é o mesmo para os dois (settings.jwt_segredo — ver config.py),
 mas o subject prefixado + claim "tipo" garantem que um token de um sistema
 jamais seja aceito como válido no outro.
 """
+
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -29,6 +30,7 @@ SENHA_MINIMO_CARACTERES = 8
 
 
 # ── Senha (implementação única — bcrypt puro) ────────────────────────────
+
 
 def hash_senha(senha: str) -> str:
     return bcrypt.hashpw(senha.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -55,6 +57,7 @@ def validar_politica_senha(senha: str) -> str | None:
 
 
 # ── Tokens JWT ─────────────────────────────────────────────────────────────
+
 
 def _payload(sub: str, username: str, tipo: str, **extra) -> dict:
     return {

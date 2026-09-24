@@ -1,7 +1,7 @@
 """baseline_schema_completo
 
 Revision ID: f9d6a18fef75
-Revises: 
+Revises:
 Create Date: 2026-09-23 21:03:13.158333
 
 """

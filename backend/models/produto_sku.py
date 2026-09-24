@@ -3,7 +3,15 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, Uuid, func,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,9 +22,7 @@ SITUACAO_VALIDAS = ("Ativo", "Inativo")
 
 class ProdutoSKU(Base):
     __tablename__ = "produtos_sku"
-    __table_args__ = (
-        UniqueConstraint("produto_pai_id", "linha_item_id", "coluna_item_id"),
-    )
+    __table_args__ = (UniqueConstraint("produto_pai_id", "linha_item_id", "coluna_item_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # produtos.id é UUID (não Integer) — ver desvio de plano no relatório final.

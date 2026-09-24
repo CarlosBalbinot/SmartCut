@@ -1,0 +1,46 @@
+# Configuração de ferramentas de desenvolvimento do backend.
+# pytest (Parte 8.1) e ruff (Parte 8.3). Instalar:
+#   py -3.12 -m pip install -r requirements.txt -r requirements-dev.txt
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["services", "routers", "middleware", "parsers"]
+omit = ["*/__pycache__/*", "alembic/*", "build/*", "dist/*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    "alembic",
+    "build",
+    "dist",
+    ".venv",
+    "uploads",
+    # Código vendido/de terceiros (engine C++ de nesting + helpers JS) — não
+    # passa por ruff (gyp-mac-tool é script Python 2, artefatos de build .o/.mk).
+    "services/nesting",
+]
+
+# ── Scripts de lint/formatação (8.3) ────────────────────────────────────
+# Rodar na raiz do backend:
+#   py -3.12 -m ruff check .        # lint
+#   py -3.12 -m ruff check . --fix  # lint + autocorreção segura
+#   py -3.12 -m ruff format .       # formato
+# O pre-commit (raiz do repo, .pre-commit-config.yaml) executa os dois nos
+# commits; o CI (Parte 9) roda `ruff check` + pytest.
+
+[tool.ruff.lint]
+# Código legado é tolerado pontualmente com # noqa — regra 5 do prompt:
+# não reescrever código em uso sem necessidade.
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E501",  # linhas longas do legado (limite 120 já configurado acima)
+    "B008",  # Depends() em default de argumento — padrão do FastAPI
+    "B904",  # raise HTTPException direto (sem `from`) — convenção do projeto
+    "B905",  # zip() sem strict — legado
+]

@@ -3,8 +3,16 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    Boolean, Date, DateTime, ForeignKey, Integer, Numeric,
-    String, UniqueConstraint, Uuid, func,
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -109,18 +117,14 @@ class Lancamento(Base):
         foreign_keys="[Lancamento.recorrencia_origem_id]",
         remote_side="Lancamento.id",
     )
-    anexos: Mapped[list["AnexoLancamento"]] = relationship(
-        back_populates="lancamento", cascade="all, delete-orphan"
-    )
+    anexos: Mapped[list["AnexoLancamento"]] = relationship(back_populates="lancamento", cascade="all, delete-orphan")
 
 
 class AnexoLancamento(Base):
     __tablename__ = "anexos_lancamento"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    lancamento_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("lancamentos.id"), nullable=False
-    )
+    lancamento_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lancamentos.id"), nullable=False)
     arquivo_path: Mapped[str] = mapped_column(String(500), nullable=False)
     tipo: Mapped[str] = mapped_column(String(20), nullable=False)
     nome_original: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -131,9 +135,7 @@ class AnexoLancamento(Base):
 
 class SaldoInicialConta(Base):
     __tablename__ = "saldo_inicial_conta"
-    __table_args__ = (
-        UniqueConstraint("conta_bancaria_id", "mes", "ano", name="uq_saldo_inicial_conta_mes_ano"),
-    )
+    __table_args__ = (UniqueConstraint("conta_bancaria_id", "mes", "ano", name="uq_saldo_inicial_conta_mes_ano"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     conta_bancaria_id: Mapped[uuid.UUID] = mapped_column(
@@ -148,9 +150,7 @@ class SaldoInicialConta(Base):
 
 class MetaMensal(Base):
     __tablename__ = "metas_mensais"
-    __table_args__ = (
-        UniqueConstraint("mes", "ano", "tipo", name="uq_meta_mensal_mes_ano_tipo"),
-    )
+    __table_args__ = (UniqueConstraint("mes", "ano", "tipo", name="uq_meta_mensal_mes_ano_tipo"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     mes: Mapped[int] = mapped_column(Integer, nullable=False)

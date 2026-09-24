@@ -1,18 +1,13 @@
 import uuid
 
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
-from models.tecido import CorTecido, LoteTecido, ModeloTecido
+from models.tecido import CorTecido, LoteTecido
 from schemas.tecido_schema import CorCreate, CorOut, CorUpdate, LoteOut
 
 
 def listar_por_modelo(db: Session, modelo_id: uuid.UUID) -> list[CorOut]:
-    cores = (
-        db.query(CorTecido)
-        .filter(CorTecido.modelo_id == modelo_id)
-        .order_by(CorTecido.nome_cor)
-        .all()
-    )
+    cores = db.query(CorTecido).filter(CorTecido.modelo_id == modelo_id).order_by(CorTecido.nome_cor).all()
     return [CorOut.model_validate(c) for c in cores]
 
 

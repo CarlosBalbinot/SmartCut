@@ -24,51 +24,73 @@ const ACAO_LABEL = {
 const CRUD = ["ver", "criar", "editar", "excluir"];
 
 const GRUPOS = [
-  { grupo: "Cadastros", itens: [
-    { modulo: "cadastros_clientes", label: "Clientes", acoes: CRUD },
-    { modulo: "cadastros_produtos", label: "Produtos", acoes: CRUD },
-    { modulo: "cadastros_transportadoras", label: "Transportadoras", acoes: CRUD },
-    { modulo: "cadastros_vendedores", label: "Vendedores", acoes: CRUD },
-  ]},
-  { grupo: "Produção", itens: [
-    { modulo: "tecidos", label: "Tecidos", acoes: CRUD },
-    { modulo: "moldes", label: "Moldes", acoes: CRUD },
-    { modulo: "encaixes", label: "Encaixes", acoes: CRUD },
-    { modulo: "encaixe_rapido", label: "Encaixe Rápido", acoes: ["ver", "criar"] },
-  ]},
-  { grupo: "Comercial", itens: [
-    { modulo: "precificacao", label: "Precificação", acoes: CRUD },
-    { modulo: "projecao", label: "Projeção", acoes: ["ver"] },
-  ]},
-  { grupo: "Pedidos", itens: [
-    { modulo: "pedidos_ver", label: "Ver pedidos", acoes: ["ver"] },
-    { modulo: "pedidos_criar", label: "Criar pedidos", acoes: ["ver"] },
-    { modulo: "pedidos_editar", label: "Editar pedidos", acoes: ["ver"] },
-    { modulo: "pedidos_excluir", label: "Excluir pedidos", acoes: ["ver"] },
-    { modulo: "pedidos_emitir_nfe", label: "Emitir NF-e de pedidos", acoes: ["ver"] },
-  ]},
-  { grupo: "Financeiro", itens: [
-    { modulo: "financeiro_painel", label: "Painel", acoes: ["ver"] },
-    { modulo: "financeiro_fluxo", label: "Fluxo de Caixa", acoes: [...CRUD, "confirmar"] },
-    { modulo: "financeiro_compras", label: "Compras", acoes: CRUD },
-    { modulo: "financeiro_vendas", label: "Vendas", acoes: [...CRUD, "gerar"] },
-    { modulo: "financeiro_contabilidade", label: "Contabilidade", acoes: ["ver", "gerar"] },
-  ]},
-  { grupo: "Fiscal", itens: [
-    { modulo: "fiscal_nfe", label: "NF-e", acoes: CRUD },
-    // Item 5.1: ações de execução em módulos próprios (o "ver" deixou de
-    // autorizar transmitir/cancelar/CC-e — era o bug de permissão).
-    { modulo: "fiscal_transmitir", label: "Transmitir NF-e", acoes: ["executar"] },
-    { modulo: "fiscal_cancelar", label: "Cancelar NF-e", acoes: ["cancelar"] },
-    { modulo: "fiscal_carta_correcao", label: "Carta de Correção", acoes: ["criar"] },
-  ]},
-  { grupo: "Configurações", itens: [
-    { modulo: "configuracoes_ver", label: "Visualizar", acoes: ["ver"] },
-    { modulo: "configuracoes_editar", label: "Editar", acoes: ["ver"] },
-  ]},
-  { grupo: "Usuários", itens: [
-    { modulo: "usuarios_admin", label: "Administração de usuários", acoes: ["ver"] },
-  ]},
+  {
+    grupo: "Cadastros",
+    itens: [
+      { modulo: "cadastros_clientes", label: "Clientes", acoes: CRUD },
+      { modulo: "cadastros_produtos", label: "Produtos", acoes: CRUD },
+      { modulo: "cadastros_transportadoras", label: "Transportadoras", acoes: CRUD },
+      { modulo: "cadastros_vendedores", label: "Vendedores", acoes: CRUD },
+    ],
+  },
+  {
+    grupo: "Produção",
+    itens: [
+      { modulo: "tecidos", label: "Tecidos", acoes: CRUD },
+      { modulo: "moldes", label: "Moldes", acoes: CRUD },
+      { modulo: "encaixes", label: "Encaixes", acoes: CRUD },
+      { modulo: "encaixe_rapido", label: "Encaixe Rápido", acoes: ["ver", "criar"] },
+    ],
+  },
+  {
+    grupo: "Comercial",
+    itens: [
+      { modulo: "precificacao", label: "Precificação", acoes: CRUD },
+      { modulo: "projecao", label: "Projeção", acoes: ["ver"] },
+    ],
+  },
+  {
+    grupo: "Pedidos",
+    itens: [
+      { modulo: "pedidos_ver", label: "Ver pedidos", acoes: ["ver"] },
+      { modulo: "pedidos_criar", label: "Criar pedidos", acoes: ["ver"] },
+      { modulo: "pedidos_editar", label: "Editar pedidos", acoes: ["ver"] },
+      { modulo: "pedidos_excluir", label: "Excluir pedidos", acoes: ["ver"] },
+      { modulo: "pedidos_emitir_nfe", label: "Emitir NF-e de pedidos", acoes: ["ver"] },
+    ],
+  },
+  {
+    grupo: "Financeiro",
+    itens: [
+      { modulo: "financeiro_painel", label: "Painel", acoes: ["ver"] },
+      { modulo: "financeiro_fluxo", label: "Fluxo de Caixa", acoes: [...CRUD, "confirmar"] },
+      { modulo: "financeiro_compras", label: "Compras", acoes: CRUD },
+      { modulo: "financeiro_vendas", label: "Vendas", acoes: [...CRUD, "gerar"] },
+      { modulo: "financeiro_contabilidade", label: "Contabilidade", acoes: ["ver", "gerar"] },
+    ],
+  },
+  {
+    grupo: "Fiscal",
+    itens: [
+      { modulo: "fiscal_nfe", label: "NF-e", acoes: CRUD },
+      // Item 5.1: ações de execução em módulos próprios (o "ver" deixou de
+      // autorizar transmitir/cancelar/CC-e — era o bug de permissão).
+      { modulo: "fiscal_transmitir", label: "Transmitir NF-e", acoes: ["executar"] },
+      { modulo: "fiscal_cancelar", label: "Cancelar NF-e", acoes: ["cancelar"] },
+      { modulo: "fiscal_carta_correcao", label: "Carta de Correção", acoes: ["criar"] },
+    ],
+  },
+  {
+    grupo: "Configurações",
+    itens: [
+      { modulo: "configuracoes_ver", label: "Visualizar", acoes: ["ver"] },
+      { modulo: "configuracoes_editar", label: "Editar", acoes: ["ver"] },
+    ],
+  },
+  {
+    grupo: "Usuários",
+    itens: [{ modulo: "usuarios_admin", label: "Administração de usuários", acoes: ["ver"] }],
+  },
 ];
 
 const chave = (modulo, acao) => `${modulo}:${acao}`;
@@ -97,7 +119,9 @@ export default function UsuariosPage() {
     }
   }, []);
 
-  useEffect(() => { carregarLista(); }, [carregarLista]);
+  useEffect(() => {
+    carregarLista();
+  }, [carregarLista]);
 
   const showToast = (text) => {
     setToast(text);
@@ -134,101 +158,119 @@ export default function UsuariosPage() {
       </div>
 
       <div className={styles.layout}>
-      <div className={styles.listWrap}>
-        <div className={styles.listHeader}>
-          <span className={styles.listTitle}>Usuários do Sistema</span>
-          <button className={styles.btnNovo} onClick={() => setShowNovo(true)}>+ Novo</button>
+        <div className={styles.listWrap}>
+          <div className={styles.listHeader}>
+            <span className={styles.listTitle}>Usuários do Sistema</span>
+            <button className={styles.btnNovo} onClick={() => setShowNovo(true)}>
+              + Novo
+            </button>
+          </div>
+
+          {toast && (
+            <div className={styles.msgErro} style={{ margin: "8px 10px" }}>
+              {toast}
+            </div>
+          )}
+
+          {loading ? (
+            <p className={styles.empty}>Carregando…</p>
+          ) : usuarios.length === 0 ? (
+            <p className={styles.empty}>Nenhum usuário cadastrado.</p>
+          ) : (
+            <ul className={styles.list}>
+              {usuarios.map((u) => (
+                <li
+                  key={u.id}
+                  className={`${styles.item} ${selecionadoId === u.id ? styles.itemSel : ""} ${!u.ativo ? styles.itemInativo : ""}`}
+                  onClick={() => selecionar(u.id)}
+                >
+                  <div className={styles.itemInfo}>
+                    <span className={styles.itemNome}>{u.nome_completo}</span>
+                    <span className={styles.itemSub}>@{u.username}</span>
+                  </div>
+                  <div className={styles.itemBadges}>
+                    {u.is_admin && <span className={styles.badgeAdmin}>Admin</span>}
+                    {!u.ativo && <span className={styles.badgeInativo}>Inativo</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {toast && <div className={styles.msgErro} style={{ margin: "8px 10px" }}>{toast}</div>}
-
-        {loading ? (
-          <p className={styles.empty}>Carregando…</p>
-        ) : usuarios.length === 0 ? (
-          <p className={styles.empty}>Nenhum usuário cadastrado.</p>
-        ) : (
-          <ul className={styles.list}>
-            {usuarios.map((u) => (
-              <li
-                key={u.id}
-                className={`${styles.item} ${selecionadoId === u.id ? styles.itemSel : ""} ${!u.ativo ? styles.itemInativo : ""}`}
-                onClick={() => selecionar(u.id)}
-              >
-                <div className={styles.itemInfo}>
-                  <span className={styles.itemNome}>{u.nome_completo}</span>
-                  <span className={styles.itemSub}>@{u.username}</span>
+        <div className={styles.drawer}>
+          {!detalhe ? (
+            <div className={styles.emptyRight}>
+              <p>Selecione um usuário para ver os detalhes.</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.drawerHeader}>
+                <div>
+                  <div className={styles.drawerNomeRow}>
+                    <span className={styles.drawerNome}>{detalhe.nome_completo}</span>
+                    {detalhe.is_admin && <span className={styles.badgeAdmin}>Admin</span>}
+                  </div>
+                  <span className={styles.drawerSub}>@{detalhe.username}</span>
                 </div>
-                <div className={styles.itemBadges}>
-                  {u.is_admin && <span className={styles.badgeAdmin}>Admin</span>}
-                  {!u.ativo && <span className={styles.badgeInativo}>Inativo</span>}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className={styles.drawer}>
-        {!detalhe ? (
-          <div className={styles.emptyRight}>
-            <p>Selecione um usuário para ver os detalhes.</p>
-          </div>
-        ) : (
-          <>
-            <div className={styles.drawerHeader}>
-              <div>
-                <div className={styles.drawerNomeRow}>
-                  <span className={styles.drawerNome}>{detalhe.nome_completo}</span>
-                  {detalhe.is_admin && <span className={styles.badgeAdmin}>Admin</span>}
-                </div>
-                <span className={styles.drawerSub}>@{detalhe.username}</span>
               </div>
-            </div>
 
-            <div className={styles.tabBar}>
-              <button
-                className={`${styles.tabBtn} ${tab === "dados" ? styles.tabBtnActive : ""}`}
-                onClick={() => setTab("dados")}
-              >Dados</button>
-              <button
-                className={`${styles.tabBtn} ${tab === "permissoes" ? styles.tabBtnActive : ""}`}
-                onClick={() => setTab("permissoes")}
-                disabled={detalhe.is_admin}
-                title={detalhe.is_admin ? "Administradores têm acesso total" : undefined}
-              >Permissões</button>
-            </div>
+              <div className={styles.tabBar}>
+                <button
+                  className={`${styles.tabBtn} ${tab === "dados" ? styles.tabBtnActive : ""}`}
+                  onClick={() => setTab("dados")}
+                >
+                  Dados
+                </button>
+                <button
+                  className={`${styles.tabBtn} ${tab === "permissoes" ? styles.tabBtnActive : ""}`}
+                  onClick={() => setTab("permissoes")}
+                  disabled={detalhe.is_admin}
+                  title={detalhe.is_admin ? "Administradores têm acesso total" : undefined}
+                >
+                  Permissões
+                </button>
+              </div>
 
-            <div className={styles.tabContent}>
-              {tab === "dados" && (
-                <PainelDados
-                  detalhe={detalhe}
-                  isProprio={usuarioLogado?.id === detalhe.id}
-                  onSalvo={handleAtualizado}
-                  onErro={showToast}
-                />
-              )}
-              {tab === "permissoes" && !detalhe.is_admin && (
-                <PainelPermissoes
-                  detalhe={detalhe}
-                  onSalvo={handleAtualizado}
-                  onErro={showToast}
-                />
-              )}
-            </div>
-          </>
+              <div className={styles.tabContent}>
+                {tab === "dados" && (
+                  <PainelDados
+                    detalhe={detalhe}
+                    isProprio={usuarioLogado?.id === detalhe.id}
+                    onSalvo={handleAtualizado}
+                    onErro={showToast}
+                  />
+                )}
+                {tab === "permissoes" && !detalhe.is_admin && (
+                  <PainelPermissoes
+                    detalhe={detalhe}
+                    onSalvo={handleAtualizado}
+                    onErro={showToast}
+                  />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {showNovo && (
+          <ModalNovoUsuario
+            onClose={() => setShowNovo(false)}
+            onCriado={handleCriado}
+            onErro={showToast}
+          />
         )}
-      </div>
-
-      {showNovo && (
-        <ModalNovoUsuario onClose={() => setShowNovo(false)} onCriado={handleCriado} onErro={showToast} />
-      )}
       </div>
     </div>
   );
 }
 
 function PainelDados({ detalhe, isProprio, onSalvo, onErro }) {
-  const [form, setForm] = useState({ nome_completo: detalhe.nome_completo, senha: "", ativo: detalhe.ativo });
+  const [form, setForm] = useState({
+    nome_completo: detalhe.nome_completo,
+    senha: "",
+    ativo: detalhe.ativo,
+  });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -236,7 +278,10 @@ function PainelDados({ detalhe, isProprio, onSalvo, onErro }) {
   }, [detalhe]);
 
   const handleSave = async () => {
-    if (!form.nome_completo.trim()) { onErro("Informe o nome completo."); return; }
+    if (!form.nome_completo.trim()) {
+      onErro("Informe o nome completo.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = { nome_completo: form.nome_completo.trim(), ativo: form.ativo };
@@ -285,7 +330,9 @@ function PainelDados({ detalhe, isProprio, onSalvo, onErro }) {
           onChange={(e) => setForm((f) => ({ ...f, ativo: e.target.checked }))}
         />
         Usuário ativo
-        {isProprio && <span className={styles.hint}> — não é possível desativar o próprio usuário</span>}
+        {isProprio && (
+          <span className={styles.hint}> — não é possível desativar o próprio usuário</span>
+        )}
       </label>
 
       <div className={styles.actions}>
@@ -311,7 +358,8 @@ function PainelPermissoes({ detalhe, onSalvo, onErro }) {
     setMarcados((prev) => {
       const next = new Set(prev);
       const k = chave(modulo, acao);
-      if (next.has(k)) next.delete(k); else next.add(k);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
       return next;
     });
   };
@@ -319,8 +367,7 @@ function PainelPermissoes({ detalhe, onSalvo, onErro }) {
   const chavesDoGrupo = (itens) =>
     itens.flatMap(({ modulo, acoes }) => acoes.map((acao) => chave(modulo, acao)));
 
-  const grupoTotalmenteMarcado = (itens) =>
-    chavesDoGrupo(itens).every((k) => marcados.has(k));
+  const grupoTotalmenteMarcado = (itens) => chavesDoGrupo(itens).every((k) => marcados.has(k));
 
   const toggleGrupo = (itens) => {
     const chaves = chavesDoGrupo(itens);
@@ -477,10 +524,16 @@ function ModalNovoUsuario({ onClose, onCriado, onErro }) {
           />
         </label>
 
-        {err && <p className={styles.msgErro} style={{ marginTop: 10 }}>{err}</p>}
+        {err && (
+          <p className={styles.msgErro} style={{ marginTop: 10 }}>
+            {err}
+          </p>
+        )}
 
         <div className={styles.modalActions}>
-          <button className={styles.btnSecondary} onClick={onClose}>Cancelar</button>
+          <button className={styles.btnSecondary} onClick={onClose}>
+            Cancelar
+          </button>
           <button className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
             {saving ? "Criando…" : "Criar usuário"}
           </button>

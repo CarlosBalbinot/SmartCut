@@ -21,9 +21,7 @@ export default function ProtectedRoute({ modulo, adminOnly, children }) {
   if (adminOnly && !usuario.is_admin) {
     return (
       <div className={styles.semPermissao}>
-        <p className={styles.semPermissaoTexto}>
-          Você não tem permissão para acessar esta página.
-        </p>
+        <p className={styles.semPermissaoTexto}>Você não tem permissão para acessar esta página.</p>
         <button className={styles.btnVoltar} onClick={() => navigate(-1)}>
           Voltar
         </button>
@@ -34,9 +32,7 @@ export default function ProtectedRoute({ modulo, adminOnly, children }) {
   if (modulo && !hasPermission(modulo, "ver")) {
     return (
       <div className={styles.semPermissao}>
-        <p className={styles.semPermissaoTexto}>
-          Você não tem permissão para acessar esta página.
-        </p>
+        <p className={styles.semPermissaoTexto}>Você não tem permissão para acessar esta página.</p>
         <button className={styles.btnVoltar} onClick={() => navigate(-1)}>
           Voltar
         </button>

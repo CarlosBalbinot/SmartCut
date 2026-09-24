@@ -1,14 +1,39 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  BarChart, Bar, PieChart, Pie, Cell, Line, Area, ComposedChart,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Line,
+  Area,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from "recharts";
 import { getMetricasCompras, getMetricasResultado } from "../../api/financeiro";
 import { getMetricasPedidosVenda } from "../../api/pedidos";
 import styles from "./PainelFinanceiro.module.css";
 
 /* ── Helpers ── */
-const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MESES_ABREV = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
@@ -50,7 +75,9 @@ const PERIODOS = [
 
 function calcularPeriodo(periodo) {
   const hoje = new Date();
-  const y = hoje.getFullYear(), m = hoje.getMonth(), d = hoje.getDate();
+  const y = hoje.getFullYear(),
+    m = hoje.getMonth(),
+    d = hoje.getDate();
 
   if (periodo === "hoje") {
     const dt = new Date(y, m, d);
@@ -86,8 +113,9 @@ function periodoAnterior(inicio, fim) {
 
 /* ── Componente ── */
 export default function PainelFinanceiro() {
-  const corPrimaria = getComputedStyle(document.documentElement)
-    .getPropertyValue('--color-primary').trim() || '#2596be';
+  const corPrimaria =
+    getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim() ||
+    "#2596be";
   const CORES_FORNECEDOR = [corPrimaria, "#1D1D1F", "#6E6E73", "#AEAEB2", "#C7C7CC"];
 
   const [periodo, setPeriodo] = useState("mes");
@@ -100,9 +128,10 @@ export default function PainelFinanceiro() {
   const [metricasCompras, setMetricasCompras] = useState(null);
   const [metricasResultado, setMetricasResultado] = useState(null);
 
-  const rangeAtual = periodo === "personalizado"
-    ? { inicio: customInicio, fim: customFim }
-    : calcularPeriodo(periodo);
+  const rangeAtual =
+    periodo === "personalizado"
+      ? { inicio: customInicio, fim: customFim }
+      : calcularPeriodo(periodo);
 
   const carregarDados = useCallback(async () => {
     if (!rangeAtual.inicio || !rangeAtual.fim) return;
@@ -125,10 +154,11 @@ export default function PainelFinanceiro() {
       setMetricasResultado(null);
     }
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeAtual.inicio, rangeAtual.fim]);
 
-  useEffect(() => { carregarDados(); }, [carregarDados]);
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   /* ── KPIs ── */
   const totalFaturado = metricasVendas?.total_faturado || 0;
@@ -136,9 +166,12 @@ export default function PainelFinanceiro() {
   const ticketMedio = metricasVendas?.ticket_medio || 0;
   const totalComprasPeriodo = metricasCompras?.total_compras || 0;
 
-  const variacaoFaturamento = faturamentoAnterior > 0
-    ? ((totalFaturado - faturamentoAnterior) / faturamentoAnterior) * 100
-    : (totalFaturado > 0 ? 100 : 0);
+  const variacaoFaturamento =
+    faturamentoAnterior > 0
+      ? ((totalFaturado - faturamentoAnterior) / faturamentoAnterior) * 100
+      : totalFaturado > 0
+        ? 100
+        : 0;
 
   /* ── Dados dos gráficos ── */
   const faturamentoPorMes = (metricasVendas?.faturamento_por_mes || []).map((f) => ({
@@ -161,7 +194,9 @@ export default function PainelFinanceiro() {
     Lucro: r.lucro,
   }));
 
-  const fornecedoresVolume = (metricasCompras?.volume_tecido_por_fornecedor || []).map((f) => f.fornecedor);
+  const fornecedoresVolume = (metricasCompras?.volume_tecido_por_fornecedor || []).map(
+    (f) => f.fornecedor
+  );
   const volumePorFornecedorMes = metricasCompras?.volume_tecido_por_fornecedor_mes || [];
 
   /* ── Render ── */
@@ -208,8 +243,11 @@ export default function PainelFinanceiro() {
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Faturamento do período</span>
           <span className={styles.kpiValor}>{moeda(totalFaturado)}</span>
-          <span className={variacaoFaturamento >= 0 ? styles.kpiVariacaoPos : styles.kpiVariacaoNeg}>
-            {variacaoFaturamento >= 0 ? "+" : ""}{variacaoFaturamento.toFixed(1)}% vs. período anterior
+          <span
+            className={variacaoFaturamento >= 0 ? styles.kpiVariacaoPos : styles.kpiVariacaoNeg}
+          >
+            {variacaoFaturamento >= 0 ? "+" : ""}
+            {variacaoFaturamento.toFixed(1)}% vs. período anterior
           </span>
         </div>
         <div className={styles.kpiCard}>
@@ -297,8 +335,17 @@ export default function PainelFinanceiro() {
                 margin={{ top: 4, right: 24, left: 8, bottom: 4 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: "#AEAEB2" }} tickFormatter={moedaCompacta} />
-                <YAxis type="category" dataKey="nome" width={130} tick={{ fontSize: 11, fill: "#6E6E73" }} />
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 11, fill: "#AEAEB2" }}
+                  tickFormatter={moedaCompacta}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="nome"
+                  width={130}
+                  tick={{ fontSize: 11, fill: "#6E6E73" }}
+                />
                 <Tooltip
                   formatter={(v) => [moeda(v), "Faturamento"]}
                   labelFormatter={(_, payload) => payload?.[0]?.payload?.nomeCompleto || ""}
@@ -332,8 +379,20 @@ export default function PainelFinanceiro() {
               fillOpacity={0.1}
               dot={{ fill: corPrimaria, r: 3 }}
             />
-            <Line type="monotone" dataKey="Receita" stroke={COR_RECEITA} strokeWidth={2} dot={{ r: 3 }} />
-            <Line type="monotone" dataKey="Despesa" stroke={COR_DESPESA} strokeWidth={2} dot={{ r: 3 }} />
+            <Line
+              type="monotone"
+              dataKey="Receita"
+              stroke={COR_RECEITA}
+              strokeWidth={2}
+              dot={{ r: 3 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="Despesa"
+              stroke={COR_DESPESA}
+              strokeWidth={2}
+              dot={{ r: 3 }}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -345,17 +404,29 @@ export default function PainelFinanceiro() {
           <p className={styles.semDados}>Sem dados de compras disponíveis.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={volumePorFornecedorMes} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+            <BarChart
+              data={volumePorFornecedorMes}
+              margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#AEAEB2" }} />
               <YAxis tick={{ fontSize: 11, fill: "#AEAEB2" }} tickFormatter={moedaCompacta} />
               <Tooltip
                 formatter={(v, name) => [moeda(v), name]}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid rgba(0,0,0,0.08)" }}
+                contentStyle={{
+                  fontSize: 12,
+                  borderRadius: 8,
+                  border: "1px solid rgba(0,0,0,0.08)",
+                }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               {fornecedoresVolume.map((nome, i) => (
-                <Bar key={nome} dataKey={nome} fill={CORES_FORNECEDOR[i % CORES_FORNECEDOR.length]} radius={[3, 3, 0, 0]} />
+                <Bar
+                  key={nome}
+                  dataKey={nome}
+                  fill={CORES_FORNECEDOR[i % CORES_FORNECEDOR.length]}
+                  radius={[3, 3, 0, 0]}
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>

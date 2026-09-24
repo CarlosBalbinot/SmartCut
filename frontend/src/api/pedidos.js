@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -23,8 +23,7 @@ async function requestBlob(path) {
   return res.blob();
 }
 
-export const getPedidosVenda = (tipo) =>
-  request(`/pedidos-venda/${tipo ? `?tipo=${tipo}` : ""}`);
+export const getPedidosVenda = (tipo) => request(`/pedidos-venda/${tipo ? `?tipo=${tipo}` : ""}`);
 
 export const createPedidoVenda = (payload) =>
   request("/pedidos-venda/", { method: "POST", body: JSON.stringify(payload) });
@@ -37,8 +36,7 @@ export const updatePedidoVenda = (id, payload) =>
 export const updateStatusPedidoVenda = (id, status) =>
   request(`/pedidos-venda/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
 
-export const deletePedidoVenda = (id) =>
-  request(`/pedidos-venda/${id}`, { method: "DELETE" });
+export const deletePedidoVenda = (id) => request(`/pedidos-venda/${id}`, { method: "DELETE" });
 
 export const addItemPedidoVenda = (id, payload) =>
   request(`/pedidos-venda/${id}/itens`, { method: "POST", body: JSON.stringify(payload) });
@@ -47,7 +45,10 @@ export const addItensBulkPedidoVenda = (id, itens) =>
   request(`/pedidos-venda/${id}/itens/bulk`, { method: "POST", body: JSON.stringify({ itens }) });
 
 export const updateItemPedidoVenda = (id, itemId, payload) =>
-  request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "PATCH", body: JSON.stringify(payload) });
+  request(`/pedidos-venda/${id}/itens/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 
 export const removeItemPedidoVenda = (id, itemId) =>
   request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "DELETE" });

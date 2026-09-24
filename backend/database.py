@@ -1,5 +1,3 @@
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -8,10 +6,10 @@ from config import settings
 
 def resolver_url() -> str:
     # Em produção (Electron empacotado), o main.js define SMARTCUT_DB_PATH
-    # apontando para o diretório de dados do usuário.
-    db_path = os.environ.get("SMARTCUT_DB_PATH")
-    if db_path:
-        return f"sqlite:///{db_path}"
+    # apontando para o diretório de dados do usuário. Item 10.4: fonte única
+    # de configuração — tudo passa pelos settings do pydantic (config.py).
+    if settings.smartcut_db_path:
+        return f"sqlite:///{settings.smartcut_db_path}"
     return settings.database_url
 
 
@@ -42,17 +40,17 @@ def get_db():
         db.close()
 
 
-import models.venda          # noqa: E402,F401  — registrar tabelas no Base.metadata
-import models.pedido         # noqa: E402,F401
-import models.encaixe        # noqa: E402,F401
+import models.venda  # noqa: E402,F401  — registrar tabelas no Base.metadata
+import models.pedido  # noqa: E402,F401
+import models.encaixe  # noqa: E402,F401
 import models.painel_vendedor  # noqa: E402,F401
-import models.financeiro     # noqa: E402,F401
-import models.produto        # noqa: E402,F401
+import models.financeiro  # noqa: E402,F401
+import models.produto  # noqa: E402,F401
 import models.transportadora  # noqa: E402,F401
-import models.usuario         # noqa: E402,F401
-import models.tes             # noqa: E402,F401
-import models.nfe             # noqa: E402,F401
+import models.usuario  # noqa: E402,F401
+import models.tes  # noqa: E402,F401
+import models.nfe  # noqa: E402,F401
 import models.condicao_pagamento  # noqa: E402,F401
-import models.tabela_grade     # noqa: E402,F401
+import models.tabela_grade  # noqa: E402,F401
 import models.configuracao_grade  # noqa: E402,F401
-import models.produto_sku      # noqa: E402,F401
+import models.produto_sku  # noqa: E402,F401

@@ -2,14 +2,21 @@ import { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import {
-  getPedidoVenda, updatePedidoVenda, updateStatusPedidoVenda,
-  addItensBulkPedidoVenda, removeItemPedidoVenda,
-  getPdfPedidoVenda, getPdfCortePedidoVenda, gerarEncaixePedidoVenda,
+  getPedidoVenda,
+  updatePedidoVenda,
+  updateStatusPedidoVenda,
+  addItensBulkPedidoVenda,
+  removeItemPedidoVenda,
+  getPdfPedidoVenda,
+  getPdfCortePedidoVenda,
 } from "../api/pedidos";
 import { produtosApi } from "../api/produtos";
 import { getVendedores } from "../api/vendedores";
 import { listar as listarTes } from "../api/tes";
-import { listar as listarCondicoesPagamento, simular as simularParcelas } from "../api/condicoesPagamento";
+import {
+  listar as listarCondicoesPagamento,
+  simular as simularParcelas,
+} from "../api/condicoesPagamento";
 import { criar as criarNfe } from "../api/nfe";
 import { transportadorasApi } from "../api/transportadoras";
 import { aplicarTabelaPedidoVenda, updateItemPedidoVenda } from "../api/pedidos";
@@ -37,7 +44,14 @@ const INDICADOR_PRESENCA_OPCOES = [
   { value: "5", label: "5 – Operação presencial, fora do estabelecimento" },
   { value: "9", label: "9 – Operação não presencial, outros" },
 ];
-const TIPO_FRETE_OPCOES = ["Sem Frete", "CIF", "FOB", "Por conta de terceiros", "Próprio", "Sem Ocorrência"];
+const TIPO_FRETE_OPCOES = [
+  "Sem Frete",
+  "CIF",
+  "FOB",
+  "Por conta de terceiros",
+  "Próprio",
+  "Sem Ocorrência",
+];
 const SERIE_NFE_OPCOES = [
   { value: "001", label: "001 - NF-e" },
   { value: "002", label: "002 - NFC-e" },
@@ -54,45 +68,56 @@ const ABAS = [
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
 
-const dataLocal = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("pt-BR") : "";
+const dataLocal = (iso) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "");
 
 const hojeISO = () => new Date().toISOString().split("T")[0];
 const agoraHora = () => new Date().toTimeString().slice(0, 5);
 
 async function downloadBlob(promiseFn, filename) {
   const blob = await promiseFn();
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a); URL.revokeObjectURL(url);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── Tabela de itens: colunas redimensionáveis + edição inline ────────────────
 // descricao = null → coluna flexível (ocupa o que sobrar, mínimo 220px).
 const ITENS_COLUNAS_CHAVE = "sc.pedido.itens.colunas";
 const ITENS_COLUNAS_PADRAO = {
-  ref: 150, descricao: null, qtde: 80, punit: 110, desc: 100, total: 120, tes: 130, acao: 40,
+  ref: 150,
+  descricao: null,
+  qtde: 80,
+  punit: 110,
+  desc: 100,
+  total: 120,
+  tes: 130,
+  acao: 40,
 };
 const ITENS_COLUNAS_MINIMOS = { descricao: 220 };
 const ITENS_COLUNAS = [
-  { key: "ref",       label: "REF" },
+  { key: "ref", label: "REF" },
   { key: "descricao", label: "Descrição" },
-  { key: "qtde",      label: "Qtde",     num: true },
-  { key: "punit",     label: "P. Unit.", num: true },
-  { key: "desc",      label: "Desc.",    num: true },
-  { key: "total",     label: "Total",    num: true },
-  { key: "tes",       label: "TES" },
-  { key: "acao",      label: "" },
+  { key: "qtde", label: "Qtde", num: true },
+  { key: "punit", label: "P. Unit.", num: true },
+  { key: "desc", label: "Desc.", num: true },
+  { key: "total", label: "Total", num: true },
+  { key: "tes", label: "TES" },
+  { key: "acao", label: "" },
 ];
 
 // Campo editável da coluna → campo do body do PATCH /itens/{item_id}.
 const CAMPO_PATCH = { qtde: "quantidade", punit: "preco_unitario", desc: "desconto" };
 
 const numeroBR = (v, casas) =>
-  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })
-    .format(Number(v) || 0);
+  new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: casas,
+    maximumFractionDigits: casas,
+  }).format(Number(v) || 0);
 
 // Comissão do pedido: % e origem vêm prontos do backend (snapshot gravado
 // em venda_service.aplicar_comissao) — aqui só formata.
@@ -101,7 +126,9 @@ const pctBR = (v) => `${numeroBR(v, 2)}%`;
 // Aceita "1.234,56", "1234,56", "1234.56" e "R$ 12,50". Vírgula presente →
 // pontos são milhar; só ponto → decimal se tiver até 2 casas depois dele.
 function parseNumeroBR(texto) {
-  let t = String(texto ?? "").replace(/R\$/gi, "").replace(/\s/g, "");
+  let t = String(texto ?? "")
+    .replace(/R\$/gi, "")
+    .replace(/\s/g, "");
   if (!t) return NaN;
   if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
   else if ((t.match(/\./g) || []).length > 1 || /\.\d{3,}$/.test(t)) t = t.replace(/\./g, "");
@@ -113,7 +140,16 @@ function parseNumeroBR(texto) {
  * formatado (com "R$" quando moeda); no foco, o número cru para edição.
  * Salva no blur ou Enter; Esc reverte. Erro da API mantém o texto digitado.
  */
-function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProximo, inputRef, marcador }) {
+function CelulaNumero({
+  valor,
+  casas,
+  moeda: ehMoeda,
+  readOnly,
+  onSalvar,
+  onProximo,
+  inputRef,
+  marcador,
+}) {
   const [focado, setFocado] = useState(false);
   const [texto, setTexto] = useState("");
   const [erro, setErro] = useState(null);
@@ -126,9 +162,15 @@ function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProx
 
   const salvar = async () => {
     const n = parseNumeroBR(texto);
-    if (Number.isNaN(n)) { setErro("Valor inválido."); return false; }
+    if (Number.isNaN(n)) {
+      setErro("Valor inválido.");
+      return false;
+    }
     const arredondado = Number(n.toFixed(casas));
-    if (arredondado === Number(valor || 0)) { setErro(null); return true; }
+    if (arredondado === Number(valor || 0)) {
+      setErro(null);
+      return true;
+    }
     setSalvando(true);
     try {
       await onSalvar(arredondado);
@@ -151,7 +193,10 @@ function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProx
 
   const handleBlur = () => {
     setFocado(false);
-    if (ignorarBlur.current) { ignorarBlur.current = false; return; }
+    if (ignorarBlur.current) {
+      ignorarBlur.current = false;
+      return;
+    }
     if (!readOnly) salvar();
   };
 
@@ -160,7 +205,10 @@ function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProx
     if (e.key === "Enter") {
       e.preventDefault();
       const ok = await salvar();
-      if (ok) { ignorarBlur.current = true; onProximo?.(); }
+      if (ok) {
+        ignorarBlur.current = true;
+        onProximo?.();
+      }
     } else if (e.key === "Escape") {
       e.preventDefault();
       setTexto(paraEdicao());
@@ -186,7 +234,11 @@ function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProx
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
-      {erro && <div className={styles.celulaErro} title={erro}>{erro}</div>}
+      {erro && (
+        <div className={styles.celulaErro} title={erro}>
+          {erro}
+        </div>
+      )}
     </div>
   );
 }
@@ -196,45 +248,45 @@ function CelulaNumero({ valor, casas, moeda: ehMoeda, readOnly, onSalvar, onProx
 function clienteDoPedido(pedido) {
   if (!pedido.cliente_id && !pedido.cliente_razao_social) return null;
   return {
-    id:           pedido.cliente_id ?? null,
-    codigo:       pedido.cliente_codigo || "",
+    id: pedido.cliente_id ?? null,
+    codigo: pedido.cliente_codigo || "",
     razao_social: pedido.cliente_razao_social || "",
-    cnpj:         pedido.cliente_cnpj || "",
-    cidade:       pedido.cliente_cidade || "",
-    uf:           pedido.cliente_uf || "",
+    cnpj: pedido.cliente_cnpj || "",
+    cidade: pedido.cliente_cidade || "",
+    uf: pedido.cliente_uf || "",
   };
 }
 
 function headerFormFromPedido(pedido) {
   return {
-    numero:               pedido.numero               || "",
-    data_emissao:         pedido.data_emissao         || "",
-    prazo_entrega_dias:   String(pedido.prazo_entrega_dias ?? ""),
-    condicoes:            pedido.condicoes            || "avista",
+    numero: pedido.numero || "",
+    data_emissao: pedido.data_emissao || "",
+    prazo_entrega_dias: String(pedido.prazo_entrega_dias ?? ""),
+    condicoes: pedido.condicoes || "avista",
     condicao_pagamento_id: pedido.condicao_pagamento_id ?? "",
-    primeiro_vencimento:  pedido.primeiro_vencimento  || "",
-    vendedor_id:          pedido.vendedor_id          || "",
-    tabela_preco_id:      pedido.tabela_preco_id      || "",
-    cliente:              clienteDoPedido(pedido),
-    tes_id:               pedido.tes_id ?? "",
-    indicador_presenca:   pedido.indicador_presenca   || "1",
-    desconto_geral_pct:   String(pedido.desconto_geral_pct ?? 0),
+    primeiro_vencimento: pedido.primeiro_vencimento || "",
+    vendedor_id: pedido.vendedor_id || "",
+    tabela_preco_id: pedido.tabela_preco_id || "",
+    cliente: clienteDoPedido(pedido),
+    tes_id: pedido.tes_id ?? "",
+    indicador_presenca: pedido.indicador_presenca || "1",
+    desconto_geral_pct: String(pedido.desconto_geral_pct ?? 0),
     desconto_geral_valor: String(pedido.desconto_geral_valor ?? 0),
-    acrescimo_pct:        String(pedido.acrescimo_pct ?? 0),
-    acrescimo_valor:      String(pedido.acrescimo_valor ?? 0),
-    transportadora_id:    pedido.transportadora_id ?? "",
-    tipo_frete:           pedido.tipo_frete || "",
-    valor_frete:          String(pedido.valor_frete ?? 0),
-    valor_seguro:         String(pedido.valor_seguro ?? 0),
-    valor_despesas:       String(pedido.valor_despesas ?? 0),
-    peso_liquido:         String(pedido.peso_liquido ?? 0),
-    peso_bruto:           String(pedido.peso_bruto ?? 0),
-    qtd_volumes:          String(pedido.qtd_volumes ?? 0),
-    especie_volumes:      pedido.especie_volumes || "",
-    placa_veiculo:        pedido.placa_veiculo || "",
-    uf_veiculo:           pedido.uf_veiculo || "",
+    acrescimo_pct: String(pedido.acrescimo_pct ?? 0),
+    acrescimo_valor: String(pedido.acrescimo_valor ?? 0),
+    transportadora_id: pedido.transportadora_id ?? "",
+    tipo_frete: pedido.tipo_frete || "",
+    valor_frete: String(pedido.valor_frete ?? 0),
+    valor_seguro: String(pedido.valor_seguro ?? 0),
+    valor_despesas: String(pedido.valor_despesas ?? 0),
+    peso_liquido: String(pedido.peso_liquido ?? 0),
+    peso_bruto: String(pedido.peso_bruto ?? 0),
+    qtd_volumes: String(pedido.qtd_volumes ?? 0),
+    especie_volumes: pedido.especie_volumes || "",
+    placa_veiculo: pedido.placa_veiculo || "",
+    uf_veiculo: pedido.uf_veiculo || "",
     informacoes_adicionais: pedido.informacoes_adicionais || "",
-    observacoes_internas:  pedido.observacoes_internas || "",
+    observacoes_internas: pedido.observacoes_internas || "",
   };
 }
 
@@ -242,35 +294,41 @@ function headerFormFromPedido(pedido) {
 // → linha simples do avulso. Ver PART 2a do fluxo de itens.
 const ITEM_MODAL_VAZIO = {
   step: 1,
-  searchQuery: "", searchResults: [], searching: false,
-  produtoPai: null, grade: null, gradeLoading: false, gradeQtds: {},
-  avulso: null, avulsoForm: null,
+  searchQuery: "",
+  searchResults: [],
+  searching: false,
+  produtoPai: null,
+  grade: null,
+  gradeLoading: false,
+  gradeQtds: {},
+  avulso: null,
+  avulsoForm: null,
 };
 
 export default function PedidoVendaDetalhePage() {
-  const { id }   = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const podeEditar = hasPermission(MODULO_EDITAR, "ver");
   const podeExcluir = hasPermission(MODULO_EXCLUIR, "ver");
 
-  const [pedido, setPedido]             = useState(null);
-  const [vendedores, setVendedores]     = useState([]);
-  const [tabelas, setTabelas]           = useState([]);
-  const [tesList, setTesList]           = useState([]);
+  const [pedido, setPedido] = useState(null);
+  const [vendedores, setVendedores] = useState([]);
+  const [tabelas, setTabelas] = useState([]);
+  const [tesList, setTesList] = useState([]);
   const [transportadoras, setTransportadoras] = useState([]);
   const [condicoesPagamento, setCondicoesPagamento] = useState([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const [previewParcelas, setPreviewParcelas] = useState(null);
   const [previewParcelasErro, setPreviewParcelasErro] = useState(null);
   const [previewParcelasLoading, setPreviewParcelasLoading] = useState(false);
   const previewParcelasTimer = useRef(null);
 
-  const [aba, setAba]                   = useState("dados");
-  const [headerForm, setHeaderForm]     = useState(null);
+  const [aba, setAba] = useState("dados");
+  const [headerForm, setHeaderForm] = useState(null);
   const [savingHeader, setSavingHeader] = useState(false);
-  const [erroHeader, setErroHeader]     = useState(null);
+  const [erroHeader, setErroHeader] = useState(null);
   // Troca de tabela de preço com itens: { id, nome } aguardando confirmação.
   const [confirmTabela, setConfirmTabela] = useState(null);
   const [confirmCliente, setConfirmCliente] = useState(null);
@@ -279,24 +337,24 @@ export default function PedidoVendaDetalhePage() {
   const [aplicandoTabela, setAplicandoTabela] = useState(false);
   // Referências que mantiveram o preço anterior (sem preço na tabela nova).
   const [semPrecoTabela, setSemPrecoTabela] = useState(null);
-  const [headerSalvo, setHeaderSalvo]   = useState(false);
+  const [headerSalvo, setHeaderSalvo] = useState(false);
 
-  const [itemModal, setItemModal]       = useState(null);
-  const [saving, setSaving]             = useState(false);
-  const [erroItem, setErroItem]         = useState(null);
+  const [itemModal, setItemModal] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [erroItem, setErroItem] = useState(null);
 
   const [statusLoading, setStatusLoading] = useState(false);
-  const [statusErro, setStatusErro]       = useState(null);
+  const [statusErro, setStatusErro] = useState(null);
   const [cancelarConfirm, setCancelarConfirm] = useState(false);
 
-  const [nfeModal, setNfeModal]         = useState(null);
-  const [nfeMsg, setNfeMsg]             = useState(null);
-  const [nfeSaving, setNfeSaving]       = useState(false);
+  const [nfeModal, setNfeModal] = useState(null);
+  const [nfeMsg, setNfeMsg] = useState(null);
+  const [nfeSaving, setNfeSaving] = useState(false);
   const [nfeResultado, setNfeResultado] = useState(null);
 
-  const searchTimer                     = useRef(null);
-  const searchInputRef                  = useRef(null);
-  const [acPos, setAcPos]               = useState({ top: 0, left: 0, width: 200 });
+  const searchTimer = useRef(null);
+  const searchInputRef = useRef(null);
+  const [acPos, setAcPos] = useState({ top: 0, left: 0, width: 200 });
 
   const carregar = async () => {
     setLoading(true);
@@ -319,20 +377,22 @@ export default function PedidoVendaDetalhePage() {
       listarTes().catch(() => []),
       transportadorasApi.listar().catch(() => []),
       listarCondicoesPagamento({ situacao: "Ativa" }).catch(() => []),
-    ]).then(([v, t, tes, transp, condicoes]) => {
-      setVendedores((v || []).filter((x) => x.ativo !== false));
-      // Lista completa — o filtro de ativas fica só no select (tabelasSelecionaveis).
-      setTabelas(t || []);
-      setTesList((tes || []).filter((x) => x.tipo === "Saída" && x.situacao === "Ativo"));
-      setTransportadoras((transp || []).filter((x) => !x.bloqueado));
-      setCondicoesPagamento(condicoes || []);
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    ])
+      .then(([v, t, tes, transp, condicoes]) => {
+        setVendedores((v || []).filter((x) => x.ativo !== false));
+        // Lista completa — o filtro de ativas fica só no select (tabelasSelecionaveis).
+        setTabelas(t || []);
+        setTesList((tes || []).filter((x) => x.tipo === "Saída" && x.situacao === "Ativo"));
+        setTransportadoras((transp || []).filter((x) => !x.bloqueado));
+        setCondicoesPagamento(condicoes || []);
+      })
+      .catch(() => {});
   }, [id]);
 
   // ── Cabeçalho (Dados / Transporte / Outros) ───────────────────────────────────
   const setH = (key) => (e) => setHeaderForm((f) => ({ ...f, [key]: e.target.value }));
-  const setHUpper = (key) => (e) => setHeaderForm((f) => ({ ...f, [key]: e.target.value.toUpperCase() }));
+  const setHUpper = (key) => (e) =>
+    setHeaderForm((f) => ({ ...f, [key]: e.target.value.toUpperCase() }));
 
   const handleSalvarHeader = async () => {
     if (!headerForm.cliente?.razao_social) {
@@ -340,38 +400,42 @@ export default function PedidoVendaDetalhePage() {
       setAba("dados");
       return;
     }
-    setSavingHeader(true); setErroHeader(null); setHeaderSalvo(false);
+    setSavingHeader(true);
+    setErroHeader(null);
+    setHeaderSalvo(false);
     try {
       const updated = await updatePedidoVenda(id, {
-        prazo_entrega_dias:   Number(headerForm.prazo_entrega_dias) || 0,
-        condicoes:            headerForm.condicoes,
-        condicao_pagamento_id: headerForm.condicao_pagamento_id ? Number(headerForm.condicao_pagamento_id) : null,
-        primeiro_vencimento:  headerForm.primeiro_vencimento || null,
-        vendedor_id:          headerForm.vendedor_id     || null,
-        tabela_preco_id:      headerForm.tabela_preco_id || null,
+        prazo_entrega_dias: Number(headerForm.prazo_entrega_dias) || 0,
+        condicoes: headerForm.condicoes,
+        condicao_pagamento_id: headerForm.condicao_pagamento_id
+          ? Number(headerForm.condicao_pagamento_id)
+          : null,
+        primeiro_vencimento: headerForm.primeiro_vencimento || null,
+        vendedor_id: headerForm.vendedor_id || null,
+        tabela_preco_id: headerForm.tabela_preco_id || null,
         // Só o vínculo: a cópia cliente_* é preenchida pelo backend a partir
         // do cadastro (e ignorada se vier daqui). Pedido de cliente não
         // cadastrado (sem id) não manda nada e mantém a cópia atual.
         ...(headerForm.cliente?.id ? { cliente_id: headerForm.cliente.id } : {}),
-        tes_id:               headerForm.tes_id || null,
-        indicador_presenca:   headerForm.indicador_presenca,
-        desconto_geral_pct:   Number(headerForm.desconto_geral_pct) || 0,
+        tes_id: headerForm.tes_id || null,
+        indicador_presenca: headerForm.indicador_presenca,
+        desconto_geral_pct: Number(headerForm.desconto_geral_pct) || 0,
         desconto_geral_valor: Number(headerForm.desconto_geral_valor) || 0,
-        acrescimo_pct:        Number(headerForm.acrescimo_pct) || 0,
-        acrescimo_valor:      Number(headerForm.acrescimo_valor) || 0,
-        transportadora_id:    headerForm.transportadora_id || null,
-        tipo_frete:           headerForm.tipo_frete || null,
-        valor_frete:          Number(headerForm.valor_frete) || 0,
-        valor_seguro:         Number(headerForm.valor_seguro) || 0,
-        valor_despesas:       Number(headerForm.valor_despesas) || 0,
-        peso_liquido:         Number(headerForm.peso_liquido) || 0,
-        peso_bruto:           Number(headerForm.peso_bruto) || 0,
-        qtd_volumes:          Number(headerForm.qtd_volumes) || 0,
-        especie_volumes:      headerForm.especie_volumes || null,
-        placa_veiculo:        headerForm.placa_veiculo || null,
-        uf_veiculo:           headerForm.uf_veiculo || null,
+        acrescimo_pct: Number(headerForm.acrescimo_pct) || 0,
+        acrescimo_valor: Number(headerForm.acrescimo_valor) || 0,
+        transportadora_id: headerForm.transportadora_id || null,
+        tipo_frete: headerForm.tipo_frete || null,
+        valor_frete: Number(headerForm.valor_frete) || 0,
+        valor_seguro: Number(headerForm.valor_seguro) || 0,
+        valor_despesas: Number(headerForm.valor_despesas) || 0,
+        peso_liquido: Number(headerForm.peso_liquido) || 0,
+        peso_bruto: Number(headerForm.peso_bruto) || 0,
+        qtd_volumes: Number(headerForm.qtd_volumes) || 0,
+        especie_volumes: headerForm.especie_volumes || null,
+        placa_veiculo: headerForm.placa_veiculo || null,
+        uf_veiculo: headerForm.uf_veiculo || null,
         informacoes_adicionais: headerForm.informacoes_adicionais || null,
-        observacoes_internas:  headerForm.observacoes_internas || null,
+        observacoes_internas: headerForm.observacoes_internas || null,
       });
       setPedido(updated);
       setHeaderForm(headerFormFromPedido(updated));
@@ -387,7 +451,7 @@ export default function PedidoVendaDetalhePage() {
   // Campo do backend é "ativa". A tabela já gravada no pedido continua
   // no select mesmo se tiver sido inativada depois.
   const tabelasSelecionaveis = tabelas.filter(
-    (t) => t.ativa || t.id === headerForm?.tabela_preco_id,
+    (t) => t.ativa || t.id === headerForm?.tabela_preco_id
   );
   const condicaoPagamentoSel = headerForm?.condicao_pagamento_id
     ? condicoesPagamento.find((c) => String(c.id) === String(headerForm.condicao_pagamento_id))
@@ -403,9 +467,10 @@ export default function PedidoVendaDetalhePage() {
       setPreviewParcelasErro(null);
       return;
     }
-    const dataBase = condicaoPagamentoSel.tipo === "intervalo"
-      ? headerForm.primeiro_vencimento
-      : pedido.data_emissao;
+    const dataBase =
+      condicaoPagamentoSel.tipo === "intervalo"
+        ? headerForm.primeiro_vencimento
+        : pedido.data_emissao;
     if (!dataBase) {
       setPreviewParcelas(null);
       setPreviewParcelasErro(null);
@@ -430,12 +495,17 @@ export default function PedidoVendaDetalhePage() {
       }
     }, 600);
     return () => clearTimeout(previewParcelasTimer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [headerForm?.condicao_pagamento_id, headerForm?.primeiro_vencimento, pedido?.total_pedido, pedido?.data_emissao]);
+  }, [
+    headerForm?.condicao_pagamento_id,
+    headerForm?.primeiro_vencimento,
+    pedido?.total_pedido,
+    pedido?.data_emissao,
+  ]);
 
   // ── Status / ações ────────────────────────────────────────────────────────────
   const handleMudarStatus = async (novoStatus) => {
-    setStatusLoading(true); setStatusErro(null);
+    setStatusLoading(true);
+    setStatusErro(null);
     try {
       const updated = await updateStatusPedidoVenda(id, novoStatus);
       setPedido(updated);
@@ -490,7 +560,12 @@ export default function PedidoVendaDetalhePage() {
       return;
     }
     setItemModal((m) => ({
-      ...m, step: 2, searchResults: [], produtoPai: resultado, gradeLoading: true, gradeQtds: {},
+      ...m,
+      step: 2,
+      searchResults: [],
+      produtoPai: resultado,
+      gradeLoading: true,
+      gradeQtds: {},
     }));
     try {
       const grade = await produtosApi.gradePedido(resultado.id);
@@ -508,7 +583,9 @@ export default function PedidoVendaDetalhePage() {
 
   // ── Passo 2 — grade do produto pai ────────────────────────────────────────
   const skuNaCelula = (linhaId, colunaId) =>
-    itemModal?.grade?.skus.find((s) => s.linha_item_id === linhaId && s.coluna_item_id === colunaId);
+    itemModal?.grade?.skus.find(
+      (s) => s.linha_item_id === linhaId && s.coluna_item_id === colunaId
+    );
 
   const setGradeQtd = (linhaId, colunaId, valor) => {
     const key = `${linhaId}-${colunaId}`;
@@ -517,7 +594,9 @@ export default function PedidoVendaDetalhePage() {
 
   const gradeTotais = (() => {
     if (!itemModal?.grade) return { pecas: 0, valor: 0, temSemPreco: false };
-    let pecas = 0, valor = 0, temSemPreco = false;
+    let pecas = 0,
+      valor = 0,
+      temSemPreco = false;
     for (const [key, qtdStr] of Object.entries(itemModal.gradeQtds)) {
       const qtd = parseInt(qtdStr) || 0;
       if (qtd <= 0) continue;
@@ -548,8 +627,12 @@ export default function PedidoVendaDetalhePage() {
         desconto_pct: 0,
       });
     }
-    if (itensBulk.length === 0) { setErroItem("Informe ao menos uma quantidade na grade."); return; }
-    setSaving(true); setErroItem(null);
+    if (itensBulk.length === 0) {
+      setErroItem("Informe ao menos uma quantidade na grade.");
+      return;
+    }
+    setSaving(true);
+    setErroItem(null);
     try {
       await addItensBulkPedidoVenda(id, itensBulk);
       await carregar();
@@ -579,16 +662,19 @@ export default function PedidoVendaDetalhePage() {
       setErroItem("Informe uma quantidade válida.");
       return;
     }
-    setSaving(true); setErroItem(null);
+    setSaving(true);
+    setErroItem(null);
     try {
-      await addItensBulkPedidoVenda(id, [{
-        produto_id: itemModal.avulso.id,
-        sku_id: null,
-        quantidade: parseInt(quantidade),
-        preco_unitario: parseFloat(precoUnit) || 0,
-        tes_id: tesId ? Number(tesId) : null,
-        desconto_pct: parseFloat(descontoPct) || 0,
-      }]);
+      await addItensBulkPedidoVenda(id, [
+        {
+          produto_id: itemModal.avulso.id,
+          sku_id: null,
+          quantidade: parseInt(quantidade),
+          preco_unitario: parseFloat(precoUnit) || 0,
+          tes_id: tesId ? Number(tesId) : null,
+          desconto_pct: parseFloat(descontoPct) || 0,
+        },
+      ]);
       await carregar();
       setItemModal(null);
     } catch (e) {
@@ -599,7 +685,10 @@ export default function PedidoVendaDetalhePage() {
   };
 
   const removerItem = async (itemId) => {
-    try { await removeItemPedidoVenda(id, itemId); await carregar(); } catch {}
+    try {
+      await removeItemPedidoVenda(id, itemId);
+      await carregar();
+    } catch {}
   };
 
   const itens = pedido?.itens || [];
@@ -607,7 +696,9 @@ export default function PedidoVendaDetalhePage() {
   // ── Tabela de itens: edição inline ────────────────────────────────────────────
   const itensEditaveis = podeEditar && pedido?.status === "Aberto";
   const { larguras, arrastando, iniciarArrasto, restaurar } = useResizableColumns(
-    ITENS_COLUNAS_CHAVE, ITENS_COLUNAS_PADRAO, ITENS_COLUNAS_MINIMOS,
+    ITENS_COLUNAS_CHAVE,
+    ITENS_COLUNAS_PADRAO,
+    ITENS_COLUNAS_MINIMOS
   );
   const camposItemRef = useRef(new Map());
 
@@ -670,7 +761,9 @@ export default function PedidoVendaDetalhePage() {
         setPedido(p);
         if (doCampo) setHeaderForm((f) => ({ ...f, cliente: clienteDoPedido(p) }));
         return;
-      } catch { /* segue para o ajuste local abaixo */ }
+      } catch {
+        /* segue para o ajuste local abaixo */
+      }
     }
     // Cliente escolhido e ainda não salvo no pedido (ou pedido que não
     // sincroniza): só o campo mostra o cadastro novo; a cópia do pedido vem
@@ -722,38 +815,58 @@ export default function PedidoVendaDetalhePage() {
   };
 
   const valorTotalItem = (item) =>
-    (parseFloat(item.preco_total) || 0) - (parseFloat(item.desconto_valor) || 0) + (parseFloat(item.acrescimo_valor) || 0);
+    (parseFloat(item.preco_total) || 0) -
+    (parseFloat(item.desconto_valor) || 0) +
+    (parseFloat(item.acrescimo_valor) || 0);
 
   const somaLargurasFixas = Object.values(larguras).reduce((acc, w) => acc + (w || 0), 0);
-  const estiloTabelaItens = larguras.descricao != null
-    ? { width: somaLargurasFixas }
-    : { width: "100%", minWidth: somaLargurasFixas + ITENS_COLUNAS_MINIMOS.descricao };
+  const estiloTabelaItens =
+    larguras.descricao != null
+      ? { width: somaLargurasFixas }
+      : { width: "100%", minWidth: somaLargurasFixas + ITENS_COLUNAS_MINIMOS.descricao };
 
   // Sem vendedor não há comissão — nem quadro na aba Dados, nem linha nos totais.
-  const tabelaAtual    = tabelas.find((t) => t.id === pedido?.tabela_preco_id);
+  const tabelaAtual = tabelas.find((t) => t.id === pedido?.tabela_preco_id);
   const comissaoPctStr = pedido?.vendedor_id ? pctBR(pedido.comissao_pct) : null;
-  const comissaoOrigemTexto = !pedido?.vendedor_id ? "Pedido sem vendedor" : ({
-    VINCULO:         `Comissão do vendedor na tabela ${tabelaAtual?.nome || ""}`.trim(),
-    PADRAO_VENDEDOR: "Comissão padrão do vendedor",
-    NENHUMA:         "Vendedor sem comissão para esta tabela",
-  }[pedido.comissao_origem] || "");
+  const comissaoOrigemTexto = !pedido?.vendedor_id
+    ? "Pedido sem vendedor"
+    : {
+        VINCULO: `Comissão do vendedor na tabela ${tabelaAtual?.nome || ""}`.trim(),
+        PADRAO_VENDEDOR: "Comissão padrão do vendedor",
+        NENHUMA: "Vendedor sem comissão para esta tabela",
+      }[pedido.comissao_origem] || "";
   // Vendedor/tabela alterados no formulário e ainda não salvos: o campo
   // continua mostrando a comissão gravada até o PATCH devolver a nova.
-  const comissaoPendente = !!pedido && !!headerForm && pedido.status === "Aberto" && (
-    (headerForm.vendedor_id || null) !== (pedido.vendedor_id || null)
-    || (headerForm.tabela_preco_id || null) !== (pedido.tabela_preco_id || null)
-  );
-  const comissaoTooltip = [comissaoOrigemTexto, comissaoPendente && "Salve o pedido para recalcular."]
-    .filter(Boolean).join(" — ");
+  const comissaoPendente =
+    !!pedido &&
+    !!headerForm &&
+    pedido.status === "Aberto" &&
+    ((headerForm.vendedor_id || null) !== (pedido.vendedor_id || null) ||
+      (headerForm.tabela_preco_id || null) !== (pedido.tabela_preco_id || null));
+  const comissaoTooltip = [
+    comissaoOrigemTexto,
+    comissaoPendente && "Salve o pedido para recalcular.",
+  ]
+    .filter(Boolean)
+    .join(" — ");
 
   const subtotalItens = itens.reduce(
-    (acc, i) => acc + (parseFloat(i.preco_total) || 0) - (parseFloat(i.desconto_valor) || 0) + (parseFloat(i.acrescimo_valor) || 0),
+    (acc, i) =>
+      acc +
+      (parseFloat(i.preco_total) || 0) -
+      (parseFloat(i.desconto_valor) || 0) +
+      (parseFloat(i.acrescimo_valor) || 0),
     0
   );
 
   // ── NF-e ──────────────────────────────────────────────────────────────────────
   const abrirNfeModal = () => {
-    setNfeModal({ serie: "001", data_emissao: hojeISO(), data_saida: hojeISO(), hora_saida: agoraHora() });
+    setNfeModal({
+      serie: "001",
+      data_emissao: hojeISO(),
+      data_saida: hojeISO(),
+      hora_saida: agoraHora(),
+    });
     setNfeMsg(null);
     setNfeResultado(null);
   };
@@ -779,13 +892,21 @@ export default function PedidoVendaDetalhePage() {
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  if (loading) return <div className="sc-page"><p className={styles.stateMsg}>Carregando…</p></div>;
-  if (!pedido || !headerForm) return (
-    <div className="sc-page">
-      <button className={styles.btnBack} onClick={() => navigate("/vendas/pedidos")}>Voltar</button>
-      <p className={styles.stateMsg}>Pedido não encontrado.</p>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="sc-page">
+        <p className={styles.stateMsg}>Carregando…</p>
+      </div>
+    );
+  if (!pedido || !headerForm)
+    return (
+      <div className="sc-page">
+        <button className={styles.btnBack} onClick={() => navigate("/vendas/pedidos")}>
+          Voltar
+        </button>
+        <p className={styles.stateMsg}>Pedido não encontrado.</p>
+      </div>
+    );
 
   return (
     <div className="sc-page">
@@ -799,7 +920,9 @@ export default function PedidoVendaDetalhePage() {
         <div className={styles.cabecalhoTitulo}>
           <div className={styles.tituloLinha}>
             <h1 className={styles.titulo}>Pedido {pedido.numero}</h1>
-            <span className={`${styles.statusBadge} ${styles[STATUS_CLS[pedido.status] || "stAberto"]}`}>
+            <span
+              className={`${styles.statusBadge} ${styles[STATUS_CLS[pedido.status] || "stAberto"]}`}
+            >
               {STATUS_LABELS[pedido.status] || pedido.status}
             </span>
           </div>
@@ -814,7 +937,9 @@ export default function PedidoVendaDetalhePage() {
         <div className={styles.actionBar}>
           <button
             className={styles.btnHeaderSecondary}
-            onClick={() => downloadBlob(() => getPdfCortePedidoVenda(id), `corte-${pedido.numero}.pdf`)}
+            onClick={() =>
+              downloadBlob(() => getPdfCortePedidoVenda(id), `corte-${pedido.numero}.pdf`)
+            }
           >
             Formulário de Corte PDF
           </button>
@@ -832,12 +957,20 @@ export default function PedidoVendaDetalhePage() {
           )}
 
           {podeExcluir && pedido.status === "Aberto" && (
-            <button className={styles.btnHeaderCancelar} onClick={() => setCancelarConfirm(true)} disabled={statusLoading}>
+            <button
+              className={styles.btnHeaderCancelar}
+              onClick={() => setCancelarConfirm(true)}
+              disabled={statusLoading}
+            >
               Cancelar Pedido
             </button>
           )}
           {podeEditar && pedido.status === "Fechado" && pedido.nfe_id == null && (
-            <button className={styles.btnHeaderSecondary} onClick={() => handleMudarStatus("Aberto")} disabled={statusLoading}>
+            <button
+              className={styles.btnHeaderSecondary}
+              onClick={() => handleMudarStatus("Aberto")}
+              disabled={statusLoading}
+            >
               Reabrir Pedido
             </button>
           )}
@@ -847,7 +980,11 @@ export default function PedidoVendaDetalhePage() {
             </button>
           )}
           {podeEditar && pedido.status === "Aberto" && (
-            <button className={styles.btnHeaderFechar} onClick={() => handleMudarStatus("Fechado")} disabled={statusLoading}>
+            <button
+              className={styles.btnHeaderFechar}
+              onClick={() => handleMudarStatus("Fechado")}
+              disabled={statusLoading}
+            >
               Fechar Pedido
             </button>
           )}
@@ -873,13 +1010,25 @@ export default function PedidoVendaDetalhePage() {
       {semPrecoTabela && (
         <div
           className={styles.avisoWarn}
-          style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.75rem" }}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "0.75rem",
+            marginBottom: "0.75rem",
+          }}
         >
           <span>
             Sem preço na tabela aplicada — mantiveram o preço anterior:{" "}
             <strong>{semPrecoTabela.join(", ")}</strong>
           </span>
-          <button className={styles.btnClose} onClick={() => setSemPrecoTabela(null)} aria-label="Fechar aviso">×</button>
+          <button
+            className={styles.btnClose}
+            onClick={() => setSemPrecoTabela(null)}
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -911,8 +1060,12 @@ export default function PedidoVendaDetalhePage() {
         mensagem={`Aplicar a tabela ${confirmTabela?.nome || ""}? Todos os preços dos itens serão substituídos, inclusive os alterados manualmente.`}
         labelConfirmar={aplicandoTabela ? "Aplicando…" : "Aplicar"}
         variante="neutro"
-        onConfirmar={() => { if (!aplicandoTabela) confirmarAplicarTabela(); }}
-        onCancelar={() => { if (!aplicandoTabela) setConfirmTabela(null); }}
+        onConfirmar={() => {
+          if (!aplicandoTabela) confirmarAplicarTabela();
+        }}
+        onCancelar={() => {
+          if (!aplicandoTabela) setConfirmTabela(null);
+        }}
       />
 
       {/* ══ ABA DADOS ══ */}
@@ -929,8 +1082,14 @@ export default function PedidoVendaDetalhePage() {
             </label>
             <label className={styles.field}>
               <span>Prazo de entrega (dias)</span>
-              <input type="number" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.prazo_entrega_dias} onChange={setH("prazo_entrega_dias")} />
+              <input
+                type="number"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.prazo_entrega_dias}
+                onChange={setH("prazo_entrega_dias")}
+              />
             </label>
 
             {/* div, não label: o campo tem dois inputs e botões */}
@@ -940,7 +1099,9 @@ export default function PedidoVendaDetalhePage() {
                 cliente={headerForm.cliente}
                 readOnly={!podeEditar || pedido.status !== "Aberto"}
                 onChange={handleTrocarCliente}
-                onVerCadastro={hasPermission("cadastros_clientes", "ver") ? verCadastroCliente : null}
+                onVerCadastro={
+                  hasPermission("cadastros_clientes", "ver") ? verCadastroCliente : null
+                }
               />
             </div>
 
@@ -950,38 +1111,61 @@ export default function PedidoVendaDetalhePage() {
                 className={styles.input}
                 disabled={!podeEditar}
                 value={headerForm.condicao_pagamento_id}
-                onChange={(e) => setHeaderForm((f) => ({ ...f, condicao_pagamento_id: e.target.value }))}
+                onChange={(e) =>
+                  setHeaderForm((f) => ({ ...f, condicao_pagamento_id: e.target.value }))
+                }
               >
                 <option value="">Nenhuma</option>
                 {condicoesPagamento.map((c) => (
-                  <option key={c.id} value={c.id}>{c.codigo} — {c.descricao}</option>
+                  <option key={c.id} value={c.id}>
+                    {c.codigo} — {c.descricao}
+                  </option>
                 ))}
               </select>
             </label>
             <label className={styles.field}>
               <span>Primeiro Vencimento</span>
-              <input type="date" className={styles.input}
+              <input
+                type="date"
+                className={styles.input}
                 disabled={!podeEditar || condicaoPagamentoSel?.tipo !== "intervalo"}
-                value={headerForm.primeiro_vencimento} onChange={setH("primeiro_vencimento")} />
+                value={headerForm.primeiro_vencimento}
+                onChange={setH("primeiro_vencimento")}
+              />
             </label>
 
             <label className={styles.field}>
               <span>Vendedor</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.vendedor_id}
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.vendedor_id}
                 onChange={(e) => {
                   const vid = e.target.value;
                   setHeaderForm((f) => ({ ...f, vendedor_id: vid }));
-                }}>
+                }}
+              >
                 <option value="">Sem vendedor</option>
-                {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                {vendedores.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nome}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.field}>
               <span>Tabela de preço</span>
-              <select className={styles.input} disabled={!podeEditar || aplicandoTabela} value={headerForm.tabela_preco_id} onChange={handleTrocarTabela}>
+              <select
+                className={styles.input}
+                disabled={!podeEditar || aplicandoTabela}
+                value={headerForm.tabela_preco_id}
+                onChange={handleTrocarTabela}
+              >
                 <option value="">Nenhuma</option>
                 {tabelasSelecionaveis.map((t) => (
-                  <option key={t.id} value={t.id}>{t.nome}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
                 ))}
               </select>
             </label>
@@ -991,7 +1175,12 @@ export default function PedidoVendaDetalhePage() {
                   decide preço à vista/a prazo na tabela de preço, ver
                   services/venda_service.get_preco. */}
               <span>Preço da tabela</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.condicoes} onChange={setH("condicoes")}>
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.condicoes}
+                onChange={setH("condicoes")}
+              >
                 <option value="avista">À Vista</option>
                 <option value="aprazo">A Prazo</option>
               </select>
@@ -1009,17 +1198,33 @@ export default function PedidoVendaDetalhePage() {
             </label>
             <label className={styles.field}>
               <span>TES padrão do pedido</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.tes_id} onChange={setH("tes_id")}>
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.tes_id}
+                onChange={setH("tes_id")}
+              >
                 <option value="">Nenhum</option>
                 {tesList.map((t) => (
-                  <option key={t.id} value={t.id}>{t.codigo} — {t.descricao}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.codigo} — {t.descricao}
+                  </option>
                 ))}
               </select>
             </label>
             <label className={styles.field}>
               <span>Indicador de Presença</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.indicador_presenca} onChange={setH("indicador_presenca")}>
-                {INDICADOR_PRESENCA_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.indicador_presenca}
+                onChange={setH("indicador_presenca")}
+              >
+                {INDICADOR_PRESENCA_OPCOES.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -1039,9 +1244,13 @@ export default function PedidoVendaDetalhePage() {
                     ))}
                   </ul>
                 ) : condicaoPagamentoSel.tipo === "intervalo" ? (
-                  <p className={styles.parcelasPreviewMsg}>Informe o primeiro vencimento para ver o preview.</p>
+                  <p className={styles.parcelasPreviewMsg}>
+                    Informe o primeiro vencimento para ver o preview.
+                  </p>
                 ) : (
-                  <p className={styles.parcelasPreviewMsg}>Salve o total do pedido para ver o preview.</p>
+                  <p className={styles.parcelasPreviewMsg}>
+                    Salve o total do pedido para ver o preview.
+                  </p>
                 )}
               </div>
             )}
@@ -1058,33 +1267,52 @@ export default function PedidoVendaDetalhePage() {
               <div className={styles.descontoHeader}>
                 <span className={styles.descontoHeaderLabel}>DESCONTO GERAL:</span>
                 <input
-                  type="number" step="0.01" min="0" max="100"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
                   className={styles.descontoInputSm}
                   disabled={!podeEditar}
                   title="Desconto (%)"
                   value={headerForm.desconto_geral_pct}
                   onChange={(e) => {
                     const pct = e.target.value;
-                    const valor = subtotalItens > 0 ? (subtotalItens * (parseFloat(pct) || 0)) / 100 : 0;
-                    setHeaderForm((f) => ({ ...f, desconto_geral_pct: pct, desconto_geral_valor: valor.toFixed(2) }));
+                    const valor =
+                      subtotalItens > 0 ? (subtotalItens * (parseFloat(pct) || 0)) / 100 : 0;
+                    setHeaderForm((f) => ({
+                      ...f,
+                      desconto_geral_pct: pct,
+                      desconto_geral_valor: valor.toFixed(2),
+                    }));
                   }}
                 />
                 <span className={styles.descontoUnit}>%</span>
                 <span className={styles.descontoUnit}>R$</span>
                 <input
-                  type="number" step="0.01" min="0"
+                  type="number"
+                  step="0.01"
+                  min="0"
                   className={styles.descontoInputSm}
                   disabled={!podeEditar}
                   title="Desconto (R$)"
                   value={headerForm.desconto_geral_valor}
                   onChange={(e) => {
                     const valor = e.target.value;
-                    const pct = subtotalItens > 0 ? ((parseFloat(valor) || 0) / subtotalItens) * 100 : 0;
-                    setHeaderForm((f) => ({ ...f, desconto_geral_valor: valor, desconto_geral_pct: pct.toFixed(2) }));
+                    const pct =
+                      subtotalItens > 0 ? ((parseFloat(valor) || 0) / subtotalItens) * 100 : 0;
+                    setHeaderForm((f) => ({
+                      ...f,
+                      desconto_geral_valor: valor,
+                      desconto_geral_pct: pct.toFixed(2),
+                    }));
                   }}
                 />
                 {podeEditar && (
-                  <button className={styles.btnAplicar} onClick={handleSalvarHeader} disabled={savingHeader}>
+                  <button
+                    className={styles.btnAplicar}
+                    onClick={handleSalvarHeader}
+                    disabled={savingHeader}
+                  >
                     {savingHeader ? "Salvando…" : "Aplicar"}
                   </button>
                 )}
@@ -1092,7 +1320,9 @@ export default function PedidoVendaDetalhePage() {
               {podeEditar && (
                 <>
                   <span className={styles.headSeparator}>|</span>
-                  <button className={styles.btnPrimary} onClick={abrirItemModal}>+ Adicionar Item</button>
+                  <button className={styles.btnPrimary} onClick={abrirItemModal}>
+                    + Adicionar Item
+                  </button>
                 </>
               )}
             </div>
@@ -1156,16 +1386,23 @@ export default function PedidoVendaDetalhePage() {
                         </td>
                         <td className={styles.tdEdit}>
                           {celula("punit", {
-                            valor: item.preco_unitario, casas: 2, moeda: true,
+                            valor: item.preco_unitario,
+                            casas: 2,
+                            moeda: true,
                             marcador: item.preco_manual ? (
-                              <span className={styles.marcadorManual} title="Preço alterado manualmente" />
+                              <span
+                                className={styles.marcadorManual}
+                                title="Preço alterado manualmente"
+                              />
                             ) : null,
                           })}
                         </td>
                         <td className={styles.tdEdit}>
                           {celula("desc", { valor: item.desconto_valor, casas: 2, moeda: true })}
                         </td>
-                        <td className={styles.tdTotal} title={moeda(totalItem)}>{moeda(totalItem)}</td>
+                        <td className={styles.tdTotal} title={moeda(totalItem)}>
+                          {moeda(totalItem)}
+                        </td>
                         <td className={styles.tdTes}>
                           <TesInput
                             tesId={item.tes_id}
@@ -1180,7 +1417,9 @@ export default function PedidoVendaDetalhePage() {
                               className={styles.btnExcluir}
                               onClick={() => removerItem(item.id)}
                               title="Remover"
-                            >×</button>
+                            >
+                              ×
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -1255,65 +1494,140 @@ export default function PedidoVendaDetalhePage() {
           <div className={styles.grid3Compacto}>
             <label className={`${styles.field} ${styles.colSpan3}`}>
               <span>Tipo de Frete</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.tipo_frete} onChange={setH("tipo_frete")}>
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.tipo_frete}
+                onChange={setH("tipo_frete")}
+              >
                 <option value="">Selecionar</option>
-                {TIPO_FRETE_OPCOES.map((o) => <option key={o} value={o}>{o}</option>)}
+                {TIPO_FRETE_OPCOES.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={`${styles.field} ${styles.colSpan3}`}>
               <span>Transportadora</span>
-              <select className={styles.input} disabled={!podeEditar} value={headerForm.transportadora_id} onChange={setH("transportadora_id")}>
+              <select
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.transportadora_id}
+                onChange={setH("transportadora_id")}
+              >
                 <option value="">Nenhuma</option>
-                {transportadoras.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                {transportadoras.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
+                ))}
               </select>
             </label>
 
             <label className={styles.field}>
               <span>Valor Frete (R$)</span>
-              <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.valor_frete} onChange={setH("valor_frete")} />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.valor_frete}
+                onChange={setH("valor_frete")}
+              />
             </label>
             <label className={styles.field}>
               <span>Valor Seguro (R$)</span>
-              <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.valor_seguro} onChange={setH("valor_seguro")} />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.valor_seguro}
+                onChange={setH("valor_seguro")}
+              />
             </label>
             <label className={styles.field}>
               <span>Valor Despesas (R$)</span>
-              <input type="number" step="0.01" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.valor_despesas} onChange={setH("valor_despesas")} />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.valor_despesas}
+                onChange={setH("valor_despesas")}
+              />
             </label>
 
             <label className={styles.field}>
               <span>Peso Bruto (kg)</span>
-              <input type="number" step="0.001" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.peso_bruto} onChange={setH("peso_bruto")} />
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.peso_bruto}
+                onChange={setH("peso_bruto")}
+              />
             </label>
             <label className={styles.field}>
               <span>Peso Líquido (kg)</span>
-              <input type="number" step="0.001" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.peso_liquido} onChange={setH("peso_liquido")} />
+              <input
+                type="number"
+                step="0.001"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.peso_liquido}
+                onChange={setH("peso_liquido")}
+              />
             </label>
             <label className={styles.field}>
               <span>Quantidade de Volumes</span>
-              <input type="number" step="1" min="0" className={styles.input} disabled={!podeEditar}
-                value={headerForm.qtd_volumes} onChange={setH("qtd_volumes")} />
+              <input
+                type="number"
+                step="1"
+                min="0"
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.qtd_volumes}
+                onChange={setH("qtd_volumes")}
+              />
             </label>
 
             <label className={styles.field}>
               <span>Espécie dos Volumes</span>
-              <input className={styles.input} disabled={!podeEditar}
-                value={headerForm.especie_volumes} onChange={setHUpper("especie_volumes")} placeholder="Ex: Caixa, Fardo…" />
+              <input
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.especie_volumes}
+                onChange={setHUpper("especie_volumes")}
+                placeholder="Ex: Caixa, Fardo…"
+              />
             </label>
             <label className={styles.field}>
               <span>Placa do Veículo</span>
-              <input className={styles.input} disabled={!podeEditar}
-                value={headerForm.placa_veiculo} onChange={setHUpper("placa_veiculo")} maxLength={10} />
+              <input
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.placa_veiculo}
+                onChange={setHUpper("placa_veiculo")}
+                maxLength={10}
+              />
             </label>
             <label className={styles.field}>
               <span>UF do Veículo</span>
-              <input className={styles.input} disabled={!podeEditar}
-                value={headerForm.uf_veiculo} onChange={setH("uf_veiculo")} maxLength={2} />
+              <input
+                className={styles.input}
+                disabled={!podeEditar}
+                value={headerForm.uf_veiculo}
+                onChange={setH("uf_veiculo")}
+                maxLength={2}
+              />
             </label>
           </div>
         </div>
@@ -1352,9 +1666,17 @@ export default function PedidoVendaDetalhePage() {
       {/* ── Salvar cabeçalho (Dados/Transporte/Outros) ── */}
       {podeEditar && aba !== "itens" && (
         <div className={styles.headerSaveBar}>
-          {erroHeader && <p className={styles.erro} style={{ margin: 0 }}>{erroHeader}</p>}
+          {erroHeader && (
+            <p className={styles.erro} style={{ margin: 0 }}>
+              {erroHeader}
+            </p>
+          )}
           {headerSalvo && <span className={styles.msgSalvo}>Alterações salvas.</span>}
-          <button className={styles.btnPrimary} onClick={handleSalvarHeader} disabled={savingHeader}>
+          <button
+            className={styles.btnPrimary}
+            onClick={handleSalvarHeader}
+            disabled={savingHeader}
+          >
             {savingHeader ? "Salvando…" : "Salvar Alterações"}
           </button>
         </div>
@@ -1362,10 +1684,20 @@ export default function PedidoVendaDetalhePage() {
 
       {/* ══ MODAL — Adicionar item (3 passos: busca → grade do pai / avulso) ══ */}
       {itemModal && (
-        <div className={styles.overlay} onClick={() => { setItemModal(null); setErroItem(null); }}>
+        <div
+          className={styles.overlay}
+          onClick={() => {
+            setItemModal(null);
+            setErroItem(null);
+          }}
+        >
           <div
             className={`${styles.modalMd} ${
-              itemModal.step === 2 ? styles.modalGrade : itemModal.step === 3 ? styles.modalAvulso : styles.modalBusca
+              itemModal.step === 2
+                ? styles.modalGrade
+                : itemModal.step === 3
+                  ? styles.modalAvulso
+                  : styles.modalBusca
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1375,13 +1707,28 @@ export default function PedidoVendaDetalhePage() {
                   "Adicionar Item"
                 ) : (
                   <>
-                    <button className={styles.btnVoltarModal} onClick={voltarParaBusca} title="Voltar">←</button>
-                    {itemModal.step === 2 ? itemModal.produtoPai?.descricao : itemModal.avulso?.descricao}
+                    <button
+                      className={styles.btnVoltarModal}
+                      onClick={voltarParaBusca}
+                      title="Voltar"
+                    >
+                      ←
+                    </button>
+                    {itemModal.step === 2
+                      ? itemModal.produtoPai?.descricao
+                      : itemModal.avulso?.descricao}
                   </>
                 )}
               </h2>
-              <button className={styles.btnClose}
-                onClick={() => { setItemModal(null); setErroItem(null); }}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => {
+                  setItemModal(null);
+                  setErroItem(null);
+                }}
+              >
+                ×
+              </button>
             </div>
 
             <div className={styles.modalBody}>
@@ -1396,29 +1743,45 @@ export default function PedidoVendaDetalhePage() {
                       placeholder="Buscar produto por código ou nome..."
                       value={itemModal.searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
-                      onBlur={() => setTimeout(() => setItemModal((m) => m ? { ...m, searchResults: [] } : m), 200)}
+                      onBlur={() =>
+                        setTimeout(
+                          () => setItemModal((m) => (m ? { ...m, searchResults: [] } : m)),
+                          200
+                        )
+                      }
                       autoComplete="off"
                       autoFocus
                     />
                   </label>
                   {itemModal.searching && <small className={styles.precoHint}>Buscando…</small>}
-                  {itemModal.searchResults.length > 0 && ReactDOM.createPortal(
-                    <ul className={styles.autocomplete} style={{ top: acPos.top, left: acPos.left, width: acPos.width }}>
-                      {itemModal.searchResults.map((r) => (
-                        <li key={`${r.tipo}-${r.id}`} className={styles.acItem} onClick={() => selecionarResultadoBusca(r)}>
-                          <span className={styles.acIcone} title={r.tipo === "pai" ? "Produto com grade" : "Produto avulso"}>
-                            {r.tipo === "pai" ? "⊞" : "□"}
-                          </span>
-                          <code className={styles.acCod}>{r.codigo || "?"}</code>
-                          <span className={styles.acNomeCol}>
-                            <span className={styles.acNome}>{r.descricao}</span>
-                            {r.grupo && <span className={styles.acGrupo}>{r.grupo}</span>}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>,
-                    document.body
-                  )}
+                  {itemModal.searchResults.length > 0 &&
+                    ReactDOM.createPortal(
+                      <ul
+                        className={styles.autocomplete}
+                        style={{ top: acPos.top, left: acPos.left, width: acPos.width }}
+                      >
+                        {itemModal.searchResults.map((r) => (
+                          <li
+                            key={`${r.tipo}-${r.id}`}
+                            className={styles.acItem}
+                            onClick={() => selecionarResultadoBusca(r)}
+                          >
+                            <span
+                              className={styles.acIcone}
+                              title={r.tipo === "pai" ? "Produto com grade" : "Produto avulso"}
+                            >
+                              {r.tipo === "pai" ? "⊞" : "□"}
+                            </span>
+                            <code className={styles.acCod}>{r.codigo || "?"}</code>
+                            <span className={styles.acNomeCol}>
+                              <span className={styles.acNome}>{r.descricao}</span>
+                              {r.grupo && <span className={styles.acGrupo}>{r.grupo}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>,
+                      document.body
+                    )}
                 </div>
               )}
 
@@ -1457,11 +1820,14 @@ export default function PedidoVendaDetalhePage() {
                                   return (
                                     <td key={col.id}>
                                       <input
-                                        type="number" min="0"
+                                        type="number"
+                                        min="0"
                                         className={styles.gradeCell}
                                         disabled={disabled}
                                         value={itemModal.gradeQtds[key] || ""}
-                                        onChange={(e) => setGradeQtd(linha.id, col.id, e.target.value)}
+                                        onChange={(e) =>
+                                          setGradeQtd(linha.id, col.id, e.target.value)
+                                        }
                                       />
                                     </td>
                                   );
@@ -1471,7 +1837,11 @@ export default function PedidoVendaDetalhePage() {
                           </tbody>
                         </table>
                         <table className={styles.gradePrecoTable}>
-                          <thead><tr><th>Preço Unit.</th></tr></thead>
+                          <thead>
+                            <tr>
+                              <th>Preço Unit.</th>
+                            </tr>
+                          </thead>
                           <tbody>
                             {itemModal.grade.linha_grade.itens.map((linha) => {
                               // Uma referência de preço por linha — usa a primeira coluna com
@@ -1482,9 +1852,15 @@ export default function PedidoVendaDetalhePage() {
                               return (
                                 <tr key={linha.id}>
                                   <td
-                                    className={skuRef?.preco_origem === "sem_preco" ? styles.gradePrecoSemPreco : ""}
+                                    className={
+                                      skuRef?.preco_origem === "sem_preco"
+                                        ? styles.gradePrecoSemPreco
+                                        : ""
+                                    }
                                   >
-                                    {skuRef?.preco_origem === "sem_preco" ? "—" : moeda(skuRef?.preco_venda)}
+                                    {skuRef?.preco_origem === "sem_preco"
+                                      ? "—"
+                                      : moeda(skuRef?.preco_venda)}
                                   </td>
                                 </tr>
                               );
@@ -1493,7 +1869,8 @@ export default function PedidoVendaDetalhePage() {
                         </table>
                       </div>
                       <div className={styles.itemTotal}>
-                        Total de peças: <strong>{gradeTotais.pecas}</strong> | Total: <strong>{moeda(gradeTotais.valor)}</strong>
+                        Total de peças: <strong>{gradeTotais.pecas}</strong> | Total:{" "}
+                        <strong>{moeda(gradeTotais.valor)}</strong>
                       </div>
                     </>
                   ) : null}
@@ -1514,27 +1891,52 @@ export default function PedidoVendaDetalhePage() {
                   <div className={styles.grid2}>
                     <label className={styles.field}>
                       <span>Quantidade *</span>
-                      <input type="number" min="1" className={styles.input}
-                        value={itemModal.avulsoForm.quantidade} onChange={setAvulsoForm("quantidade")} />
+                      <input
+                        type="number"
+                        min="1"
+                        className={styles.input}
+                        value={itemModal.avulsoForm.quantidade}
+                        onChange={setAvulsoForm("quantidade")}
+                      />
                     </label>
                     <label className={styles.field}>
                       <span>Preço unitário (R$) *</span>
-                      <input type="number" step="0.01" className={styles.input}
-                        value={itemModal.avulsoForm.precoUnit} onChange={setAvulsoForm("precoUnit")} />
+                      <input
+                        type="number"
+                        step="0.01"
+                        className={styles.input}
+                        value={itemModal.avulsoForm.precoUnit}
+                        onChange={setAvulsoForm("precoUnit")}
+                      />
                     </label>
                   </div>
                   <div className={styles.grid2}>
                     <label className={styles.field}>
                       <span>TES</span>
-                      <select className={styles.input} value={itemModal.avulsoForm.tesId} onChange={setAvulsoForm("tesId")}>
+                      <select
+                        className={styles.input}
+                        value={itemModal.avulsoForm.tesId}
+                        onChange={setAvulsoForm("tesId")}
+                      >
                         <option value="">Nenhum</option>
-                        {tesList.map((t) => <option key={t.id} value={t.id}>{t.codigo} — {t.descricao}</option>)}
+                        {tesList.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.codigo} — {t.descricao}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <label className={styles.field}>
                       <span>Desconto (%)</span>
-                      <input type="number" step="0.01" min="0" max="100" className={styles.input}
-                        value={itemModal.avulsoForm.descontoPct} onChange={setAvulsoForm("descontoPct")} />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className={styles.input}
+                        value={itemModal.avulsoForm.descontoPct}
+                        onChange={setAvulsoForm("descontoPct")}
+                      />
                     </label>
                   </div>
                   <div className={styles.itemTotal}>
@@ -1547,8 +1949,15 @@ export default function PedidoVendaDetalhePage() {
             </div>
 
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary}
-                onClick={() => { setItemModal(null); setErroItem(null); }}>Cancelar</button>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => {
+                  setItemModal(null);
+                  setErroItem(null);
+                }}
+              >
+                Cancelar
+              </button>
               {itemModal.step === 2 && (
                 <button
                   className={styles.btnPrimary}
@@ -1559,7 +1968,11 @@ export default function PedidoVendaDetalhePage() {
                 </button>
               )}
               {itemModal.step === 3 && (
-                <button className={styles.btnPrimary} onClick={handleAdicionarAvulso} disabled={saving}>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={handleAdicionarAvulso}
+                  disabled={saving}
+                >
                   {saving ? "Adicionando…" : "Adicionar item"}
                 </button>
               )}
@@ -1576,15 +1989,19 @@ export default function PedidoVendaDetalhePage() {
               Cancelar pedido?
             </h2>
             <p className={styles.confirmText}>
-              O pedido <strong>{pedido.numero}</strong> será marcado como Cancelado.
-              Esta ação não pode ser desfeita.
+              O pedido <strong>{pedido.numero}</strong> será marcado como Cancelado. Esta ação não
+              pode ser desfeita.
             </p>
             {statusErro && <p className={styles.erro}>{statusErro}</p>}
             <div className={styles.modalActions}>
               <button className={styles.btnSecondary} onClick={() => setCancelarConfirm(false)}>
                 Voltar
               </button>
-              <button className={styles.btnDanger} onClick={() => handleMudarStatus("Cancelado")} disabled={statusLoading}>
+              <button
+                className={styles.btnDanger}
+                onClick={() => handleMudarStatus("Cancelado")}
+                disabled={statusLoading}
+              >
                 {statusLoading ? "Cancelando…" : "Cancelar Pedido"}
               </button>
             </div>
@@ -1603,42 +2020,85 @@ export default function PedidoVendaDetalhePage() {
             {nfeResultado ? (
               <>
                 <p className={styles.aviso}>NF-e emitida com sucesso.</p>
-                <p style={{ fontSize: "0.8rem", wordBreak: "break-all", color: "var(--sc-text-secondary)" }}>
+                <p
+                  style={{
+                    fontSize: "0.8rem",
+                    wordBreak: "break-all",
+                    color: "var(--sc-text-secondary)",
+                  }}
+                >
                   Chave de acesso: {nfeResultado.chave_acesso}
                 </p>
                 <div className={styles.modalActions}>
-                  <button className={styles.btnSecondary} onClick={() => setNfeModal(null)}>Fechar</button>
-                  <button className={styles.btnPrimary} onClick={() => navigate("/vendas/nfe")}>Ver NF-e</button>
+                  <button className={styles.btnSecondary} onClick={() => setNfeModal(null)}>
+                    Fechar
+                  </button>
+                  <button className={styles.btnPrimary} onClick={() => navigate("/vendas/nfe")}>
+                    Ver NF-e
+                  </button>
                 </div>
               </>
             ) : (
               <>
                 <label className={styles.field}>
                   <span>Série</span>
-                  <select className={styles.input} value={nfeModal.serie}
-                    onChange={(e) => setNfeModal((m) => ({ ...m, serie: e.target.value }))}>
-                    {SERIE_NFE_OPCOES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  <select
+                    className={styles.input}
+                    value={nfeModal.serie}
+                    onChange={(e) => setNfeModal((m) => ({ ...m, serie: e.target.value }))}
+                  >
+                    {SERIE_NFE_OPCOES.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className={styles.field} style={{ marginTop: "0.75rem" }}>
                   <span>Data de Emissão</span>
-                  <input type="date" className={styles.input} value={nfeModal.data_emissao}
-                    onChange={(e) => setNfeModal((m) => ({ ...m, data_emissao: e.target.value }))} />
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={nfeModal.data_emissao}
+                    onChange={(e) => setNfeModal((m) => ({ ...m, data_emissao: e.target.value }))}
+                  />
                 </label>
                 <label className={styles.field} style={{ marginTop: "0.75rem" }}>
                   <span>Data de Saída</span>
-                  <input type="date" className={styles.input} value={nfeModal.data_saida}
-                    onChange={(e) => setNfeModal((m) => ({ ...m, data_saida: e.target.value }))} />
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={nfeModal.data_saida}
+                    onChange={(e) => setNfeModal((m) => ({ ...m, data_saida: e.target.value }))}
+                  />
                 </label>
                 <label className={styles.field} style={{ marginTop: "0.75rem" }}>
                   <span>Hora de Saída</span>
-                  <input type="time" className={styles.input} value={nfeModal.hora_saida}
-                    onChange={(e) => setNfeModal((m) => ({ ...m, hora_saida: e.target.value }))} />
+                  <input
+                    type="time"
+                    className={styles.input}
+                    value={nfeModal.hora_saida}
+                    onChange={(e) => setNfeModal((m) => ({ ...m, hora_saida: e.target.value }))}
+                  />
                 </label>
-                {nfeMsg && <p className={styles.erro} style={{ marginTop: "1rem" }}>{nfeMsg}</p>}
+                {nfeMsg && (
+                  <p className={styles.erro} style={{ marginTop: "1rem" }}>
+                    {nfeMsg}
+                  </p>
+                )}
                 <div className={styles.modalActions}>
-                  <button className={styles.btnSecondary} onClick={() => setNfeModal(null)} disabled={nfeSaving}>Cancelar</button>
-                  <button className={styles.btnPrimary} onClick={handleConfirmarNfe} disabled={nfeSaving}>
+                  <button
+                    className={styles.btnSecondary}
+                    onClick={() => setNfeModal(null)}
+                    disabled={nfeSaving}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={handleConfirmarNfe}
+                    disabled={nfeSaving}
+                  >
                     {nfeSaving ? "Emitindo…" : "Confirmar"}
                   </button>
                 </div>

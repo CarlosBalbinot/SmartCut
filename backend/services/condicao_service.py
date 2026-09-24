@@ -74,9 +74,7 @@ def _vencimentos_fixo(condicao: str, data_emissao: date) -> list[date]:
     return vencimentos
 
 
-def gerar_parcelas(
-    condicao: CondicaoPagamento, valor_base: Decimal, data_emissao: date
-) -> list[dict]:
+def gerar_parcelas(condicao: CondicaoPagamento, valor_base: Decimal, data_emissao: date) -> list[dict]:
     """Gera a lista de parcelas de uma condição de pagamento aplicada sobre
     `valor_base`, a partir de `data_emissao`.
 
@@ -85,9 +83,7 @@ def gerar_parcelas(
     de arredondamento, para que a soma bata exatamente com o valor ajustado.
     """
     valor_base = Decimal(str(valor_base))
-    ajuste_pct = (
-        Decimal(str(condicao.acrescimo or 0)) - Decimal(str(condicao.desconto or 0))
-    ) / Decimal("100")
+    ajuste_pct = (Decimal(str(condicao.acrescimo or 0)) - Decimal(str(condicao.desconto or 0))) / Decimal("100")
     valor_ajustado = (valor_base * (Decimal("1") + ajuste_pct)).quantize(Decimal("0.01"))
 
     condicao_texto = (condicao.condicao or "").strip()
@@ -111,11 +107,13 @@ def gerar_parcelas(
             acumulado += valor
         else:
             valor = valor_ajustado - acumulado
-        parcelas.append({
-            "parcela": i,
-            "total": n,
-            "valor": valor,
-            "vencimento": vencimento,
-            "descricao": f"{i}/{n}",
-        })
+        parcelas.append(
+            {
+                "parcela": i,
+                "total": n,
+                "valor": valor,
+                "vencimento": vencimento,
+                "descricao": f"{i}/{n}",
+            }
+        )
     return parcelas

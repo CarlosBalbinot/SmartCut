@@ -20,6 +20,7 @@ _MOD_EDITAR = "configuracoes_editar"
 
 # ── Schemas ─────────────────────────────────────────────────────────────
 
+
 class CondicaoPagamentoCreate(BaseModel):
     codigo: str = Field(..., max_length=10)
     descricao: str = Field(..., max_length=100)
@@ -84,11 +85,10 @@ class SimularParcelasResponse(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────
 
+
 def _validar_tipo_situacao(tipo: str, situacao: str) -> None:
     if tipo not in TIPO_VALIDOS:
-        raise HTTPException(
-            status_code=400, detail=f"Tipo inválido: {tipo}. Use {' ou '.join(TIPO_VALIDOS)}."
-        )
+        raise HTTPException(status_code=400, detail=f"Tipo inválido: {tipo}. Use {' ou '.join(TIPO_VALIDOS)}.")
     if situacao not in SITUACAO_VALIDAS:
         raise HTTPException(
             status_code=400,
@@ -105,6 +105,7 @@ def _get_ou_404(db: Session, condicao_id: int) -> CondicaoPagamento:
 
 # ── Rotas ───────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar(situacao: Optional[str] = None, db: Session = Depends(get_db)):
     q = select(CondicaoPagamento)
@@ -118,7 +119,8 @@ def listar(situacao: Optional[str] = None, db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/{condicao_id}", response_model=dict,
+    "/{condicao_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_VER, "ver"))],
 )
 def obter(condicao_id: int, db: Session = Depends(get_db)):
@@ -127,7 +129,9 @@ def obter(condicao_id: int, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def criar(payload: CondicaoPagamentoCreate, db: Session = Depends(get_db)):
@@ -144,15 +148,14 @@ def criar(payload: CondicaoPagamentoCreate, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{condicao_id}", response_model=dict,
+    "/{condicao_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def atualizar(condicao_id: int, payload: CondicaoPagamentoUpdate, db: Session = Depends(get_db)):
     condicao = _get_ou_404(db, condicao_id)
     dados = payload.model_dump(exclude_unset=True)
-    _validar_tipo_situacao(
-        dados.get("tipo", condicao.tipo), dados.get("situacao", condicao.situacao)
-    )
+    _validar_tipo_situacao(dados.get("tipo", condicao.tipo), dados.get("situacao", condicao.situacao))
     for campo, valor in dados.items():
         setattr(condicao, campo, valor)
     try:
@@ -165,7 +168,8 @@ def atualizar(condicao_id: int, payload: CondicaoPagamentoUpdate, db: Session = 
 
 
 @router.delete(
-    "/{condicao_id}", response_model=dict,
+    "/{condicao_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))],
 )
 def excluir(condicao_id: int, db: Session = Depends(get_db)):
@@ -176,7 +180,8 @@ def excluir(condicao_id: int, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/simular", response_model=dict,
+    "/simular",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD_VER, "ver"))],
 )
 def simular(payload: SimularParcelasRequest, db: Session = Depends(get_db)):
@@ -184,8 +189,10 @@ def simular(payload: SimularParcelasRequest, db: Session = Depends(get_db)):
         # Preview ad-hoc (condição ainda não salva) — não toca o banco.
         _validar_tipo_situacao(payload.tipo, "Ativa")
         condicao = CondicaoPagamento(
-            tipo=payload.tipo, condicao=payload.condicao,
-            acrescimo=payload.acrescimo, desconto=payload.desconto,
+            tipo=payload.tipo,
+            condicao=payload.condicao,
+            acrescimo=payload.acrescimo,
+            desconto=payload.desconto,
         )
     elif payload.condicao_id is not None:
         condicao = _get_ou_404(db, payload.condicao_id)

@@ -7,34 +7,46 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    HRFlowable, Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table,
+    HRFlowable,
+    Image as RLImage,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
     TableStyle,
 )
 
 # ── Paleta (preto / branco / cinza claro apenas) ────────────────────────────
-_CINZA_CLARO  = colors.Color(0.98, 0.98, 0.98)   # #fafafa — linhas alternadas
-_CINZA_LABEL  = colors.Color(0.96, 0.96, 0.96)   # #f5f5f5 — labels do grid cliente / título de grupo
-_CINZA_HEADER = colors.Color(0.82, 0.82, 0.82)   # cabeçalho da tabela de corte + linhas finas
-_CINZA_ESCURO = colors.Color(0.20, 0.20, 0.20)   # #333 — cabeçalho da tabela de itens do pedido
-_PRETO  = colors.black
+_CINZA_CLARO = colors.Color(0.98, 0.98, 0.98)  # #fafafa — linhas alternadas
+_CINZA_LABEL = colors.Color(0.96, 0.96, 0.96)  # #f5f5f5 — labels do grid cliente / título de grupo
+_CINZA_HEADER = colors.Color(0.82, 0.82, 0.82)  # cabeçalho da tabela de corte + linhas finas
+_CINZA_ESCURO = colors.Color(0.20, 0.20, 0.20)  # #333 — cabeçalho da tabela de itens do pedido
+_PRETO = colors.black
 _BRANCO = colors.white
 
-_N        = ParagraphStyle("n", fontName="Helvetica", fontSize=8, leading=10)
-_B        = ParagraphStyle("b", fontName="Helvetica-Bold", fontSize=8, leading=10)
-_S        = ParagraphStyle("s", fontName="Helvetica", fontSize=7, leading=9)
-_LBL      = ParagraphStyle("lbl", fontName="Helvetica-Bold", fontSize=6, leading=7.5, textColor=colors.Color(0.4, 0.4, 0.4))
-_VAL      = ParagraphStyle("val", fontName="Helvetica", fontSize=8.5, leading=11)
-_H_ITENS  = ParagraphStyle("hdr_itens", fontName="Helvetica-Bold", fontSize=7.5, leading=9, alignment=1, textColor=_BRANCO)
-_H_CORTE  = ParagraphStyle("hdr_corte", fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=1, textColor=_PRETO)
-_GT       = ParagraphStyle("gt", fontName="Helvetica-Bold", fontSize=10, leading=18, backColor=_CINZA_LABEL, leftIndent=4)
-_CAPTION  = ParagraphStyle("cap", fontName="Helvetica", fontSize=8, leading=10, alignment=1)
-_TITULO   = ParagraphStyle("titulo", fontName="Helvetica-Bold", fontSize=13, leading=16)
+_N = ParagraphStyle("n", fontName="Helvetica", fontSize=8, leading=10)
+_B = ParagraphStyle("b", fontName="Helvetica-Bold", fontSize=8, leading=10)
+_S = ParagraphStyle("s", fontName="Helvetica", fontSize=7, leading=9)
+_LBL = ParagraphStyle("lbl", fontName="Helvetica-Bold", fontSize=6, leading=7.5, textColor=colors.Color(0.4, 0.4, 0.4))
+_VAL = ParagraphStyle("val", fontName="Helvetica", fontSize=8.5, leading=11)
+_H_ITENS = ParagraphStyle(
+    "hdr_itens", fontName="Helvetica-Bold", fontSize=7.5, leading=9, alignment=1, textColor=_BRANCO
+)
+_H_CORTE = ParagraphStyle("hdr_corte", fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=1, textColor=_PRETO)
+_GT = ParagraphStyle("gt", fontName="Helvetica-Bold", fontSize=10, leading=18, backColor=_CINZA_LABEL, leftIndent=4)
+_CAPTION = ParagraphStyle("cap", fontName="Helvetica", fontSize=8, leading=10, alignment=1)
+_TITULO = ParagraphStyle("titulo", fontName="Helvetica-Bold", fontSize=13, leading=16)
 
 _COND_LABEL = {"avista": "À Vista", "aprazo": "A Prazo"}
 
 SIZE_COLS = [
-    ("P", "qtd_p"), ("M", "qtd_m"), ("G", "qtd_g"), ("GG", "qtd_gg"),
-    ("G1", "qtd_g1"), ("G2", "qtd_g2"), ("G3", "qtd_g3"),
+    ("P", "qtd_p"),
+    ("M", "qtd_m"),
+    ("G", "qtd_g"),
+    ("GG", "qtd_gg"),
+    ("G1", "qtd_g1"),
+    ("G2", "qtd_g2"),
+    ("G3", "qtd_g3"),
 ]
 NORMAL_ATTRS = {"qtd_p", "qtd_m", "qtd_g", "qtd_gg"}
 PLUS_ATTRS = {"qtd_g1", "qtd_g2", "qtd_g3"}
@@ -93,18 +105,22 @@ def _grid_row(cells, total_w) -> Table:
     labels = [Paragraph(label, _LBL) for label, _, _ in cells]
     valores = [Paragraph(str(valor) if valor not in (None, "") else "—", _VAL) for _, valor, _ in cells]
     t = Table([labels, valores], colWidths=col_w)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), _CINZA_LABEL),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
-        ("INNERGRID", (0, 0), (-1, -1), 0.5, _PRETO),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, 0), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
-        ("TOPPADDING", (0, 1), (-1, 1), 1.5),
-        ("BOTTOMPADDING", (0, 1), (-1, 1), 3),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), _CINZA_LABEL),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, _PRETO),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, 0), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
+                ("TOPPADDING", (0, 1), (-1, 1), 1.5),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 3),
+            ]
+        )
+    )
     return t
 
 
@@ -125,6 +141,7 @@ def _tamanho_valores(item, cols, only=None) -> list:
 # PDF PEDIDO
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
     """precos_ref: dict opcional {str(grupo_id): PrecoReferencia} usado para
     saber quais referências têm plus size e obter o preço plus da tabela."""
@@ -137,9 +154,12 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
     page_size = landscape(A4) if tem_plus_cols else A4
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=page_size,
-        leftMargin=12 * mm, rightMargin=12 * mm,
-        topMargin=12 * mm, bottomMargin=12 * mm,
+        buf,
+        pagesize=page_size,
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
     )
     w = doc.width
     story = []
@@ -156,19 +176,29 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
     if empresa:
         if empresa.razao_social:
             emp_lines.append(Paragraph(empresa.razao_social, _B))
-        linha_end = " — ".join(filter(None, [
-            empresa.endereco,
-            f"CEP: {empresa.cep}" if empresa.cep else None,
-            empresa.cidade,
-        ]))
+        linha_end = " — ".join(
+            filter(
+                None,
+                [
+                    empresa.endereco,
+                    f"CEP: {empresa.cep}" if empresa.cep else None,
+                    empresa.cidade,
+                ],
+            )
+        )
         if linha_end:
             emp_lines.append(Paragraph(linha_end, _S))
-        linha_contato = " — ".join(filter(None, [
-            f"Fone: {empresa.telefone1}" if empresa.telefone1 else None,
-            f"CNPJ: {empresa.cnpj}" if empresa.cnpj else None,
-            empresa.email,
-            empresa.site,
-        ]))
+        linha_contato = " — ".join(
+            filter(
+                None,
+                [
+                    f"Fone: {empresa.telefone1}" if empresa.telefone1 else None,
+                    f"CNPJ: {empresa.cnpj}" if empresa.cnpj else None,
+                    empresa.email,
+                    empresa.site,
+                ],
+            )
+        )
         if linha_contato:
             emp_lines.append(Paragraph(linha_contato, _S))
 
@@ -184,48 +214,78 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
         [[logo_cell, emp_lines, ped_lines]],
         colWidths=[w * 0.30, w * 0.40, w * 0.30],
     )
-    hdr_t.setStyle(TableStyle(_ts_base() + [
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOX", (0, 0), (-1, -1), 0.6, _PRETO),
-        ("LINEAFTER", (0, 0), (0, 0), 0.4, _PRETO),
-        ("LINEAFTER", (1, 0), (1, 0), 0.4, _PRETO),
-        ("BOX", (2, 0), (2, 0), 0.6, _PRETO),
-    ]))
+    hdr_t.setStyle(
+        TableStyle(
+            _ts_base()
+            + [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOX", (0, 0), (-1, -1), 0.6, _PRETO),
+                ("LINEAFTER", (0, 0), (0, 0), 0.4, _PRETO),
+                ("LINEAFTER", (1, 0), (1, 0), 0.4, _PRETO),
+                ("BOX", (2, 0), (2, 0), 0.6, _PRETO),
+            ]
+        )
+    )
     story.append(hdr_t)
     story.append(Spacer(1, 3 * mm))
 
     # ── Dados do cliente (grid de 5 linhas) ───────────────────────────────────
-    story.append(_grid_row([
-        ("CLIENTE/RAZÃO SOCIAL", pedido.cliente_razao_social, 0.60),
-        ("CNPJ", pedido.cliente_cnpj, 0.25),
-        ("I.E.", pedido.cliente_ie, 0.15),
-    ], w))
-    story.append(_grid_row([
-        ("ENDEREÇO", pedido.cliente_endereco, 0.60),
-        ("CONDIÇÕES", _cond_label(pedido.condicoes), 0.40),
-    ], w))
-    story.append(_grid_row([
-        ("CIDADE", pedido.cliente_cidade, 0.40),
-        ("CEP", pedido.cliente_cep, 0.20),
-        ("PRAZO ENTR.", f"{pedido.prazo_entrega_dias or 20} dias", 0.20),
-        ("FONE", pedido.cliente_telefone, 0.20),
-    ], w))
-    story.append(_grid_row([
-        ("CONTATO", None, 0.50),
-        ("E-MAIL", pedido.cliente_email, 0.50),
-    ], w))
-    story.append(_grid_row([
-        # PedidoVenda não tem campo "observacoes" — usa informacoes_adicionais
-        # (visível ao cliente/XML da NF-e); observacoes_internas é de uso
-        # interno e não deve ir num PDF entregue ao cliente.
-        ("OBS", pedido.informacoes_adicionais, 1.0),
-    ], w))
+    story.append(
+        _grid_row(
+            [
+                ("CLIENTE/RAZÃO SOCIAL", pedido.cliente_razao_social, 0.60),
+                ("CNPJ", pedido.cliente_cnpj, 0.25),
+                ("I.E.", pedido.cliente_ie, 0.15),
+            ],
+            w,
+        )
+    )
+    story.append(
+        _grid_row(
+            [
+                ("ENDEREÇO", pedido.cliente_endereco, 0.60),
+                ("CONDIÇÕES", _cond_label(pedido.condicoes), 0.40),
+            ],
+            w,
+        )
+    )
+    story.append(
+        _grid_row(
+            [
+                ("CIDADE", pedido.cliente_cidade, 0.40),
+                ("CEP", pedido.cliente_cep, 0.20),
+                ("PRAZO ENTR.", f"{pedido.prazo_entrega_dias or 20} dias", 0.20),
+                ("FONE", pedido.cliente_telefone, 0.20),
+            ],
+            w,
+        )
+    )
+    story.append(
+        _grid_row(
+            [
+                ("CONTATO", None, 0.50),
+                ("E-MAIL", pedido.cliente_email, 0.50),
+            ],
+            w,
+        )
+    )
+    story.append(
+        _grid_row(
+            [
+                # PedidoVenda não tem campo "observacoes" — usa informacoes_adicionais
+                # (visível ao cliente/XML da NF-e); observacoes_internas é de uso
+                # interno e não deve ir num PDF entregue ao cliente.
+                ("OBS", pedido.informacoes_adicionais, 1.0),
+            ],
+            w,
+        )
+    )
     story.append(Spacer(1, 4 * mm))
 
     # ── Tabela de itens ────────────────────────────────────────────────────────
     hdrs = ["REFERÊNCIA", "NOME DA PEÇA", "COR"] + [lbl for lbl, _ in ativos] + ["P.UNIT", "P.TOTAL"]
     fixo_w = w * 0.10 + w * 0.20 + w * 0.10  # referência + nome + cor
-    preco_w = w * 0.09 + w * 0.10            # p.unit + p.total
+    preco_w = w * 0.09 + w * 0.10  # p.unit + p.total
     size_w = (w - fixo_w - preco_w) / n_size
     col_w = [w * 0.10, w * 0.20, w * 0.10] + [size_w] * len(ativos) + [w * 0.09, w * 0.10]
 
@@ -254,21 +314,30 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
             preco_plus = pref.preco_avista_plus if pedido.condicoes == "avista" else pref.preco_aprazo_plus
             subtotal_plus = Decimal(str(preco_plus or 0)) * qty_plus
 
-            linha1 = [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)] \
-                + _tamanho_valores(item, ativos, only=NORMAL_ATTRS) \
+            linha1 = (
+                [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)]
+                + _tamanho_valores(item, ativos, only=NORMAL_ATTRS)
                 + [_brl(preco_normal), _brl(subtotal_normal)]
-            linha2 = [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)] \
-                + _tamanho_valores(item, ativos, only=PLUS_ATTRS) \
+            )
+            linha2 = (
+                [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)]
+                + _tamanho_valores(item, ativos, only=PLUS_ATTRS)
                 + [_brl(preco_plus), _brl(subtotal_plus)]
+            )
 
-            rows.append(linha1); row_groups.append(grupo_idx)
-            rows.append(linha2); row_groups.append(grupo_idx)
+            rows.append(linha1)
+            row_groups.append(grupo_idx)
+            rows.append(linha2)
+            row_groups.append(grupo_idx)
             plus_rows.append(len(rows) - 1)
         else:
-            linha = [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)] \
-                + _tamanho_valores(item, ativos) \
+            linha = (
+                [Paragraph(codigo, _S), Paragraph(nome, _S), Paragraph(cor, _S)]
+                + _tamanho_valores(item, ativos)
                 + [_brl(item.preco_unitario), _brl(item.preco_total)]
-            rows.append(linha); row_groups.append(grupo_idx)
+            )
+            rows.append(linha)
+            row_groups.append(grupo_idx)
 
         grupo_idx += 1
 
@@ -297,36 +366,54 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
 
     # ── Rodapé (comissão + total) ─────────────────────────────────────────────
     rod_t = Table(
-        [[
-            Paragraph(f"Comissão: {_brl(pedido.comissao_valor)}",
-                      ParagraphStyle("rc", fontName="Helvetica-Bold", fontSize=9, leading=12)),
-            Paragraph(f"TOTAL PEDIDO: {_brl(pedido.total_pedido)}",
-                      ParagraphStyle("rt", fontName="Helvetica-Bold", fontSize=11, leading=14, alignment=2)),
-        ]],
+        [
+            [
+                Paragraph(
+                    f"Comissão: {_brl(pedido.comissao_valor)}",
+                    ParagraphStyle("rc", fontName="Helvetica-Bold", fontSize=9, leading=12),
+                ),
+                Paragraph(
+                    f"TOTAL PEDIDO: {_brl(pedido.total_pedido)}",
+                    ParagraphStyle("rt", fontName="Helvetica-Bold", fontSize=11, leading=14, alignment=2),
+                ),
+            ]
+        ],
         colWidths=[w * 0.5, w * 0.5],
     )
-    rod_t.setStyle(TableStyle(_ts_base() + [
-        ("BACKGROUND", (0, 0), (-1, -1), _CINZA_CLARO),
-        ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
-        ("TOPPADDING", (0, 0), (-1, -1), 7),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-    ]))
+    rod_t.setStyle(
+        TableStyle(
+            _ts_base()
+            + [
+                ("BACKGROUND", (0, 0), (-1, -1), _CINZA_CLARO),
+                ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]
+        )
+    )
     story.append(rod_t)
 
     # ── Assinaturas ────────────────────────────────────────────────────────────
     story.append(Spacer(1, 14 * mm))
     assinaturas = Table(
         [
-            [HRFlowable(width="88%", thickness=0.7, color=_PRETO),
-             HRFlowable(width="88%", thickness=0.7, color=_PRETO)],
+            [
+                HRFlowable(width="88%", thickness=0.7, color=_PRETO),
+                HRFlowable(width="88%", thickness=0.7, color=_PRETO),
+            ],
             [Paragraph("Cliente", _CAPTION), Paragraph("Representante", _CAPTION)],
         ],
         colWidths=[w * 0.5, w * 0.5],
     )
-    assinaturas.setStyle(TableStyle(_ts_base() + [
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 1), (-1, 1), 2),
-    ]))
+    assinaturas.setStyle(
+        TableStyle(
+            _ts_base()
+            + [
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 1), (-1, 1), 2),
+            ]
+        )
+    )
     story.append(assinaturas)
 
     doc.build(story)
@@ -337,12 +424,16 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
 # PDF CORTE
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def gerar_pdf_corte(pedido, itens) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=15 * mm, rightMargin=15 * mm,
-        topMargin=12 * mm, bottomMargin=12 * mm,
+        buf,
+        pagesize=A4,
+        leftMargin=15 * mm,
+        rightMargin=15 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
     )
     w = doc.width
     story = []
@@ -397,12 +488,15 @@ def gerar_pdf_corte(pedido, itens) -> bytes:
             if qty_plus > 0 and qty_normal > 0:
                 linha1 = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos, only=NORMAL_ATTRS)
                 linha2 = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos, only=PLUS_ATTRS)
-                rows.append(linha1); row_groups.append(grupo_idx)
-                rows.append(linha2); row_groups.append(grupo_idx)
+                rows.append(linha1)
+                row_groups.append(grupo_idx)
+                rows.append(linha2)
+                row_groups.append(grupo_idx)
                 plus_rows.append(len(rows) - 1)
             else:
                 linha = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos)
-                rows.append(linha); row_groups.append(grupo_idx)
+                rows.append(linha)
+                row_groups.append(grupo_idx)
 
             grupo_idx += 1
 

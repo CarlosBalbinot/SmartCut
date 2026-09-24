@@ -16,7 +16,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: var(--sc-bg-secondary); color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
 
 .title {
   font-size: var(--sc-font-size-page-title);
@@ -69,7 +72,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 .hint {
   font-size: 0.72rem;
@@ -141,8 +146,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ── Seções (Impostos / Insumos / Logística) ── */
 .secao {
@@ -169,7 +179,9 @@
   gap: 1rem;
   align-items: flex-end;
 }
-.custoRow .field { flex: 1; }
+.custoRow .field {
+  flex: 1;
+}
 
 .custoCalc {
   display: flex;

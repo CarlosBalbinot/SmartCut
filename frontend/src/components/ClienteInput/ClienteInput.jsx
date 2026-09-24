@@ -50,7 +50,10 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
   const inputRef = useRef(null);
 
   // Cliente trocado por fora (seleção confirmada, recarga) — descarta edição.
-  useEffect(() => { setTexto(null); setErro(null); }, [cliente?.id]);
+  useEffect(() => {
+    setTexto(null);
+    setErro(null);
+  }, [cliente?.id]);
 
   const aplicar = async (novo) => {
     try {
@@ -67,7 +70,11 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
   const validar = async () => {
     if (texto === null) return true;
     const valor = texto.trim().toUpperCase();
-    if (!valor || valor === codigoAtual.toUpperCase()) { setTexto(null); setErro(null); return true; }
+    if (!valor || valor === codigoAtual.toUpperCase()) {
+      setTexto(null);
+      setErro(null);
+      return true;
+    }
     setValidando(true);
     let encontrado;
     try {
@@ -79,7 +86,11 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
     } finally {
       setValidando(false);
     }
-    if (encontrado.id === cliente?.id) { setTexto(null); setErro(null); return true; }
+    if (encontrado.id === cliente?.id) {
+      setTexto(null);
+      setErro(null);
+      return true;
+    }
     return aplicar(encontrado);
   };
 
@@ -115,9 +126,11 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
     const digitos = (buscaTexto || "").replace(/\D/g, "");
     setModalAberto(false);
     setNovoCadastro(
-      digitos.length === 14 ? { cnpj: digitos }
-        : digitos.length === 11 ? { cpf: digitos, tipo_pessoa: "fisica" }
-        : {},
+      digitos.length === 14
+        ? { cnpj: digitos }
+        : digitos.length === 11
+          ? { cpf: digitos, tipo_pessoa: "fisica" }
+          : {}
     );
   };
 
@@ -147,8 +160,14 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
           tabIndex={readOnly ? -1 : 0}
           title={erro || (readOnly ? "" : "Código ou CNPJ/CPF do cliente — F2 para buscar")}
           placeholder={readOnly ? "" : "CÓDIGO / CNPJ"}
-          onChange={(e) => { setTexto(e.target.value.toUpperCase()); setErro(null); }}
-          onFocus={(e) => { if (texto === null) setTexto(codigoAtual); e.target.select(); }}
+          onChange={(e) => {
+            setTexto(e.target.value.toUpperCase());
+            setErro(null);
+          }}
+          onFocus={(e) => {
+            if (texto === null) setTexto(codigoAtual);
+            e.target.select();
+          }}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
         />
@@ -170,8 +189,16 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setModalAberto(true)}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor"
-              strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
               <circle cx="7" cy="7" r="4.5" />
               <line x1="10.5" y1="10.5" x2="14" y2="14" />
             </svg>
@@ -190,7 +217,10 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
           selecionadoId={cliente?.id}
           onSelecionar={selecionarNoModal}
           onNovo={podeCriarCliente ? abrirNovoCadastro : null}
-          onFechar={() => { setModalAberto(false); inputRef.current?.focus(); }}
+          onFechar={() => {
+            setModalAberto(false);
+            inputRef.current?.focus();
+          }}
         />
       )}
 
@@ -198,7 +228,10 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
         <ClienteFormModal
           clienteId={null}
           valoresIniciais={novoCadastro}
-          onClose={() => { setNovoCadastro(null); inputRef.current?.focus(); }}
+          onClose={() => {
+            setNovoCadastro(null);
+            inputRef.current?.focus();
+          }}
           onSaved={novoCadastroSalvo}
         />
       )}
@@ -235,11 +268,22 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
           const idx = itens.findIndex((c) => c.id === selecionadoId);
           setAtivo(idx >= 0 && !busca.trim() ? idx : 0);
         })
-        .catch((e) => { if (!cancelado) { setLista([]); setTemMais(false); setErro(e.message); } })
-        .finally(() => { if (!cancelado) setCarregando(false); });
+        .catch((e) => {
+          if (!cancelado) {
+            setLista([]);
+            setTemMais(false);
+            setErro(e.message);
+          }
+        })
+        .finally(() => {
+          if (!cancelado) setCarregando(false);
+        });
     }, 300);
-    return () => { cancelado = true; clearTimeout(t); };
-  }, [busca]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      cancelado = true;
+      clearTimeout(t);
+    };
+  }, [busca]);
 
   useEffect(() => {
     listaRef.current?.querySelector(`[data-idx="${ativo}"]`)?.scrollIntoView({ block: "nearest" });
@@ -262,7 +306,8 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {
-      e.preventDefault(); e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
       onFechar();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -279,16 +324,21 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
   return ReactDOM.createPortal(
     <div
       className={styles.overlay}
-      onMouseDown={(e) => { overlayMouseDown.current = e.target; }}
+      onMouseDown={(e) => {
+        overlayMouseDown.current = e.target;
+      }}
       onClick={(e) => {
-        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget) onFechar();
+        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget)
+          onFechar();
       }}
       onKeyDown={handleKeyDown}
     >
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>Selecionar cliente</h2>
-          <button className={styles.btnClose} onClick={onFechar} aria-label="Fechar">×</button>
+          <button className={styles.btnClose} onClick={onFechar} aria-label="Fechar">
+            ×
+          </button>
         </div>
 
         <div className={styles.modalScroll}>
@@ -312,34 +362,51 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
               </thead>
               <tbody>
                 {erro ? (
-                  <tr><td colSpan={4} className={styles.vazio} title={erro}>Não foi possível carregar os clientes.</td></tr>
+                  <tr>
+                    <td colSpan={4} className={styles.vazio} title={erro}>
+                      Não foi possível carregar os clientes.
+                    </td>
+                  </tr>
                 ) : lista.length === 0 ? (
-                  <tr><td colSpan={4} className={styles.vazio}>{carregando ? "Carregando…" : "Nenhum cliente encontrado."}</td></tr>
-                ) : lista.map((c, idx) => {
-                  const doc = formatarDocumento(c.cnpj || c.cpf);
-                  const local = [c.cidade, c.estado].filter(Boolean).join("/");
-                  return (
-                    <tr
-                      key={c.id}
-                      data-idx={idx}
-                      className={`${idx === ativo ? styles.linhaAtiva : ""} ${c.id === selecionadoId ? styles.linhaSelecionada : ""}`}
-                      onClick={() => setAtivo(idx)}
-                      onDoubleClick={() => onSelecionar(paraLookup(c))}
-                    >
-                      <td title={c.codigo || ""}>{c.codigo || "—"}</td>
-                      <td title={c.razao_social}>{c.razao_social}</td>
-                      <td title={doc}>{doc || "—"}</td>
-                      <td title={local}>{local || "—"}</td>
-                    </tr>
-                  );
-                })}
+                  <tr>
+                    <td colSpan={4} className={styles.vazio}>
+                      {carregando ? "Carregando…" : "Nenhum cliente encontrado."}
+                    </td>
+                  </tr>
+                ) : (
+                  lista.map((c, idx) => {
+                    const doc = formatarDocumento(c.cnpj || c.cpf);
+                    const local = [c.cidade, c.estado].filter(Boolean).join("/");
+                    return (
+                      <tr
+                        key={c.id}
+                        data-idx={idx}
+                        className={`${idx === ativo ? styles.linhaAtiva : ""} ${c.id === selecionadoId ? styles.linhaSelecionada : ""}`}
+                        onClick={() => setAtivo(idx)}
+                        onDoubleClick={() => onSelecionar(paraLookup(c))}
+                      >
+                        <td title={c.codigo || ""}>{c.codigo || "—"}</td>
+                        <td title={c.razao_social}>{c.razao_social}</td>
+                        <td title={doc}>{doc || "—"}</td>
+                        <td title={local}>{local || "—"}</td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
           <div className={styles.rodapeLista}>
-            <p className={styles.dica}>Setas para navegar, Enter ou duplo clique para selecionar.</p>
+            <p className={styles.dica}>
+              Setas para navegar, Enter ou duplo clique para selecionar.
+            </p>
             {temMais && !erro && (
-              <button type="button" className={styles.btnMais} onClick={carregarMais} disabled={carregando}>
+              <button
+                type="button"
+                className={styles.btnMais}
+                onClick={carregarMais}
+                disabled={carregando}
+              >
                 {carregando ? "Carregando…" : "Carregar mais"}
               </button>
             )}
@@ -357,7 +424,9 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
               + Novo cliente
             </button>
           )}
-          <button className={styles.btnSecondary} onClick={onFechar}>Cancelar</button>
+          <button className={styles.btnSecondary} onClick={onFechar}>
+            Cancelar
+          </button>
           <button
             className={styles.btnPrimary}
             disabled={!lista[ativo]}
@@ -368,7 +437,7 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }
 

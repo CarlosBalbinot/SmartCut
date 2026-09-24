@@ -39,9 +39,7 @@ function PecaSVG({ geometria, sentido_fio, rotacao_base = 0 }) {
   const vh = h + pad * 2;
   const sw = Math.max(w, h) * 0.012;
 
-  const pontosStr = pontos
-    .map((p) => `${p[0] - minX + pad},${p[1] - minY + pad}`)
-    .join(" ");
+  const pontosStr = pontos.map((p) => `${p[0] - minX + pad},${p[1] - minY + pad}`).join(" ");
 
   const cx = vw / 2;
   const cy = vh / 2;
@@ -52,19 +50,9 @@ function PecaSVG({ geometria, sentido_fio, rotacao_base = 0 }) {
 
   return (
     <svg viewBox={`0 0 ${vw} ${vh}`} className={styles.svg}>
-      <polygon
-        points={pontosStr}
-        fill="var(--sc-100)"
-        stroke="var(--sc-700)"
-        strokeWidth={sw}
-      />
+      <polygon points={pontosStr} fill="var(--sc-100)" stroke="var(--sc-700)" strokeWidth={sw} />
       {arrow && (
-        <g
-          stroke="var(--sc-900)"
-          fill="var(--sc-900)"
-          strokeWidth={arrowSw}
-          strokeLinecap="round"
-        >
+        <g stroke="var(--sc-900)" fill="var(--sc-900)" strokeWidth={arrowSw} strokeLinecap="round">
           {arrow}
         </g>
       )}
@@ -114,9 +102,7 @@ function arrowHead(x, y, angle, size) {
   ];
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  return pts
-    .map(([px, py]) => `${x + px * cos - py * sin},${y + px * sin + py * cos}`)
-    .join(" ");
+  return pts.map(([px, py]) => `${x + px * cos - py * sin},${y + px * sin + py * cos}`).join(" ");
 }
 
 // ── Controles de rotação ─────────────────────────────────────────────
@@ -130,11 +116,10 @@ const ROTACOES = [
 
 function BotoesRotacao({ rotacaoAtual, onChange }) {
   function aplicar(delta) {
-    onChange(((rotacaoAtual + delta) % 360 + 360) % 360);
+    onChange((((rotacaoAtual + delta) % 360) + 360) % 360);
   }
   const deg = rotacaoAtual ?? 0;
-  const indicador =
-    deg === 0 ? "Rotação: 0°" : `Rotação: ${deg > 0 ? "+" : ""}${deg}°`;
+  const indicador = deg === 0 ? "Rotação: 0°" : `Rotação: ${deg > 0 ? "+" : ""}${deg}°`;
 
   return (
     <div className={styles.rotacaoWrap}>
@@ -166,9 +151,9 @@ function BotoesRotacao({ rotacaoAtual, onChange }) {
 // ── Botões de sentido do fio ─────────────────────────────────────────
 
 const SENTIDOS = [
-  { valor: "vertical",   label: "↕", titulo: "Vertical"   },
+  { valor: "vertical", label: "↕", titulo: "Vertical" },
   { valor: "horizontal", label: "↔", titulo: "Horizontal" },
-  { valor: "45graus",    label: "↗", titulo: "45°"        },
+  { valor: "45graus", label: "↗", titulo: "45°" },
 ];
 
 function BotoesSentido({ valor, onChange }) {
@@ -179,9 +164,7 @@ function BotoesSentido({ valor, onChange }) {
           key={s.valor}
           type="button"
           title={s.titulo}
-          className={`${styles.btnSentido} ${
-            valor === s.valor ? styles.btnSentidoAtivo : ""
-          }`}
+          className={`${styles.btnSentido} ${valor === s.valor ? styles.btnSentidoAtivo : ""}`}
           onClick={() => onChange(s.valor)}
         >
           {s.label}
@@ -194,9 +177,9 @@ function BotoesSentido({ valor, onChange }) {
 // ── Botões de tipo de corte ──────────────────────────────────────────
 
 const TIPOS_CORTE = [
-  { valor: "simples",          label: "Simples"  },
-  { valor: "par",              label: "Par ↔"    },
-  { valor: "par_sem_espelho",  label: "Par s/↔"  },
+  { valor: "simples", label: "Simples" },
+  { valor: "par", label: "Par ↔" },
+  { valor: "par_sem_espelho", label: "Par s/↔" },
 ];
 
 function BotoesTipoCorte({ valor, onChange }) {
@@ -206,9 +189,7 @@ function BotoesTipoCorte({ valor, onChange }) {
         <button
           key={t.valor}
           type="button"
-          className={`${styles.btnCorte} ${
-            valor === t.valor ? styles.btnCorteAtivo : ""
-          }`}
+          className={`${styles.btnCorte} ${valor === t.valor ? styles.btnCorteAtivo : ""}`}
           onClick={() => onChange(t.valor)}
         >
           {t.label}
@@ -259,9 +240,7 @@ export default function PecaCard({ peca, index, onChange, tituloExtra }) {
         <div className={styles.campo}>
           <label className={styles.label}>
             Orientar peça
-            <span className={styles.labelDica}>
-              {" "}— gire até ficar como ficaria sobre o tecido
-            </span>
+            <span className={styles.labelDica}> — gire até ficar como ficaria sobre o tecido</span>
           </label>
           <BotoesRotacao
             rotacaoAtual={rotacao_base}

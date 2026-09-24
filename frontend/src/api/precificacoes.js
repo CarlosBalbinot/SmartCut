@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 
 const BASE_URL = `${API_BASE}/api/v1`;
 
@@ -38,8 +38,6 @@ export const createPrecificacao = (payload) =>
 export const updatePrecificacao = (id, payload) =>
   request(`/precificacoes/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deletePrecificacao = (id) =>
-  request(`/precificacoes/${id}`, { method: "DELETE" });
+export const deletePrecificacao = (id) => request(`/precificacoes/${id}`, { method: "DELETE" });
 
-export const calcularPrecificacao = (grupoId) =>
-  request(`/precificacoes/${grupoId}/calcular`);
+export const calcularPrecificacao = (grupoId) => request(`/precificacoes/${grupoId}/calcular`);

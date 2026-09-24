@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 # ── ContaBancaria ─────────────────────────────────────────────────────────────
 
+
 class ContaBancariaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -28,6 +29,7 @@ class ContaBancariaUpdate(BaseModel):
 
 
 # ── CategoriaFinanceira ───────────────────────────────────────────────────────
+
 
 class CategoriaFinanceiraOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -51,6 +53,7 @@ class CategoriaFinanceiraUpdate(BaseModel):
 
 # ── AnexoLancamento ───────────────────────────────────────────────────────────
 
+
 class AnexoLancamentoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -62,6 +65,7 @@ class AnexoLancamentoOut(BaseModel):
 
 
 # ── Lancamento ────────────────────────────────────────────────────────────────
+
 
 class LancamentoOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -118,6 +122,7 @@ class ConfirmarPagamento(BaseModel):
 
 # ── CompraFinanceira ──────────────────────────────────────────────────────────
 
+
 class CompraFinanceiraOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -157,6 +162,7 @@ class CompraUpdate(BaseModel):
 
 # ── VendaFinanceira ───────────────────────────────────────────────────────────
 
+
 class VendaFinanceiraOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -195,6 +201,7 @@ class VendaUpdate(BaseModel):
 
 
 # ── Importação de NF-e XML ────────────────────────────────────────────────────
+
 
 class ParcelaImportadaOut(BaseModel):
     numero: str
@@ -244,6 +251,7 @@ class VendaImportarXMLCreate(BaseModel):
 
 # ── Saldo por Conta ───────────────────────────────────────────────────────────
 
+
 class SaldoContaOut(BaseModel):
     conta_id: UUID
     conta_nome: str
@@ -262,6 +270,7 @@ class SaldoInicialUpsert(BaseModel):
 
 
 # ── Transferências entre contas ───────────────────────────────────────────────
+
 
 class TransferenciaCreate(BaseModel):
     conta_origem_id: UUID
@@ -284,6 +293,7 @@ class TransferenciaOut(BaseModel):
 
 # ── Projeção ──────────────────────────────────────────────────────────────────
 
+
 class ProjecaoMesOut(BaseModel):
     mes: int
     ano: int
@@ -295,6 +305,7 @@ class ProjecaoMesOut(BaseModel):
 
 
 # ── MetaMensal ────────────────────────────────────────────────────────────────
+
 
 class MetaMensalOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -320,6 +331,7 @@ class MetaMensalUpdate(BaseModel):
 
 
 # ── Contabilidade ─────────────────────────────────────────────────────────────
+
 
 class NotaVendaContabilOut(BaseModel):
     id: UUID

@@ -6,10 +6,22 @@
   font-size: 0.72rem;
   font-weight: 500;
 }
-.badge_entrada { background: var(--sc-info-bg);    color: var(--sc-info-text); }
-.badge_saida   { background: var(--sc-success-bg); color: var(--sc-success-text); }
-.badge_ativo   { background: var(--sc-success-bg); color: var(--sc-success-text); }
-.badge_inativo { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); }
+.badge_entrada {
+  background: var(--sc-info-bg);
+  color: var(--sc-info-text);
+}
+.badge_saida {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+.badge_ativo {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+.badge_inativo {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+}
 
 /* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
 .tableCard {
@@ -46,10 +58,17 @@
   max-width: 260px;
 }
 
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover td { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.tdMono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.tdMono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 
 .empty {
   padding: 2.5rem;
@@ -77,8 +96,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Buttons (usados também dentro do modal — não alterados) ── */
 .btnPrimary {
@@ -93,8 +117,13 @@
   white-space: nowrap;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -106,8 +135,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover    { background: var(--sc-surface-hover); }
-.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnLink {
   background: none;
@@ -118,9 +152,14 @@
   padding: 0.25rem 0.5rem;
   border-radius: var(--sc-radius-sm);
 }
-.btnLink:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnLink:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
-.btnDanger:hover { color: var(--sc-danger-text) !important; }
+.btnDanger:hover {
+  color: var(--sc-danger-text) !important;
+}
 
 /* ── Overlay / Modal ── */
 .overlay {
@@ -171,7 +210,9 @@
   line-height: 1;
   padding: 0 0.25rem;
 }
-.btnClose:hover { color: var(--sc-text-primary); }
+.btnClose:hover {
+  color: var(--sc-text-primary);
+}
 
 .modalBody {
   padding: 1.25rem 1.5rem;
@@ -200,7 +241,9 @@
   color: var(--sc-text-secondary);
   margin: 0.5rem 0 0.75rem;
 }
-.sectionLabelMt { margin-top: 1.25rem; }
+.sectionLabelMt {
+  margin-top: 1.25rem;
+}
 
 /* ── Field grid ── */
 .fieldGrid {
@@ -220,7 +263,9 @@
   color: var(--sc-text-secondary);
 }
 
-.fieldFull { grid-column: span 2; }
+.fieldFull {
+  grid-column: span 2;
+}
 
 /* ── Inputs ── */
 .input {
@@ -235,7 +280,9 @@
   box-sizing: border-box;
   font-family: inherit;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 select.input {
   cursor: pointer;

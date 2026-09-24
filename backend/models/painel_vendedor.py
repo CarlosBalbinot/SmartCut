@@ -4,8 +4,16 @@ from decimal import Decimal
 from typing import Optional, List
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, Integer, Numeric,
-    String, Text, UniqueConstraint, Uuid, func,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,9 +51,7 @@ class Catalogo(Base):
 
 class CatalogoVendedor(Base):
     __tablename__ = "catalogo_vendedor"
-    __table_args__ = (
-        UniqueConstraint("catalogo_id", "vendedor_id", name="uq_catalogo_vendedor"),
-    )
+    __table_args__ = (UniqueConstraint("catalogo_id", "vendedor_id", name="uq_catalogo_vendedor"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     catalogo_id: Mapped[uuid.UUID] = mapped_column(

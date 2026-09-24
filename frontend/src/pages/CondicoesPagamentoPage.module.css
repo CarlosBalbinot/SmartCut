@@ -18,7 +18,9 @@
   outline: none;
   width: 160px;
 }
-.select:focus { border-color: var(--color-primary); }
+.select:focus {
+  border-color: var(--color-primary);
+}
 
 /* ── Badges ── */
 .badge {
@@ -28,8 +30,14 @@
   font-size: 0.72rem;
   font-weight: 500;
 }
-.badgeAtiva { background: var(--sc-success-bg); color: var(--sc-success-text); }
-.badgeInativa { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.badgeAtiva {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+.badgeInativa {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 /* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
 .tableCard {
@@ -66,10 +74,17 @@
   max-width: 260px;
 }
 
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover td { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.tdMono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.tdMono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 
 .empty {
   padding: 2.5rem;
@@ -97,8 +112,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Buttons ── */
 .btnPrimary {
@@ -113,8 +133,13 @@
   white-space: nowrap;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--color-primary-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--color-primary-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -126,8 +151,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover    { background: var(--sc-surface-hover); }
-.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnLink {
   background: none;
@@ -138,8 +168,13 @@
   padding: 0.25rem 0.5rem;
   border-radius: var(--sc-radius-sm);
 }
-.btnLink:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
-.btnDanger:hover { color: var(--sc-danger-text) !important; }
+.btnLink:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
+.btnDanger:hover {
+  color: var(--sc-danger-text) !important;
+}
 
 /* ── Overlay / Modal ── */
 .overlay {
@@ -190,7 +225,9 @@
   line-height: 1;
   padding: 0 0.25rem;
 }
-.btnClose:hover { color: var(--sc-text-primary); }
+.btnClose:hover {
+  color: var(--sc-text-primary);
+}
 
 .modalBody {
   padding: 1.25rem 1.5rem;
@@ -228,7 +265,9 @@
   color: var(--sc-text-secondary);
 }
 
-.fieldFull { grid-column: span 2; }
+.fieldFull {
+  grid-column: span 2;
+}
 
 .helpWrapper {
   position: relative;
@@ -247,7 +286,9 @@
   flex-shrink: 0;
   transition: color 0.15s;
 }
-.helpWrapper:hover .helpIcon { color: var(--color-primary); }
+.helpWrapper:hover .helpIcon {
+  color: var(--color-primary);
+}
 
 /* Renderizado via portal em document.body — posição (top/left/z-index)
    vem inline via JS (getBoundingClientRect), não depende do fluxo do modal. */
@@ -295,8 +336,14 @@
   box-sizing: border-box;
   font-family: inherit;
 }
-.input:focus { border-color: var(--color-primary); }
-.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); cursor: not-allowed; }
+.input:focus {
+  border-color: var(--color-primary);
+}
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+  cursor: not-allowed;
+}
 
 .hint {
   font-size: 0.72rem;

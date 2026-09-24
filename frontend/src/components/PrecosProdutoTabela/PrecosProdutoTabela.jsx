@@ -27,13 +27,17 @@ const outroCampo = (campo) => (campo === "preco_avista" ? "preco_aprazo" : "prec
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v) || 0);
 const numeroBR = (v) =>
-  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
+  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+    Number(v) || 0
+  );
 const num = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
 const iguais = (a, b) => a != null && b != null && Math.abs(a - b) < 0.005;
 
 // "1.234,56" / "1234,56" / "1234.56" / "R$ 12,50" → número; "" → null.
 function parseNumeroBR(texto) {
-  let t = String(texto ?? "").replace(/R\$/gi, "").replace(/\s/g, "");
+  let t = String(texto ?? "")
+    .replace(/R\$/gi, "")
+    .replace(/\s/g, "");
   if (!t) return null;
   if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
   else if ((t.match(/\./g) || []).length > 1 || /\.\d{3,}$/.test(t)) t = t.replace(/\./g, "");
@@ -51,12 +55,18 @@ function CampoPreco({ valor, placeholder, destaque, readOnly, onSalvar, autoFocu
   const ignorarBlur = useRef(false);
 
   const paraEdicao = () => (valor == null ? "" : numeroBR(valor).replace(/\./g, ""));
-  const exibido = focado || erro ? texto : (valor == null ? "" : moeda(valor));
+  const exibido = focado || erro ? texto : valor == null ? "" : moeda(valor);
 
   const salvar = async () => {
     const n = parseNumeroBR(texto);
-    if (Number.isNaN(n)) { setErro("Valor inválido."); return false; }
-    if ((n === null && valor == null) || iguais(n, valor)) { setErro(null); return true; }
+    if (Number.isNaN(n)) {
+      setErro("Valor inválido.");
+      return false;
+    }
+    if ((n === null && valor == null) || iguais(n, valor)) {
+      setErro(null);
+      return true;
+    }
     setSalvando(true);
     try {
       await onSalvar(n);
@@ -75,7 +85,10 @@ function CampoPreco({ valor, placeholder, destaque, readOnly, onSalvar, autoFocu
     if (e.key === "Enter") {
       e.preventDefault();
       const el = e.currentTarget;
-      if (await salvar()) { ignorarBlur.current = true; el.blur(); }
+      if (await salvar()) {
+        ignorarBlur.current = true;
+        el.blur();
+      }
     } else if (e.key === "Escape") {
       e.preventDefault();
       setTexto(paraEdicao());
@@ -86,7 +99,9 @@ function CampoPreco({ valor, placeholder, destaque, readOnly, onSalvar, autoFocu
   };
 
   let title = erro || "";
-  if (!title) title = valor == null ? (placeholder ? `Herdado do produto: ${placeholder}` : "") : moeda(valor);
+  if (!title)
+    title =
+      valor == null ? (placeholder ? `Herdado do produto: ${placeholder}` : "") : moeda(valor);
 
   return (
     <input
@@ -107,7 +122,10 @@ function CampoPreco({ valor, placeholder, destaque, readOnly, onSalvar, autoFocu
       }}
       onBlur={() => {
         setFocado(false);
-        if (ignorarBlur.current) { ignorarBlur.current = false; return; }
+        if (ignorarBlur.current) {
+          ignorarBlur.current = false;
+          return;
+        }
         if (!readOnly) salvar();
       }}
       onKeyDown={handleKeyDown}
@@ -117,10 +135,21 @@ function CampoPreco({ valor, placeholder, destaque, readOnly, onSalvar, autoFocu
 
 function Chevron({ aberto }) {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"
-      className={`${styles.chevron} ${aberto ? styles.chevronAberto : ""}`}>
-      <path d="M4 2.5 7.5 6 4 9.5" fill="none" stroke="currentColor" strokeWidth="1.6"
-        strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      aria-hidden="true"
+      className={`${styles.chevron} ${aberto ? styles.chevronAberto : ""}`}
+    >
+      <path
+        d="M4 2.5 7.5 6 4 9.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -135,17 +164,31 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
   const [grades, setGrades] = useState({});
   const [modalAdd, setModalAdd] = useState(false);
   const [confirmacao, setConfirmacao] = useState(null); // { tipo: "remover" | "limpar", paiId }
-  const [erroAcao, setErroAcao] = useState(null);       // { paiId, msg }
+  const [erroAcao, setErroAcao] = useState(null); // { paiId, msg }
 
   useEffect(() => {
     let ativo = true;
-    setCarregando(true); setErroCarga(null);
-    setAbertos({}); setConfirmacao(null); setErroAcao(null);
+    setCarregando(true);
+    setErroCarga(null);
+    setAbertos({});
+    setConfirmacao(null);
+    setErroAcao(null);
     getPrecosProdutoTabela(tabelaId)
-      .then((d) => { if (ativo) setPrecos(d || []); })
-      .catch((e) => { if (ativo) { setPrecos([]); setErroCarga(e.message); } })
-      .finally(() => { if (ativo) setCarregando(false); });
-    return () => { ativo = false; };
+      .then((d) => {
+        if (ativo) setPrecos(d || []);
+      })
+      .catch((e) => {
+        if (ativo) {
+          setPrecos([]);
+          setErroCarga(e.message);
+        }
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+    return () => {
+      ativo = false;
+    };
   }, [tabelaId]);
 
   // Agrupa por produto pai: { paiId, pai (linha PRODUTO ou null), skus: { sku_id: linha } }.
@@ -159,7 +202,8 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
       else g.skus[p.sku_id] = p;
     }
     return [...mapa.values()].sort((a, b) =>
-      (a.pai?.codigo || "").localeCompare(b.pai?.codigo || ""));
+      (a.pai?.codigo || "").localeCompare(b.pai?.codigo || "")
+    );
   }, [precos]);
 
   const carregarGrade = async (paiId) => {
@@ -172,8 +216,13 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
         .map((s) => ({
           id: s.id,
           codigo: s.codigo,
-          descricao: [grade.produto?.descricao, descItem(grade.linha_grade, s.linha_item_id),
-            descItem(grade.coluna_grade, s.coluna_item_id)].filter(Boolean).join(" "),
+          descricao: [
+            grade.produto?.descricao,
+            descItem(grade.linha_grade, s.linha_item_id),
+            descItem(grade.coluna_grade, s.coluna_item_id),
+          ]
+            .filter(Boolean)
+            .join(" "),
         }));
       setGrades((g) => ({ ...g, [paiId]: { produto: grade.produto, skus } }));
     } catch (e) {
@@ -207,9 +256,14 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
     const valorOutro = pai ? num(pai[outro]) : valor;
     if (valorOutro == null) throw new Error(`Informe também o preço ${ROTULO[outro]}.`);
 
-    const linhas = [{
-      produto_id: grupo.paiId, [campo]: valor, [outro]: valorOutro, ...plusDe(pai),
-    }];
+    const linhas = [
+      {
+        produto_id: grupo.paiId,
+        [campo]: valor,
+        [outro]: valorOutro,
+        ...plusDe(pai),
+      },
+    ];
     // SKUs que herdavam este campo acompanham o novo valor do pai.
     const antigo = num(pai?.[campo]);
     for (const ex of Object.values(grupo.skus)) {
@@ -233,7 +287,10 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
     const novoOutro = ex ? num(ex[outro]) : paiOutro;
 
     if (novoCampo == null || novoOutro == null) {
-      if (valor == null && ex) { await removerIds([ex.id]); return; }
+      if (valor == null && ex) {
+        await removerIds([ex.id]);
+        return;
+      }
       throw new Error("Produto pai sem preço nesta tabela.");
     }
     if (iguais(novoCampo, paiCampo) && iguais(novoOutro, paiOutro)) {
@@ -265,7 +322,9 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
   };
 
   const adicionar = async (produto, avista, aprazo) => {
-    await salvarLinhas([{ produto_id: produto.id, preco_avista: avista, preco_aprazo: aprazo, tem_plus_size: false }]);
+    await salvarLinhas([
+      { produto_id: produto.id, preco_avista: avista, preco_aprazo: aprazo, tem_plus_size: false },
+    ]);
     setModalAdd(false);
     setAbertos((a) => ({ ...a, [String(produto.id)]: true }));
     carregarGrade(String(produto.id));
@@ -282,13 +341,16 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
         )}
       </div>
       <p className={styles.dica}>
-        Preço do produto pai vale para todos os SKUs. Preencha o SKU só quando ele tiver preço próprio.
+        Preço do produto pai vale para todos os SKUs. Preencha o SKU só quando ele tiver preço
+        próprio.
       </p>
 
       {carregando ? (
         <p className={styles.vazio}>Carregando…</p>
       ) : erroCarga ? (
-        <p className={styles.vazio} title={erroCarga}>Não foi possível carregar os preços por produto.</p>
+        <p className={styles.vazio} title={erroCarga}>
+          Não foi possível carregar os preços por produto.
+        </p>
       ) : grupos.length === 0 ? (
         <p className={styles.vazio}>Nenhum produto com preço nesta tabela.</p>
       ) : (
@@ -321,8 +383,12 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
               return [
                 <tr key={paiId} className={styles.linhaPai}>
                   <td>
-                    <button className={styles.btnToggle} onClick={() => alternar(paiId)}
-                      aria-expanded={aberto} title={aberto ? "Recolher SKUs" : "Expandir SKUs"}>
+                    <button
+                      className={styles.btnToggle}
+                      onClick={() => alternar(paiId)}
+                      aria-expanded={aberto}
+                      title={aberto ? "Recolher SKUs" : "Expandir SKUs"}
+                    >
                       <Chevron aberto={aberto} />
                       <span className={styles.refBadge}>{codigo}</span>
                     </button>
@@ -332,7 +398,9 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
                       </span>
                     )}
                   </td>
-                  <td className={styles.descricao} title={descricao}>{descricao}</td>
+                  <td className={styles.descricao} title={descricao}>
+                    {descricao}
+                  </td>
                   {CAMPOS.map((campo) => (
                     <td key={campo}>
                       <CampoPreco
@@ -343,22 +411,37 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
                     </td>
                   ))}
                   <td className={styles.acoes}>
-                    {editavel && (confirmando === "remover" ? (
-                      <span className={styles.confirmar}>
-                        <button className={styles.btnSim} onClick={confirmar}
-                          title="Remove o preço do produto e as exceções dos SKUs">Sim</button>
-                        <button className={styles.btnNao} onClick={() => setConfirmacao(null)}>Não</button>
-                      </span>
-                    ) : (
-                      <button className={styles.btnRemover} title="Remover produto da tabela"
-                        onClick={() => setConfirmacao({ tipo: "remover", paiId })}>×</button>
-                    ))}
+                    {editavel &&
+                      (confirmando === "remover" ? (
+                        <span className={styles.confirmar}>
+                          <button
+                            className={styles.btnSim}
+                            onClick={confirmar}
+                            title="Remove o preço do produto e as exceções dos SKUs"
+                          >
+                            Sim
+                          </button>
+                          <button className={styles.btnNao} onClick={() => setConfirmacao(null)}>
+                            Não
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className={styles.btnRemover}
+                          title="Remover produto da tabela"
+                          onClick={() => setConfirmacao({ tipo: "remover", paiId })}
+                        >
+                          ×
+                        </button>
+                      ))}
                   </td>
                 </tr>,
 
                 aberto && (grade?.carregando || !grade) && (
                   <tr key={`${paiId}-carregando`} className={styles.linhaSku}>
-                    <td colSpan={5} className={styles.skuInfo}>Carregando SKUs…</td>
+                    <td colSpan={5} className={styles.skuInfo}>
+                      Carregando SKUs…
+                    </td>
                   </tr>
                 ),
                 aberto && grade?.erro && (
@@ -368,51 +451,71 @@ export default function PrecosProdutoTabela({ tabelaId, editavel }) {
                     </td>
                   </tr>
                 ),
-                ...(aberto && grade?.skus ? grade.skus.map((sku) => {
-                  const ex = grupo.skus[sku.id];
-                  return (
-                    <tr key={`${paiId}-${sku.id}`} className={styles.linhaSku}>
-                      <td className={styles.skuCodigo} title={sku.codigo}>{sku.codigo}</td>
-                      <td className={styles.descricao} title={sku.descricao}>{sku.descricao}</td>
-                      {CAMPOS.map((campo) => {
-                        const valorPai = num(pai?.[campo]);
-                        const valorSku = ex ? num(ex[campo]) : null;
-                        const proprio = valorSku != null && !iguais(valorSku, valorPai);
-                        return (
-                          <td key={campo}>
-                            <CampoPreco
-                              valor={proprio ? valorSku : null}
-                              placeholder={valorPai != null ? moeda(valorPai) : "—"}
-                              destaque={proprio}
-                              readOnly={!editavel}
-                              onSalvar={(v) => salvarSku(grupo, sku, campo, v)}
-                            />
+                ...(aberto && grade?.skus
+                  ? grade.skus.map((sku) => {
+                      const ex = grupo.skus[sku.id];
+                      return (
+                        <tr key={`${paiId}-${sku.id}`} className={styles.linhaSku}>
+                          <td className={styles.skuCodigo} title={sku.codigo}>
+                            {sku.codigo}
                           </td>
-                        );
-                      })}
-                      <td />
-                    </tr>
-                  );
-                }) : []),
+                          <td className={styles.descricao} title={sku.descricao}>
+                            {sku.descricao}
+                          </td>
+                          {CAMPOS.map((campo) => {
+                            const valorPai = num(pai?.[campo]);
+                            const valorSku = ex ? num(ex[campo]) : null;
+                            const proprio = valorSku != null && !iguais(valorSku, valorPai);
+                            return (
+                              <td key={campo}>
+                                <CampoPreco
+                                  valor={proprio ? valorSku : null}
+                                  placeholder={valorPai != null ? moeda(valorPai) : "—"}
+                                  destaque={proprio}
+                                  readOnly={!editavel}
+                                  onSalvar={(v) => salvarSku(grupo, sku, campo, v)}
+                                />
+                              </td>
+                            );
+                          })}
+                          <td />
+                        </tr>
+                      );
+                    })
+                  : []),
                 aberto && grade?.skus && !grade.carregando && (
                   <tr key={`${paiId}-rodape`} className={styles.linhaSkuRodape}>
                     <td colSpan={5}>
-                      {grade.skus.length === 0 && <span className={styles.skuInfoInline}>Nenhum SKU ativo.</span>}
-                      {erroAcao?.paiId === paiId && (
-                        <span className={styles.erroAcao} title={erroAcao.msg}>Falha ao remover. Passe o mouse para ver o motivo.</span>
+                      {grade.skus.length === 0 && (
+                        <span className={styles.skuInfoInline}>Nenhum SKU ativo.</span>
                       )}
-                      {editavel && (confirmando === "limpar" ? (
-                        <span className={styles.confirmar}>
-                          <span className={styles.skuInfoInline}>Remover {nExcecoes} {nExcecoes === 1 ? "exceção" : "exceções"}?</span>
-                          <button className={styles.btnSim} onClick={confirmar}>Sim</button>
-                          <button className={styles.btnNao} onClick={() => setConfirmacao(null)}>Não</button>
+                      {erroAcao?.paiId === paiId && (
+                        <span className={styles.erroAcao} title={erroAcao.msg}>
+                          Falha ao remover. Passe o mouse para ver o motivo.
                         </span>
-                      ) : (
-                        <button className={styles.btnLink} disabled={nExcecoes === 0}
-                          onClick={() => setConfirmacao({ tipo: "limpar", paiId })}>
-                          Limpar exceções
-                        </button>
-                      ))}
+                      )}
+                      {editavel &&
+                        (confirmando === "limpar" ? (
+                          <span className={styles.confirmar}>
+                            <span className={styles.skuInfoInline}>
+                              Remover {nExcecoes} {nExcecoes === 1 ? "exceção" : "exceções"}?
+                            </span>
+                            <button className={styles.btnSim} onClick={confirmar}>
+                              Sim
+                            </button>
+                            <button className={styles.btnNao} onClick={() => setConfirmacao(null)}>
+                              Não
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            className={styles.btnLink}
+                            disabled={nExcecoes === 0}
+                            onClick={() => setConfirmacao({ tipo: "limpar", paiId })}
+                          >
+                            Limpar exceções
+                          </button>
+                        ))}
                     </td>
                   </tr>
                 ),
@@ -446,7 +549,10 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
 
   useEffect(() => {
     const q = busca.trim();
-    if (!q) { setResultados([]); return undefined; }
+    if (!q) {
+      setResultados([]);
+      return undefined;
+    }
     const t = setTimeout(async () => {
       setBuscando(true);
       try {
@@ -459,7 +565,7 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [busca]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [busca]);
 
   const salvar = async () => {
     const novos = {};
@@ -483,8 +589,15 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
   };
 
   return (
-    <div className={styles.overlay} onMouseDown={(e) => { if (e.target === e.currentTarget) onFechar(); }}
-      onKeyDown={(e) => { if (e.key === "Escape") onFechar(); }}>
+    <div
+      className={styles.overlay}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onFechar();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onFechar();
+      }}
+    >
       <div className={styles.modal}>
         <h3 className={styles.modalTitulo}>Adicionar Produto</h3>
 
@@ -494,7 +607,15 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
               <span className={styles.refBadge}>{produto.codigo}</span>
               <div className={styles.produtoSelNome}>{produto.descricao}</div>
             </div>
-            <button className={styles.btnLink} onClick={() => { setProduto(null); setBusca(""); }}>Trocar</button>
+            <button
+              className={styles.btnLink}
+              onClick={() => {
+                setProduto(null);
+                setBusca("");
+              }}
+            >
+              Trocar
+            </button>
           </div>
         ) : (
           <div className={styles.buscaWrap}>
@@ -513,8 +634,15 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
               <ul className={styles.dropdown}>
                 {buscando && <li className={styles.dropdownInfo}>Buscando…</li>}
                 {resultados.map((p) => (
-                  <li key={p.id} className={styles.dropdownItem}
-                    onMouseDown={(e) => { e.preventDefault(); setProduto(p); setErros({}); }}>
+                  <li
+                    key={p.id}
+                    className={styles.dropdownItem}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setProduto(p);
+                      setErros({});
+                    }}
+                  >
                     <strong>{p.codigo}</strong> · {p.descricao}
                   </li>
                 ))}
@@ -538,14 +666,18 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
                   setPrecos((p) => ({ ...p, [campo]: v }));
                   setErros((er) => ({ ...er, [campo]: undefined }));
                 }}
-                onKeyDown={(e) => { if (e.key === "Enter") salvar(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") salvar();
+                }}
               />
             </label>
           ))}
         </div>
 
         <div className={styles.modalAcoes}>
-          <button className={styles.btnPillSecondary} onClick={onFechar}>Cancelar</button>
+          <button className={styles.btnPillSecondary} onClick={onFechar}>
+            Cancelar
+          </button>
           <button
             className={`${styles.btnPillPrimary} ${erros.geral ? styles.btnErro : ""}`}
             title={erros.geral || ""}

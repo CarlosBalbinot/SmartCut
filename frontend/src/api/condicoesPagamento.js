@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -29,8 +29,7 @@ export const criar = (dados) =>
 export const atualizar = (id, dados) =>
   request(`/condicoes-pagamento/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
-export const excluir = (id) =>
-  request(`/condicoes-pagamento/${id}`, { method: "DELETE" });
+export const excluir = (id) => request(`/condicoes-pagamento/${id}`, { method: "DELETE" });
 
 export const simular = (dados) =>
   request("/condicoes-pagamento/simular", { method: "POST", body: JSON.stringify(dados) });

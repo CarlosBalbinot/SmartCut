@@ -12,20 +12,20 @@ export default function TabelasGradePage() {
   const { hasPermission } = useAuth();
   const podeEditar = hasPermission(MODULO, "ver");
 
-  const [tabelas, setTabelas]       = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [tabelas, setTabelas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(null);
-  const [itens, setItens]           = useState([]);
+  const [itens, setItens] = useState([]);
   const [loadingItens, setLoadingItens] = useState(false);
-  const [toast, setToast]           = useState(null);
+  const [toast, setToast] = useState(null);
 
   const [modalTabela, setModalTabela] = useState(null); // { id?, codigo, descricao, situacao }
   const [savingTabela, setSavingTabela] = useState(false);
-  const [erroTabela, setErroTabela]     = useState(null);
+  const [erroTabela, setErroTabela] = useState(null);
 
   const [modalItem, setModalItem] = useState(null); // { id?, codigo_curto, descricao, ordem, situacao }
   const [savingItem, setSavingItem] = useState(false);
-  const [erroItem, setErroItem]     = useState(null);
+  const [erroItem, setErroItem] = useState(null);
 
   const carregarTabelas = useCallback(async () => {
     setLoading(true);
@@ -38,7 +38,9 @@ export default function TabelasGradePage() {
     }
   }, []);
 
-  useEffect(() => { carregarTabelas(); }, [carregarTabelas]);
+  useEffect(() => {
+    carregarTabelas();
+  }, [carregarTabelas]);
 
   const showToast = (text) => {
     setToast(text);
@@ -65,7 +67,10 @@ export default function TabelasGradePage() {
 
   // ── Tabela: criar/editar ──────────────────────────────────────────────
 
-  const abrirNovaTabela = () => { setModalTabela({ ...TABELA_VAZIA }); setErroTabela(null); };
+  const abrirNovaTabela = () => {
+    setModalTabela({ ...TABELA_VAZIA });
+    setErroTabela(null);
+  };
   const abrirEditarTabela = (t) => {
     setModalTabela({ id: t.id, codigo: t.codigo, descricao: t.descricao, situacao: t.situacao });
     setErroTabela(null);
@@ -77,7 +82,8 @@ export default function TabelasGradePage() {
       setErroTabela("Código e descrição são obrigatórios.");
       return;
     }
-    setSavingTabela(true); setErroTabela(null);
+    setSavingTabela(true);
+    setErroTabela(null);
     try {
       const payload = {
         codigo: modalTabela.codigo.trim(),
@@ -102,7 +108,10 @@ export default function TabelasGradePage() {
     if (!window.confirm(`Excluir a tabela "${tabela.descricao}"?`)) return;
     try {
       await tabelasGradeApi.excluir(tabela.id);
-      if (selectedId === tabela.id) { setSelectedId(null); setItens([]); }
+      if (selectedId === tabela.id) {
+        setSelectedId(null);
+        setItens([]);
+      }
       await carregarTabelas();
     } catch (e) {
       showToast(e.message);
@@ -111,7 +120,10 @@ export default function TabelasGradePage() {
 
   // ── Item: criar/editar ────────────────────────────────────────────────
 
-  const abrirNovoItem = () => { setModalItem({ ...ITEM_VAZIO }); setErroItem(null); };
+  const abrirNovoItem = () => {
+    setModalItem({ ...ITEM_VAZIO });
+    setErroItem(null);
+  };
   const abrirEditarItem = (i) => {
     setModalItem({
       id: i.id,
@@ -129,7 +141,8 @@ export default function TabelasGradePage() {
       setErroItem("Código curto e descrição são obrigatórios.");
       return;
     }
-    setSavingItem(true); setErroItem(null);
+    setSavingItem(true);
+    setErroItem(null);
     try {
       const payload = {
         codigo_curto: modalItem.codigo_curto.trim().toUpperCase(),
@@ -170,17 +183,22 @@ export default function TabelasGradePage() {
       </div>
 
       <div className={`sc-card ${styles.layout}`}>
-
         {/* ── Painel esquerdo — lista de tabelas ── */}
         <div className={styles.left}>
           <div className={styles.leftHeader}>
             <span className={styles.leftTitle}>Tabelas</span>
             {podeEditar && (
-              <button className={styles.btnNovo} onClick={abrirNovaTabela}>+ Nova Tabela</button>
+              <button className={styles.btnNovo} onClick={abrirNovaTabela}>
+                + Nova Tabela
+              </button>
             )}
           </div>
 
-          {toast && <p className={styles.msgErro} style={{ margin: "8px 10px" }}>{toast}</p>}
+          {toast && (
+            <p className={styles.msgErro} style={{ margin: "8px 10px" }}>
+              {toast}
+            </p>
+          )}
 
           {loading ? (
             <p className={styles.emptyLeft}>Carregando…</p>
@@ -201,7 +219,9 @@ export default function TabelasGradePage() {
                   <span className={styles.cardCount}>
                     {t.itens.length} ite{t.itens.length !== 1 ? "ns" : "m"}
                   </span>
-                  <span className={t.situacao === "Ativa" ? styles.badgeAtiva : styles.badgeInativa}>
+                  <span
+                    className={t.situacao === "Ativa" ? styles.badgeAtiva : styles.badgeInativa}
+                  >
                     {t.situacao}
                   </span>
                 </div>
@@ -215,10 +235,21 @@ export default function TabelasGradePage() {
           {!selectedTabela ? (
             <div className={styles.emptyRight}>
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <rect x="6" y="6" width="28" height="28" rx="6"
-                  stroke="var(--sc-border-strong)" strokeWidth="2"/>
-                <path d="M13 14h14M13 20h10M13 26h7"
-                  stroke="var(--sc-border-strong)" strokeWidth="2" strokeLinecap="round"/>
+                <rect
+                  x="6"
+                  y="6"
+                  width="28"
+                  height="28"
+                  rx="6"
+                  stroke="var(--sc-border-strong)"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M13 14h14M13 20h10M13 26h7"
+                  stroke="var(--sc-border-strong)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
               <p>Selecione uma tabela à esquerda</p>
             </div>
@@ -228,20 +259,34 @@ export default function TabelasGradePage() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                     <h3 className={styles.rightNome}>{selectedTabela.descricao}</h3>
-                    <span className={selectedTabela.situacao === "Ativa" ? styles.badgeAtiva : styles.badgeInativa}>
+                    <span
+                      className={
+                        selectedTabela.situacao === "Ativa"
+                          ? styles.badgeAtiva
+                          : styles.badgeInativa
+                      }
+                    >
                       {selectedTabela.situacao}
                     </span>
                   </div>
                 </div>
                 {podeEditar && (
                   <div className={styles.rightBtns}>
-                    <button className={styles.btnSecondary} onClick={() => abrirEditarTabela(selectedTabela)}>
+                    <button
+                      className={styles.btnSecondary}
+                      onClick={() => abrirEditarTabela(selectedTabela)}
+                    >
                       Editar
                     </button>
-                    <button className={styles.btnSecondary} onClick={() => excluirTabela(selectedTabela)}>
+                    <button
+                      className={styles.btnSecondary}
+                      onClick={() => excluirTabela(selectedTabela)}
+                    >
                       Excluir
                     </button>
-                    <button className={styles.btnNovo} onClick={abrirNovoItem}>+ Novo Item</button>
+                    <button className={styles.btnNovo} onClick={abrirNovoItem}>
+                      + Novo Item
+                    </button>
                   </div>
                 )}
               </div>
@@ -274,15 +319,24 @@ export default function TabelasGradePage() {
                         <td className={styles.td}>{i.descricao}</td>
                         <td className={styles.td}>{i.ordem}</td>
                         <td className={styles.td}>
-                          <span className={i.situacao === "Ativa" ? styles.badgeAtiva : styles.badgeInativa}>
+                          <span
+                            className={
+                              i.situacao === "Ativa" ? styles.badgeAtiva : styles.badgeInativa
+                            }
+                          >
                             {i.situacao}
                           </span>
                         </td>
                         <td className={styles.td}>
                           {podeEditar && (
                             <div className={styles.actions}>
-                              <button className={styles.btnLink} onClick={() => abrirEditarItem(i)}>Editar</button>
-                              <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => excluirItem(i)}>
+                              <button className={styles.btnLink} onClick={() => abrirEditarItem(i)}>
+                                Editar
+                              </button>
+                              <button
+                                className={`${styles.btnLink} ${styles.btnDanger}`}
+                                onClick={() => excluirItem(i)}
+                              >
                                 Excluir
                               </button>
                             </div>
@@ -302,7 +356,9 @@ export default function TabelasGradePage() {
       {modalTabela && (
         <div className={styles.modalOverlay} onClick={fecharModalTabela}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>{modalTabela.id ? "Editar Tabela" : "Nova Tabela"}</h3>
+            <h3 className={styles.modalTitle}>
+              {modalTabela.id ? "Editar Tabela" : "Nova Tabela"}
+            </h3>
 
             <label className={styles.field}>
               <span>Código *</span>
@@ -320,7 +376,9 @@ export default function TabelasGradePage() {
               <input
                 className={styles.input}
                 value={modalTabela.descricao}
-                onChange={(e) => setModalTabela((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))}
+                onChange={(e) =>
+                  setModalTabela((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))
+                }
                 placeholder="Ex.: COR"
               />
             </label>
@@ -340,7 +398,11 @@ export default function TabelasGradePage() {
             {erroTabela && <p className={styles.msgErro}>{erroTabela}</p>}
 
             <div className={styles.modalActions}>
-              <button className={styles.btnPillSecondary} onClick={fecharModalTabela} disabled={savingTabela}>
+              <button
+                className={styles.btnPillSecondary}
+                onClick={fecharModalTabela}
+                disabled={savingTabela}
+              >
                 Cancelar
               </button>
               <button className={styles.btnPrimary} onClick={salvarTabela} disabled={savingTabela}>
@@ -363,7 +425,9 @@ export default function TabelasGradePage() {
                 className={styles.input}
                 value={modalItem.codigo_curto}
                 maxLength={4}
-                onChange={(e) => setModalItem((m) => ({ ...m, codigo_curto: e.target.value.toUpperCase() }))}
+                onChange={(e) =>
+                  setModalItem((m) => ({ ...m, codigo_curto: e.target.value.toUpperCase() }))
+                }
                 placeholder="Ex.: AZU"
                 autoFocus
               />
@@ -377,7 +441,9 @@ export default function TabelasGradePage() {
               <input
                 className={styles.input}
                 value={modalItem.descricao}
-                onChange={(e) => setModalItem((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))}
+                onChange={(e) =>
+                  setModalItem((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))
+                }
                 placeholder="Ex.: AZUL BIC"
               />
             </label>
@@ -407,7 +473,11 @@ export default function TabelasGradePage() {
             {erroItem && <p className={styles.msgErro}>{erroItem}</p>}
 
             <div className={styles.modalActions}>
-              <button className={styles.btnPillSecondary} onClick={fecharModalItem} disabled={savingItem}>
+              <button
+                className={styles.btnPillSecondary}
+                onClick={fecharModalItem}
+                disabled={savingItem}
+              >
                 Cancelar
               </button>
               <button className={styles.btnPrimary} onClick={salvarItem} disabled={savingItem}>

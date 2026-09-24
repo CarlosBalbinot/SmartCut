@@ -28,7 +28,9 @@ def obter_grupo(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/importar", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/importar",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def importar_grupo(payload: GrupoImportCreate, db: Session = Depends(get_db)):
@@ -38,7 +40,8 @@ def importar_grupo(payload: GrupoImportCreate, db: Session = Depends(get_db)):
 
 
 @router.patch(
-    "/{grupo_id}", response_model=dict,
+    "/{grupo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def renomear_grupo(
@@ -53,7 +56,8 @@ def renomear_grupo(
 
 
 @router.delete(
-    "/{grupo_id}", response_model=dict,
+    "/{grupo_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_grupo(grupo_id: uuid.UUID, db: Session = Depends(get_db)):

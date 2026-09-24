@@ -42,7 +42,9 @@
   justify-content: center;
   border-radius: var(--sc-radius-sm);
 }
-.sidebarToggle:hover { background: var(--sc-bg-secondary); }
+.sidebarToggle:hover {
+  background: var(--sc-bg-secondary);
+}
 
 /* Recolhido: sai do posicionamento absoluto e entra no fluxo normal,
    centralizado acima do logo — evita sobrepor o ícone da logo, que
@@ -93,7 +95,7 @@
 .logo {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #1D1D1F;
+  color: #1d1d1f;
   letter-spacing: -0.5px;
   line-height: 1.2;
 }
@@ -103,7 +105,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #AEAEB2;
+  color: #aeaeb2;
   line-height: 1;
 }
 
@@ -211,7 +213,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   text-decoration: none;
 }
 
@@ -234,7 +238,9 @@
   text-decoration: none;
 }
 
-.navLinkActive:hover { text-decoration: none; }
+.navLinkActive:hover {
+  text-decoration: none;
+}
 
 .navIcon {
   flex-shrink: 0;
@@ -270,7 +276,9 @@
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--sc-text-primary);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
   text-decoration: none;
 }
 
@@ -296,7 +304,9 @@
   text-decoration: none;
 }
 
-.navLinkTopActive:hover { text-decoration: none; }
+.navLinkTopActive:hover {
+  text-decoration: none;
+}
 
 /* Texto que some quando o sidebar é recolhido para modo ícone. */
 .labelText {
@@ -413,8 +423,8 @@
 /* ── Badge contador ── */
 .navBadge {
   margin-left: auto;
-  background: #E5E5EA;
-  color: #6E6E73;
+  background: #e5e5ea;
+  color: #6e6e73;
   font-size: 11px;
   font-weight: 600;
   border-radius: 20px;
@@ -468,7 +478,7 @@
   min-width: 0;
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--sc-text-primary, #1D1D1F);
+  color: var(--sc-text-primary, #1d1d1f);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -486,7 +496,10 @@
   border-radius: var(--sc-radius-sm);
   flex-shrink: 0;
   opacity: 0.6;
-  transition: background 0.12s, color 0.12s, opacity 0.15s;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    opacity 0.15s;
 }
 .sidebarLogoutBtn svg {
   width: 14px;
@@ -495,7 +508,7 @@
 
 .sidebarLogoutBtn:hover {
   background: var(--sc-surface-hover);
-  color: var(--sc-danger-text, #D33);
+  color: var(--sc-danger-text, #d33);
   opacity: 1;
 }
 
@@ -597,4 +610,6 @@
   flex-shrink: 0;
 }
 
-.alertaBannerFechar:hover { opacity: 1; }
+.alertaBannerFechar:hover {
+  opacity: 1;
+}

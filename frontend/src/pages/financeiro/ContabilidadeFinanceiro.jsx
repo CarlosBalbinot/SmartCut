@@ -1,14 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  getContabilidade, gerarPacoteContabil, gerarResumoInternoContabil,
+  getContabilidade,
+  gerarPacoteContabil,
+  gerarResumoInternoContabil,
 } from "../../api/financeiro";
 import { apiFetch } from "../../services/api";
 import { API_BASE } from "../../services/config";
 import styles from "./Contabilidade.module.css";
 
 const MESES = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
 const moeda = (v) =>
@@ -83,9 +95,9 @@ export default function ContabilidadeFinanceiro() {
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [ano, setAno] = useState(now.getFullYear());
 
-  const [dados,   setDados]   = useState({ notas_venda: [], notas_compra: [], boletos_pagos: [] });
+  const [dados, setDados] = useState({ notas_venda: [], notas_compra: [], boletos_pagos: [] });
   const [loading, setLoading] = useState(false);
-  const [erro,    setErro]    = useState(null);
+  const [erro, setErro] = useState(null);
 
   const [gerandoPacote, setGerandoPacote] = useState(false);
   const [gerandoResumo, setGerandoResumo] = useState(false);
@@ -102,19 +114,27 @@ export default function ContabilidadeFinanceiro() {
     setLoading(false);
   }, [mes, ano]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
   const navegarMes = (delta) => {
     const novo = mes + delta;
-    if (novo > 12) { setMes(1); setAno((a) => a + 1); }
-    else if (novo < 1) { setMes(12); setAno((a) => a - 1); }
-    else { setMes(novo); }
+    if (novo > 12) {
+      setMes(1);
+      setAno((a) => a + 1);
+    } else if (novo < 1) {
+      setMes(12);
+      setAno((a) => a - 1);
+    } else {
+      setMes(novo);
+    }
   };
 
-  const totalVendas  = somaValores(dados.notas_venda, (v) => v.valor_total);
+  const totalVendas = somaValores(dados.notas_venda, (v) => v.valor_total);
   const totalCompras = somaValores(dados.notas_compra, (c) => c.valor_total);
-  const totalPago    = somaValores(dados.boletos_pagos, (b) => b.valor);
-  const resultado    = totalVendas - totalCompras;
+  const totalPago = somaValores(dados.boletos_pagos, (b) => b.valor);
+  const resultado = totalVendas - totalCompras;
 
   const handleGerarPacote = async () => {
     setGerandoPacote(true);
@@ -147,9 +167,15 @@ export default function ContabilidadeFinanceiro() {
         <h1>Contabilidade</h1>
         <div className={styles.headerActions}>
           <div className={styles.navMes}>
-            <button className={styles.btnNav} onClick={() => navegarMes(-1)}>‹</button>
-            <span className={styles.mesLabel}>{MESES[mes - 1]} {ano}</span>
-            <button className={styles.btnNav} onClick={() => navegarMes(1)}>›</button>
+            <button className={styles.btnNav} onClick={() => navegarMes(-1)}>
+              ‹
+            </button>
+            <span className={styles.mesLabel}>
+              {MESES[mes - 1]} {ano}
+            </span>
+            <button className={styles.btnNav} onClick={() => navegarMes(1)}>
+              ›
+            </button>
           </div>
           <button
             className={styles.btnSecondary}
@@ -158,11 +184,7 @@ export default function ContabilidadeFinanceiro() {
           >
             {gerandoResumo ? "Gerando…" : "Resumo Interno (PDF)"}
           </button>
-          <button
-            className={styles.btnNovo}
-            onClick={handleGerarPacote}
-            disabled={gerandoPacote}
-          >
+          <button className={styles.btnNovo} onClick={handleGerarPacote} disabled={gerandoPacote}>
             {gerandoPacote ? "Gerando…" : "Gerar Pacote Contábil (.zip)"}
           </button>
         </div>
@@ -186,7 +208,9 @@ export default function ContabilidadeFinanceiro() {
           <span className={styles.resumoValor}>{moeda(totalPago)}</span>
           <span className={styles.resumoSub}>{dados.boletos_pagos.length} boleto(s)</span>
         </div>
-        <div className={`${styles.resumoCard} ${resultado < 0 ? styles.resumoBorderPerigo : styles.resumoBorderNeutro}`}>
+        <div
+          className={`${styles.resumoCard} ${resultado < 0 ? styles.resumoBorderPerigo : styles.resumoBorderNeutro}`}
+        >
           <span className={styles.resumoLabel}>Resultado</span>
           <span className={styles.resumoValor}>{moeda(resultado)}</span>
           <span className={styles.resumoSub}>Vendas − Compras (NF)</span>
@@ -219,7 +243,10 @@ export default function ContabilidadeFinanceiro() {
                     <td>{dataFmt(v.data_venda)}</td>
                     <td className={styles.tdValor}>{moeda(v.valor_total)}</td>
                     <td>
-                      <button className={styles.btnLink} onClick={() => abrirArquivo(v.nf_pdf_path)}>
+                      <button
+                        className={styles.btnLink}
+                        onClick={() => abrirArquivo(v.nf_pdf_path)}
+                      >
                         {v.nf_nome || "Abrir"}
                       </button>
                     </td>
@@ -264,7 +291,10 @@ export default function ContabilidadeFinanceiro() {
                     <td>{dataFmt(c.data_compra)}</td>
                     <td className={styles.tdValor}>{moeda(c.valor_total)}</td>
                     <td>
-                      <button className={styles.btnLink} onClick={() => abrirArquivo(c.nf_pdf_path)}>
+                      <button
+                        className={styles.btnLink}
+                        onClick={() => abrirArquivo(c.nf_pdf_path)}
+                      >
                         {c.nf_nome || "Abrir"}
                       </button>
                     </td>
@@ -316,7 +346,10 @@ export default function ContabilidadeFinanceiro() {
                     <td>{dataFmt(b.data_pagamento)}</td>
                     <td className={styles.tdValor}>{moeda(b.valor)}</td>
                     <td>
-                      <button className={styles.btnLink} onClick={() => abrirArquivo(b.boleto_pdf_path)}>
+                      <button
+                        className={styles.btnLink}
+                        onClick={() => abrirArquivo(b.boleto_pdf_path)}
+                      >
                         Abrir
                       </button>
                     </td>

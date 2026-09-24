@@ -114,13 +114,15 @@
   background: var(--sc-input-bg);
   outline: none;
   box-sizing: border-box;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .input:focus {
   border-color: var(--color-primary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 37,150,190), .15);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 37, 150, 190), 0.15);
 }
 
 .passwordRow {
@@ -154,7 +156,7 @@
 
 .error {
   font-size: 12.5px;
-  color: var(--sc-danger-text, #D33);
+  color: var(--sc-danger-text, #d33);
   margin-bottom: 14px;
 }
 
@@ -198,7 +200,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--sc-action-hover) 0%, var(--color-primary) 50%, #1a6d8f 100%);
+  background: linear-gradient(
+    135deg,
+    var(--sc-action-hover) 0%,
+    var(--color-primary) 50%,
+    #1a6d8f 100%
+  );
 }
 
 .spinner {
@@ -211,7 +218,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Responsividade ── */

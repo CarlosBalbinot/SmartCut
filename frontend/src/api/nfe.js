@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1/nfe`;
 
 async function request(path, options = {}) {
@@ -38,8 +38,7 @@ export const listar = (params = {}) => {
 
 export const buscarPorId = (id) => request(`/${id}`);
 
-export const criar = (dados) =>
-  request("/", { method: "POST", body: JSON.stringify(dados) });
+export const criar = (dados) => request("/", { method: "POST", body: JSON.stringify(dados) });
 
 export const transmitir = (id) => request(`/${id}/transmitir`, { method: "POST" });
 

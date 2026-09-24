@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from middleware.permissions import require_permission
 from models.pedido import PedidoVenda
-from schemas.encaixe_schema import EncaixeCreate, EncaixeOut
+from schemas.encaixe_schema import EncaixeCreate
 from services import encaixe_service, nesting_service, report_service
 
 router = APIRouter(prefix="/api/v1/encaixes", tags=["encaixes"])
@@ -24,15 +24,14 @@ def listar_encaixes(pedido_id: uuid.UUID | None = None, db: Session = Depends(ge
 # Geração automática — é a ação do módulo "Encaixe Rápido", distinta da
 # gestão manual de encaixes abaixo.
 
+
 @router.post(
     "/gerar/{pedido_id}",
     response_model=dict,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission("encaixe_rapido", "criar"))],
 )
-def gerar_encaixe_automatico(
-    pedido_id: uuid.UUID, db: Session = Depends(get_db)
-):
+def gerar_encaixe_automatico(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     """Gera encaixes automáticos para todos os tecidos do pedido."""
     try:
         resultado = nesting_service.gerar_encaixe(db, pedido_id)
@@ -40,9 +39,7 @@ def gerar_encaixe_automatico(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
     except Exception as exc:
         # Qualquer outra falha (ex.: dado inconsistente, atributo ausente) não
         # pode virar um 500 sem corpo — vira mensagem clara para o frontend.
@@ -61,7 +58,9 @@ def obter_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def gerar_encaixe(payload: EncaixeCreate, db: Session = Depends(get_db)):
@@ -70,7 +69,8 @@ def gerar_encaixe(payload: EncaixeCreate, db: Session = Depends(get_db)):
 
 
 @router.delete(
-    "/{encaixe_id}", status_code=status.HTTP_200_OK,
+    "/{encaixe_id}",
+    status_code=status.HTTP_200_OK,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -82,7 +82,8 @@ def deletar_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.get(
-    "/{encaixe_id}/relatorio", response_model=dict,
+    "/{encaixe_id}/relatorio",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def gerar_relatorio(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -117,9 +118,7 @@ def pdf_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
         "cliente": pedido_row.cliente_razao_social,
         "data_pedido": pedido_row.data_emissao.isoformat() if pedido_row.data_emissao else None,
     }
-    pdf_bytes = report_service.gerar_pdf_encaixe(
-        pedido, [e.model_dump() for e in encaixes]
-    )
+    pdf_bytes = report_service.gerar_pdf_encaixe(pedido, [e.model_dump() for e in encaixes])
     num = str(pedido.get("num_pedido", "encaixe")).replace("/", "-").replace(" ", "_")
     return Response(
         content=pdf_bytes,

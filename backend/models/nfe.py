@@ -7,7 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
 
 STATUS_VALIDOS = (
-    "Rascunho", "Aguardando", "Autorizada", "Rejeitada", "Cancelada", "Denegada",
+    "Rascunho",
+    "Aguardando",
+    "Autorizada",
+    "Rejeitada",
+    "Cancelada",
+    "Denegada",
 )
 
 

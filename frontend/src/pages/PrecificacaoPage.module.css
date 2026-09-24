@@ -74,7 +74,9 @@
   transition: background-color 0.12s;
 }
 
-.grupoHeader:hover { background-color: var(--sc-surface); }
+.grupoHeader:hover {
+  background-color: var(--sc-surface);
+}
 
 .seta {
   font-size: 1.1rem;
@@ -85,7 +87,9 @@
   flex-shrink: 0;
 }
 
-.setaAberta { transform: rotate(90deg); }
+.setaAberta {
+  transform: rotate(90deg);
+}
 
 .grupoNome {
   font-size: 14px;
@@ -101,7 +105,7 @@
 }
 
 .grupoCorpo {
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding: 12px 16px;
   display: flex;
   flex-direction: column;
@@ -143,7 +147,11 @@
 }
 
 /* ── Ações na célula ── */
-.acoesCelula { display: flex; align-items: center; gap: 4px; }
+.acoesCelula {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
 
 .btnDeletar {
   padding: 4px 8px;
@@ -155,10 +163,15 @@
   border-radius: 6px;
   cursor: pointer;
   line-height: 1;
-  transition: background-color 0.1s, color 0.1s;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
 }
 
-.btnDeletar:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.btnDeletar:hover {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 .confirmarDeletar {
   font-size: 12px;
@@ -196,7 +209,7 @@
 
 /* ── Preview subtotal line ── */
 .previewSubtotal {
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding-top: 6px;
   margin-top: 2px;
   font-weight: 600;
@@ -222,8 +235,12 @@
   color: var(--sc-text-primary);
 }
 
-.tabelaPrec tbody tr:last-child td { border-bottom: none; }
-.tabelaPrec tbody tr:hover td { background-color: var(--sc-bg-secondary); }
+.tabelaPrec tbody tr:last-child td {
+  border-bottom: none;
+}
+.tabelaPrec tbody tr:hover td {
+  background-color: var(--sc-bg-secondary);
+}
 
 .tamanhoTag {
   display: inline-block;
@@ -236,9 +253,15 @@
   letter-spacing: 0.04em;
 }
 
-.precoFinalCell { display: flex; align-items: center; gap: 6px; }
+.precoFinalCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-.precoFinal { font-weight: 600; }
+.precoFinal {
+  font-weight: 600;
+}
 
 .precoFinalTag {
   font-size: 10px;
@@ -261,7 +284,9 @@
   transition: background-color 0.1s;
 }
 
-.btnEditar:hover { background: var(--sc-border-strong); }
+.btnEditar:hover {
+  background: var(--sc-border-strong);
+}
 
 .btnNovaTamanho {
   align-self: flex-start;
@@ -273,10 +298,15 @@
   border: none;
   border-radius: 980px;
   cursor: pointer;
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
 }
 
-.btnNovaTamanho:hover { background: var(--sc-border-strong); color: var(--sc-text-primary); }
+.btnNovaTamanho:hover {
+  background: var(--sc-border-strong);
+  color: var(--sc-text-primary);
+}
 
 /* ── Tabela resumo ── */
 .tabelaResumo {
@@ -304,14 +334,41 @@
   color: var(--sc-text-primary);
 }
 
-.tabelaResumo tbody tr:last-child td { border-bottom: none; }
-.tabelaResumo tbody tr:hover td { background: var(--sc-bg-secondary); }
+.tabelaResumo tbody tr:last-child td {
+  border-bottom: none;
+}
+.tabelaResumo tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.precoDestaque { font-weight: 700; }
+.precoDestaque {
+  font-weight: 700;
+}
 
-.margemBoa   { background: var(--sc-success-bg); color: var(--sc-success-text); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-.margemMedia { background: var(--sc-bg-secondary); color: #6E6E73; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-.margemBaixa { background: var(--sc-danger-bg); color: var(--sc-danger-text); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.margemBoa {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.margemMedia {
+  background: var(--sc-bg-secondary);
+  color: #6e6e73;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.margemBaixa {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
 
 /* ── Formulário compartilhado ── */
 .campo {
@@ -352,8 +409,13 @@
   box-sizing: border-box;
 }
 
-.input:focus { border-color: var(--color-primary); }
-.input:disabled { opacity: 0.6; cursor: not-allowed; }
+.input:focus {
+  border-color: var(--color-primary);
+}
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .grade2 {
   display: grid;
@@ -381,13 +443,15 @@
   cursor: pointer;
   background: transparent;
   color: var(--sc-text-secondary);
-  transition: background-color 0.12s, color 0.12s;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
 }
 
 .toggleAtivo {
-  background: #FFFFFF;
+  background: #ffffff;
   color: var(--sc-text-primary);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* ── Slider de margem ── */
@@ -419,7 +483,7 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .previewRow {
@@ -430,7 +494,7 @@
 }
 
 .previewTotal {
-  border-top: 1px solid rgba(0,0,0,0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   padding-top: 8px;
   margin-top: 2px;
   font-size: 15px;
@@ -450,7 +514,7 @@
   gap: 8px;
   justify-content: flex-end;
   padding-top: 4px;
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .lucroInfo {
@@ -472,17 +536,25 @@
 .btnPrimario {
   padding: 9px 18px;
   background: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: 980px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s, transform 0.1s;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
-.btnPrimario:hover:not(:disabled) { background: var(--color-primary-hover); transform: scale(1.01); }
-.btnPrimario:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimario:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: scale(1.01);
+}
+.btnPrimario:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecundario {
   padding: 9px 18px;
@@ -496,4 +568,6 @@
   transition: background-color 0.15s;
 }
 
-.btnSecundario:hover { background: var(--sc-border-strong); }
+.btnSecundario:hover {
+  background: var(--sc-border-strong);
+}

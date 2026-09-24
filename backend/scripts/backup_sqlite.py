@@ -18,6 +18,7 @@ Restore: parar o aplicativo, substituir o `smartcut.db` por um backup
 (`smartcut_<timestamp>`), remover `smartcut.db-wal`/`smartcut.db-shm` (o SQLite
 reconstrói) e abrir o aplicativo. Detalhes no README (seção Backup).
 """
+
 from __future__ import annotations
 
 import argparse

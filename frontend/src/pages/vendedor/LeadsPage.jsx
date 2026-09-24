@@ -20,27 +20,57 @@ const STATUS_COLORS = {
 
 const IconHome = () => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <path d="M3 9.5L11 3L19 9.5V19H14V14H8V19H3V9.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+    <path
+      d="M3 9.5L11 3L19 9.5V19H14V14H8V19H3V9.5Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 const IconBook = () => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <path d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4V4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-    <path d="M18 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6V4z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+    <path
+      d="M4 4h6a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H4V4z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M18 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h6V4z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 const IconDoc = () => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <rect x="4" y="2" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/>
-    <path d="M8 8h6M8 12h6M8 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <rect x="4" y="2" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M8 8h6M8 12h6M8 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 const IconUsers = () => (
   <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-    <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8"/>
-    <path d="M2 18c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    <path d="M16 6c1.7 0 3 1.3 3 3s-1.3 3-3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    <path d="M20 18c0-2.8-1.8-5.2-4.3-6.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+    <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+    <path
+      d="M2 18c0-3.3 2.7-6 6-6s6 2.7 6 6"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <path
+      d="M16 6c1.7 0 3 1.3 3 3s-1.3 3-3 3"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
+    <path
+      d="M20 18c0-2.8-1.8-5.2-4.3-6.1"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
@@ -84,8 +114,7 @@ export default function LeadsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const leadsFiltrados =
-    filtro === "todos" ? leads : leads.filter((l) => l.status === filtro);
+  const leadsFiltrados = filtro === "todos" ? leads : leads.filter((l) => l.status === filtro);
 
   function abrirSheet(lead) {
     setSheet({ lead, novoStatus: lead.status, obs: lead.observacao || "" });
@@ -98,9 +127,7 @@ export default function LeadsPage() {
         method: "PATCH",
         body: JSON.stringify({ status: sheet.novoStatus, observacao: sheet.obs }),
       });
-      setLeads((prev) =>
-        prev.map((l) => (l.id === sheet.lead.id ? { ...l, ...updated } : l))
-      );
+      setLeads((prev) => prev.map((l) => (l.id === sheet.lead.id ? { ...l, ...updated } : l)));
       setSheet(null);
     } catch (e) {
       alert(e.message);
@@ -183,7 +210,9 @@ export default function LeadsPage() {
               onChange={(e) => setSheet((s) => ({ ...s, novoStatus: e.target.value }))}
             >
               {STATUS_LIST.filter((s) => s !== "todos").map((s) => (
-                <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                <option key={s} value={s}>
+                  {STATUS_LABEL[s]}
+                </option>
               ))}
             </select>
             <textarea

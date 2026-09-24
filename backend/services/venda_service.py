@@ -15,7 +15,11 @@ from models.pedido import ItemPedido, PedidoVenda
 from models.produto import Produto
 from models.produto_sku import ProdutoSKU
 from models.venda import (
-    Empresa, PrecoReferencia, PrecoTabelaProduto, Vendedor, VendedorTabelaComissao,
+    Empresa,
+    PrecoReferencia,
+    PrecoTabelaProduto,
+    Vendedor,
+    VendedorTabelaComissao,
 )
 from services.segredo_service import chave_disponivel, cifrar_segredo
 
@@ -32,19 +36,19 @@ def get_produto_do_item(item: ItemPedido, db: Session) -> Optional[Produto]:
 # Coluna do pedido → como ler do Cliente. Documento: CNPJ ou, se não tiver,
 # CPF (NF-e decide pela contagem de dígitos); telefone: fixo ou celular.
 SNAPSHOT_CLIENTE = {
-    "cliente_razao_social":          lambda c: c.razao_social,
-    "cliente_cnpj":                  lambda c: c.cnpj or c.cpf,
-    "cliente_ie":                    lambda c: c.ie,
-    "cliente_endereco":              lambda c: c.endereco,
-    "cliente_numero":                lambda c: c.numero,
-    "cliente_bairro":                lambda c: c.bairro,
-    "cliente_cidade":                lambda c: c.cidade,
-    "cliente_uf":                    lambda c: c.estado,
-    "cliente_cep":                   lambda c: c.cep,
+    "cliente_razao_social": lambda c: c.razao_social,
+    "cliente_cnpj": lambda c: c.cnpj or c.cpf,
+    "cliente_ie": lambda c: c.ie,
+    "cliente_endereco": lambda c: c.endereco,
+    "cliente_numero": lambda c: c.numero,
+    "cliente_bairro": lambda c: c.bairro,
+    "cliente_cidade": lambda c: c.cidade,
+    "cliente_uf": lambda c: c.estado,
+    "cliente_cep": lambda c: c.cep,
     "cliente_codigo_ibge_municipio": lambda c: c.codigo_ibge_municipio,
-    "cliente_codigo_pais":           lambda c: c.codigo_pais or "1058",
-    "cliente_telefone":              lambda c: c.telefone or c.celular,
-    "cliente_email":                 lambda c: c.email or c.email_nfe,
+    "cliente_codigo_pais": lambda c: c.codigo_pais or "1058",
+    "cliente_telefone": lambda c: c.telefone or c.celular,
+    "cliente_email": lambda c: c.email or c.email_nfe,
 }
 
 # Pedido cuja cópia ainda pode acompanhar o cadastro: Aberto e sem NF-e
@@ -70,9 +74,7 @@ def aplicar_snapshot_cliente(pedido: PedidoVenda, cliente: Cliente) -> None:
 def pedido_sincronizavel(db: Session, pedido: PedidoVenda) -> bool:
     if pedido.status != "Aberto" or pedido.nfe_id is not None:
         return False
-    return not db.execute(
-        select(NotaFiscal.id).where(NotaFiscal.pedido_id == pedido.id).limit(1)
-    ).first()
+    return not db.execute(select(NotaFiscal.id).where(NotaFiscal.pedido_id == pedido.id).limit(1)).first()
 
 
 def sincronizar_cliente_pedidos(db: Session, cliente_id: int) -> int:
@@ -82,9 +84,11 @@ def sincronizar_cliente_pedidos(db: Session, cliente_id: int) -> int:
     cliente = db.get(Cliente, cliente_id)
     if cliente is None:
         return 0
-    pedidos = db.execute(
-        select(PedidoVenda).where(PedidoVenda.cliente_id == cliente_id, *_FILTRO_SINCRONIZAVEL)
-    ).scalars().all()
+    pedidos = (
+        db.execute(select(PedidoVenda).where(PedidoVenda.cliente_id == cliente_id, *_FILTRO_SINCRONIZAVEL))
+        .scalars()
+        .all()
+    )
     for pedido in pedidos:
         aplicar_snapshot_cliente(pedido, cliente)
     return len(pedidos)
@@ -128,8 +132,8 @@ def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
                     raise HTTPException(
                         status_code=400,
                         detail="Sem chave de segurança configurada para armazenar a senha do "
-                               "certificado. No desktop abra pelo SmartCut; fora dele defina "
-                               "CERT_SENHA_KEY no ambiente (ver README).",
+                        "certificado. No desktop abra pelo SmartCut; fora dele defina "
+                        "CERT_SENHA_KEY no ambiente (ver README).",
                     )
                 payload["certificado_senha"] = cifrar_segredo(senha)
     for field, val in payload.items():
@@ -151,11 +155,18 @@ def testar_certificado(certificado_path: str, certificado_senha: str) -> dict:
         return {"valido": False, "titular": None, "validade": None, "erro": "Senha incorreta ou arquivo .pfx inválido."}
 
     if certificado is None:
-        return {"valido": False, "titular": None, "validade": None, "erro": "Certificado não encontrado dentro do arquivo .pfx."}
+        return {
+            "valido": False,
+            "titular": None,
+            "validade": None,
+            "erro": "Certificado não encontrado dentro do arquivo .pfx.",
+        }
 
     titular_attrs = certificado.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
     titular = titular_attrs[0].value if titular_attrs else None
-    validade = certificado.not_valid_after_utc if hasattr(certificado, "not_valid_after_utc") else certificado.not_valid_after
+    validade = (
+        certificado.not_valid_after_utc if hasattr(certificado, "not_valid_after_utc") else certificado.not_valid_after
+    )
 
     return {
         "valido": True,
@@ -166,24 +177,18 @@ def testar_certificado(certificado_path: str, certificado_senha: str) -> dict:
 
 
 def proximo_numero(db: Session, tipo: str) -> str:
-    result = db.execute(
-        select(func.max(PedidoVenda.numero)).where(PedidoVenda.tipo == tipo)
-    ).scalar()
+    result = db.execute(select(func.max(PedidoVenda.numero)).where(PedidoVenda.tipo == tipo)).scalar()
     if result is None:
         candidate = "000001"
     else:
         try:
             candidate = str(int(result) + 1).zfill(6)
         except (ValueError, TypeError):
-            count = db.execute(
-                select(func.count(PedidoVenda.id)).where(PedidoVenda.tipo == tipo)
-            ).scalar() or 0
+            count = db.execute(select(func.count(PedidoVenda.id)).where(PedidoVenda.tipo == tipo)).scalar() or 0
             candidate = str(count + 1).zfill(6)
 
     # Garantir unicidade global (evitar colisão entre tipos)
-    while db.execute(
-        select(PedidoVenda.id).where(PedidoVenda.numero == candidate)
-    ).scalar() is not None:
+    while db.execute(select(PedidoVenda.id).where(PedidoVenda.numero == candidate)).scalar() is not None:
         candidate = str(int(candidate) + 1).zfill(6)
 
     return candidate
@@ -195,12 +200,16 @@ def get_preco(
     condicoes: str,
     db: Session,
 ) -> Optional[Decimal]:
-    preco_ref = db.execute(
-        select(PrecoReferencia).where(
-            PrecoReferencia.grupo_id == grupo_id,
-            PrecoReferencia.tabela_id == tabela_id,
+    preco_ref = (
+        db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.grupo_id == grupo_id,
+                PrecoReferencia.tabela_id == tabela_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not preco_ref:
         return None
     if condicoes == "avista":
@@ -244,21 +253,29 @@ def resolver_preco_item(
 
     if tabela_preco_id:
         if sku is not None:
-            registro = db.execute(
-                select(PrecoTabelaProduto).where(
-                    PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
-                    PrecoTabelaProduto.sku_id == sku.id,
+            registro = (
+                db.execute(
+                    select(PrecoTabelaProduto).where(
+                        PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
+                        PrecoTabelaProduto.sku_id == sku.id,
+                    )
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
             if registro:
                 return _preco_por_condicao(registro, condicoes), "TABELA_SKU"
         if produto is not None:
-            registro = db.execute(
-                select(PrecoTabelaProduto).where(
-                    PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
-                    PrecoTabelaProduto.produto_id == produto.id,
+            registro = (
+                db.execute(
+                    select(PrecoTabelaProduto).where(
+                        PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
+                        PrecoTabelaProduto.produto_id == produto.id,
+                    )
                 )
-            ).scalars().first()
+                .scalars()
+                .first()
+            )
             if registro:
                 return _preco_por_condicao(registro, condicoes), "TABELA_PRODUTO"
         if grupo_id is not None:
@@ -305,12 +322,16 @@ def resolver_comissao(
         return Decimal("0"), "SEM_VENDEDOR"
 
     if tabela_preco_id is not None:
-        vinculo = db.execute(
-            select(VendedorTabelaComissao).where(
-                VendedorTabelaComissao.vendedor_id == vendedor_id,
-                VendedorTabelaComissao.tabela_preco_id == tabela_preco_id,
+        vinculo = (
+            db.execute(
+                select(VendedorTabelaComissao).where(
+                    VendedorTabelaComissao.vendedor_id == vendedor_id,
+                    VendedorTabelaComissao.tabela_preco_id == tabela_preco_id,
+                )
             )
-        ).scalars().first()
+            .scalars()
+            .first()
+        )
         if vinculo is not None:
             return Decimal(str(vinculo.comissao_pct)), "VINCULO"
 
@@ -326,7 +347,9 @@ def aplicar_comissao(db: Session, pedido: PedidoVenda) -> None:
     decide quando (criação, troca de vendedor/tabela com pedido Aberto) —
     recalcular_pedido só reaproveita o snapshot."""
     pedido.comissao_pct, pedido.comissao_origem = resolver_comissao(
-        db, pedido.vendedor_id, pedido.tabela_preco_id,
+        db,
+        pedido.vendedor_id,
+        pedido.tabela_preco_id,
     )
 
 
@@ -347,9 +370,7 @@ def recalcular_pedido(db: Session, pedido_id: uuid.UUID) -> None:
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         return
-    itens = db.execute(
-        select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)
-    ).scalars().all()
+    itens = db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)).scalars().all()
 
     subtotal, comissao = calcular_totais(itens, pedido.comissao_pct)
 

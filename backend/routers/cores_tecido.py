@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
-from schemas.tecido_schema import CorOut, CorUpdate, LoteCreate, LoteOut
+from schemas.tecido_schema import CorUpdate, LoteCreate
 from services import cor_service, lote_service
 
 router = APIRouter(prefix="/api/v1/cores-tecido", tags=["cores-tecido"])
@@ -22,7 +22,8 @@ def obter_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.patch(
-    "/{cor_id}", response_model=dict,
+    "/{cor_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_cor(cor_id: uuid.UUID, payload: CorUpdate, db: Session = Depends(get_db)):
@@ -33,7 +34,8 @@ def atualizar_cor(cor_id: uuid.UUID, payload: CorUpdate, db: Session = Depends(g
 
 
 @router.delete(
-    "/{cor_id}", response_model=dict,
+    "/{cor_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -45,8 +47,10 @@ def deletar_cor(cor_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # ── Lotes de uma cor ──────────────────────────────────────────────────
 
+
 @router.get(
-    "/{cor_id}/lotes", response_model=dict,
+    "/{cor_id}/lotes",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def listar_lotes(cor_id: uuid.UUID, db: Session = Depends(get_db)):
@@ -55,7 +59,9 @@ def listar_lotes(cor_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post(
-    "/{cor_id}/lotes", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/{cor_id}/lotes",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_lote(cor_id: uuid.UUID, payload: LoteCreate, db: Session = Depends(get_db)):
@@ -64,7 +70,8 @@ def criar_lote(cor_id: uuid.UUID, payload: LoteCreate, db: Session = Depends(get
 
 
 @router.get(
-    "/{cor_id}/recomendar-lote", response_model=dict,
+    "/{cor_id}/recomendar-lote",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def recomendar_lote(cor_id: uuid.UUID, db: Session = Depends(get_db)):

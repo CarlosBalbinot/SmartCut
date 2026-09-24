@@ -46,10 +46,16 @@
   text-overflow: ellipsis;
 }
 
-.table tr:last-child td { border-bottom: none; }
+.table tr:last-child td {
+  border-bottom: none;
+}
 
-.trClickable { cursor: pointer; }
-.trClickable:hover td { background: var(--sc-bg-secondary); }
+.trClickable {
+  cursor: pointer;
+}
+.trClickable:hover td {
+  background: var(--sc-bg-secondary);
+}
 
 /* ── Agrupamento por mês ── */
 .monthHeaderRow td {
@@ -70,7 +76,9 @@
   cursor: pointer;
   user-select: none;
 }
-.monthHeader:hover { background: var(--sc-border); }
+.monthHeader:hover {
+  background: var(--sc-border);
+}
 
 .monthHeaderChevron {
   display: inline-flex;
@@ -80,14 +88,29 @@
 }
 
 /* Column widths */
-.table th:nth-child(1) { width: auto; }
-.table th:nth-child(2) { width: 130px; }
-.table th:nth-child(3) { width: 110px; }
-.table th:nth-child(4) { width: 80px; }
-.table th:nth-child(5) { width: 110px; }
-.table th:nth-child(6) { width: 180px; }
+.table th:nth-child(1) {
+  width: auto;
+}
+.table th:nth-child(2) {
+  width: 130px;
+}
+.table th:nth-child(3) {
+  width: 110px;
+}
+.table th:nth-child(4) {
+  width: 80px;
+}
+.table th:nth-child(5) {
+  width: 110px;
+}
+.table th:nth-child(6) {
+  width: 180px;
+}
 
-.tdValor { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tdValor {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 
 .dataCell {
   display: flex;
@@ -160,7 +183,7 @@
   border: 1px solid var(--sc-border);
   border-radius: var(--sc-radius-sm);
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .parcelasTable th {
@@ -182,7 +205,9 @@
   border-bottom: 1px solid var(--sc-border);
 }
 
-.parcelasTable tr:last-child td { border-bottom: none; }
+.parcelasTable tr:last-child td {
+  border-bottom: none;
+}
 
 .expandLoading {
   font-size: 0.82rem;
@@ -201,13 +226,41 @@
   white-space: nowrap;
 }
 
-.stQuitado  { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
-.stPendente { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
-.stParcial  { background: var(--sc-info-bg);      color: var(--sc-info-text);     border-color: var(--sc-info-border); }
-.stPAGO     { background: var(--sc-success-bg); color: var(--sc-success-text); border-color: var(--sc-success-border); }
-.stPENDENTE { background: var(--sc-bg-secondary); color: var(--sc-text-secondary); border-color: var(--sc-border-strong); }
-.stATRASADO { background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
-.stCANCELADO{ background: var(--sc-danger-bg);   color: var(--sc-danger-text);   border-color: var(--sc-danger-border); }
+.stQuitado {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+  border-color: var(--sc-success-border);
+}
+.stPendente {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  border-color: var(--sc-border-strong);
+}
+.stParcial {
+  background: var(--sc-info-bg);
+  color: var(--sc-info-text);
+  border-color: var(--sc-info-border);
+}
+.stPAGO {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+  border-color: var(--sc-success-border);
+}
+.stPENDENTE {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  border-color: var(--sc-border-strong);
+}
+.stATRASADO {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+  border-color: var(--sc-danger-border);
+}
+.stCANCELADO {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+  border-color: var(--sc-danger-border);
+}
 
 /* ── Row actions ── */
 .acoesCell {
@@ -239,8 +292,14 @@
   border-radius: var(--sc-radius-sm);
   transition: transform 0.15s;
 }
-.btnExpand:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
-.btnExpandOpen { transform: rotate(90deg); color: var(--sc-text-primary); }
+.btnExpand:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
+.btnExpandOpen {
+  transform: rotate(90deg);
+  color: var(--sc-text-primary);
+}
 
 .btnEditar {
   display: inline-flex;
@@ -255,9 +314,16 @@
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
-.btnEditar:hover { background: var(--sc-surface-hover); border-color: var(--sc-action); color: var(--sc-action); }
+.btnEditar:hover {
+  background: var(--sc-surface-hover);
+  border-color: var(--sc-action);
+  color: var(--sc-action);
+}
 
 .btnIconDelete {
   background: none;
@@ -268,7 +334,10 @@
   padding: 0.25rem 0.4rem;
   border-radius: var(--sc-radius-sm);
 }
-.btnIconDelete:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.btnIconDelete:hover {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 .btnIconAction {
   display: inline-flex;
@@ -282,7 +351,10 @@
   padding: 0.25rem 0.4rem;
   border-radius: var(--sc-radius-sm);
 }
-.btnIconAction:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnIconAction:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .btnDanger {
   background: var(--sc-danger-text);
@@ -294,8 +366,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnDanger:hover    { opacity: 0.85; }
-.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnDanger:hover {
+  opacity: 0.85;
+}
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .confirmText {
   font-size: 0.9rem;
@@ -317,8 +394,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Buttons (.btnPrimary também usado nos modais — não alterado) ── */
 .btnPrimary {
@@ -332,8 +414,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -345,8 +432,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover    { background: var(--sc-surface-hover); }
-.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnClose {
   background: none;
@@ -358,13 +450,16 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* ── Modal ── */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -379,7 +474,7 @@
   max-height: 92vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .modalHead {
@@ -429,7 +524,9 @@
   color: var(--sc-text-secondary);
 }
 
-.fieldFull { grid-column: 1 / -1; }
+.fieldFull {
+  grid-column: 1 / -1;
+}
 
 .input {
   border: 1px solid var(--sc-border-strong);
@@ -443,7 +540,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 .inputFile {
   font-size: 0.82rem;
@@ -512,7 +611,9 @@
   padding: 0.2rem 0;
   margin-bottom: 1rem;
 }
-.folderLink:hover { text-decoration: underline; }
+.folderLink:hover {
+  text-decoration: underline;
+}
 
 .importList {
   display: flex;
@@ -546,7 +647,9 @@
   padding: 0.7rem 1rem;
   cursor: pointer;
 }
-.importCardHeader:hover { background: var(--sc-surface-hover); }
+.importCardHeader:hover {
+  background: var(--sc-surface-hover);
+}
 
 .importCheckbox {
   width: 16px;
@@ -576,7 +679,9 @@
   margin-bottom: 0.5rem;
 }
 
-.parcelaEditRow .input { flex: 1; }
+.parcelaEditRow .input {
+  flex: 1;
+}
 
 .btnRemoveParcela {
   background: none;
@@ -589,7 +694,10 @@
   border-radius: var(--sc-radius-sm);
   flex-shrink: 0;
 }
-.btnRemoveParcela:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.btnRemoveParcela:hover {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 .btnAddParcela {
   background: none;
@@ -601,7 +709,10 @@
   cursor: pointer;
   margin-top: 0.25rem;
 }
-.btnAddParcela:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnAddParcela:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* ── Editar Compra: parcelas e anexos ── */
 .parcelasEditHeader {
@@ -629,7 +740,9 @@
   color: var(--sc-text-primary);
   border-bottom: 1px solid var(--sc-border);
 }
-.anexoRow:last-child { border-bottom: none; }
+.anexoRow:last-child {
+  border-bottom: none;
+}
 
 .anexoRowLabel {
   flex-shrink: 0;
@@ -655,7 +768,9 @@
   padding: 0.15rem 0.4rem;
   white-space: nowrap;
 }
-.btnLinkSmall:hover { text-decoration: underline; }
+.btnLinkSmall:hover {
+  text-decoration: underline;
+}
 
 .inputFileHidden {
   display: none;
@@ -731,8 +846,12 @@
   cursor: pointer;
   text-align: left;
 }
-.docCardOption:last-child { border-bottom: none; }
-.docCardOption:hover { background: var(--sc-bg-secondary); }
+.docCardOption:last-child {
+  border-bottom: none;
+}
+.docCardOption:hover {
+  background: var(--sc-bg-secondary);
+}
 
 .docCardEmpty {
   display: flex;

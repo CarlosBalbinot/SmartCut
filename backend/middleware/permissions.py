@@ -23,7 +23,7 @@ def get_current_user(
     """
     token = ""
     if authorization and authorization.startswith("Bearer "):
-        token = authorization[len("Bearer "):]
+        token = authorization[len("Bearer ") :]
     elif token_admin:
         token = token_admin
     else:
@@ -45,7 +45,7 @@ def get_current_user(
             detail="Token inválido para o sistema administrativo",
         )
 
-    usuario = db.get(Usuario, int(sub[len(PREFIXO_SUB_ADMIN):]))
+    usuario = db.get(Usuario, int(sub[len(PREFIXO_SUB_ADMIN) :]))
     if not usuario or not usuario.ativo:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inválido ou inativo")
 
@@ -94,7 +94,7 @@ def require_permission(modulo: str, acao: str):
                 Permissao.usuario_id == current_user.id,
                 Permissao.modulo == modulo,
                 Permissao.acao == acao,
-                Permissao.permitido == True,
+                Permissao.permitido == True,  # noqa: E712 — expressão SQL (não comparação Python)
             )
             .first()
         )

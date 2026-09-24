@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -42,7 +42,8 @@ export const produtosApi = {
 
 export const gruposProdutoApi = {
   listar: (situacao) => request(`/grupos-produto/${situacao ? `?situacao=${situacao}` : ""}`),
-  criar: (payload) => request("/grupos-produto/", { method: "POST", body: JSON.stringify(payload) }),
+  criar: (payload) =>
+    request("/grupos-produto/", { method: "POST", body: JSON.stringify(payload) }),
   atualizar: (id, payload) =>
     request(`/grupos-produto/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletar: (id) => request(`/grupos-produto/${id}`, { method: "DELETE" }),

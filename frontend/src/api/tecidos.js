@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -26,8 +26,7 @@ export const createModelo = (payload) =>
 export const updateModelo = (id, payload) =>
   request(`/modelos-tecido/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteModelo = (id) =>
-  request(`/modelos-tecido/${id}`, { method: "DELETE" });
+export const deleteModelo = (id) => request(`/modelos-tecido/${id}`, { method: "DELETE" });
 
 export const getCoresDoModelo = (id) => request(`/modelos-tecido/${id}/cores`);
 
@@ -41,8 +40,7 @@ export const getCor = (id) => request(`/cores-tecido/${id}`);
 export const updateCor = (id, payload) =>
   request(`/cores-tecido/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteCor = (id) =>
-  request(`/cores-tecido/${id}`, { method: "DELETE" });
+export const deleteCor = (id) => request(`/cores-tecido/${id}`, { method: "DELETE" });
 
 export const getLotesDaCor = (id) => request(`/cores-tecido/${id}/lotes`);
 
@@ -58,8 +56,7 @@ export const getLote = (id) => request(`/lotes-tecido/${id}`);
 export const updateLote = (id, payload) =>
   request(`/lotes-tecido/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const arquivarLote = (id) =>
-  request(`/lotes-tecido/${id}/arquivar`, { method: "POST" });
+export const arquivarLote = (id) => request(`/lotes-tecido/${id}/arquivar`, { method: "POST" });
 
 export const getAlertasLotes = () => request("/lotes-tecido/alertas");
 

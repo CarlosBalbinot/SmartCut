@@ -29,9 +29,7 @@ class ItemTabelaGrade(Base):
     __table_args__ = (UniqueConstraint("tabela_id", "codigo_curto"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tabela_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("tabelas_grade.id", ondelete="CASCADE"), nullable=False
-    )
+    tabela_id: Mapped[int] = mapped_column(Integer, ForeignKey("tabelas_grade.id", ondelete="CASCADE"), nullable=False)
     codigo_curto: Mapped[str] = mapped_column(String(4), nullable=False)
     descricao: Mapped[str] = mapped_column(String(100), nullable=False)
     ordem: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

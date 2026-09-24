@@ -1,6 +1,5 @@
 import re
 import uuid
-from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -79,14 +78,12 @@ def consumir(db: Session, lote_id: uuid.UUID, peso_kg: float) -> LoteOut | None:
 
 def verificar_alertas(db: Session) -> list[dict]:
     """Retorna lotes com peso_disponivel <= LIMITE_ALERTA_KG, exceto arquivados/esgotados."""
-    from models.tecido import CorTecido, ModeloTecido
+    from models.tecido import CorTecido
     from sqlalchemy.orm import selectinload
 
     lotes = (
         db.query(LoteTecido)
-        .options(
-            selectinload(LoteTecido.cor).selectinload(CorTecido.modelo)
-        )
+        .options(selectinload(LoteTecido.cor).selectinload(CorTecido.modelo))
         .filter(
             LoteTecido.peso_disponivel_kg <= _LIMITE_ALERTA_KG,
             LoteTecido.status.in_(["intacto", "aberto"]),

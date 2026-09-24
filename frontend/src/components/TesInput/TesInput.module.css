@@ -25,10 +25,17 @@
   text-overflow: ellipsis;
   color: var(--sc-text-primary);
   outline: none;
-  transition: border-color 0.1s, box-shadow 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
-.input::placeholder { color: var(--sc-text-muted); font-size: var(--sc-font-size-small); }
-.input:hover:not(:read-only) { border-color: var(--sc-border-strong); }
+.input::placeholder {
+  color: var(--sc-text-muted);
+  font-size: var(--sc-font-size-small);
+}
+.input:hover:not(:read-only) {
+  border-color: var(--sc-border-strong);
+}
 .input:focus:not(:read-only) {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -42,7 +49,9 @@
 
 .inputErro,
 .inputErro:hover,
-.inputErro:focus { border-color: var(--sc-danger-text) !important; }
+.inputErro:focus {
+  border-color: var(--sc-danger-text) !important;
+}
 
 .lupa {
   position: absolute;
@@ -61,7 +70,10 @@
   color: var(--sc-text-muted);
   cursor: pointer;
 }
-.lupa:hover { color: var(--color-primary); background: var(--sc-surface-hover); }
+.lupa:hover {
+  color: var(--color-primary);
+  background: var(--sc-surface-hover);
+}
 
 .erro {
   margin-top: 2px;
@@ -76,7 +88,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,7 +103,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .modalHead {
@@ -118,7 +130,10 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .modalScroll {
   overflow-y: auto;
@@ -140,7 +155,9 @@
   outline: none;
   transition: border-color 0.15s;
 }
-.busca:focus { border-color: var(--color-primary); }
+.busca:focus {
+  border-color: var(--color-primary);
+}
 
 .lista {
   max-height: 360px;
@@ -178,16 +195,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tabela tbody tr { cursor: pointer; border-left: 3px solid transparent; }
-.tabela tbody tr:last-child td { border-bottom: none; }
-.tabela tbody tr:hover td { background: var(--sc-bg-secondary); }
+.tabela tbody tr {
+  cursor: pointer;
+  border-left: 3px solid transparent;
+}
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+.tabela tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.colCodigo { width: 90px; }
-.colCfop   { width: 70px; }
+.colCodigo {
+  width: 90px;
+}
+.colCfop {
+  width: 70px;
+}
 
-.linhaSelecionada td:first-child { box-shadow: inset 3px 0 0 var(--color-primary); }
+.linhaSelecionada td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
 .linhaAtiva td,
-.linhaAtiva:hover td { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+.linhaAtiva:hover td {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
 
 .vazio {
   padding: 2rem !important;
@@ -220,7 +252,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .btnPrimary {
   background: var(--color-primary);
@@ -232,5 +266,10 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnPrimary:hover:not(:disabled) { filter: brightness(0.95); }
-.btnPrimary:disabled { opacity: 0.5; cursor: default; }
+.btnPrimary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

@@ -16,10 +16,7 @@ _MOD = "cadastros_transportadoras"
 
 
 def _proximo_codigo(db: Session) -> str:
-    codigos = [
-        row[0] for row in
-        db.query(Transportadora.codigo).filter(Transportadora.codigo.isnot(None)).all()
-    ]
+    codigos = [row[0] for row in db.query(Transportadora.codigo).filter(Transportadora.codigo.isnot(None)).all()]
     max_val = 0
     for codigo in codigos:
         try:
@@ -48,7 +45,9 @@ def listar_transportadoras(
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_transportadora(payload: TransportadoraCreate, db: Session = Depends(get_db)):
@@ -60,7 +59,8 @@ def criar_transportadora(payload: TransportadoraCreate, db: Session = Depends(ge
 
 
 @router.get(
-    "/{transportadora_id}", response_model=dict,
+    "/{transportadora_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
 def obter_transportadora(transportadora_id: int, db: Session = Depends(get_db)):
@@ -71,12 +71,11 @@ def obter_transportadora(transportadora_id: int, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{transportadora_id}", response_model=dict,
+    "/{transportadora_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
-def atualizar_transportadora(
-    transportadora_id: int, payload: TransportadoraUpdate, db: Session = Depends(get_db)
-):
+def atualizar_transportadora(transportadora_id: int, payload: TransportadoraUpdate, db: Session = Depends(get_db)):
     transportadora = db.query(Transportadora).filter(Transportadora.id == transportadora_id).first()
     if not transportadora:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transportadora não encontrada")
@@ -88,7 +87,8 @@ def atualizar_transportadora(
 
 
 @router.delete(
-    "/{transportadora_id}", response_model=dict,
+    "/{transportadora_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_transportadora(transportadora_id: int, db: Session = Depends(get_db)):

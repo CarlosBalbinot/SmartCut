@@ -41,7 +41,9 @@ def gerar_skus(db: Session, produto_pai_id: uuid.UUID, combinacoes: list[dict]) 
         coluna_item = db.get(ItemTabelaGrade, coluna_item_id) if coluna_item_id else None
 
         codigo = gerar_codigo_filho(
-            db, grupo_prefixo, seq,
+            db,
+            grupo_prefixo,
+            seq,
             linha_item.codigo_curto if linha_item else None,
             coluna_item.codigo_curto if coluna_item else None,
         )
@@ -79,8 +81,7 @@ def propagar_preco_pai(db: Session, produto_pai_id: uuid.UUID) -> dict:
         "atualizados": atualizados,
         "ignorados": ignorados,
         "mensagem": (
-            f"{atualizados} produto(s) atualizado(s). "
-            f"{ignorados} produto(s) com preço manual não foram alterados."
+            f"{atualizados} produto(s) atualizado(s). {ignorados} produto(s) com preço manual não foram alterados."
         ),
     }
 

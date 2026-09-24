@@ -16,7 +16,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: var(--sc-bg-secondary); color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-primary);
+}
 
 .title {
   font-size: var(--sc-font-size-page-title);
@@ -81,7 +84,9 @@
   box-sizing: border-box;
 }
 .input:focus,
-.select:focus { border-color: var(--sc-action); }
+.select:focus {
+  border-color: var(--sc-action);
+}
 
 .hint {
   font-size: 0.75rem;
@@ -94,7 +99,9 @@
   display: flex;
   align-items: center;
 }
-.passwordWrap .input { padding-right: 2.25rem; }
+.passwordWrap .input {
+  padding-right: 2.25rem;
+}
 
 .btnEye {
   position: absolute;
@@ -108,7 +115,9 @@
   color: var(--sc-text-secondary);
   cursor: pointer;
 }
-.btnEye:hover { color: var(--sc-text-primary); }
+.btnEye:hover {
+  color: var(--sc-text-primary);
+}
 
 .badgeWarning {
   display: inline-block;
@@ -161,15 +170,24 @@
   cursor: pointer;
   margin-top: 1rem;
 }
-.btnSecondary:hover:not(:disabled) { background: var(--sc-bg-secondary); }
-.btnSecondary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnSecondary:hover:not(:disabled) {
+  background: var(--sc-bg-secondary);
+}
+.btnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .testeResultado {
   margin-top: 0.75rem;
   font-size: 0.82rem;
 }
-.testeSucesso { color: var(--sc-success-text); }
-.testeErro { color: var(--sc-danger-text); }
+.testeSucesso {
+  color: var(--sc-success-text);
+}
+.testeErro {
+  color: var(--sc-danger-text);
+}
 
 .erro {
   margin-top: 1rem;
@@ -211,5 +229,10 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

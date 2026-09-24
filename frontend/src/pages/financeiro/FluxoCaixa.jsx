@@ -25,8 +25,18 @@ import styles from "./FluxoCaixa.module.css";
 const MODULO = "financeiro_fluxo";
 
 const MESES = [
-  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
 const moeda = (v) =>
@@ -59,12 +69,12 @@ function vencimentoCategoria(item) {
   if (!vencStr) return "normal";
   const [y, m, d] = vencStr.split("-").map(Number);
   const hoje = new Date();
-  const hojeDia  = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const vencDia  = new Date(y, m - 1, d);
-  const amanha   = new Date(hojeDia);
+  const hojeDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const vencDia = new Date(y, m - 1, d);
+  const amanha = new Date(hojeDia);
   amanha.setDate(amanha.getDate() + 1);
   if (vencDia < hojeDia) return "atrasado";
-  if (vencDia <= amanha)  return "alerta";
+  if (vencDia <= amanha) return "alerta";
   return "normal";
 }
 
@@ -112,7 +122,7 @@ function descricaoPartes(l, comprasMap, vendasMap) {
 // (espelha o _add_meses do backend).
 function addMesClamp(dataISO, meses) {
   const [y, m, d] = dataISO.split("-").map(Number);
-  const totalMeses = (m - 1) + meses;
+  const totalMeses = m - 1 + meses;
   const novoAno = y + Math.floor(totalMeses / 12);
   const novoMes = (totalMeses % 12) + 1;
   const ultimoDia = new Date(novoAno, novoMes, 0).getDate();
@@ -121,13 +131,20 @@ function addMesClamp(dataISO, meses) {
 }
 
 const LANC_VAZIO = {
-  tipo: "PAGAR", descricao: "", valor: "",
-  vencimento: hojeISO(), categoria: "", parcelas: "1",
+  tipo: "PAGAR",
+  descricao: "",
+  valor: "",
+  vencimento: hojeISO(),
+  categoria: "",
+  parcelas: "1",
 };
 
 const TRANSF_VAZIO = {
-  conta_origem_id: "", conta_destino_id: "", valor: "",
-  data: hojeISO(), descricao: "",
+  conta_origem_id: "",
+  conta_destino_id: "",
+  valor: "",
+  data: hojeISO(),
+  descricao: "",
 };
 
 const CONTA_VAZIA = { nome: "", tipo: "BANCO" };
@@ -138,12 +155,12 @@ export default function FluxoCaixa() {
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [ano, setAno] = useState(now.getFullYear());
 
-  const [lancamentos,    setLancamentos]    = useState([]);
-  const [saldoContas,    setSaldoContas]    = useState([]);
-  const [contasBanc,     setContasBanc]     = useState([]);
-  const [comprasMap,     setComprasMap]     = useState({});
-  const [vendasMap,      setVendasMap]      = useState({});
-  const [loading,        setLoading]        = useState(false);
+  const [lancamentos, setLancamentos] = useState([]);
+  const [saldoContas, setSaldoContas] = useState([]);
+  const [contasBanc, setContasBanc] = useState([]);
+  const [comprasMap, setComprasMap] = useState({});
+  const [vendasMap, setVendasMap] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const [mensagemSucesso, setMensagemSucesso] = useState(null);
 
@@ -151,71 +168,75 @@ export default function FluxoCaixa() {
   const [openMenuId, setOpenMenuId] = useState(null);
 
   // Modal confirmar pagamento/recebimento
-  const [modalPag,   setModalPag]   = useState(null);
-  const [pagForm,    setPagForm]    = useState({ conta_bancaria_id: "", data_pagamento: hojeISO() });
-  const [erroPag,    setErroPag]    = useState(null);
-  const [savingPag,  setSavingPag]  = useState(false);
-  const [tipoRecebimento,     setTipoRecebimento]     = useState("total"); // "total" | "parcial"
+  const [modalPag, setModalPag] = useState(null);
+  const [pagForm, setPagForm] = useState({ conta_bancaria_id: "", data_pagamento: hojeISO() });
+  const [erroPag, setErroPag] = useState(null);
+  const [savingPag, setSavingPag] = useState(false);
+  const [tipoRecebimento, setTipoRecebimento] = useState("total"); // "total" | "parcial"
   const [valorRecebidoParcial, setValorRecebidoParcial] = useState("");
 
   // Modal desfazer pagamento
   const [modalDesfazer, setModalDesfazer] = useState(null);
-  const [desfazendo,    setDesfazendo]    = useState(false);
-  const [erroDesfazer,  setErroDesfazer]  = useState(null);
+  const [desfazendo, setDesfazendo] = useState(false);
+  const [erroDesfazer, setErroDesfazer] = useState(null);
 
   // Modal editar parcela
-  const [modalEditarParcela,  setModalEditarParcela]  = useState(null);
-  const [editParcelaForm,     setEditParcelaForm]     = useState({ valor: "", vencimento: "", observacao: "" });
-  const [savingEditParcela,   setSavingEditParcela]   = useState(false);
-  const [erroEditarParcela,   setErroEditarParcela]   = useState(null);
+  const [modalEditarParcela, setModalEditarParcela] = useState(null);
+  const [editParcelaForm, setEditParcelaForm] = useState({
+    valor: "",
+    vencimento: "",
+    observacao: "",
+  });
+  const [savingEditParcela, setSavingEditParcela] = useState(false);
+  const [erroEditarParcela, setErroEditarParcela] = useState(null);
 
   // Modal excluir lançamento
   const [modalExcluir, setModalExcluir] = useState(null);
-  const [excluindo,    setExcluindo]    = useState(false);
-  const [erroExcluir,  setErroExcluir]  = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState(null);
 
   // Modal anexos
-  const [modalAnexos,    setModalAnexos]    = useState(null);
-  const [anexos,         setAnexos]         = useState([]);
-  const [loadingAnexos,  setLoadingAnexos]  = useState(false);
+  const [modalAnexos, setModalAnexos] = useState(null);
+  const [anexos, setAnexos] = useState([]);
+  const [loadingAnexos, setLoadingAnexos] = useState(false);
 
   // Modal novo lançamento
-  const [modalLanc,    setModalLanc]    = useState(false);
-  const [lancForm,     setLancForm]     = useState(LANC_VAZIO);
-  const [erroLanc,     setErroLanc]     = useState(null);
-  const [savingLanc,   setSavingLanc]   = useState(false);
+  const [modalLanc, setModalLanc] = useState(false);
+  const [lancForm, setLancForm] = useState(LANC_VAZIO);
+  const [erroLanc, setErroLanc] = useState(null);
+  const [savingLanc, setSavingLanc] = useState(false);
 
   // Card colapsável "Resumo por Conta"
-  const [resumoContaAberto,     setResumoContaAberto]     = useState(false);
-  const [editandoSaldoInicial,  setEditandoSaldoInicial]  = useState(null); // conta_id em edição
+  const [resumoContaAberto, setResumoContaAberto] = useState(false);
+  const [editandoSaldoInicial, setEditandoSaldoInicial] = useState(null); // conta_id em edição
   const [valorSaldoInicialEdit, setValorSaldoInicialEdit] = useState("");
-  const [savingSaldoInicial,    setSavingSaldoInicial]    = useState(false);
+  const [savingSaldoInicial, setSavingSaldoInicial] = useState(false);
 
   // Drawer "Configurações de Contas"
   const [drawerAberto, setDrawerAberto] = useState(false);
-  const [drawerAba,    setDrawerAba]    = useState("contas"); // "contas" | "saldoInicial" | "transferencias"
+  const [drawerAba, setDrawerAba] = useState("contas"); // "contas" | "saldoInicial" | "transferencias"
 
   // Aba Contas Bancárias
-  const [modalConta,       setModalConta]       = useState(null); // null fechado, {} nova, {...} editar
-  const [contaForm,        setContaForm]        = useState(CONTA_VAZIA);
-  const [savingConta,      setSavingConta]      = useState(false);
-  const [erroConta,        setErroConta]        = useState(null);
-  const [modalExcluirConta,setModalExcluirConta]= useState(null);
-  const [excluindoConta,   setExcluindoConta]   = useState(false);
+  const [modalConta, setModalConta] = useState(null); // null fechado, {} nova, {...} editar
+  const [contaForm, setContaForm] = useState(CONTA_VAZIA);
+  const [savingConta, setSavingConta] = useState(false);
+  const [erroConta, setErroConta] = useState(null);
+  const [modalExcluirConta, setModalExcluirConta] = useState(null);
+  const [excluindoConta, setExcluindoConta] = useState(false);
 
   // Aba Saldo Inicial
-  const [saldoInicialForm,       setSaldoInicialForm]       = useState({});
-  const [savingSaldoInicialTodos,setSavingSaldoInicialTodos]= useState(false);
-  const [siMes,                  setSiMes]                  = useState(mes);
-  const [siAno,                  setSiAno]                  = useState(ano);
-  const [saldoContasSI,          setSaldoContasSI]          = useState([]);
+  const [saldoInicialForm, setSaldoInicialForm] = useState({});
+  const [savingSaldoInicialTodos, setSavingSaldoInicialTodos] = useState(false);
+  const [siMes, setSiMes] = useState(mes);
+  const [siAno, setSiAno] = useState(ano);
+  const [saldoContasSI, setSaldoContasSI] = useState([]);
 
   // Aba Transferências
-  const [transfForm,     setTransfForm]     = useState(TRANSF_VAZIO);
-  const [savingTransf,   setSavingTransf]   = useState(false);
-  const [erroTransf,     setErroTransf]     = useState(null);
+  const [transfForm, setTransfForm] = useState(TRANSF_VAZIO);
+  const [savingTransf, setSavingTransf] = useState(false);
+  const [erroTransf, setErroTransf] = useState(null);
   const [transferencias, setTransferencias] = useState([]);
-  const [loadingTransf,  setLoadingTransf]  = useState(false);
+  const [loadingTransf, setLoadingTransf] = useState(false);
 
   const carregarDados = useCallback(async () => {
     setLoading(true);
@@ -224,29 +245,41 @@ export default function FluxoCaixa() {
         getLancamentos(mes, ano),
         getSaldoContas(mes, ano),
       ]);
-      setLancamentos(lancs  || []);
+      setLancamentos(lancs || []);
       setSaldoContas(saldos || []);
     } catch {}
     setLoading(false);
   }, [mes, ano]);
 
-  useEffect(() => { carregarDados(); }, [carregarDados]);
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   useEffect(() => {
-    getContasBancarias().then((c) => setContasBanc(c || [])).catch(() => {});
+    getContasBancarias()
+      .then((c) => setContasBanc(c || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    getCompras().then((rows) => {
-      const map = {};
-      (rows || []).forEach((c) => { map[c.id] = c; });
-      setComprasMap(map);
-    }).catch(() => {});
-    getVendasFinanceiras().then((rows) => {
-      const map = {};
-      (rows || []).forEach((v) => { map[v.id] = v; });
-      setVendasMap(map);
-    }).catch(() => {});
+    getCompras()
+      .then((rows) => {
+        const map = {};
+        (rows || []).forEach((c) => {
+          map[c.id] = c;
+        });
+        setComprasMap(map);
+      })
+      .catch(() => {});
+    getVendasFinanceiras()
+      .then((rows) => {
+        const map = {};
+        (rows || []).forEach((v) => {
+          map[v.id] = v;
+        });
+        setVendasMap(map);
+      })
+      .catch(() => {});
   }, []);
 
   // Fecha o dropdown de ações ao clicar fora dele.
@@ -264,23 +297,35 @@ export default function FluxoCaixa() {
   // ── Navegação de mês ──────────────────────────────────────────────────────
   const navegarMes = (delta) => {
     const novo = mes + delta;
-    if (novo > 12) { setMes(1);  setAno((a) => a + 1); }
-    else if (novo < 1) { setMes(12); setAno((a) => a - 1); }
-    else { setMes(novo); }
+    if (novo > 12) {
+      setMes(1);
+      setAno((a) => a + 1);
+    } else if (novo < 1) {
+      setMes(12);
+      setAno((a) => a - 1);
+    } else {
+      setMes(novo);
+    }
   };
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const pagar        = lancamentos.filter((l) => l.tipo === "PAGAR");
-  const receber      = lancamentos.filter((l) => l.tipo === "RECEBER");
-  const totalPagar   = somaValores(pagar.filter((l) => l.status !== "PAGO"), (l) => l.valor);
-  const totalReceber = somaValores(receber.filter((l) => l.status !== "PAGO"), (l) => l.valor);
-  const saldoTotal   = somaValores(saldoContas, (c) => c.saldo_atual);
-  const projecao     = saldoTotal + totalReceber - totalPagar;
-  const countPagar   = pagar.filter((l) => l.status !== "PAGO").length;
+  const pagar = lancamentos.filter((l) => l.tipo === "PAGAR");
+  const receber = lancamentos.filter((l) => l.tipo === "RECEBER");
+  const totalPagar = somaValores(
+    pagar.filter((l) => l.status !== "PAGO"),
+    (l) => l.valor
+  );
+  const totalReceber = somaValores(
+    receber.filter((l) => l.status !== "PAGO"),
+    (l) => l.valor
+  );
+  const saldoTotal = somaValores(saldoContas, (c) => c.saldo_atual);
+  const projecao = saldoTotal + totalReceber - totalPagar;
+  const countPagar = pagar.filter((l) => l.status !== "PAGO").length;
   const countReceber = receber.filter((l) => l.status !== "PAGO").length;
 
-  const valorTotalModal    = modalPag ? parseFloat(modalPag.valor) || 0 : 0;
-  const valorRecebidoNum   = parseFloat(valorRecebidoParcial) || 0;
+  const valorTotalModal = modalPag ? parseFloat(modalPag.valor) || 0 : 0;
+  const valorRecebidoNum = parseFloat(valorRecebidoParcial) || 0;
   const valorRestanteModal = Math.max(valorTotalModal - valorRecebidoNum, 0);
 
   // ── Confirmar pagamento / recebimento ─────────────────────────────────────
@@ -293,18 +338,27 @@ export default function FluxoCaixa() {
   };
 
   const handleConfirmarPag = async () => {
-    if (!pagForm.conta_bancaria_id) { setErroPag("Selecione a conta bancária."); return; }
-    if (!pagForm.data_pagamento)    { setErroPag("Informe a data."); return; }
+    if (!pagForm.conta_bancaria_id) {
+      setErroPag("Selecione a conta bancária.");
+      return;
+    }
+    if (!pagForm.data_pagamento) {
+      setErroPag("Informe a data.");
+      return;
+    }
 
     const parcial = modalPag.tipo === "RECEBER" && tipoRecebimento === "parcial";
     let valorRecebido = valorTotalModal;
     if (parcial) {
       valorRecebido = parseFloat(valorRecebidoParcial);
       if (!valorRecebidoParcial || isNaN(valorRecebido) || valorRecebido <= 0) {
-        setErroPag("Informe o valor recebido."); return;
+        setErroPag("Informe o valor recebido.");
+        return;
       }
       if (valorRecebido >= valorTotalModal) {
-        setErroPag("O valor recebido deve ser menor que o valor total para um recebimento parcial.");
+        setErroPag(
+          "O valor recebido deve ser menor que o valor total para um recebimento parcial."
+        );
         return;
       }
     }
@@ -340,15 +394,13 @@ export default function FluxoCaixa() {
           `Recebimento parcial registrado. Saldo de ${moeda(valorRestante)} lançado para ${dataFmt(novaData)}.`
         );
       } else {
-        await apiConfirmarPagamento(
-          modalPag.id,
-          pagForm.conta_bancaria_id,
-          pagForm.data_pagamento,
-        );
+        await apiConfirmarPagamento(modalPag.id, pagForm.conta_bancaria_id, pagForm.data_pagamento);
         setModalPag(null);
         await carregarDados();
       }
-      getSaldoContas(mes, ano).then((s) => setSaldoContas(s || [])).catch(() => {});
+      getSaldoContas(mes, ano)
+        .then((s) => setSaldoContas(s || []))
+        .catch(() => {});
     } catch (e) {
       setErroPag(e.message);
     }
@@ -372,7 +424,9 @@ export default function FluxoCaixa() {
       });
       setModalDesfazer(null);
       await carregarDados();
-      getSaldoContas(mes, ano).then((s) => setSaldoContas(s || [])).catch(() => {});
+      getSaldoContas(mes, ano)
+        .then((s) => setSaldoContas(s || []))
+        .catch(() => {});
     } catch (e) {
       setErroDesfazer(e.message || "Erro ao desfazer pagamento.");
     }
@@ -393,10 +447,12 @@ export default function FluxoCaixa() {
   const handleSalvarEditarParcela = async () => {
     const novoValor = parseFloat(editParcelaForm.valor);
     if (!editParcelaForm.valor || isNaN(novoValor) || novoValor <= 0) {
-      setErroEditarParcela("Informe um valor válido."); return;
+      setErroEditarParcela("Informe um valor válido.");
+      return;
     }
     if (!editParcelaForm.vencimento) {
-      setErroEditarParcela("Informe a data de vencimento."); return;
+      setErroEditarParcela("Informe a data de vencimento.");
+      return;
     }
     setSavingEditParcela(true);
     setErroEditarParcela(null);
@@ -420,8 +476,12 @@ export default function FluxoCaixa() {
   };
 
   const handlePassarMesSeguinte = async () => {
-    const vencAtual = editParcelaForm.vencimento || (modalEditarParcela.data_vencimento || "").split("T")[0];
-    if (!vencAtual) { setErroEditarParcela("Informe a data de vencimento."); return; }
+    const vencAtual =
+      editParcelaForm.vencimento || (modalEditarParcela.data_vencimento || "").split("T")[0];
+    if (!vencAtual) {
+      setErroEditarParcela("Informe a data de vencimento.");
+      return;
+    }
     const novaData = addMesClamp(vencAtual, 1);
     setSavingEditParcela(true);
     setErroEditarParcela(null);
@@ -462,7 +522,9 @@ export default function FluxoCaixa() {
       await deleteLancamento(modalExcluir.id);
       setModalExcluir(null);
       await carregarDados();
-      getSaldoContas(mes, ano).then((s) => setSaldoContas(s || [])).catch(() => {});
+      getSaldoContas(mes, ano)
+        .then((s) => setSaldoContas(s || []))
+        .catch(() => {});
     } catch (e) {
       setErroExcluir(e.message || "Erro ao excluir lançamento.");
     }
@@ -483,9 +545,9 @@ export default function FluxoCaixa() {
   const handleDownload = async (anexoId, nome) => {
     try {
       const blob = await downloadAnexo(anexoId);
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       a.download = nome || "anexo";
       document.body.appendChild(a);
       a.click();
@@ -495,8 +557,7 @@ export default function FluxoCaixa() {
   };
 
   // ── Novo lançamento ───────────────────────────────────────────────────────
-  const setLanc = (key) => (e) =>
-    setLancForm((f) => ({ ...f, [key]: e.target.value }));
+  const setLanc = (key) => (e) => setLancForm((f) => ({ ...f, [key]: e.target.value }));
 
   const abrirModalLanc = (tipoPadrao) => {
     setLancForm({ ...LANC_VAZIO, tipo: tipoPadrao || "PAGAR" });
@@ -505,20 +566,27 @@ export default function FluxoCaixa() {
   };
 
   const handleCriarLanc = async () => {
-    if (!lancForm.descricao.trim()) { setErroLanc("Informe a descrição."); return; }
-    if (!lancForm.valor || isNaN(parseFloat(lancForm.valor))) {
-      setErroLanc("Informe o valor."); return;
+    if (!lancForm.descricao.trim()) {
+      setErroLanc("Informe a descrição.");
+      return;
     }
-    if (!lancForm.vencimento) { setErroLanc("Informe o vencimento."); return; }
+    if (!lancForm.valor || isNaN(parseFloat(lancForm.valor))) {
+      setErroLanc("Informe o valor.");
+      return;
+    }
+    if (!lancForm.vencimento) {
+      setErroLanc("Informe o vencimento.");
+      return;
+    }
     setSavingLanc(true);
     try {
       await createLancamento({
-        tipo:       lancForm.tipo,
-        descricao:  lancForm.descricao.trim(),
-        valor:      parseFloat(lancForm.valor),
+        tipo: lancForm.tipo,
+        descricao: lancForm.descricao.trim(),
+        valor: parseFloat(lancForm.valor),
         vencimento: lancForm.vencimento,
-        categoria:  lancForm.categoria  || null,
-        parcelas:   parseInt(lancForm.parcelas) || 1,
+        categoria: lancForm.categoria || null,
+        parcelas: parseInt(lancForm.parcelas) || 1,
       });
       setModalLanc(false);
       await carregarDados();
@@ -536,7 +604,10 @@ export default function FluxoCaixa() {
 
   const salvarSaldoInicialInline = async (contaId) => {
     const valor = parseFloat(valorSaldoInicialEdit);
-    if (isNaN(valor)) { setEditandoSaldoInicial(null); return; }
+    if (isNaN(valor)) {
+      setEditandoSaldoInicial(null);
+      return;
+    }
     setSavingSaldoInicial(true);
     try {
       await upsertSaldoInicial({ conta_bancaria_id: contaId, mes, ano, valor });
@@ -555,7 +626,10 @@ export default function FluxoCaixa() {
   };
 
   const handleSalvarConta = async () => {
-    if (!contaForm.nome.trim()) { setErroConta("Informe o nome da conta."); return; }
+    if (!contaForm.nome.trim()) {
+      setErroConta("Informe o nome da conta.");
+      return;
+    }
     setSavingConta(true);
     setErroConta(null);
     try {
@@ -567,7 +641,9 @@ export default function FluxoCaixa() {
       setModalConta(null);
       const c = await getContasBancarias();
       setContasBanc(c || []);
-      getSaldoContas(mes, ano).then((s) => setSaldoContas(s || [])).catch(() => {});
+      getSaldoContas(mes, ano)
+        .then((s) => setSaldoContas(s || []))
+        .catch(() => {});
     } catch (e) {
       setErroConta(e.message);
     }
@@ -582,7 +658,9 @@ export default function FluxoCaixa() {
       setModalExcluirConta(null);
       const c = await getContasBancarias();
       setContasBanc(c || []);
-      getSaldoContas(mes, ano).then((s) => setSaldoContas(s || [])).catch(() => {});
+      getSaldoContas(mes, ano)
+        .then((s) => setSaldoContas(s || []))
+        .catch(() => {});
     } catch (e) {
       setErroConta(e.message);
       setModalExcluirConta(null);
@@ -594,33 +672,55 @@ export default function FluxoCaixa() {
   // Busca os saldos do mês exibido na aba (independente do mês da tela principal).
   useEffect(() => {
     if (!drawerAberto) return;
-    getSaldoContas(siMes, siAno).then((s) => setSaldoContasSI(s || [])).catch(() => {});
+    getSaldoContas(siMes, siAno)
+      .then((s) => setSaldoContasSI(s || []))
+      .catch(() => {});
   }, [drawerAberto, siMes, siAno]);
 
   useEffect(() => {
     if (drawerAberto && drawerAba === "saldoInicial") {
       const map = {};
-      saldoContasSI.forEach((c) => { map[c.conta_id] = String(parseFloat(c.saldo_inicial) || 0); });
+      saldoContasSI.forEach((c) => {
+        map[c.conta_id] = String(parseFloat(c.saldo_inicial) || 0);
+      });
       setSaldoInicialForm(map);
     }
   }, [drawerAberto, drawerAba, saldoContasSI]);
 
   const navegarMesSaldoInicial = (delta) => {
     const novo = siMes + delta;
-    if (novo > 12) { setSiMes(1);  setSiAno((a) => a + 1); }
-    else if (novo < 1) { setSiMes(12); setSiAno((a) => a - 1); }
-    else { setSiMes(novo); }
+    if (novo > 12) {
+      setSiMes(1);
+      setSiAno((a) => a + 1);
+    } else if (novo < 1) {
+      setSiMes(12);
+      setSiAno((a) => a - 1);
+    } else {
+      setSiMes(novo);
+    }
   };
 
   const handleSalvarTodosSaldoInicial = async () => {
     setSavingSaldoInicialTodos(true);
     try {
       const originais = {};
-      saldoContasSI.forEach((c) => { originais[c.conta_id] = String(parseFloat(c.saldo_inicial) || 0); });
+      saldoContasSI.forEach((c) => {
+        originais[c.conta_id] = String(parseFloat(c.saldo_inicial) || 0);
+      });
 
       const alterados = contasBanc
-        .filter((c) => c.ativo && saldoInicialForm[c.id] !== undefined && saldoInicialForm[c.id] !== originais[c.id])
-        .map((c) => ({ conta_bancaria_id: c.id, mes: siMes, ano: siAno, valor: parseFloat(saldoInicialForm[c.id]) || 0 }));
+        .filter(
+          (c) =>
+            c.ativo &&
+            saldoInicialForm[c.id] !== undefined &&
+            saldoInicialForm[c.id] !== originais[c.id]
+        )
+        .map((c) => ({
+          conta_bancaria_id: c.id,
+          mes: siMes,
+          ano: siAno,
+          valor: parseFloat(saldoInicialForm[c.id]) || 0,
+        }));
 
       await Promise.all(alterados.map((dados) => upsertSaldoInicial(dados)));
       const s = await getSaldoContas(siMes, siAno);
@@ -652,16 +752,22 @@ export default function FluxoCaixa() {
 
   const handleRegistrarTransferencia = async () => {
     if (!transfForm.conta_origem_id || !transfForm.conta_destino_id) {
-      setErroTransf("Selecione as contas de origem e destino."); return;
+      setErroTransf("Selecione as contas de origem e destino.");
+      return;
     }
     if (transfForm.conta_origem_id === transfForm.conta_destino_id) {
-      setErroTransf("As contas de origem e destino devem ser diferentes."); return;
+      setErroTransf("As contas de origem e destino devem ser diferentes.");
+      return;
     }
     const valor = parseFloat(transfForm.valor);
     if (!transfForm.valor || isNaN(valor) || valor <= 0) {
-      setErroTransf("Informe um valor válido."); return;
+      setErroTransf("Informe um valor válido.");
+      return;
     }
-    if (!transfForm.data) { setErroTransf("Informe a data."); return; }
+    if (!transfForm.data) {
+      setErroTransf("Informe a data.");
+      return;
+    }
 
     setSavingTransf(true);
     setErroTransf(null);
@@ -713,12 +819,16 @@ export default function FluxoCaixa() {
                 const partes = descricaoPartes(l, comprasMap, vendasMap);
                 const valorNum = parseFloat(l.valor) || 0;
                 const valorOrigNum = l.valor_original != null ? parseFloat(l.valor_original) : null;
-                const valorAlterado = valorOrigNum != null && Math.abs(valorNum - valorOrigNum) > 0.005;
+                const valorAlterado =
+                  valorOrigNum != null && Math.abs(valorNum - valorOrigNum) > 0.005;
 
                 const cat = vencimentoCategoria(l);
-                const vencCls = cat === "atrasado" ? styles.vencAtrasado
-                  : cat === "alerta" ? styles.vencAlerta
-                  : styles.vencNormal;
+                const vencCls =
+                  cat === "atrasado"
+                    ? styles.vencAtrasado
+                    : cat === "alerta"
+                      ? styles.vencAlerta
+                      : styles.vencNormal;
 
                 let statusLabel = STATUS_LABELS[l.status] || l.status || "Pendente";
                 let statusCls = "st" + (l.status || "PENDENTE");
@@ -733,39 +843,53 @@ export default function FluxoCaixa() {
                   <tr key={l.id} className={rowStatusClass(l)}>
                     <td>
                       <div className={styles.descricaoCell}>
-                        <span className={styles.descricaoTitulo} title={partes.titulo}>{partes.titulo}</span>
+                        <span className={styles.descricaoTitulo} title={partes.titulo}>
+                          {partes.titulo}
+                        </span>
                         {partes.subtitulo && (
                           <span className={styles.descricaoSub}>{partes.subtitulo}</span>
                         )}
                       </div>
                     </td>
                     <td className={vencCls}>{dataFmtCurta(l.data_vencimento)}</td>
-                    <td className={`${styles.tdValor} ${valorAlterado ? styles.valorAlterado : ""}`}>
+                    <td
+                      className={`${styles.tdValor} ${valorAlterado ? styles.valorAlterado : ""}`}
+                    >
                       {moeda(valorNum)}
                     </td>
                     <td className={styles.tdParcela}>
                       {l.parcela_numero && l.parcela_total ? (
-                        <span className={styles.parcelaBadge}>{l.parcela_numero}/{l.parcela_total}</span>
-                      ) : ""}
+                        <span className={styles.parcelaBadge}>
+                          {l.parcela_numero}/{l.parcela_total}
+                        </span>
+                      ) : (
+                        ""
+                      )}
                     </td>
                     <td className={styles.tdStatus}>
                       <span className={`${styles.badge} ${styles[statusCls]}`}>{statusLabel}</span>
                     </td>
                     <td>
                       <div className={styles.actionsMenu} data-menu-root>
-                        {l.status === "PAGO" ? (
-                          hasPermission(MODULO, "editar") && (
-                            <button className={styles.btnAcaoSecundaria} onClick={() => abrirModalDesfazer(l)}>
-                              Desfazer
-                            </button>
-                          )
-                        ) : podeConfirmar ? (
-                          hasPermission(MODULO, "confirmar") && (
-                            <button className={styles.btnAcaoPrimaria} onClick={() => abrirModalPag(l)}>
-                              {tipo === "RECEBER" ? "Recebido" : "Pagar"}
-                            </button>
-                          )
-                        ) : null}
+                        {l.status === "PAGO"
+                          ? hasPermission(MODULO, "editar") && (
+                              <button
+                                className={styles.btnAcaoSecundaria}
+                                onClick={() => abrirModalDesfazer(l)}
+                              >
+                                Desfazer
+                              </button>
+                            )
+                          : podeConfirmar
+                            ? hasPermission(MODULO, "confirmar") && (
+                                <button
+                                  className={styles.btnAcaoPrimaria}
+                                  onClick={() => abrirModalPag(l)}
+                                >
+                                  {tipo === "RECEBER" ? "Recebido" : "Pagar"}
+                                </button>
+                              )
+                            : null}
 
                         <div className={styles.dropdownWrap}>
                           <button
@@ -780,13 +904,19 @@ export default function FluxoCaixa() {
                                 <>
                                   <button
                                     className={styles.dropdownItem}
-                                    onClick={() => { setOpenMenuId(null); abrirModalEditarParcela(l); }}
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      abrirModalEditarParcela(l);
+                                    }}
                                   >
                                     Editar parcela
                                   </button>
                                   <button
                                     className={styles.dropdownItem}
-                                    onClick={() => { setOpenMenuId(null); handlePassarMesSeguinteRapido(l); }}
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      handlePassarMesSeguinteRapido(l);
+                                    }}
                                   >
                                     Passar para o mês seguinte
                                   </button>
@@ -794,7 +924,10 @@ export default function FluxoCaixa() {
                               )}
                               <button
                                 className={styles.dropdownItem}
-                                onClick={() => { setOpenMenuId(null); abrirAnexos(l.id); }}
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  abrirAnexos(l.id);
+                                }}
                               >
                                 Ver anexos
                               </button>
@@ -803,7 +936,10 @@ export default function FluxoCaixa() {
                                   <div className={styles.dropdownDivider} />
                                   <button
                                     className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
-                                    onClick={() => { setOpenMenuId(null); abrirModalExcluir(l); }}
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      abrirModalExcluir(l);
+                                    }}
                                   >
                                     Excluir
                                   </button>
@@ -845,19 +981,28 @@ export default function FluxoCaixa() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="sc-page">
-
       {/* Header */}
       <div className="sc-page-header">
         <h1>Fluxo de Caixa</h1>
         <div className={styles.headerActions}>
           <div className={styles.navMes}>
-            <button className={styles.btnNav} onClick={() => navegarMes(-1)}>‹</button>
-            <span className={styles.mesLabel}>{MESES[mes - 1]} {ano}</span>
-            <button className={styles.btnNav} onClick={() => navegarMes(1)}>›</button>
+            <button className={styles.btnNav} onClick={() => navegarMes(-1)}>
+              ‹
+            </button>
+            <span className={styles.mesLabel}>
+              {MESES[mes - 1]} {ano}
+            </span>
+            <button className={styles.btnNav} onClick={() => navegarMes(1)}>
+              ›
+            </button>
           </div>
           <button
             className={styles.btnSettings}
-            onClick={() => { setSiMes(mes); setSiAno(ano); setDrawerAberto(true); }}
+            onClick={() => {
+              setSiMes(mes);
+              setSiAno(ano);
+              setDrawerAberto(true);
+            }}
             title="Configurações de Contas"
             aria-label="Configurações de Contas"
           >
@@ -874,7 +1019,9 @@ export default function FluxoCaixa() {
       {mensagemSucesso && (
         <div className={styles.avisoSucesso}>
           <span>{mensagemSucesso}</span>
-          <button className={styles.btnClose} onClick={() => setMensagemSucesso(null)}>×</button>
+          <button className={styles.btnClose} onClick={() => setMensagemSucesso(null)}>
+            ×
+          </button>
         </div>
       )}
 
@@ -916,8 +1063,12 @@ export default function FluxoCaixa() {
                     return (
                       <tr key={c.conta_id}>
                         <td className={styles.rctConta}>{c.conta_nome}</td>
-                        <td className={styles.rctSaidas}>{moeda(parseFloat(c.total_saidas) || 0)}</td>
-                        <td className={styles.rctEntradas}>{moeda(parseFloat(c.total_entradas) || 0)}</td>
+                        <td className={styles.rctSaidas}>
+                          {moeda(parseFloat(c.total_saidas) || 0)}
+                        </td>
+                        <td className={styles.rctEntradas}>
+                          {moeda(parseFloat(c.total_entradas) || 0)}
+                        </td>
                         <td className={styles.rctSaldoInicial}>
                           {editandoSaldoInicial === c.conta_id ? (
                             <input
@@ -946,7 +1097,9 @@ export default function FluxoCaixa() {
                             <span>{moeda(parseFloat(c.saldo_inicial) || 0)}</span>
                           )}
                         </td>
-                        <td className={`${styles.rctSaldoAtual} ${atual < 0 ? styles.negativo : ""}`}>
+                        <td
+                          className={`${styles.rctSaldoAtual} ${atual < 0 ? styles.negativo : ""}`}
+                        >
                           {moeda(atual)}
                         </td>
                       </tr>
@@ -963,7 +1116,9 @@ export default function FluxoCaixa() {
                     <td className={styles.rctSaldoInicial}>
                       {moeda(somaValores(saldoContas, (c) => c.saldo_inicial))}
                     </td>
-                    <td className={`${styles.rctSaldoAtual} ${saldoTotal < 0 ? styles.negativo : ""}`}>
+                    <td
+                      className={`${styles.rctSaldoAtual} ${saldoTotal < 0 ? styles.negativo : ""}`}
+                    >
                       {moeda(saldoTotal)}
                     </td>
                   </tr>
@@ -979,14 +1134,20 @@ export default function FluxoCaixa() {
         <div className={`${styles.resumoCard} ${styles.resumoBorderPerigo}`}>
           <span className={styles.resumoLabel}>A Pagar</span>
           <span className={styles.resumoValor}>{moeda(totalPagar)}</span>
-          <span className={styles.resumoSub}>{countPagar} lançamento{countPagar !== 1 ? "s" : ""}</span>
+          <span className={styles.resumoSub}>
+            {countPagar} lançamento{countPagar !== 1 ? "s" : ""}
+          </span>
         </div>
         <div className={`${styles.resumoCard} ${styles.resumoBorderSucesso}`}>
           <span className={styles.resumoLabel}>A Receber</span>
           <span className={styles.resumoValor}>{moeda(totalReceber)}</span>
-          <span className={styles.resumoSub}>{countReceber} lançamento{countReceber !== 1 ? "s" : ""}</span>
+          <span className={styles.resumoSub}>
+            {countReceber} lançamento{countReceber !== 1 ? "s" : ""}
+          </span>
         </div>
-        <div className={`${styles.resumoCard} ${projecao < 0 ? styles.resumoBorderPerigo : styles.resumoBorderNeutro}`}>
+        <div
+          className={`${styles.resumoCard} ${projecao < 0 ? styles.resumoBorderPerigo : styles.resumoBorderNeutro}`}
+        >
           <span className={styles.resumoLabel}>Projeção Final</span>
           <span className={styles.resumoValor}>{moeda(projecao)}</span>
           <span className={styles.resumoSub}>este mês</span>
@@ -1007,7 +1168,13 @@ export default function FluxoCaixa() {
               <h2 className={styles.modalTitle}>
                 {modalPag.tipo === "PAGAR" ? "Confirmar Pagamento" : "Confirmar Recebimento"}
               </h2>
-              <button className={styles.btnClose} onClick={() => setModalPag(null)} disabled={savingPag}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => setModalPag(null)}
+                disabled={savingPag}
+              >
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>
@@ -1044,7 +1211,9 @@ export default function FluxoCaixa() {
                         <label className={styles.field}>
                           <span>Valor recebido *</span>
                           <input
-                            type="number" min="0" step="0.01"
+                            type="number"
+                            min="0"
+                            step="0.01"
                             className={styles.input}
                             value={valorRecebidoParcial}
                             onChange={(e) => setValorRecebidoParcial(e.target.value)}
@@ -1069,7 +1238,9 @@ export default function FluxoCaixa() {
                 >
                   <option value="">— Selecionar —</option>
                   {contasBanc.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -1085,7 +1256,11 @@ export default function FluxoCaixa() {
               {erroPag && <p className={styles.erro}>{erroPag}</p>}
             </div>
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setModalPag(null)} disabled={savingPag}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalPag(null)}
+                disabled={savingPag}
+              >
                 Cancelar
               </button>
               <button
@@ -1106,20 +1281,35 @@ export default function FluxoCaixa() {
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Desfazer Pagamento</h2>
-              <button className={styles.btnClose} onClick={() => setModalDesfazer(null)} disabled={desfazendo}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => setModalDesfazer(null)}
+                disabled={desfazendo}
+              >
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>Deseja reverter este pagamento para Pendente?</p>
               <p className={styles.confirmText}>
-                {descricaoLancamento(modalDesfazer, comprasMap, vendasMap)} — {moeda(parseFloat(modalDesfazer.valor) || 0)}
+                {descricaoLancamento(modalDesfazer, comprasMap, vendasMap)} —{" "}
+                {moeda(parseFloat(modalDesfazer.valor) || 0)}
               </p>
               {erroDesfazer && <p className={styles.erro}>{erroDesfazer}</p>}
             </div>
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setModalDesfazer(null)} disabled={desfazendo}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalDesfazer(null)}
+                disabled={desfazendo}
+              >
                 Cancelar
               </button>
-              <button className={styles.btnPrimary} onClick={handleConfirmarDesfazer} disabled={desfazendo}>
+              <button
+                className={styles.btnPrimary}
+                onClick={handleConfirmarDesfazer}
+                disabled={desfazendo}
+              >
                 {desfazendo ? "Confirmando…" : "Confirmar"}
               </button>
             </div>
@@ -1129,7 +1319,10 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Editar Parcela ── */}
       {modalEditarParcela && (
-        <div className={styles.overlay} onClick={() => !savingEditParcela && setModalEditarParcela(null)}>
+        <div
+          className={styles.overlay}
+          onClick={() => !savingEditParcela && setModalEditarParcela(null)}
+        >
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar Parcela</h2>
@@ -1146,14 +1339,18 @@ export default function FluxoCaixa() {
                 <span>Valor original</span>
                 <input
                   className={`${styles.input} ${styles.inputReadonly}`}
-                  value={moeda(parseFloat(modalEditarParcela.valor_original ?? modalEditarParcela.valor) || 0)}
+                  value={moeda(
+                    parseFloat(modalEditarParcela.valor_original ?? modalEditarParcela.valor) || 0
+                  )}
                   readOnly
                 />
               </label>
               <label className={`${styles.field} ${styles.fieldSpacer}`}>
                 <span>Novo valor *</span>
                 <input
-                  type="number" min="0" step="0.01"
+                  type="number"
+                  min="0"
+                  step="0.01"
                   className={styles.input}
                   value={editParcelaForm.valor}
                   onChange={(e) => setEditParcelaForm((f) => ({ ...f, valor: e.target.value }))}
@@ -1165,7 +1362,9 @@ export default function FluxoCaixa() {
                   type="date"
                   className={styles.input}
                   value={editParcelaForm.vencimento}
-                  onChange={(e) => setEditParcelaForm((f) => ({ ...f, vencimento: e.target.value }))}
+                  onChange={(e) =>
+                    setEditParcelaForm((f) => ({ ...f, vencimento: e.target.value }))
+                  }
                 />
               </label>
               <label className={`${styles.field} ${styles.fieldSpacer}`}>
@@ -1173,7 +1372,9 @@ export default function FluxoCaixa() {
                 <textarea
                   className={styles.textarea}
                   value={editParcelaForm.observacao}
-                  onChange={(e) => setEditParcelaForm((f) => ({ ...f, observacao: e.target.value }))}
+                  onChange={(e) =>
+                    setEditParcelaForm((f) => ({ ...f, observacao: e.target.value }))
+                  }
                   placeholder="Anotação livre sobre esta parcela…"
                 />
               </label>
@@ -1214,22 +1415,37 @@ export default function FluxoCaixa() {
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Excluir Lançamento</h2>
-              <button className={styles.btnClose} onClick={() => setModalExcluir(null)} disabled={excluindo}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => setModalExcluir(null)}
+                disabled={excluindo}
+              >
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>
                 Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
               </p>
               <p className={styles.confirmText}>
-                {descricaoLancamento(modalExcluir, comprasMap, vendasMap)} — {moeda(parseFloat(modalExcluir.valor) || 0)}
+                {descricaoLancamento(modalExcluir, comprasMap, vendasMap)} —{" "}
+                {moeda(parseFloat(modalExcluir.valor) || 0)}
               </p>
               {erroExcluir && <p className={styles.erro}>{erroExcluir}</p>}
             </div>
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setModalExcluir(null)} disabled={excluindo}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalExcluir(null)}
+                disabled={excluindo}
+              >
                 Cancelar
               </button>
-              <button className={styles.btnDanger} onClick={handleConfirmarExcluir} disabled={excluindo}>
+              <button
+                className={styles.btnDanger}
+                onClick={handleConfirmarExcluir}
+                disabled={excluindo}
+              >
                 {excluindo ? "Excluindo…" : "Excluir"}
               </button>
             </div>
@@ -1243,7 +1459,9 @@ export default function FluxoCaixa() {
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Anexos</h2>
-              <button className={styles.btnClose} onClick={() => setModalAnexos(null)}>×</button>
+              <button className={styles.btnClose} onClick={() => setModalAnexos(null)}>
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               {loadingAnexos ? (
@@ -1257,9 +1475,7 @@ export default function FluxoCaixa() {
                       <span className={styles.attachNome} title={a.nome || a.arquivo}>
                         {a.nome || a.arquivo || "Arquivo"}
                       </span>
-                      {a.tipo && (
-                        <span className={styles.attachTipo}>{a.tipo}</span>
-                      )}
+                      {a.tipo && <span className={styles.attachTipo}>{a.tipo}</span>}
                       <button
                         className={styles.btnSmall}
                         onClick={() => handleDownload(a.id, a.nome || a.arquivo)}
@@ -1286,7 +1502,9 @@ export default function FluxoCaixa() {
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Novo Lançamento Manual</h2>
-              <button className={styles.btnClose} onClick={() => setModalLanc(false)}>×</button>
+              <button className={styles.btnClose} onClick={() => setModalLanc(false)}>
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.fieldGrid}>
@@ -1354,11 +1572,7 @@ export default function FluxoCaixa() {
               <button className={styles.btnSecondary} onClick={() => setModalLanc(false)}>
                 Cancelar
               </button>
-              <button
-                className={styles.btnPrimary}
-                onClick={handleCriarLanc}
-                disabled={savingLanc}
-              >
+              <button className={styles.btnPrimary} onClick={handleCriarLanc} disabled={savingLanc}>
                 {savingLanc ? "Criando…" : "Criar Lançamento"}
               </button>
             </div>
@@ -1372,7 +1586,9 @@ export default function FluxoCaixa() {
           <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
             <div className={styles.drawerHeader}>
               <h2 className={styles.drawerTitle}>Configurações de Contas</h2>
-              <button className={styles.btnClose} onClick={() => setDrawerAberto(false)}>×</button>
+              <button className={styles.btnClose} onClick={() => setDrawerAberto(false)}>
+                ×
+              </button>
             </div>
 
             <div className={styles.drawerTabs}>
@@ -1428,7 +1644,10 @@ export default function FluxoCaixa() {
                           <td>
                             <div className={styles.drawerRowActions}>
                               {hasPermission(MODULO, "editar") && (
-                                <button className={styles.linkBtn} onClick={() => abrirModalConta(c)}>
+                                <button
+                                  className={styles.linkBtn}
+                                  onClick={() => abrirModalConta(c)}
+                                >
                                   Editar
                                 </button>
                               )}
@@ -1446,7 +1665,9 @@ export default function FluxoCaixa() {
                       ))}
                       {contasBanc.length === 0 && (
                         <tr>
-                          <td colSpan={4} className={styles.semContas}>Nenhuma conta cadastrada.</td>
+                          <td colSpan={4} className={styles.semContas}>
+                            Nenhuma conta cadastrada.
+                          </td>
                         </tr>
                       )}
                     </tbody>
@@ -1458,28 +1679,36 @@ export default function FluxoCaixa() {
               {drawerAba === "saldoInicial" && (
                 <div className={styles.drawerSection}>
                   <div className={styles.navMes}>
-                    <button className={styles.btnNav} onClick={() => navegarMesSaldoInicial(-1)}>‹</button>
-                    <span className={styles.mesLabel}>{MESES[siMes - 1]} {siAno}</span>
-                    <button className={styles.btnNav} onClick={() => navegarMesSaldoInicial(1)}>›</button>
+                    <button className={styles.btnNav} onClick={() => navegarMesSaldoInicial(-1)}>
+                      ‹
+                    </button>
+                    <span className={styles.mesLabel}>
+                      {MESES[siMes - 1]} {siAno}
+                    </span>
+                    <button className={styles.btnNav} onClick={() => navegarMesSaldoInicial(1)}>
+                      ›
+                    </button>
                   </div>
                   <h3 className={styles.drawerSectionTitulo}>
                     Saldo de abertura — {MESES[siMes - 1]} {siAno}
                   </h3>
                   <div className={styles.saldoInicialLista}>
-                    {contasBanc.filter((c) => c.ativo).map((c) => (
-                      <label key={c.id} className={styles.saldoInicialLinha}>
-                        <span>{c.nome}</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className={styles.input}
-                          value={saldoInicialForm[c.id] ?? ""}
-                          onChange={(e) =>
-                            setSaldoInicialForm({ ...saldoInicialForm, [c.id]: e.target.value })
-                          }
-                        />
-                      </label>
-                    ))}
+                    {contasBanc
+                      .filter((c) => c.ativo)
+                      .map((c) => (
+                        <label key={c.id} className={styles.saldoInicialLinha}>
+                          <span>{c.nome}</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className={styles.input}
+                            value={saldoInicialForm[c.id] ?? ""}
+                            onChange={(e) =>
+                              setSaldoInicialForm({ ...saldoInicialForm, [c.id]: e.target.value })
+                            }
+                          />
+                        </label>
+                      ))}
                     {contasBanc.filter((c) => c.ativo).length === 0 && (
                       <span className={styles.semContas}>Nenhuma conta ativa.</span>
                     )}
@@ -1505,11 +1734,15 @@ export default function FluxoCaixa() {
                       <select
                         className={styles.input}
                         value={transfForm.conta_origem_id}
-                        onChange={(e) => setTransfForm({ ...transfForm, conta_origem_id: e.target.value })}
+                        onChange={(e) =>
+                          setTransfForm({ ...transfForm, conta_origem_id: e.target.value })
+                        }
                       >
                         <option value="">Selecionar conta…</option>
                         {contasBanc.map((c) => (
-                          <option key={c.id} value={c.id}>{c.nome}</option>
+                          <option key={c.id} value={c.id}>
+                            {c.nome}
+                          </option>
                         ))}
                       </select>
                     </label>
@@ -1518,11 +1751,15 @@ export default function FluxoCaixa() {
                       <select
                         className={styles.input}
                         value={transfForm.conta_destino_id}
-                        onChange={(e) => setTransfForm({ ...transfForm, conta_destino_id: e.target.value })}
+                        onChange={(e) =>
+                          setTransfForm({ ...transfForm, conta_destino_id: e.target.value })
+                        }
                       >
                         <option value="">Selecionar conta…</option>
                         {contasBanc.map((c) => (
-                          <option key={c.id} value={c.id}>{c.nome}</option>
+                          <option key={c.id} value={c.id}>
+                            {c.nome}
+                          </option>
                         ))}
                       </select>
                     </label>
@@ -1552,7 +1789,9 @@ export default function FluxoCaixa() {
                       <input
                         className={styles.input}
                         value={transfForm.descricao}
-                        onChange={(e) => setTransfForm({ ...transfForm, descricao: e.target.value })}
+                        onChange={(e) =>
+                          setTransfForm({ ...transfForm, descricao: e.target.value })
+                        }
                         placeholder="Opcional"
                       />
                     </label>
@@ -1587,7 +1826,9 @@ export default function FluxoCaixa() {
                         {transferencias.map((t) => (
                           <tr key={t.transferencia_id}>
                             <td>{dataFmtCurta(t.data)}</td>
-                            <td className={styles.rctConta}>{t.conta_origem_nome} → {t.conta_destino_nome}</td>
+                            <td className={styles.rctConta}>
+                              {t.conta_origem_nome} → {t.conta_destino_nome}
+                            </td>
                             <td>{moeda(parseFloat(t.valor) || 0)}</td>
                             <td className={styles.rctConta}>{t.descricao || ""}</td>
                           </tr>
@@ -1608,7 +1849,13 @@ export default function FluxoCaixa() {
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modalConta.id ? "Editar Conta" : "Nova Conta"}</h2>
-              <button className={styles.btnClose} onClick={() => setModalConta(null)} disabled={savingConta}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => setModalConta(null)}
+                disabled={savingConta}
+              >
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.fieldGrid}>
@@ -1637,10 +1884,18 @@ export default function FluxoCaixa() {
               {erroConta && <p className={styles.erro}>{erroConta}</p>}
             </div>
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setModalConta(null)} disabled={savingConta}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalConta(null)}
+                disabled={savingConta}
+              >
                 Cancelar
               </button>
-              <button className={styles.btnPrimary} onClick={handleSalvarConta} disabled={savingConta}>
+              <button
+                className={styles.btnPrimary}
+                onClick={handleSalvarConta}
+                disabled={savingConta}
+              >
                 {savingConta ? "Salvando…" : "Salvar"}
               </button>
             </div>
@@ -1650,11 +1905,20 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Remover Conta Bancária ── */}
       {modalExcluirConta && (
-        <div className={styles.overlay} onClick={() => !excluindoConta && setModalExcluirConta(null)}>
+        <div
+          className={styles.overlay}
+          onClick={() => !excluindoConta && setModalExcluirConta(null)}
+        >
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Remover Conta</h2>
-              <button className={styles.btnClose} onClick={() => setModalExcluirConta(null)} disabled={excluindoConta}>×</button>
+              <button
+                className={styles.btnClose}
+                onClick={() => setModalExcluirConta(null)}
+                disabled={excluindoConta}
+              >
+                ×
+              </button>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.confirmText}>
@@ -1663,10 +1927,18 @@ export default function FluxoCaixa() {
               {erroConta && <p className={styles.erro}>{erroConta}</p>}
             </div>
             <div className={styles.modalActions}>
-              <button className={styles.btnSecondary} onClick={() => setModalExcluirConta(null)} disabled={excluindoConta}>
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalExcluirConta(null)}
+                disabled={excluindoConta}
+              >
                 Cancelar
               </button>
-              <button className={styles.btnDanger} onClick={handleExcluirConta} disabled={excluindoConta}>
+              <button
+                className={styles.btnDanger}
+                onClick={handleExcluirConta}
+                disabled={excluindoConta}
+              >
                 {excluindoConta ? "Removendo…" : "Remover"}
               </button>
             </div>

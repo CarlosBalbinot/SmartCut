@@ -66,11 +66,15 @@ const stripDigits = (v) => (v || "").replace(/\D/g, "");
 
 // Percentual pt-BR com 2 casas: 10 → "10,00".
 const pctBR = (v) =>
-  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
+  new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+    Number(v) || 0
+  );
 
 // "10" / "10,5" / "10.50" / "10%" → número (2 casas); "" → null; inválido → NaN.
 function parsePct(texto) {
-  const t = String(texto ?? "").replace(/[%\s]/g, "").replace(",", ".");
+  const t = String(texto ?? "")
+    .replace(/[%\s]/g, "")
+    .replace(",", ".");
   if (!t) return null;
   if (!/^\d*\.?\d+$/.test(t)) return NaN;
   return Number(Number(t).toFixed(2));
@@ -114,15 +118,15 @@ const money2 = (v) => Number(v || 0).toFixed(2);
 export default function VendedoresPage() {
   const { hasPermission } = useAuth();
   const [vendedores, setVendedores] = useState([]);
-  const [busca, setBusca]           = useState("");
+  const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
-  const [loading, setLoading]       = useState(true);
-  const [modal, setModal]           = useState(null);
-  const [aba, setAba]               = useState("dados");
-  const [abaErro, setAbaErro]       = useState(null);
-  const [saving, setSaving]         = useState(false);
-  const [erro, setErro]             = useState(null);   // erro da API ao salvar
-  const [errosCampo, setErrosCampo] = useState({});     // { campo: mensagem } → tooltip
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [aba, setAba] = useState("dados");
+  const [abaErro, setAbaErro] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState(null); // erro da API ao salvar
+  const [errosCampo, setErrosCampo] = useState({}); // { campo: mensagem } → tooltip
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -135,9 +139,17 @@ export default function VendedoresPage() {
     }
   }, [busca, filtroStatus]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
 
-  const abrirNovo = () => { setModal({ ...VAZIO }); setAba("dados"); setAbaErro(null); setErro(null); setErrosCampo({}); };
+  const abrirNovo = () => {
+    setModal({ ...VAZIO });
+    setAba("dados");
+    setAbaErro(null);
+    setErro(null);
+    setErrosCampo({});
+  };
 
   const abrirEditar = (v) => {
     setModal({
@@ -175,27 +187,39 @@ export default function VendedoresPage() {
     setErrosCampo({});
   };
 
-  const fecharModal = () => { setModal(null); setErro(null); setErrosCampo({}); };
+  const fecharModal = () => {
+    setModal(null);
+    setErro(null);
+    setErrosCampo({});
+  };
   const limparErro = (k) => {
     setErro(null);
     setErrosCampo((er) => (er[k] ? { ...er, [k]: undefined } : er));
   };
-  const setF = (k) => (e) => { limparErro(k); setModal((m) => ({ ...m, [k]: e.target.value })); };
-  const setFUpper = (k) => (e) => { limparErro(k); setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() })); };
+  const setF = (k) => (e) => {
+    limparErro(k);
+    setModal((m) => ({ ...m, [k]: e.target.value }));
+  };
+  const setFUpper = (k) => (e) => {
+    limparErro(k);
+    setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
+  };
 
   const handleSalvar = async () => {
     setAbaErro(null);
     const erros = {};
     if (!modal.nome.trim()) erros.nome = "Nome é obrigatório.";
     const comissaoPadrao = parsePct(modal.comissao_padrao_pct);
-    if (comissaoPadrao !== null && erroPct(comissaoPadrao)) erros.comissao_padrao_pct = erroPct(comissaoPadrao);
+    if (comissaoPadrao !== null && erroPct(comissaoPadrao))
+      erros.comissao_padrao_pct = erroPct(comissaoPadrao);
     setErrosCampo(erros);
     if (Object.keys(erros).length) {
       setAbaErro("dados");
       setAba("dados");
       return;
     }
-    setSaving(true); setErro(null);
+    setSaving(true);
+    setErro(null);
     try {
       const payload = {
         tipo_pessoa: modal.tipo_pessoa || null,
@@ -240,7 +264,12 @@ export default function VendedoresPage() {
   const handleInativar = async (v) => {
     const novoStatus = v.status === "ativo" ? "inativo" : "ativo";
     if (!window.confirm(`Deseja marcar este vendedor como ${novoStatus}?`)) return;
-    try { await updateVendedor(v.id, { status: novoStatus }); await carregar(); } catch (e) { alert(e.message); }
+    try {
+      await updateVendedor(v.id, { status: novoStatus });
+      await carregar();
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   return (
@@ -248,7 +277,9 @@ export default function VendedoresPage() {
       <div className="sc-page-header">
         <h1>Vendedores</h1>
         {hasPermission(MODULO, "criar") && (
-          <button className={styles.btnNovo} onClick={abrirNovo}>+ Novo Vendedor</button>
+          <button className={styles.btnNovo} onClick={abrirNovo}>
+            + Novo Vendedor
+          </button>
         )}
       </div>
 
@@ -261,7 +292,11 @@ export default function VendedoresPage() {
             placeholder="Buscar por nome ou CPF/CNPJ…"
           />
         </div>
-        <select className={styles.select} value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
+        <select
+          className={styles.select}
+          value={filtroStatus}
+          onChange={(e) => setFiltroStatus(e.target.value)}
+        >
           <option value="">Todos</option>
           <option value="ativo">Ativo</option>
           <option value="inativo">Inativo</option>
@@ -282,34 +317,53 @@ export default function VendedoresPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className={styles.empty}>Carregando…</td></tr>
-            ) : vendedores.length === 0 ? (
-              <tr><td colSpan={6} className={styles.empty}>Nenhum vendedor cadastrado.</td></tr>
-            ) : vendedores.map((v) => (
-              <tr key={v.id}>
-                <td className={styles.tdMono}>{v.codigo || "—"}</td>
-                <td>{v.nome}</td>
-                <td className={styles.tdMono}>{formatCpfCnpj(v.cpf_cnpj || "") || "—"}</td>
-                <td className={styles.tdMono}>{v.comissao_padrao_pct == null ? "—" : `${pctBR(v.comissao_padrao_pct)}%`}</td>
-                <td>
-                  <span className={`${styles.badge} ${v.status === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}>
-                    {v.status === "ativo" ? "Ativo" : "Inativo"}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.actions}>
-                    {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => abrirEditar(v)}>Editar</button>
-                    )}
-                    {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleInativar(v)}>
-                        {v.status === "ativo" ? "Inativar" : "Ativar"}
-                      </button>
-                    )}
-                  </div>
+              <tr>
+                <td colSpan={6} className={styles.empty}>
+                  Carregando…
                 </td>
               </tr>
-            ))}
+            ) : vendedores.length === 0 ? (
+              <tr>
+                <td colSpan={6} className={styles.empty}>
+                  Nenhum vendedor cadastrado.
+                </td>
+              </tr>
+            ) : (
+              vendedores.map((v) => (
+                <tr key={v.id}>
+                  <td className={styles.tdMono}>{v.codigo || "—"}</td>
+                  <td>{v.nome}</td>
+                  <td className={styles.tdMono}>{formatCpfCnpj(v.cpf_cnpj || "") || "—"}</td>
+                  <td className={styles.tdMono}>
+                    {v.comissao_padrao_pct == null ? "—" : `${pctBR(v.comissao_padrao_pct)}%`}
+                  </td>
+                  <td>
+                    <span
+                      className={`${styles.badge} ${v.status === "ativo" ? styles.badgeAtivo : styles.badgeInativo}`}
+                    >
+                      {v.status === "ativo" ? "Ativo" : "Inativo"}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.actions}>
+                      {hasPermission(MODULO, "editar") && (
+                        <button className={styles.btnLink} onClick={() => abrirEditar(v)}>
+                          Editar
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          className={`${styles.btnLink} ${styles.btnDanger}`}
+                          onClick={() => handleInativar(v)}
+                        >
+                          {v.status === "ativo" ? "Inativar" : "Ativar"}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -318,8 +372,12 @@ export default function VendedoresPage() {
         <div className={styles.overlay} onClick={fecharModal}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
-              <h2 className={styles.modalTitle}>{modal.id ? "Editar Vendedor" : "Novo Vendedor"}</h2>
-              <button className={styles.btnClose} onClick={fecharModal}>×</button>
+              <h2 className={styles.modalTitle}>
+                {modal.id ? "Editar Vendedor" : "Novo Vendedor"}
+              </h2>
+              <button className={styles.btnClose} onClick={fecharModal}>
+                ×
+              </button>
             </div>
 
             <div className={styles.tabs}>
@@ -333,16 +391,17 @@ export default function VendedoresPage() {
                   {t.label}
                 </button>
               ))}
-              {modal.id && TABS_GESTAO.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={`${styles.tab} ${aba === t.id ? styles.tabActive : ""}`}
-                  onClick={() => setAba(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
+              {modal.id &&
+                TABS_GESTAO.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`${styles.tab} ${aba === t.id ? styles.tabActive : ""}`}
+                    onClick={() => setAba(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
             </div>
 
             {aba === "dados" && (
@@ -350,12 +409,20 @@ export default function VendedoresPage() {
                 <div className={styles.fieldGrid}>
                   <label className={styles.field}>
                     <span>Código</span>
-                    <input className={styles.input} value={modal.codigo || "Gerado automaticamente"} readOnly />
+                    <input
+                      className={styles.input}
+                      value={modal.codigo || "Gerado automaticamente"}
+                      readOnly
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Tipo Pessoa</span>
-                    <select className={styles.input} value={modal.tipo_pessoa} onChange={setF("tipo_pessoa")}>
+                    <select
+                      className={styles.input}
+                      value={modal.tipo_pessoa}
+                      onChange={setF("tipo_pessoa")}
+                    >
                       <option value="fisica">Física</option>
                       <option value="juridica">Jurídica</option>
                     </select>
@@ -373,12 +440,21 @@ export default function VendedoresPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
-                    <input className={styles.input} value={modal.nome_fantasia} onChange={setFUpper("nome_fantasia")} />
+                    <input
+                      className={styles.input}
+                      value={modal.nome_fantasia}
+                      onChange={setFUpper("nome_fantasia")}
+                    />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição</span>
-                    <textarea className={`${styles.input} ${styles.textarea}`} rows={2} value={modal.descricao} onChange={setFUpper("descricao")} />
+                    <textarea
+                      className={`${styles.input} ${styles.textarea}`}
+                      rows={2}
+                      value={modal.descricao}
+                      onChange={setFUpper("descricao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -392,7 +468,8 @@ export default function VendedoresPage() {
                       onChange={setFUpper("comissao_padrao_pct")}
                       onBlur={() => {
                         const n = parsePct(modal.comissao_padrao_pct);
-                        if (n !== null && !erroPct(n)) setModal((m) => ({ ...m, comissao_padrao_pct: pctBR(n) }));
+                        if (n !== null && !erroPct(n))
+                          setModal((m) => ({ ...m, comissao_padrao_pct: pctBR(n) }));
                       }}
                     />
                     <span className={styles.fieldHint}>
@@ -402,24 +479,48 @@ export default function VendedoresPage() {
 
                   <label className={styles.field}>
                     <span>Dia Pagto</span>
-                    <input type="number" step="1" min="0" max="31" className={styles.input} value={modal.dia_pagto} onChange={setF("dia_pagto")} />
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="31"
+                      className={styles.input}
+                      value={modal.dia_pagto}
+                      onChange={setF("dia_pagto")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>% Pago Emissão</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.pct_pago_emissao} onChange={setF("pct_pago_emissao")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.pct_pago_emissao}
+                      onChange={setF("pct_pago_emissao")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>% Pago Baixa</span>
-                    <input type="number" step="0.01" className={styles.input} value={modal.pct_pago_baixa} onChange={setF("pct_pago_baixa")} />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={styles.input}
+                      value={modal.pct_pago_baixa}
+                      onChange={setF("pct_pago_baixa")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Data Cadastro</span>
                     <input
                       className={styles.input}
-                      value={modal.data_cadastro ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR") : "Hoje"}
+                      value={
+                        modal.data_cadastro
+                          ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR")
+                          : "Hoje"
+                      }
                       readOnly
                     />
                   </label>
@@ -451,30 +552,58 @@ export default function VendedoresPage() {
 
                   <label className={styles.field}>
                     <span>Estado (UF)</span>
-                    <input className={styles.input} value={modal.estado} onChange={setF("estado")} placeholder="SP" maxLength={2} />
+                    <input
+                      className={styles.input}
+                      value={modal.estado}
+                      onChange={setF("estado")}
+                      placeholder="SP"
+                      maxLength={2}
+                    />
                   </label>
 
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
-                      <input className={styles.input} value={modal.endereco} onChange={setFUpper("endereco")} placeholder="Rua, Av…" />
-                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setFUpper("numero")} placeholder="Nº" />
+                      <input
+                        className={styles.input}
+                        value={modal.endereco}
+                        onChange={setFUpper("endereco")}
+                        placeholder="Rua, Av…"
+                      />
+                      <input
+                        className={`${styles.input} ${styles.inputNumero}`}
+                        value={modal.numero}
+                        onChange={setFUpper("numero")}
+                        placeholder="Nº"
+                      />
                     </div>
                   </div>
 
                   <label className={styles.field}>
                     <span>Complemento</span>
-                    <input className={styles.input} value={modal.complemento} onChange={setFUpper("complemento")} />
+                    <input
+                      className={styles.input}
+                      value={modal.complemento}
+                      onChange={setFUpper("complemento")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Bairro</span>
-                    <input className={styles.input} value={modal.bairro} onChange={setFUpper("bairro")} />
+                    <input
+                      className={styles.input}
+                      value={modal.bairro}
+                      onChange={setFUpper("bairro")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Município</span>
-                    <input className={styles.input} value={modal.municipio} onChange={setFUpper("municipio")} />
+                    <input
+                      className={styles.input}
+                      value={modal.municipio}
+                      onChange={setFUpper("municipio")}
+                    />
                   </label>
                 </div>
               </div>
@@ -488,7 +617,9 @@ export default function VendedoresPage() {
                     <input
                       className={styles.input}
                       value={modal.cpf_cnpj}
-                      onChange={(e) => setModal((m) => ({ ...m, cpf_cnpj: formatCpfCnpj(e.target.value) }))}
+                      onChange={(e) =>
+                        setModal((m) => ({ ...m, cpf_cnpj: formatCpfCnpj(e.target.value) }))
+                      }
                       maxLength={18}
                     />
                   </label>
@@ -500,17 +631,31 @@ export default function VendedoresPage() {
 
                   <label className={styles.field}>
                     <span>Inscrição Municipal</span>
-                    <input className={styles.input} value={modal.inscricao_municipal} onChange={setF("inscricao_municipal")} />
+                    <input
+                      className={styles.input}
+                      value={modal.inscricao_municipal}
+                      onChange={setF("inscricao_municipal")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Telefone</span>
-                    <input className={styles.input} value={modal.telefone} onChange={setF("telefone")} placeholder="(00) 0000-0000" />
+                    <input
+                      className={styles.input}
+                      value={modal.telefone}
+                      onChange={setF("telefone")}
+                      placeholder="(00) 0000-0000"
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Celular</span>
-                    <input className={styles.input} value={modal.celular} onChange={setF("celular")} placeholder="(00) 00000-0000" />
+                    <input
+                      className={styles.input}
+                      value={modal.celular}
+                      onChange={setF("celular")}
+                      placeholder="(00) 00000-0000"
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -520,26 +665,38 @@ export default function VendedoresPage() {
 
                   <label className={styles.field}>
                     <span>E-mail</span>
-                    <input type="email" className={styles.input} value={modal.email} onChange={setF("email")} />
+                    <input
+                      type="email"
+                      className={styles.input}
+                      value={modal.email}
+                      onChange={setF("email")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>E-mail NF-e</span>
-                    <input type="email" className={styles.input} value={modal.email_nfe} onChange={setF("email_nfe")} />
+                    <input
+                      type="email"
+                      className={styles.input}
+                      value={modal.email_nfe}
+                      onChange={setF("email_nfe")}
+                    />
                   </label>
                 </div>
               </div>
             )}
 
             {aba === "comissoes" && modal.id && <TabComissoes vendedorId={modal.id} />}
-            {aba === "acesso"    && modal.id && <TabAcesso vendedorId={modal.id} />}
-            {aba === "metas"     && modal.id && <TabMetas vendedorId={modal.id} />}
+            {aba === "acesso" && modal.id && <TabAcesso vendedorId={modal.id} />}
+            {aba === "metas" && modal.id && <TabMetas vendedorId={modal.id} />}
             {aba === "catalogos" && modal.id && <TabCatalogos vendedorId={modal.id} />}
-            {aba === "leads"     && modal.id && <TabLeads vendedorId={modal.id} />}
+            {aba === "leads" && modal.id && <TabLeads vendedorId={modal.id} />}
 
             {["dados", "endereco", "fiscal"].includes(aba) ? (
               <div className={styles.modalActions}>
-                <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
+                <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
+                  Cancelar
+                </button>
                 <button
                   className={`${styles.btnPrimary} ${erro ? styles.btnErro : ""}`}
                   onClick={handleSalvar}
@@ -551,7 +708,9 @@ export default function VendedoresPage() {
               </div>
             ) : (
               <div className={styles.modalActions}>
-                <button className={styles.btnSecondary} onClick={fecharModal}>Fechar</button>
+                <button className={styles.btnSecondary} onClick={fecharModal}>
+                  Fechar
+                </button>
               </div>
             )}
           </div>
@@ -568,24 +727,34 @@ export default function VendedoresPage() {
 // Salva no blur/Enter, Esc reverte. Erro: campo vermelho claro + tooltip.
 // permitirVazio: linha nova — sair do campo vazio não acusa erro.
 function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
-  const [focado, setFocado]     = useState(false);
-  const [texto, setTexto]       = useState("");
-  const [erro, setErro]         = useState(null);
+  const [focado, setFocado] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [erro, setErro] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const ignorarBlur = useRef(false);
 
   const paraEdicao = () => (valor == null ? "" : pctBR(valor));
-  const exibido = focado || erro ? texto : (valor == null ? "" : `${pctBR(valor)}%`);
+  const exibido = focado || erro ? texto : valor == null ? "" : `${pctBR(valor)}%`;
 
   const salvar = async () => {
     const n = parsePct(texto);
     if (n === null) {
-      if (permitirVazio) { setErro(null); return true; }
-      setErro("Informe a comissão."); return false;
+      if (permitirVazio) {
+        setErro(null);
+        return true;
+      }
+      setErro("Informe a comissão.");
+      return false;
     }
     const msg = erroPct(n);
-    if (msg) { setErro(msg); return false; }
-    if (valor != null && Math.abs(n - valor) < 0.005) { setErro(null); return true; }
+    if (msg) {
+      setErro(msg);
+      return false;
+    }
+    if (valor != null && Math.abs(n - valor) < 0.005) {
+      setErro(null);
+      return true;
+    }
     setSalvando(true);
     try {
       await onSalvar(n);
@@ -604,7 +773,10 @@ function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
     if (e.key === "Enter") {
       e.preventDefault();
       const el = e.currentTarget;
-      if (await salvar()) { ignorarBlur.current = true; el.blur(); }
+      if (await salvar()) {
+        ignorarBlur.current = true;
+        el.blur();
+      }
     } else if (e.key === "Escape") {
       e.preventDefault();
       setTexto(paraEdicao());
@@ -633,7 +805,10 @@ function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
       }}
       onBlur={() => {
         setFocado(false);
-        if (ignorarBlur.current) { ignorarBlur.current = false; return; }
+        if (ignorarBlur.current) {
+          ignorarBlur.current = false;
+          return;
+        }
         if (!readOnly) salvar();
       }}
       onKeyDown={handleKeyDown}
@@ -644,24 +819,34 @@ function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
 function TabComissoes({ vendedorId }) {
   const { hasPermission } = useAuth();
   const podeEditar = hasPermission(MODULO, "editar");
-  const [linhas, setLinhas]           = useState([]);
-  const [tabelas, setTabelas]         = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [erroCarga, setErroCarga]     = useState(null);
-  const [novo, setNovo]               = useState(null);   // { tabela_preco_id } da linha em inclusão
-  const [erroRemover, setErroRemover] = useState({});     // { comissaoId: mensagem }
+  const [linhas, setLinhas] = useState([]);
+  const [tabelas, setTabelas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [erroCarga, setErroCarga] = useState(null);
+  const [novo, setNovo] = useState(null); // { tabela_preco_id } da linha em inclusão
+  const [erroRemover, setErroRemover] = useState({}); // { comissaoId: mensagem }
 
   useEffect(() => {
     let ativo = true;
-    setLoading(true); setErroCarga(null); setNovo(null);
-    Promise.all([
-      getComissoesVendedor(vendedorId),
-      getTabelasPreco().catch(() => []),
-    ])
-      .then(([coms, tabs]) => { if (ativo) { setLinhas(coms || []); setTabelas(tabs || []); } })
-      .catch((e) => { if (ativo) setErroCarga(e.message); })
-      .finally(() => { if (ativo) setLoading(false); });
-    return () => { ativo = false; };
+    setLoading(true);
+    setErroCarga(null);
+    setNovo(null);
+    Promise.all([getComissoesVendedor(vendedorId), getTabelasPreco().catch(() => [])])
+      .then(([coms, tabs]) => {
+        if (ativo) {
+          setLinhas(coms || []);
+          setTabelas(tabs || []);
+        }
+      })
+      .catch((e) => {
+        if (ativo) setErroCarga(e.message);
+      })
+      .finally(() => {
+        if (ativo) setLoading(false);
+      });
+    return () => {
+      ativo = false;
+    };
   }, [vendedorId]);
 
   const vinculadas = new Set(linhas.map((l) => l.tabela_preco_id));
@@ -689,12 +874,19 @@ function TabComissoes({ vendedorId }) {
     }
   };
 
-  if (loading) return <p className={styles.tabInner} style={{ color: "var(--sc-text-muted)", fontSize: 13 }}>Carregando…</p>;
+  if (loading)
+    return (
+      <p className={styles.tabInner} style={{ color: "var(--sc-text-muted)", fontSize: 13 }}>
+        Carregando…
+      </p>
+    );
 
   if (erroCarga) {
     return (
       <div className={styles.tabInner}>
-        <p className={styles.comissoesVazio} title={erroCarga}>Não foi possível carregar as comissões.</p>
+        <p className={styles.comissoesVazio} title={erroCarga}>
+          Não foi possível carregar as comissões.
+        </p>
       </div>
     );
   }
@@ -739,7 +931,9 @@ function TabComissoes({ vendedorId }) {
                       className={`${styles.btnRemover} ${erroRemover[l.id] ? styles.btnErro : ""}`}
                       title={erroRemover[l.id] || "Remover vínculo"}
                       onClick={() => remover(l)}
-                    >×</button>
+                    >
+                      ×
+                    </button>
                   )}
                 </td>
               </tr>
@@ -754,7 +948,11 @@ function TabComissoes({ vendedorId }) {
                     onChange={(e) => setNovo({ tabela_preco_id: e.target.value })}
                   >
                     <option value="">Selecione a tabela…</option>
-                    {disponiveis.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                    {disponiveis.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nome}
+                      </option>
+                    ))}
                   </select>
                 </td>
                 <td>
@@ -769,7 +967,14 @@ function TabComissoes({ vendedorId }) {
                   )}
                 </td>
                 <td className={styles.colAcao}>
-                  <button type="button" className={styles.btnRemover} title="Cancelar" onClick={() => setNovo(null)}>×</button>
+                  <button
+                    type="button"
+                    className={styles.btnRemover}
+                    title="Cancelar"
+                    onClick={() => setNovo(null)}
+                  >
+                    ×
+                  </button>
                 </td>
               </tr>
             )}
@@ -797,20 +1002,24 @@ function TabComissoes({ vendedorId }) {
 // ── Aba: Acesso ─────────────────────────────────────────────────────────
 
 function TabAcesso({ vendedorId }) {
-  const [creds, setCreds]   = useState(null);
-  const [form, setForm]     = useState({ username: "", senha: "" });
+  const [creds, setCreds] = useState(null);
+  const [form, setForm] = useState({ username: "", senha: "" });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg]       = useState(null);
+  const [msg, setMsg] = useState(null);
 
   useEffect(() => {
-    getCredenciaisVendedor(vendedorId).then(setCreds).catch(() => {});
+    getCredenciaisVendedor(vendedorId)
+      .then(setCreds)
+      .catch(() => {});
   }, [vendedorId]);
 
   const handleSave = async () => {
     if (!form.username.trim() || !form.senha.trim()) {
-      setMsg({ ok: false, text: "Preencha username e senha." }); return;
+      setMsg({ ok: false, text: "Preencha username e senha." });
+      return;
     }
-    setSaving(true); setMsg(null);
+    setSaving(true);
+    setMsg(null);
     try {
       const d = await setCredenciaisVendedor(vendedorId, form);
       setCreds(d);
@@ -833,17 +1042,29 @@ function TabAcesso({ vendedorId }) {
       )}
       <label className={styles.field} style={{ marginTop: creds?.username ? 10 : 0 }}>
         <span>{creds?.username ? "Novo username" : "Username"}</span>
-        <input className={styles.input} value={form.username}
+        <input
+          className={styles.input}
+          value={form.username}
           onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-          placeholder="ex.: joao.silva" />
+          placeholder="ex.: joao.silva"
+        />
       </label>
       <label className={styles.field} style={{ marginTop: 10 }}>
         <span>Nova senha</span>
-        <input type="password" className={styles.input} value={form.senha}
-          onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))} />
+        <input
+          type="password"
+          className={styles.input}
+          value={form.senha}
+          onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))}
+        />
       </label>
       <Msg msg={msg} />
-      <button className={styles.btnPrimary} style={{ marginTop: 14 }} onClick={handleSave} disabled={saving}>
+      <button
+        className={styles.btnPrimary}
+        style={{ marginTop: 14 }}
+        onClick={handleSave}
+        disabled={saving}
+      >
         {saving ? "Salvando…" : "Salvar credenciais"}
       </button>
       <p className={styles.hint} style={{ marginTop: 12 }}>
@@ -856,32 +1077,42 @@ function TabAcesso({ vendedorId }) {
 // ── Aba: Metas ───────────────────────────────────────────────────────────
 
 const METAS_CAMPOS = [
-  { label: "Meta de ativação mensal (R$)", key: "meta_ativacao",       step: "0.01", tipo: "float" },
-  { label: "Bônus logística (R$)",         key: "bonus_logistica",     step: "0.01", tipo: "float" },
-  { label: "Meta novos clientes (nº)",     key: "meta_novos_clientes", step: "1",    tipo: "int"   },
-  { label: "Bônus expansão (R$)",          key: "bonus_expansao",      step: "0.01", tipo: "float" },
-  { label: "Pedido mínimo (R$)",           key: "pedido_minimo",       step: "0.01", tipo: "float" },
+  { label: "Meta de ativação mensal (R$)", key: "meta_ativacao", step: "0.01", tipo: "float" },
+  { label: "Bônus logística (R$)", key: "bonus_logistica", step: "0.01", tipo: "float" },
+  { label: "Meta novos clientes (nº)", key: "meta_novos_clientes", step: "1", tipo: "int" },
+  { label: "Bônus expansão (R$)", key: "bonus_expansao", step: "0.01", tipo: "float" },
+  { label: "Pedido mínimo (R$)", key: "pedido_minimo", step: "0.01", tipo: "float" },
 ];
 
 function TabMetas({ vendedorId }) {
-  const [form, setForm]     = useState({ meta_ativacao: "", bonus_logistica: "", meta_novos_clientes: "", bonus_expansao: "", pedido_minimo: "" });
+  const [form, setForm] = useState({
+    meta_ativacao: "",
+    bonus_logistica: "",
+    meta_novos_clientes: "",
+    bonus_expansao: "",
+    pedido_minimo: "",
+  });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg]       = useState(null);
+  const [msg, setMsg] = useState(null);
 
   useEffect(() => {
-    getMetasVendedor(vendedorId).then((d) => {
-      if (d) setForm({
-        meta_ativacao:       d.meta_ativacao       ?? "",
-        bonus_logistica:     d.bonus_logistica     ?? "",
-        meta_novos_clientes: d.meta_novos_clientes ?? "",
-        bonus_expansao:      d.bonus_expansao      ?? "",
-        pedido_minimo:       d.pedido_minimo       ?? "",
-      });
-    }).catch(() => {});
+    getMetasVendedor(vendedorId)
+      .then((d) => {
+        if (d)
+          setForm({
+            meta_ativacao: d.meta_ativacao ?? "",
+            bonus_logistica: d.bonus_logistica ?? "",
+            meta_novos_clientes: d.meta_novos_clientes ?? "",
+            bonus_expansao: d.bonus_expansao ?? "",
+            pedido_minimo: d.pedido_minimo ?? "",
+          });
+      })
+      .catch(() => {});
   }, [vendedorId]);
 
   const handleSave = async () => {
-    setSaving(true); setMsg(null);
+    setSaving(true);
+    setMsg(null);
     try {
       const payload = {};
       METAS_CAMPOS.forEach(({ key, tipo }) => {
@@ -899,10 +1130,20 @@ function TabMetas({ vendedorId }) {
   return (
     <div className={styles.tabInner}>
       {METAS_CAMPOS.map(({ label, key, step }, i) => (
-        <label key={key} className={styles.field} style={{ marginBottom: i < METAS_CAMPOS.length - 1 ? 10 : 0 }}>
+        <label
+          key={key}
+          className={styles.field}
+          style={{ marginBottom: i < METAS_CAMPOS.length - 1 ? 10 : 0 }}
+        >
           <span>{label}</span>
-          <input type="number" step={step} min="0" className={styles.input}
-            value={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
+          <input
+            type="number"
+            step={step}
+            min="0"
+            className={styles.input}
+            value={form[key]}
+            onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+          />
         </label>
       ))}
       <Msg msg={msg} />
@@ -919,15 +1160,15 @@ function TabMetas({ vendedorId }) {
 
 function TabCatalogos({ vendedorId }) {
   const { hasPermission } = useAuth();
-  const [catalogos, setCatalogos]   = useState([]);
-  const [acessos, setAcessos]       = useState([]);
-  const [tabelas, setTabelas]       = useState([]);
-  const [loading, setLoading]       = useState(true);
+  const [catalogos, setCatalogos] = useState([]);
+  const [acessos, setAcessos] = useState([]);
+  const [tabelas, setTabelas] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
-  const [upForm, setUpForm]         = useState({ nome: "", tabela_preco_id: "" });
-  const [upFile, setUpFile]         = useState(null);
-  const [uploading, setUploading]   = useState(false);
-  const [errUp, setErrUp]           = useState(null);
+  const [upForm, setUpForm] = useState({ nome: "", tabela_preco_id: "" });
+  const [upFile, setUpFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [errUp, setErrUp] = useState(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -943,11 +1184,15 @@ function TabCatalogos({ vendedorId }) {
         .filter((_, i) => (acessosArr[i] || []).includes(String(vendedorId)))
         .map((cat) => cat.id);
       setAcessos(comAcesso);
-    } catch {}
-    finally { setLoading(false); }
+    } catch {
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { loadAll(); }, [vendedorId]);
+  useEffect(() => {
+    loadAll();
+  }, [vendedorId]);
 
   const toggleAcesso = async (catId, temAcesso) => {
     try {
@@ -962,8 +1207,12 @@ function TabCatalogos({ vendedorId }) {
   };
 
   const handleUpload = async () => {
-    if (!upForm.nome.trim() || !upFile) { setErrUp("Nome e arquivo são obrigatórios."); return; }
-    setUploading(true); setErrUp(null);
+    if (!upForm.nome.trim() || !upFile) {
+      setErrUp("Nome e arquivo são obrigatórios.");
+      return;
+    }
+    setUploading(true);
+    setErrUp(null);
     try {
       const fd = new FormData();
       fd.append("nome", upForm.nome);
@@ -981,13 +1230,26 @@ function TabCatalogos({ vendedorId }) {
     }
   };
 
-  if (loading) return <p className={styles.tabInner} style={{ color: "var(--sc-text-muted)", fontSize: 13 }}>Carregando…</p>;
+  if (loading)
+    return (
+      <p className={styles.tabInner} style={{ color: "var(--sc-text-muted)", fontSize: 13 }}>
+        Carregando…
+      </p>
+    );
 
   return (
     <div className={styles.tabInner}>
       {hasPermission(MODULO, "criar") && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <button className={styles.btnPill} onClick={() => { setShowUpload(true); setErrUp(null); setUpForm({ nome: "", tabela_preco_id: "" }); setUpFile(null); }}>
+          <button
+            className={styles.btnPill}
+            onClick={() => {
+              setShowUpload(true);
+              setErrUp(null);
+              setUpForm({ nome: "", tabela_preco_id: "" });
+              setUpFile(null);
+            }}
+          >
             + Upload Catálogo
           </button>
         </div>
@@ -1002,7 +1264,8 @@ function TabCatalogos({ vendedorId }) {
             return (
               <li key={cat.id} className={styles.catalogoItem}>
                 <input
-                  type="checkbox" id={`cat-${cat.id}`}
+                  type="checkbox"
+                  id={`cat-${cat.id}`}
                   checked={temAcesso}
                   onChange={() => toggleAcesso(cat.id, temAcesso)}
                 />
@@ -1024,25 +1287,46 @@ function TabCatalogos({ vendedorId }) {
             <h3 className={styles.modalPillTitle}>Upload de Catálogo</h3>
             <label className={styles.field}>
               <span>Nome *</span>
-              <input className={styles.input} value={upForm.nome} autoFocus
-                onChange={(e) => setUpForm((f) => ({ ...f, nome: e.target.value }))} />
+              <input
+                className={styles.input}
+                value={upForm.nome}
+                autoFocus
+                onChange={(e) => setUpForm((f) => ({ ...f, nome: e.target.value }))}
+              />
             </label>
             <label className={styles.field} style={{ marginTop: 10 }}>
               <span>Tabela de preço</span>
-              <select className={styles.input} value={upForm.tabela_preco_id}
-                onChange={(e) => setUpForm((f) => ({ ...f, tabela_preco_id: e.target.value }))}>
+              <select
+                className={styles.input}
+                value={upForm.tabela_preco_id}
+                onChange={(e) => setUpForm((f) => ({ ...f, tabela_preco_id: e.target.value }))}
+              >
                 <option value="">— Nenhuma —</option>
-                {tabelas.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+                {tabelas.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.field} style={{ marginTop: 10 }}>
               <span>Arquivo PDF *</span>
-              <input type="file" accept=".pdf" className={styles.input}
-                onChange={(e) => setUpFile(e.target.files[0] || null)} />
+              <input
+                type="file"
+                accept=".pdf"
+                className={styles.input}
+                onChange={(e) => setUpFile(e.target.files[0] || null)}
+              />
             </label>
-            {errUp && <p className={styles.msgErro} style={{ marginTop: 10 }}>{errUp}</p>}
+            {errUp && (
+              <p className={styles.msgErro} style={{ marginTop: 10 }}>
+                {errUp}
+              </p>
+            )}
             <div className={styles.modalPillActions}>
-              <button className={styles.btnPillSecondary} onClick={() => setShowUpload(false)}>Cancelar</button>
+              <button className={styles.btnPillSecondary} onClick={() => setShowUpload(false)}>
+                Cancelar
+              </button>
               <button className={styles.btnPillPrimary} onClick={handleUpload} disabled={uploading}>
                 {uploading ? "Enviando…" : "Upload"}
               </button>
@@ -1064,31 +1348,46 @@ const LEAD_CAMPOS = [
   { label: "Telefone", key: "telefone" },
 ];
 
-const LEAD_VAZIO = { nome: "", segmento: "", endereco: "", cidade: "", telefone: "", observacao: "" };
+const LEAD_VAZIO = {
+  nome: "",
+  segmento: "",
+  endereco: "",
+  cidade: "",
+  telefone: "",
+  observacao: "",
+};
 
 function TabLeads({ vendedorId }) {
   const { hasPermission } = useAuth();
-  const [leads, setLeads]       = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showNovo, setShowNovo] = useState(false);
-  const [form, setForm]         = useState(LEAD_VAZIO);
-  const [saving, setSaving]     = useState(false);
-  const [err, setErr]           = useState(null);
+  const [form, setForm] = useState(LEAD_VAZIO);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
 
   const loadLeads = async () => {
     setLoading(true);
     try {
       const all = await getLeads();
       setLeads((all || []).filter((l) => l.vendedor_id === String(vendedorId)));
-    } catch {}
-    finally { setLoading(false); }
+    } catch {
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { loadLeads(); }, [vendedorId]);
+  useEffect(() => {
+    loadLeads();
+  }, [vendedorId]);
 
   const handleCriar = async () => {
-    if (!form.nome.trim()) { setErr("Nome é obrigatório."); return; }
-    setSaving(true); setErr(null);
+    if (!form.nome.trim()) {
+      setErr("Nome é obrigatório.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
     try {
       await createLead({ ...form, vendedor_id: vendedorId });
       setShowNovo(false);
@@ -1102,14 +1401,24 @@ function TabLeads({ vendedorId }) {
   };
 
   const handleDelete = async (leadId) => {
-    try { await deleteLead(leadId); await loadLeads(); } catch {}
+    try {
+      await deleteLead(leadId);
+      await loadLeads();
+    } catch {}
   };
 
   return (
     <div className={styles.tabInner}>
       {hasPermission(MODULO, "criar") && (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <button className={styles.btnPill} onClick={() => { setShowNovo(true); setErr(null); setForm(LEAD_VAZIO); }}>
+          <button
+            className={styles.btnPill}
+            onClick={() => {
+              setShowNovo(true);
+              setErr(null);
+              setForm(LEAD_VAZIO);
+            }}
+          >
             + Novo Lead
           </button>
         </div>
@@ -1131,9 +1440,19 @@ function TabLeads({ vendedorId }) {
                 <span className={styles.leadStatus}>{lead.status}</span>
                 {hasPermission(MODULO, "excluir") && (
                   <button
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--sc-danger-text)", fontSize: 16, lineHeight: 1, padding: "2px 4px" }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--sc-danger-text)",
+                      fontSize: 16,
+                      lineHeight: 1,
+                      padding: "2px 4px",
+                    }}
                     onClick={() => handleDelete(lead.id)}
-                  >×</button>
+                  >
+                    ×
+                  </button>
                 )}
               </div>
             </li>
@@ -1148,19 +1467,33 @@ function TabLeads({ vendedorId }) {
             {LEAD_CAMPOS.map(({ label, key }, i) => (
               <label key={key} className={styles.field} style={{ marginTop: i > 0 ? 10 : 0 }}>
                 <span>{label}</span>
-                <input className={styles.input} value={form[key]} autoFocus={i === 0}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))} />
+                <input
+                  className={styles.input}
+                  value={form[key]}
+                  autoFocus={i === 0}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                />
               </label>
             ))}
             <label className={styles.field} style={{ marginTop: 10 }}>
               <span>Observação</span>
-              <textarea className={styles.input} rows={3} value={form.observacao}
+              <textarea
+                className={styles.input}
+                rows={3}
+                value={form.observacao}
                 onChange={(e) => setForm((f) => ({ ...f, observacao: e.target.value }))}
-                style={{ resize: "vertical" }} />
+                style={{ resize: "vertical" }}
+              />
             </label>
-            {err && <p className={styles.msgErro} style={{ marginTop: 10 }}>{err}</p>}
+            {err && (
+              <p className={styles.msgErro} style={{ marginTop: 10 }}>
+                {err}
+              </p>
+            )}
             <div className={styles.modalPillActions}>
-              <button className={styles.btnPillSecondary} onClick={() => setShowNovo(false)}>Cancelar</button>
+              <button className={styles.btnPillSecondary} onClick={() => setShowNovo(false)}>
+                Cancelar
+              </button>
               <button className={styles.btnPillPrimary} onClick={handleCriar} disabled={saving}>
                 {saving ? "Criando…" : "Criar Lead"}
               </button>

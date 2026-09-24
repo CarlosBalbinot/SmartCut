@@ -21,20 +21,22 @@ _MOD_EDITAR = "configuracoes_editar"
 
 @router.get("/{grupo_id}/precos", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def listar_precos(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
-    rows = db.execute(
-        select(PrecoReferencia).where(PrecoReferencia.grupo_id == grupo_id)
-    ).scalars().all()
+    rows = db.execute(select(PrecoReferencia).where(PrecoReferencia.grupo_id == grupo_id)).scalars().all()
     return {"data": [PrecoReferenciaOut.model_validate(r) for r in rows], "error": None}
 
 
 @router.post("/{grupo_id}/precos", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def criar_preco(grupo_id: uuid.UUID, payload: PrecoReferenciaCreate, db: Session = Depends(get_db)):
-    existing = db.execute(
-        select(PrecoReferencia).where(
-            PrecoReferencia.grupo_id == grupo_id,
-            PrecoReferencia.tabela_id == payload.tabela_id,
+    existing = (
+        db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.grupo_id == grupo_id,
+                PrecoReferencia.tabela_id == payload.tabela_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=409, detail="Preço já cadastrado para esta tabela")
     ref = PrecoReferencia(
@@ -62,12 +64,16 @@ def atualizar_preco(
     payload: PrecoReferenciaUpdate,
     db: Session = Depends(get_db),
 ):
-    ref = db.execute(
-        select(PrecoReferencia).where(
-            PrecoReferencia.grupo_id == grupo_id,
-            PrecoReferencia.tabela_id == tabela_id,
+    ref = (
+        db.execute(
+            select(PrecoReferencia).where(
+                PrecoReferencia.grupo_id == grupo_id,
+                PrecoReferencia.tabela_id == tabela_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if not ref:
         raise HTTPException(status_code=404, detail="Preço de referência não encontrado")
     for field, val in payload.model_dump(exclude_unset=True).items():

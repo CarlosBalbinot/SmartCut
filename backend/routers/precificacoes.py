@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
-from models.precificacao import ConfiguracaoEmpresa, ConfiguracaoCustosFixos, Precificacao
+from models.precificacao import Precificacao
 from schemas.precificacao_schema import (
     ConfiguracaoEmpresaOut,
     ConfiguracaoEmpresaUpdate,
@@ -45,6 +45,7 @@ _MOD_PRECO = "precificacao"
 
 # ── Configuração fiscal/precificação (alíquota, custo de etiqueta) ───────
 
+
 @router.get("/configuracao-precificacao/", dependencies=[Depends(require_permission(_MOD_CONFIG_VER, "ver"))])
 def get_config(db: Session = Depends(get_db)):
     config = get_ou_criar_config(db)
@@ -62,6 +63,7 @@ def update_config(payload: ConfiguracaoEmpresaUpdate, db: Session = Depends(get_
 
 
 # ── Custos fixos ─────────────────────────────────────────────────────────
+
 
 @router.get(
     "/configuracao-custos-fixos/",
@@ -87,9 +89,10 @@ def update_custos(payload: ConfiguracaoCustosFixosUpdate, db: Session = Depends(
 
 # ── Precificações ────────────────────────────────────────────────────────
 
+
 @router.get("/precificacoes/", dependencies=[Depends(require_permission(_MOD_PRECO, "ver"))])
 def listar(grupo_id: str | None = None, db: Session = Depends(get_db)):
-    q = select(Precificacao).where(Precificacao.ativo == True)
+    q = select(Precificacao).where(Precificacao.ativo == True)  # noqa: E712 — expressão SQL
     if grupo_id:
         q = q.where(Precificacao.grupo_id == uuid.UUID(grupo_id))
     rows = db.execute(q.order_by(Precificacao.tamanho)).scalars().all()
@@ -98,13 +101,17 @@ def listar(grupo_id: str | None = None, db: Session = Depends(get_db)):
 
 @router.post("/precificacoes/", dependencies=[Depends(require_permission(_MOD_PRECO, "criar"))])
 def upsert(payload: PrecificacaoCreate, db: Session = Depends(get_db)):
-    existing = db.execute(
-        select(Precificacao).where(
-            Precificacao.grupo_id == payload.grupo_id,
-            Precificacao.tamanho == payload.tamanho,
-            Precificacao.ativo == True,
+    existing = (
+        db.execute(
+            select(Precificacao).where(
+                Precificacao.grupo_id == payload.grupo_id,
+                Precificacao.tamanho == payload.tamanho,
+                Precificacao.ativo == True,  # noqa: E712 — expressão SQL
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
     config = get_ou_criar_config(db)
     custos = get_ou_criar_custos(db)
@@ -131,23 +138,29 @@ def upsert(payload: PrecificacaoCreate, db: Session = Depends(get_db)):
 def calcular(grupo_id: uuid.UUID, db: Session = Depends(get_db)):
     config = get_ou_criar_config(db)
     custos = get_ou_criar_custos(db)
-    precs = db.execute(
-        select(Precificacao)
-        .where(Precificacao.grupo_id == grupo_id, Precificacao.ativo == True)
-        .order_by(Precificacao.tamanho)
-    ).scalars().all()
+    precs = (
+        db.execute(
+            select(Precificacao)
+            .where(Precificacao.grupo_id == grupo_id, Precificacao.ativo == True)  # noqa: E712 — expressão SQL
+            .order_by(Precificacao.tamanho)
+        )
+        .scalars()
+        .all()
+    )
 
     resultado = []
     for p in precs:
         calc = calcular_precificacao(p, config, custos)
         preco_final = float(p.preco_venda_final) if p.preco_venda_final else calc.get("preco_sugerido")
-        resultado.append({
-            "id": str(p.id),
-            "tamanho": p.tamanho,
-            "faixa_tamanho": p.faixa_tamanho,
-            **calc,
-            "preco_final": preco_final,
-        })
+        resultado.append(
+            {
+                "id": str(p.id),
+                "tamanho": p.tamanho,
+                "faixa_tamanho": p.faixa_tamanho,
+                **calc,
+                "preco_final": preco_final,
+            }
+        )
 
     return {"data": resultado, "error": None}
 

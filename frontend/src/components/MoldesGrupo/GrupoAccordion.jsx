@@ -14,7 +14,13 @@ const SENTIDO_LABEL = {
   "45graus": "↗",
 };
 
-export default function GrupoAccordion({ grupo, podeEditar, podeExcluir, onEditarMolde, onDeletarGrupo }) {
+export default function GrupoAccordion({
+  grupo,
+  podeEditar,
+  podeExcluir,
+  onEditarMolde,
+  onDeletarGrupo,
+}) {
   const [aberto, setAberto] = useState(false);
 
   // Agrupa moldes por peca (parte)
@@ -73,7 +79,9 @@ export default function GrupoAccordion({ grupo, podeEditar, podeExcluir, onEdita
                       <MiniSVG geometria={m.geometria_json} />
                       <span className={styles.tamanhoBadge}>{m.tamanho ?? "—"}</span>
                     </div>
-                    <span className={styles.moldeNome} title={m.nome}>{m.nome}</span>
+                    <span className={styles.moldeNome} title={m.nome}>
+                      {m.nome}
+                    </span>
                     <span className={styles.moldeArea}>
                       {m.area_cm2 != null ? `${Number(m.area_cm2).toFixed(1)} cm²` : "—"}
                     </span>

@@ -2,7 +2,9 @@
   background-color: var(--sc-surface);
   border-radius: var(--sc-radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.06);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 /* ── Cabeçalho ── */
@@ -17,7 +19,7 @@
 }
 
 .header:hover {
-  background-color: #FBFBFD;
+  background-color: #fbfbfd;
 }
 
 .seta {
@@ -54,7 +56,9 @@
   padding: 4px 6px;
   border-radius: 50%;
   line-height: 1;
-  transition: color 0.12s, background-color 0.12s;
+  transition:
+    color 0.12s,
+    background-color 0.12s;
 }
 
 .btnDeletar:hover {
@@ -64,7 +68,7 @@
 
 /* ── Corpo expandido ── */
 .corpo {
-  border-top: 1px solid rgba(0,0,0,0.06);
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
   padding: 0 0 8px;
 }
 
@@ -74,7 +78,7 @@
 }
 
 .parte + .parte {
-  border-top: 1px solid rgba(0,0,0,0.04);
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
   margin-top: 6px;
   padding-top: 12px;
 }
@@ -136,7 +140,7 @@
   top: 6px;
   right: 6px;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 0.68rem;
   font-weight: 600;
   padding: 2px 6px;

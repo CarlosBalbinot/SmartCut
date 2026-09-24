@@ -70,7 +70,9 @@
   width: 320px;
 }
 
-.busca:focus { border-color: var(--color-primary); }
+.busca:focus {
+  border-color: var(--color-primary);
+}
 
 .filtroData {
   display: flex;
@@ -97,7 +99,9 @@
   outline: none;
 }
 
-.inputData:focus { border-color: var(--color-primary); }
+.inputData:focus {
+  border-color: var(--color-primary);
+}
 
 /* ── Estado vazio ── */
 .vazio {
@@ -110,8 +114,12 @@
   border-radius: var(--sc-radius-md);
 }
 
-.vazio p { margin: 0 0 4px; }
-.vazio p:last-child { margin-bottom: 0; }
+.vazio p {
+  margin: 0 0 4px;
+}
+.vazio p:last-child {
+  margin-bottom: 0;
+}
 
 /* ── Card de encaixe ── */
 .encaixeCard {
@@ -224,9 +232,18 @@
   white-space: nowrap;
 }
 
-.aprovBadge_bom   { background-color: var(--sc-success-bg); color: var(--sc-success-text); }
-.aprovBadge_medio { background-color: color-mix(in srgb, var(--color-primary) 8%, transparent); color: var(--color-primary); }
-.aprovBadge_ruim  { background-color: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.aprovBadge_bom {
+  background-color: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+.aprovBadge_medio {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  color: var(--color-primary);
+}
+.aprovBadge_ruim {
+  background-color: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 /* ── Botões de ação ── */
 .btnPrimCompacto {
@@ -234,7 +251,7 @@
   font-size: 0.8rem;
   font-weight: 500;
   background-color: var(--color-primary);
-  color: #FFFFFF;
+  color: #ffffff;
   border: none;
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
@@ -242,13 +259,15 @@
   transition: filter 0.15s;
 }
 
-.btnPrimCompacto:hover { filter: brightness(0.92); }
+.btnPrimCompacto:hover {
+  filter: brightness(0.92);
+}
 
 .btnSecCompacto {
   padding: 6px 14px;
   font-size: 0.8rem;
   font-weight: 500;
-  background-color: #FFFFFF;
+  background-color: #ffffff;
   border: 1px solid var(--sc-border-strong);
   color: var(--sc-text-primary);
   border-radius: var(--sc-radius-sm);
@@ -257,7 +276,9 @@
   transition: background-color 0.12s;
 }
 
-.btnSecCompacto:hover { background-color: var(--sc-bg-secondary); }
+.btnSecCompacto:hover {
+  background-color: var(--sc-bg-secondary);
+}
 
 .btnDeletarIcon {
   width: 30px;
@@ -272,7 +293,10 @@
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.12s, color 0.12s, background-color 0.12s;
+  transition:
+    border-color 0.12s,
+    color 0.12s,
+    background-color 0.12s;
 }
 
 .btnDeletarIcon:hover {

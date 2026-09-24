@@ -35,4 +35,4 @@ def get_vendedor_atual(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido para o painel do vendedor",
         )
-    return sub[len(PREFIXO_SUB_VENDEDOR):]
+    return sub[len(PREFIXO_SUB_VENDEDOR) :]

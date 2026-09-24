@@ -7,19 +7,19 @@ Integra o `scripts/backup_sqlite.py` ao ciclo de vida do backend: no startup
 Docker/Postgres quem cuida do backup é o serviço `pg_dump` do
 `docker-compose.prod.yml`.
 """
+
 from __future__ import annotations
 
 import datetime
 import logging
 import os
 import threading
-import time
 
 from sqlalchemy.engine import make_url
 
 from scripts.backup_sqlite import fazer_backup
 
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger(__name__)
 
 
 def caminho_banco_sqlite(engine_url: str, db_path_env: str = "") -> str | None:
@@ -102,7 +102,8 @@ def iniciar_backup_automatico() -> None:
     _agendador = AgendadorBackup(
         engine_url=str(engine.url),
         intervalo_seg=settings.backup_interval_sec,
-        db_path_env=os.environ.get("SMARTCUT_DB_PATH", ""),
+        # Item 10.4: SMARTCUT_DB_PATH via settings (única fonte de config).
+        db_path_env=settings.smartcut_db_path,
         backup_dir_config=settings.backup_dir,
         retention_dias=settings.backup_retention_dias,
     )

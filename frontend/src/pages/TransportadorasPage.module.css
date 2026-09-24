@@ -46,7 +46,9 @@
   outline: none;
   width: 280px;
 }
-.busca:focus { border-color: var(--color-primary); }
+.busca:focus {
+  border-color: var(--color-primary);
+}
 
 .select {
   border: 1px solid var(--sc-border-strong);
@@ -59,7 +61,9 @@
   outline: none;
   width: 160px;
 }
-.select:focus { border-color: var(--color-primary); }
+.select:focus {
+  border-color: var(--color-primary);
+}
 
 /* ── Badges ── */
 .badge {
@@ -69,8 +73,14 @@
   font-size: 0.72rem;
   font-weight: 500;
 }
-.badgeOk { background: var(--sc-success-bg); color: var(--sc-success-text); }
-.badgeBloqueado { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.badgeOk {
+  background: var(--sc-success-bg);
+  color: var(--sc-success-text);
+}
+.badgeBloqueado {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 /* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
 .tableCard {
@@ -107,10 +117,17 @@
   max-width: 260px;
 }
 
-.table tr:last-child td { border-bottom: none; }
-.table tr:hover td { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.tdMono { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.tdMono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 
 .empty {
   padding: 2.5rem;
@@ -138,8 +155,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Buttons (usados também dentro do modal — não alterados) ── */
 .btnPrimary {
@@ -154,8 +176,13 @@
   white-space: nowrap;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--color-primary-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--color-primary-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -167,8 +194,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover    { background: var(--sc-surface-hover); }
-.btnSecondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnLink {
   background: none;
@@ -179,9 +211,14 @@
   padding: 0.25rem 0.5rem;
   border-radius: var(--sc-radius-sm);
 }
-.btnLink:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnLink:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
-.btnDanger:hover { color: var(--sc-danger-text) !important; }
+.btnDanger:hover {
+  color: var(--sc-danger-text) !important;
+}
 
 /* ── Overlay / Modal ── */
 .overlay {
@@ -232,7 +269,9 @@
   line-height: 1;
   padding: 0 0.25rem;
 }
-.btnClose:hover { color: var(--sc-text-primary); }
+.btnClose:hover {
+  color: var(--sc-text-primary);
+}
 
 .modalBody {
   padding: 1.25rem 1.5rem;
@@ -278,12 +317,16 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
-.tab:hover { color: var(--sc-text-primary); }
+.tab:hover {
+  color: var(--sc-text-primary);
+}
 .tabActive {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
-.tabErro { color: var(--sc-danger-text) !important; }
+.tabErro {
+  color: var(--sc-danger-text) !important;
+}
 
 /* ── Section labels ── */
 .sectionLabel {
@@ -294,7 +337,9 @@
   color: var(--sc-text-secondary);
   margin: 0.5rem 0 0.75rem;
 }
-.sectionLabelMt { margin-top: 1.25rem; }
+.sectionLabelMt {
+  margin-top: 1.25rem;
+}
 
 /* ── Field grid ── */
 .fieldGrid {
@@ -314,7 +359,9 @@
   color: var(--sc-text-secondary);
 }
 
-.fieldFull { grid-column: span 2; }
+.fieldFull {
+  grid-column: span 2;
+}
 
 /* ── Linha com input + botão de consulta (CNPJ / CEP) ── */
 .consultaRow {
@@ -322,7 +369,9 @@
   gap: 0.5rem;
   align-items: stretch;
 }
-.consultaRow .input { flex: 1; }
+.consultaRow .input {
+  flex: 1;
+}
 
 .btnConsultar {
   background: var(--color-primary);
@@ -337,8 +386,13 @@
   transition: background 0.15s;
   flex-shrink: 0;
 }
-.btnConsultar:hover    { background: var(--color-primary-hover); }
-.btnConsultar:disabled { opacity: 0.55; cursor: not-allowed; }
+.btnConsultar:hover {
+  background: var(--color-primary-hover);
+}
+.btnConsultar:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 .btnSefaz {
   background: transparent;
@@ -350,7 +404,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSefaz:hover { background: var(--sc-surface-hover); }
+.btnSefaz:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Status banners ── */
 .banner {
@@ -375,8 +431,8 @@
 }
 
 .bannerAviso {
-  background: #FFF8E8;
-  color: #8C6200;
+  background: #fff8e8;
+  color: #8c6200;
   border: 1px solid rgba(140, 98, 0, 0.2);
 }
 
@@ -394,8 +450,15 @@
   box-sizing: border-box;
   font-family: inherit;
 }
-.input:focus { border-color: var(--color-primary); }
-.input:disabled, .input:read-only { background: var(--sc-bg-secondary); color: var(--sc-text-muted); cursor: not-allowed; }
+.input:focus {
+  border-color: var(--color-primary);
+}
+.input:disabled,
+.input:read-only {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+  cursor: not-allowed;
+}
 
 /* ── Endereço inline (Endereço + Número na mesma linha) ── */
 .endRow {
@@ -403,7 +466,9 @@
   gap: 0.5rem;
   align-items: stretch;
 }
-.endRow .input { flex: 1; }
+.endRow .input {
+  flex: 1;
+}
 
 .inputNumero {
   width: 90px !important;
@@ -420,7 +485,11 @@
   font-weight: 500;
   color: var(--sc-text-secondary);
 }
-.checkboxField input { width: 16px; height: 16px; cursor: pointer; }
+.checkboxField input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
 
 /* ── Error ── */
 .erro {

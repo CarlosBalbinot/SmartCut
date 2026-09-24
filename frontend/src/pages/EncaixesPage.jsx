@@ -163,29 +163,21 @@ export default function EncaixesPage() {
               <div className={es.cardHeader}>
                 <div className={es.cardHeaderLeft}>
                   <span className={es.numeroEnc}>{formatarNumeroEnc(enc.numero_enc)}</span>
-                  {enc.descricao && (
-                    <span className={es.descricaoEnc}>{enc.descricao}</span>
-                  )}
+                  {enc.descricao && <span className={es.descricaoEnc}>{enc.descricao}</span>}
                   <span className={es.dataEnc}>{formatarData(enc.criado_em)}</span>
                 </div>
-                {ehRapido && (
-                  <span className={es.pillEncaixeRapido}>Encaixe Rápido</span>
-                )}
+                {ehRapido && <span className={es.pillEncaixeRapido}>Encaixe Rápido</span>}
               </div>
 
               <div className={es.cardBody}>
                 <div className={es.cardBodyLeft}>
-                  {mapa.tecido_nome && (
-                    <span className={es.tecidoBadge}>{mapa.tecido_nome}</span>
-                  )}
+                  {mapa.tecido_nome && <span className={es.tecidoBadge}>{mapa.tecido_nome}</span>}
                   {metricas && <div className={es.metricas}>{metricas}</div>}
                 </div>
 
                 <div className={es.cardBodyRight}>
                   {classeAprov && (
-                    <span
-                      className={`${es.aprovBadge} ${es[`aprovBadge_${classeAprov}`]}`}
-                    >
+                    <span className={`${es.aprovBadge} ${es[`aprovBadge_${classeAprov}`]}`}>
                       {aprov.toFixed(1)}%
                     </span>
                   )}

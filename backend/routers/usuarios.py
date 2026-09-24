@@ -7,7 +7,6 @@ from models.usuario import ACOES_VALIDAS, MODULOS_VALIDOS, Permissao, Usuario
 from schemas.usuario_schema import (
     PermissoesReplace,
     UsuarioCreate,
-    UsuarioDetalheResponse,
     UsuarioResponse,
     UsuarioUpdate,
 )

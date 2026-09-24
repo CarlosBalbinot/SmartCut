@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -27,7 +27,8 @@ export const transportadorasApi = {
     return request(`/transportadoras/${qs ? `?${qs}` : ""}`);
   },
   obter: (id) => request(`/transportadoras/${id}`),
-  criar: (payload) => request("/transportadoras/", { method: "POST", body: JSON.stringify(payload) }),
+  criar: (payload) =>
+    request("/transportadoras/", { method: "POST", body: JSON.stringify(payload) }),
   atualizar: (id, payload) =>
     request(`/transportadoras/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletar: (id) => request(`/transportadoras/${id}`, { method: "DELETE" }),

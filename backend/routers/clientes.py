@@ -84,7 +84,7 @@ def validar_cliente(codigo: str, db: Session = Depends(get_db)):
 
 @router.get("/cnpj/{cnpj}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
 def buscar_por_cnpj(cnpj: str, db: Session = Depends(get_db)):
-    cliente = db.query(Cliente).filter(Cliente.cnpj == cnpj, Cliente.ativo == True).first()
+    cliente = db.query(Cliente).filter(Cliente.cnpj == cnpj, Cliente.ativo == True).first()  # noqa: E712 — expressão SQL
     if not cliente:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente não encontrado")
     return {"data": ClienteResponse.model_validate(cliente), "error": None}
@@ -101,7 +101,7 @@ def listar_clientes(
     """busca: razão social, fantasia, código, CNPJ/CPF (com ou sem pontuação)
     ou cidade. limit/offset opcionais — sem limit devolve tudo (tela de
     Clientes); o modal de busca do pedido pagina de 50 em 50."""
-    q = db.query(Cliente).filter(Cliente.ativo == True)
+    q = db.query(Cliente).filter(Cliente.ativo == True)  # noqa: E712 — expressão SQL
     # tipo=cliente inclui "ambos" (quem pode ser cliente de pedido); os
     # demais tipos filtram exato. Filtro no SQL, antes do limit/offset.
     if tipo == "cliente":
@@ -111,9 +111,12 @@ def listar_clientes(
     if busca:
         termo = f"%{busca.strip()}%"
         filtro = (
-            Cliente.razao_social.ilike(termo) | Cliente.nome_fantasia.ilike(termo)
-            | Cliente.codigo.ilike(termo) | Cliente.cidade.ilike(termo)
-            | Cliente.cnpj.ilike(termo) | Cliente.cpf.ilike(termo)
+            Cliente.razao_social.ilike(termo)
+            | Cliente.nome_fantasia.ilike(termo)
+            | Cliente.codigo.ilike(termo)
+            | Cliente.cidade.ilike(termo)
+            | Cliente.cnpj.ilike(termo)
+            | Cliente.cpf.ilike(termo)
         )
         digitos = _digitos(busca)
         if len(digitos) >= 3:
@@ -127,7 +130,9 @@ def listar_clientes(
 
 
 @router.post(
-    "/", response_model=dict, status_code=status.HTTP_201_CREATED,
+    "/",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_permission(_MOD, "criar"))],
 )
 def criar_cliente(payload: ClienteCreate, db: Session = Depends(get_db)):
@@ -147,7 +152,8 @@ def obter_cliente(cliente_id: int, db: Session = Depends(get_db)):
 
 
 @router.put(
-    "/{cliente_id}", response_model=dict,
+    "/{cliente_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "editar"))],
 )
 def atualizar_cliente(cliente_id: int, payload: ClienteUpdate, db: Session = Depends(get_db)):
@@ -168,7 +174,8 @@ def atualizar_cliente(cliente_id: int, payload: ClienteUpdate, db: Session = Dep
 
 
 @router.delete(
-    "/{cliente_id}", response_model=dict,
+    "/{cliente_id}",
+    response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def excluir_cliente(cliente_id: int, db: Session = Depends(get_db)):

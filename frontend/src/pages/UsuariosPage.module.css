@@ -52,7 +52,9 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover { filter: brightness(0.92); }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
 
 .empty {
   padding: 1.25rem 1rem;
@@ -82,14 +84,18 @@
   transition: background 0.12s;
 }
 
-.item:hover { background: var(--sc-bg-secondary); }
+.item:hover {
+  background: var(--sc-bg-secondary);
+}
 
 .itemSel {
   background: var(--sc-bg-secondary);
   border-left-color: var(--sc-action);
 }
 
-.itemInativo { opacity: 0.55; }
+.itemInativo {
+  opacity: 0.55;
+}
 
 .itemInfo {
   display: flex;
@@ -200,12 +206,19 @@
   font-weight: 500;
   color: var(--sc-text-secondary);
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
   margin-bottom: -1px;
 }
 
-.tabBtn:hover:not(:disabled) { color: var(--sc-text-primary); }
-.tabBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tabBtn:hover:not(:disabled) {
+  color: var(--sc-text-primary);
+}
+.tabBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .tabBtnActive {
   color: var(--sc-text-primary);
@@ -246,8 +259,13 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
-.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.input:focus {
+  border-color: var(--sc-action);
+}
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 .checkboxRow {
   display: flex;
@@ -372,8 +390,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -386,7 +409,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .msgErro {
   font-size: 0.82rem;

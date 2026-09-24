@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -30,8 +30,7 @@ export const createCliente = (payload) =>
 export const updateCliente = (id, payload) =>
   request(`/clientes/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 
-export const deleteCliente = (id) =>
-  request(`/clientes/${id}`, { method: "DELETE" });
+export const deleteCliente = (id) => request(`/clientes/${id}`, { method: "DELETE" });
 
 export const getClienteByCnpj = async (cnpj) => {
   const res = await apiFetch(`${BASE_URL}/clientes/cnpj/${cnpj}`, {
@@ -52,7 +51,11 @@ export const validarCliente = (codigo) =>
 // Modal de busca: razão social, fantasia, código, CNPJ/CPF ou cidade;
 // só tipo cliente/ambos; paginado (50 por página, offset = página * 50).
 export const buscarClientes = (busca = "", offset = 0, limit = 50) => {
-  const params = new URLSearchParams({ tipo: "cliente", limit: String(limit), offset: String(offset) });
+  const params = new URLSearchParams({
+    tipo: "cliente",
+    limit: String(limit),
+    offset: String(offset),
+  });
   if (busca) params.set("busca", busca);
   return request(`/clientes/?${params.toString()}`);
 };

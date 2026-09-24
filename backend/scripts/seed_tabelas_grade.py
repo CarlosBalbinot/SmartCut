@@ -3,6 +3,7 @@
 Uso: py -3.12 -m scripts.seed_tabelas_grade
 Idempotente — tabelas cujo código já existe são ignoradas.
 """
+
 import sys
 from pathlib import Path
 

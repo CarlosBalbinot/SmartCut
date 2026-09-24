@@ -14,6 +14,7 @@ Separadores dentro do stream PE:
 
 Unidades: 1016 unidades/polegada → 400 unidades/cm.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -118,7 +119,7 @@ def _coords_to_points(coords: list[int]) -> list[tuple[float, float]]:
 
 def _polylines_to_pecas(polylines: list[list[tuple[float, float]]]) -> list[dict[str, Any]]:
     """Filtra polylines fechadas com área significativa e retorna peças."""
-    MIN_AREA_CM2 = 20.0    # ignora marcas, entalhes
+    MIN_AREA_CM2 = 20.0  # ignora marcas, entalhes
     MAX_AREA_CM2 = 5000.0  # ignora retângulo de moldura do plot
 
     pecas: list[dict[str, Any]] = []
@@ -129,9 +130,7 @@ def _polylines_to_pecas(polylines: list[list[tuple[float, float]]]) -> list[dict
             continue
 
         # Verifica se é fechada (último ponto ≈ primeiro)
-        dist = (
-            (pts[0][0] - pts[-1][0]) ** 2 + (pts[0][1] - pts[-1][1]) ** 2
-        ) ** 0.5
+        dist = ((pts[0][0] - pts[-1][0]) ** 2 + (pts[0][1] - pts[-1][1]) ** 2) ** 0.5
         is_closed = dist < 0.5  # < 0.5 cm de distância
 
         if not is_closed:

@@ -15,7 +15,10 @@
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
-.btnBack:hover { background: #f5f5f5; color: var(--sc-text-primary); }
+.btnBack:hover {
+  background: #f5f5f5;
+  color: var(--sc-text-primary);
+}
 
 /* ── Cabeçalho ── */
 
@@ -41,7 +44,9 @@
 }
 
 .tituloLinha,
-.actionBar { min-height: 34px; }
+.actionBar {
+  min-height: 34px;
+}
 
 .tituloLinha {
   display: flex;
@@ -92,8 +97,13 @@
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
 }
-.btnHeaderSecondary:hover    { background: var(--sc-surface-hover); }
-.btnHeaderSecondary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnHeaderSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+.btnHeaderSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btnHeaderCancelar {
   background: var(--sc-surface);
@@ -104,8 +114,13 @@
   border-radius: var(--sc-radius-sm);
   cursor: pointer;
 }
-.btnHeaderCancelar:hover    { background: #fee2e2; }
-.btnHeaderCancelar:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnHeaderCancelar:hover {
+  background: #fee2e2;
+}
+.btnHeaderCancelar:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .btnHeaderFechar {
   background: var(--color-primary);
@@ -117,10 +132,19 @@
   cursor: pointer;
   transition: filter 0.15s;
 }
-.btnHeaderFechar:hover    { filter: brightness(0.92); }
-.btnHeaderFechar:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnHeaderFechar:hover {
+  filter: brightness(0.92);
+}
+.btnHeaderFechar:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
-.stCancelado { background: var(--sc-danger-bg); color: var(--sc-danger-text); border-color: var(--sc-danger-border); }
+.stCancelado {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+  border-color: var(--sc-danger-border);
+}
 
 /* Badge de status (somente leitura — troca é feita pelos botões de ação) */
 .statusBadge {
@@ -131,8 +155,14 @@
   font-size: 0.78rem;
   font-weight: 600;
 }
-.stAberto  { background: var(--color-primary); color: #FFF; }
-.stFechado { background: var(--sc-success-text); color: #FFF; }
+.stAberto {
+  background: var(--color-primary);
+  color: #fff;
+}
+.stFechado {
+  background: var(--sc-success-text);
+  color: #fff;
+}
 
 .erroInline {
   margin: -0.75rem 0 1rem;
@@ -163,7 +193,9 @@
   cursor: pointer;
   margin-bottom: -1px;
 }
-.tabBtn:hover { color: var(--sc-text-primary); }
+.tabBtn:hover {
+  color: var(--sc-text-primary);
+}
 
 .tabBtnActive {
   color: var(--color-primary);
@@ -171,7 +203,9 @@
   font-weight: 500;
 }
 
-.tabPanel { margin-bottom: 1.5rem; }
+.tabPanel {
+  margin-bottom: 1.5rem;
+}
 
 /* Labels de campo dentro das abas — mais discretos que o padrão de
    modal (.field é compartilhado com os 3 modais desta página, então
@@ -222,8 +256,12 @@
   gap: 0.75rem;
 }
 
-.colSpan2 { grid-column: span 2; }
-.colSpan3 { grid-column: span 3; }
+.colSpan2 {
+  grid-column: span 2;
+}
+.colSpan3 {
+  grid-column: span 3;
+}
 
 /* Barra "Salvar Alterações" do cabeçalho (Dados/Transporte/Outros) */
 .headerSaveBar {
@@ -249,7 +287,10 @@
   background: var(--sc-surface);
   outline: none;
 }
-.tesSelectInline:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.tesSelectInline:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 .textarea {
   resize: vertical;
@@ -308,8 +349,13 @@
   outline: none;
   box-sizing: border-box;
 }
-.descontoInputSm:focus    { border-color: var(--sc-action); }
-.descontoInputSm:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.descontoInputSm:focus {
+  border-color: var(--sc-action);
+}
+.descontoInputSm:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 .descontoUnit {
   font-size: 0.78rem;
@@ -326,8 +372,13 @@
   color: var(--sc-text-primary);
   cursor: pointer;
 }
-.btnAplicar:hover    { background: var(--sc-surface-hover); }
-.btnAplicar:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnAplicar:hover {
+  background: var(--sc-surface-hover);
+}
+.btnAplicar:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .headSeparator {
   color: var(--sc-border-strong);
@@ -340,7 +391,9 @@
   overflow: hidden;
 }
 
-.tableWrap { overflow-x: auto; }
+.tableWrap {
+  overflow-x: auto;
+}
 
 /* Larguras vêm do <colgroup> (useResizableColumns); a largura/min-width da
    tabela é calculada no componente para a Descrição flexível (mín. 220px). */
@@ -370,7 +423,9 @@
   user-select: none;
 }
 
-.thNum { text-align: right !important; }
+.thNum {
+  text-align: right !important;
+}
 
 .resizeHandle {
   position: absolute;
@@ -383,7 +438,9 @@
   transition: background 0.1s;
 }
 .resizeHandle:hover,
-.resizeHandleAtivo { background: var(--color-primary); }
+.resizeHandleAtivo {
+  background: var(--color-primary);
+}
 
 .table td {
   padding: 6px 8px;
@@ -394,13 +451,23 @@
 }
 
 /* First row of a grupo group gets a thicker top border */
-.trFirst td { border-top: 2px solid var(--sc-border); }
-.trFirst:first-child td { border-top: none; }
+.trFirst td {
+  border-top: 2px solid var(--sc-border);
+}
+.trFirst:first-child td {
+  border-top: none;
+}
 
-.table tr:last-child td { border-bottom: none; }
-.table tbody tr:hover td { background: var(--sc-bg-secondary); }
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
-.tdRef { border-right: 1px solid var(--sc-border); }
+.tdRef {
+  border-right: 1px solid var(--sc-border);
+}
 
 .tdRef code {
   display: inline-block;
@@ -415,7 +482,9 @@
   border-radius: 4px;
 }
 
-.tdNome { border-right: 1px solid var(--sc-border); }
+.tdNome {
+  border-right: 1px solid var(--sc-border);
+}
 
 .tdTotal {
   text-align: right;
@@ -423,11 +492,19 @@
   font-variant-numeric: tabular-nums;
 }
 
-.tdTes .tesSelectInline { width: 100%; }
-.tdAcao { text-align: center; padding-left: 0 !important; padding-right: 0 !important; }
+.tdTes .tesSelectInline {
+  width: 100%;
+}
+.tdAcao {
+  text-align: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
 
 /* ── Célula editável (Qtde / P. Unit. / Desc.) ── */
-.tdEdit { padding: 3px 4px !important; }
+.tdEdit {
+  padding: 3px 4px !important;
+}
 
 .celulaEdit {
   position: relative;
@@ -451,9 +528,13 @@
   text-overflow: ellipsis;
   color: var(--sc-text-primary);
   outline: none;
-  transition: border-color 0.1s, box-shadow 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
-.inputCelula:hover:not(:read-only) { border-color: var(--sc-border-strong); }
+.inputCelula:hover:not(:read-only) {
+  border-color: var(--sc-border-strong);
+}
 .inputCelula:focus:not(:read-only) {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
@@ -466,7 +547,9 @@
 
 .inputCelulaErro,
 .inputCelulaErro:hover,
-.inputCelulaErro:focus { border-color: var(--sc-danger-text) !important; }
+.inputCelulaErro:focus {
+  border-color: var(--sc-danger-text) !important;
+}
 
 .celulaErro {
   margin-top: 2px;
@@ -490,7 +573,9 @@
   background: var(--color-primary);
   z-index: 1;
 }
-.celulaEdit:has(.celulaErro) .marcadorManual { top: 0.95rem; }
+.celulaEdit:has(.celulaErro) .marcadorManual {
+  top: 0.95rem;
+}
 
 .empty {
   padding: 2rem;
@@ -541,7 +626,10 @@
   border-radius: 4px;
   line-height: 1;
 }
-.btnExcluir:hover { background: var(--sc-danger-bg); color: var(--sc-danger-text); }
+.btnExcluir:hover {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
 
 /* ── Buttons (.btnPrimary também usado dentro dos modais — não alterado) ── */
 .btnPrimary {
@@ -555,8 +643,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* Secundário — branco, usado no cabeçalho (Reabrir Pedido) e também
    dentro dos modais (Cancelar/Voltar/Fechar); background explícito
@@ -573,7 +666,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* Destrutivo — branco, borda e texto na cor de perigo. Compartilhado
    com o botão de confirmação do modal de cancelamento. */
@@ -588,7 +683,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnDanger:hover { background: var(--sc-danger-bg); }
+.btnDanger:hover {
+  background: var(--sc-danger-bg);
+}
 
 .btnClose {
   background: none;
@@ -600,13 +697,16 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* ── Overlay & Modals ── */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -622,7 +722,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 /* Small modal — confirmar exclusão */
@@ -632,7 +732,7 @@
   width: 400px;
   max-width: 90vw;
   padding: 2rem;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .modalHead {
@@ -700,8 +800,13 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus    { border-color: var(--sc-action); }
-.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.input:focus {
+  border-color: var(--sc-action);
+}
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 /* Só leitura com o mesmo visual de :disabled — readOnly (e não disabled)
    para o tooltip (title) aparecer no hover em qualquer navegador. */
@@ -715,7 +820,9 @@
 
 /* Comissão com origem NENHUMA: borda amarela suave. */
 .compactoCampos .inputAlerta,
-.compactoCampos .inputAlerta:focus { border-color: var(--sc-border-warning); }
+.compactoCampos .inputAlerta:focus {
+  border-color: var(--sc-border-warning);
+}
 
 .aviso {
   margin-top: 0.75rem;
@@ -779,17 +886,20 @@
 }
 
 /* ── Item modal specific ── */
-.searchWrap { position: relative; }
+.searchWrap {
+  position: relative;
+}
 
 .autocomplete {
   position: fixed;
   background: var(--sc-surface);
   border: 1px solid var(--sc-border-strong);
   border-radius: var(--sc-radius-sm);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 1050;
   list-style: none;
-  margin: 0; padding: 0.25rem 0;
+  margin: 0;
+  padding: 0.25rem 0;
   max-height: 300px;
   overflow-y: auto;
   box-sizing: border-box;
@@ -803,7 +913,9 @@
   cursor: pointer;
   font-size: 0.875rem;
 }
-.acItem:hover { background: var(--sc-surface-hover); }
+.acItem:hover {
+  background: var(--sc-surface-hover);
+}
 
 .acIcone {
   flex-shrink: 0;
@@ -860,9 +972,15 @@
 }
 
 /* ── Modal "Adicionar Item" — largura por passo ── */
-.modalBusca  { width: 560px; }
-.modalGrade  { width: 820px; }
-.modalAvulso { width: 480px; }
+.modalBusca {
+  width: 560px;
+}
+.modalGrade {
+  width: 820px;
+}
+.modalAvulso {
+  width: 480px;
+}
 
 .btnVoltarModal {
   background: none;
@@ -874,7 +992,9 @@
   padding: 0 0.3rem 0 0;
   margin-right: 0.4rem;
 }
-.btnVoltarModal:hover { color: var(--color-primary); }
+.btnVoltarModal:hover {
+  color: var(--color-primary);
+}
 
 .avisoWarn {
   padding: 0.6rem 0.875rem;
@@ -896,7 +1016,8 @@
 .gradeTable {
   border-collapse: collapse;
 }
-.gradeTable th, .gradeTable td {
+.gradeTable th,
+.gradeTable td {
   padding: 4px 6px;
   text-align: center;
 }
@@ -926,14 +1047,20 @@
   background: var(--sc-surface);
   outline: none;
 }
-.gradeCell:focus { border-color: var(--sc-action); }
-.gradeCell:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
+.gradeCell:focus {
+  border-color: var(--sc-action);
+}
+.gradeCell:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
 
 .gradePrecoTable {
   border-collapse: collapse;
   flex-shrink: 0;
 }
-.gradePrecoTable th, .gradePrecoTable td {
+.gradePrecoTable th,
+.gradePrecoTable td {
   padding: 4px 6px;
   text-align: right;
   font-size: 0.78rem;
@@ -945,5 +1072,9 @@
   text-transform: uppercase;
   color: var(--sc-text-muted);
 }
-.gradePrecoTable tbody td { color: var(--color-primary); }
-.gradePrecoSemPreco { color: var(--sc-danger-text, #dc2626) !important; }
+.gradePrecoTable tbody td {
+  color: var(--color-primary);
+}
+.gradePrecoSemPreco {
+  color: var(--sc-danger-text, #dc2626) !important;
+}

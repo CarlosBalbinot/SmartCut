@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -29,17 +29,18 @@ export const criar = (dados) =>
 export const atualizar = (id, dados) =>
   request(`/tabelas-grade/${id}`, { method: "PUT", body: JSON.stringify(dados) });
 
-export const excluir = (id) =>
-  request(`/tabelas-grade/${id}`, { method: "DELETE" });
+export const excluir = (id) => request(`/tabelas-grade/${id}`, { method: "DELETE" });
 
-export const listarItens = (tabelaId) =>
-  request(`/tabelas-grade/${tabelaId}/itens/`);
+export const listarItens = (tabelaId) => request(`/tabelas-grade/${tabelaId}/itens/`);
 
 export const criarItem = (tabelaId, dados) =>
   request(`/tabelas-grade/${tabelaId}/itens/`, { method: "POST", body: JSON.stringify(dados) });
 
 export const atualizarItem = (tabelaId, itemId, dados) =>
-  request(`/tabelas-grade/${tabelaId}/itens/${itemId}`, { method: "PUT", body: JSON.stringify(dados) });
+  request(`/tabelas-grade/${tabelaId}/itens/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(dados),
+  });
 
 export const excluirItem = (tabelaId, itemId) =>
   request(`/tabelas-grade/${tabelaId}/itens/${itemId}`, { method: "DELETE" });

@@ -5,9 +5,9 @@ const DURACAO_MS = 4000;
 
 const ICONES = {
   sucesso: "✓",
-  erro:    "✕",
-  aviso:   "⚠",
-  info:    "ℹ",
+  erro: "✕",
+  aviso: "⚠",
+  info: "ℹ",
 };
 
 export default function Toast({ toast, onRemove }) {
@@ -23,7 +23,7 @@ export default function Toast({ toast, onRemove }) {
   useEffect(() => {
     timerRef.current = setTimeout(fechar, DURACAO_MS);
     return () => clearTimeout(timerRef.current);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
@@ -32,7 +32,9 @@ export default function Toast({ toast, onRemove }) {
     >
       <span className={styles.icone}>{ICONES[type] ?? "ℹ"}</span>
       <span className={styles.mensagem}>{message}</span>
-      <button className={styles.fechar} onClick={fechar} aria-label="Fechar">×</button>
+      <button className={styles.fechar} onClick={fechar} aria-label="Fechar">
+        ×
+      </button>
       <div
         className={`${styles.barra} ${styles[`barra_${type}`]}`}
         style={{ animationDuration: `${DURACAO_MS}ms` }}

@@ -3,6 +3,7 @@
 Uso: py -3.12 -m scripts.seed_condicoes
 Idempotente — condições cujo código já existe são ignoradas.
 """
+
 import sys
 from pathlib import Path
 
@@ -12,12 +13,12 @@ from database import SessionLocal
 from models.condicao_pagamento import CondicaoPagamento
 
 CONDICOES_PADRAO = [
-    {"codigo": "000", "descricao": "A VISTA",       "tipo": "intervalo", "condicao": "0"},
-    {"codigo": "001", "descricao": "30 DIAS",       "tipo": "intervalo", "condicao": "30"},
-    {"codigo": "002", "descricao": "30/60 DIAS",    "tipo": "intervalo", "condicao": "30/60"},
+    {"codigo": "000", "descricao": "A VISTA", "tipo": "intervalo", "condicao": "0"},
+    {"codigo": "001", "descricao": "30 DIAS", "tipo": "intervalo", "condicao": "30"},
+    {"codigo": "002", "descricao": "30/60 DIAS", "tipo": "intervalo", "condicao": "30/60"},
     {"codigo": "003", "descricao": "30/60/90 DIAS", "tipo": "intervalo", "condicao": "30/60/90"},
-    {"codigo": "004", "descricao": "15/30 DIAS",    "tipo": "intervalo", "condicao": "15/30"},
-    {"codigo": "005", "descricao": "45 DIAS",       "tipo": "intervalo", "condicao": "45"},
+    {"codigo": "004", "descricao": "15/30 DIAS", "tipo": "intervalo", "condicao": "15/30"},
+    {"codigo": "005", "descricao": "45 DIAS", "tipo": "intervalo", "condicao": "45"},
 ]
 
 

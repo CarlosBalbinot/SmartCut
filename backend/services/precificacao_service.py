@@ -44,8 +44,12 @@ def calcular_precificacao(
     metros_reta = Decimal(str(prec.metros_linha_reta or 0))
     metros_rolo_ov = Decimal(str(custos.metros_rolo_overlock or 1))
     metros_rolo_re = Decimal(str(custos.metros_rolo_reta or 1))
-    custo_metro_overlock = Decimal(str(custos.custo_rolo_overlock or 0)) / metros_rolo_ov if metros_rolo_ov > 0 else Decimal("0")
-    custo_metro_reta = Decimal(str(custos.custo_rolo_reta or 0)) / metros_rolo_re if metros_rolo_re > 0 else Decimal("0")
+    custo_metro_overlock = (
+        Decimal(str(custos.custo_rolo_overlock or 0)) / metros_rolo_ov if metros_rolo_ov > 0 else Decimal("0")
+    )
+    custo_metro_reta = (
+        Decimal(str(custos.custo_rolo_reta or 0)) / metros_rolo_re if metros_rolo_re > 0 else Decimal("0")
+    )
     custo_overlock = metros_overlock * custo_metro_overlock
     custo_reta = metros_reta * custo_metro_reta
 
@@ -72,8 +76,14 @@ def calcular_precificacao(
     custo_etiqueta = Decimal(str(config.custo_etiqueta or 0))
 
     custo_base = (
-        custo_tecido + custo_costura + custo_overlock + custo_reta
-        + custo_gasolina + custo_saquinho + custo_caixa_unit + custo_etiqueta
+        custo_tecido
+        + custo_costura
+        + custo_overlock
+        + custo_reta
+        + custo_gasolina
+        + custo_saquinho
+        + custo_caixa_unit
+        + custo_etiqueta
     )
 
     aliquota = Decimal(str(config.aliquota_simples)) / Decimal("100")

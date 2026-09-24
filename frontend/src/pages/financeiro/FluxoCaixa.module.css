@@ -19,7 +19,9 @@
   border-radius: 6px;
   line-height: 1;
 }
-.btnNav:hover { background: var(--sc-surface-hover); }
+.btnNav:hover {
+  background: var(--sc-surface-hover);
+}
 
 .mesLabel {
   font-size: 0.875rem;
@@ -49,7 +51,10 @@
   padding: 0.4rem;
   cursor: pointer;
 }
-.btnSettings:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnSettings:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 .negativo {
   color: #dc2626;
@@ -82,7 +87,9 @@
   cursor: pointer;
   text-align: left;
 }
-.resumoContaHeader:hover { background: #fafafa; }
+.resumoContaHeader:hover {
+  background: #fafafa;
+}
 
 .resumoContaTitulo {
   font-size: 13px;
@@ -142,17 +149,28 @@
   white-space: nowrap;
 }
 
-.resumoContaTable tbody tr:hover td { background: #fafafa; }
+.resumoContaTable tbody tr:hover td {
+  background: #fafafa;
+}
 
 .rctConta {
   text-align: left !important;
   white-space: normal !important;
 }
 
-.rctSaidas { color: #dc2626; }
-.rctEntradas { color: #16a34a; }
-.rctSaldoInicial { color: #6e6e73; }
-.rctSaldoAtual { font-weight: 700; color: #1a1a1a; }
+.rctSaidas {
+  color: #dc2626;
+}
+.rctEntradas {
+  color: #16a34a;
+}
+.rctSaldoInicial {
+  color: #6e6e73;
+}
+.rctSaldoAtual {
+  font-weight: 700;
+  color: #1a1a1a;
+}
 
 .rctSaldoInicialBtn {
   background: none;
@@ -164,7 +182,9 @@
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
-.rctSaldoInicialBtn:hover { color: #1a1a1a; }
+.rctSaldoInicialBtn:hover {
+  color: #1a1a1a;
+}
 
 .rctSaldoInicialInput {
   width: 100px;
@@ -187,7 +207,7 @@
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0, 0.25);
   z-index: 150;
   display: flex;
   justify-content: flex-end;
@@ -198,7 +218,7 @@
   max-width: 92vw;
   height: 100%;
   background: #ffffff;
-  box-shadow: -4px 0 16px rgba(0,0,0,0.12);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
 }
@@ -298,8 +318,12 @@
   color: var(--color-primary);
   cursor: pointer;
 }
-.linkBtn:hover { text-decoration: underline; }
-.linkBtnDanger { color: #dc2626; }
+.linkBtn:hover {
+  text-decoration: underline;
+}
+.linkBtnDanger {
+  color: #dc2626;
+}
 
 .saldoInicialLista {
   display: flex;
@@ -342,9 +366,15 @@
   min-width: 220px;
 }
 
-.resumoBorderPerigo  { border-left-color: #dc2626; }
-.resumoBorderSucesso { border-left-color: #16a34a; }
-.resumoBorderNeutro  { border-left-color: #9ca3af; }
+.resumoBorderPerigo {
+  border-left-color: #dc2626;
+}
+.resumoBorderSucesso {
+  border-left-color: #16a34a;
+}
+.resumoBorderNeutro {
+  border-left-color: #9ca3af;
+}
 
 .resumoLabel {
   font-size: 11px;
@@ -452,22 +482,40 @@
   text-overflow: ellipsis;
 }
 
-.table tbody tr:last-child td { border-bottom: none; }
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
 
-.table tbody tr td { background: var(--sc-surface); }
-.table tbody tr:hover td { background: var(--sc-bg-secondary); }
+.table tbody tr td {
+  background: var(--sc-surface);
+}
+.table tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
 
 /* DESCRIÇÃO ocupa o espaço restante e fica à esquerda; as demais colunas
    (Venc./Valor/Parcela/Status/Ações) têm largura fixa e ficam centralizadas. */
-.table th:nth-child(1) { width: auto; }
-.table th:nth-child(2) { width: 60px; }
-.table th:nth-child(3) { width: 100px; }
-.table th:nth-child(4) { width: 50px; }
-.table th:nth-child(5) { width: 100px; }
-.table th:nth-child(6) { width: 150px; }
+.table th:nth-child(1) {
+  width: auto;
+}
+.table th:nth-child(2) {
+  width: 60px;
+}
+.table th:nth-child(3) {
+  width: 100px;
+}
+.table th:nth-child(4) {
+  width: 50px;
+}
+.table th:nth-child(5) {
+  width: 100px;
+}
+.table th:nth-child(6) {
+  width: 150px;
+}
 
-.table th:nth-child(n+2),
-.table td:nth-child(n+2) {
+.table th:nth-child(n + 2),
+.table td:nth-child(n + 2) {
   text-align: center;
 }
 
@@ -543,9 +591,17 @@
 }
 
 /* ── Vencimento colorido ── */
-.vencAtrasado { color: #dc2626; font-weight: 600; }
-.vencAlerta   { color: #f59e0b; font-weight: 600; }
-.vencNormal   { color: #555555; }
+.vencAtrasado {
+  color: #dc2626;
+  font-weight: 600;
+}
+.vencAlerta {
+  color: #f59e0b;
+  font-weight: 600;
+}
+.vencNormal {
+  color: #555555;
+}
 
 /* ── Valor ── */
 .tdValor {
@@ -604,7 +660,9 @@
   cursor: pointer;
   margin-top: 0.25rem;
 }
-.btnEmptyAdd:hover { background: var(--sc-surface-hover); }
+.btnEmptyAdd:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Status badge (pill) ── */
 .tdStatus {
@@ -621,10 +679,26 @@
   white-space: nowrap;
 }
 
-.stPAGO      { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
-.stPENDENTE  { background: #f5f5f5; color: #666666; border-color: #dddddd; }
-.stATRASADO  { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
-.stCANCELADO { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.stPAGO {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #86efac;
+}
+.stPENDENTE {
+  background: #f5f5f5;
+  color: #666666;
+  border-color: #dddddd;
+}
+.stATRASADO {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.stCANCELADO {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
 
 /* ── Ações: botão principal + menu "···" ── */
 .actionsMenu {
@@ -645,7 +719,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.btnAcaoPrimaria:hover { background: var(--sc-action-hover); }
+.btnAcaoPrimaria:hover {
+  background: var(--sc-action-hover);
+}
 
 .btnAcaoSecundaria {
   background: #f5f5f5;
@@ -658,7 +734,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.btnAcaoSecundaria:hover { background: #ebebeb; }
+.btnAcaoSecundaria:hover {
+  background: #ebebeb;
+}
 
 .dropdownWrap {
   position: relative;
@@ -675,7 +753,10 @@
   padding: 0.24rem 0.6rem;
   cursor: pointer;
 }
-.btnDots:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnDots:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* ── Dropdown "···" — card flutuante limpo, sem ícones ── */
 .dropdownMenu {
@@ -685,7 +766,7 @@
   background: #ffffff;
   border: 1px solid #e5e5e5;
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 180px;
   z-index: 20;
   padding: 4px 0;
@@ -703,7 +784,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.dropdownItem:hover { background: #f8f8f8; }
+.dropdownItem:hover {
+  background: #f8f8f8;
+}
 
 .dropdownDivider {
   height: 1px;
@@ -711,8 +794,12 @@
   margin: 4px 0;
 }
 
-.dropdownItemDanger { color: #dc2626; }
-.dropdownItemDanger:hover { background: #f8f8f8; }
+.dropdownItemDanger {
+  color: #dc2626;
+}
+.dropdownItemDanger:hover {
+  background: #f8f8f8;
+}
 
 /* Ícones legados (mantidos para o modal de anexos, "↓ Download") */
 .btnSmall {
@@ -726,7 +813,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.btnSmall:hover { background: var(--sc-surface-hover); }
+.btnSmall:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* ── Botão de ação do cabeçalho (fora do modal/drawer) ── */
 .btnNovo {
@@ -741,8 +830,13 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover    { filter: brightness(0.92); }
-.btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
+.btnNovo:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 /* ── Buttons (.btnPrimary também usado em modais e no drawer de
    Configurações de Contas — não alterado) ── */
@@ -758,8 +852,13 @@
   transition: background 0.15s;
   white-space: nowrap;
 }
-.btnPrimary:hover    { background: var(--sc-action-hover); }
-.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnSecondary {
   background: transparent;
@@ -771,7 +870,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 .btnDanger {
   background: var(--sc-danger-text);
@@ -783,8 +884,13 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btnDanger:hover    { opacity: 0.85; }
-.btnDanger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnDanger:hover {
+  opacity: 0.85;
+}
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnClose {
   background: none;
@@ -796,13 +902,16 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
 }
-.btnClose:hover { background: var(--sc-surface-hover); color: var(--sc-text-primary); }
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
 
 /* ── Modal ── */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -817,7 +926,7 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
 }
 
 .modalHead {
@@ -870,7 +979,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 .inputReadonly {
   background: var(--sc-bg-secondary);
@@ -893,7 +1004,9 @@
   min-height: 60px;
   font-family: inherit;
 }
-.textarea:focus { border-color: var(--sc-action); }
+.textarea:focus {
+  border-color: var(--sc-action);
+}
 
 /* ── Opções de recebimento (total / parcial) ── */
 .radioGroup {

@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 
 const BASE_URL = `${API_BASE}/api/v1`;
 
@@ -25,8 +25,7 @@ export const createTabelaPreco = (payload) =>
 export const updateTabelaPreco = (id, payload) =>
   request(`/tabelas-preco/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
-export const deleteTabelaPreco = (id) =>
-  request(`/tabelas-preco/${id}`, { method: "DELETE" });
+export const deleteTabelaPreco = (id) => request(`/tabelas-preco/${id}`, { method: "DELETE" });
 
 // ── Itens (grupos de molde por tabela) ───────────────────────────────────────
 

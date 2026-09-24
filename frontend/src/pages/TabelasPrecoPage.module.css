@@ -40,7 +40,9 @@
   white-space: nowrap;
   transition: filter 0.15s;
 }
-.btnNovo:hover { filter: brightness(0.92); }
+.btnNovo:hover {
+  filter: brightness(0.92);
+}
 
 .tabelasEmptyLeft {
   padding: 1.25rem 1rem;
@@ -139,7 +141,10 @@
   justify-content: center;
   font-size: 12px;
   color: var(--sc-text-secondary);
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
   line-height: 1;
 }
 
@@ -174,9 +179,13 @@
   transition: color 0.12s;
 }
 
-.inativasToggle:hover { color: var(--sc-text-secondary); }
+.inativasToggle:hover {
+  color: var(--sc-text-secondary);
+}
 
-.inativaCard { opacity: 0.65; }
+.inativaCard {
+  opacity: 0.65;
+}
 
 /* Badges de status das tabelas */
 
@@ -252,7 +261,9 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnSecondary:hover { background: var(--sc-surface-hover); }
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
 
 /* Empty states */
 
@@ -294,11 +305,16 @@
   border-bottom: 1px solid var(--sc-border);
 }
 
-.prodTr { }
+.prodTr {
+}
 
-.prodTr:hover { background: var(--sc-bg-secondary); }
+.prodTr:hover {
+  background: var(--sc-bg-secondary);
+}
 
-.prodTr:hover .prodRemoveBtn { visibility: visible; }
+.prodTr:hover .prodRemoveBtn {
+  visibility: visible;
+}
 
 .prodTd {
   padding: 12px 16px;
@@ -339,7 +355,9 @@
   transition: color 0.12s;
 }
 
-.prodRemoveBtn:hover { color: var(--sc-danger-text); }
+.prodRemoveBtn:hover {
+  color: var(--sc-danger-text);
+}
 
 /* ── Formulário nos modais ── */
 .field {
@@ -363,7 +381,9 @@
   width: 100%;
   box-sizing: border-box;
 }
-.input:focus { border-color: var(--sc-action); }
+.input:focus {
+  border-color: var(--sc-action);
+}
 
 /* ── Modais estilo pill ── */
 
@@ -386,7 +406,9 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
-.modalPillWide { width: 480px; }
+.modalPillWide {
+  width: 480px;
+}
 
 .modalPillTitle {
   font-size: 1.05rem;
@@ -413,8 +435,13 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPillPrimary:hover    { background: var(--sc-action-hover); }
-.btnPillPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnPillPrimary:hover {
+  background: var(--sc-action-hover);
+}
+.btnPillPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .btnPillSecondary {
   background: transparent;
@@ -427,4 +454,6 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.btnPillSecondary:hover { background: var(--sc-surface-hover); }
+.btnPillSecondary:hover {
+  background: var(--sc-surface-hover);
+}

@@ -10,19 +10,20 @@ Limitação documentada: os bloqueios são **voláteis** — reiniciar o process
 do backend zera tudo. Não há persistência de dados sensíveis, apenas
 timestamps de tentativas.
 """
+
 import threading
 import time
 
-MAX_TENTATIVAS = 5                 # falhas consecutivas (na janela) antes de bloquear
-JANELA_FALHAS_S = 30 * 60          # considera apenas falhas desta janela
-COOLDOWN_INICIAL_S = 15 * 60       # 15 minutos
-COOLDOWN_MAX_S = 2 * 60 * 60       # 2 horas
-CAP_CHAVES = 25_000                # trava de memória (número de chaves monitoradas)
+MAX_TENTATIVAS = 5  # falhas consecutivas (na janela) antes de bloquear
+JANELA_FALHAS_S = 30 * 60  # considera apenas falhas desta janela
+COOLDOWN_INICIAL_S = 15 * 60  # 15 minutos
+COOLDOWN_MAX_S = 2 * 60 * 60  # 2 horas
+CAP_CHAVES = 25_000  # trava de memória (número de chaves monitoradas)
 
 _LOCK = threading.Lock()
-_FALHAS: dict[str, list[float]] = {}    # chave -> timestamps (time.monotonic) das falhas
-_BLOQUEIO_ATE: dict[str, float] = {}    # chave -> monotonic até quando bloqueada
-_COOLDOWN_NIVEL: dict[str, int] = {}    # chave -> multiplicador de cooldown (progressivo)
+_FALHAS: dict[str, list[float]] = {}  # chave -> timestamps (time.monotonic) das falhas
+_BLOQUEIO_ATE: dict[str, float] = {}  # chave -> monotonic até quando bloqueada
+_COOLDOWN_NIVEL: dict[str, int] = {}  # chave -> multiplicador de cooldown (progressivo)
 
 
 def _chaves(identificador: str, ip: str) -> tuple[str, ...]:
@@ -89,9 +90,7 @@ def registrar_falha(identificador: str, ip: str) -> float:
                 nivel = _COOLDOWN_NIVEL.get(chave, 1)
                 cooldown = min(COOLDOWN_INICIAL_S * nivel, COOLDOWN_MAX_S)
                 _BLOQUEIO_ATE[chave] = ate_atual + cooldown
-                _COOLDOWN_NIVEL[chave] = min(
-                    nivel + 1, int(COOLDOWN_MAX_S // COOLDOWN_INICIAL_S)
-                )
+                _COOLDOWN_NIVEL[chave] = min(nivel + 1, int(COOLDOWN_MAX_S // COOLDOWN_INICIAL_S))
                 cooldown_aplicado = max(cooldown_aplicado, cooldown)
                 continue
 

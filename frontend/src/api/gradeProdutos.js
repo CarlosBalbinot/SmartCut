@@ -1,5 +1,5 @@
-import { API_BASE } from '../services/config';
-import { apiFetch } from '../services/api';
+import { API_BASE } from "../services/config";
+import { apiFetch } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -46,7 +46,10 @@ export const sincronizarSkus = (produtoId, { combinacoes = [], removerSkuIds = [
 export const listarSkus = (produtoId) => request(`/produtos/${produtoId}/skus/`);
 
 export const atualizarSku = (produtoId, skuId, payload) =>
-  request(`/produtos/${produtoId}/skus/${skuId}`, { method: "PATCH", body: JSON.stringify(payload) });
+  request(`/produtos/${produtoId}/skus/${skuId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
 
 export const excluirSku = (produtoId, skuId) =>
   request(`/produtos/${produtoId}/skus/${skuId}`, { method: "DELETE" });

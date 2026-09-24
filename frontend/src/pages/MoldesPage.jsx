@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { getGrupos, importarGrupoMolde, renomearGrupo, deleteGrupo, previewMolde, updateMolde, deleteMolde, buscarProdutos } from "../api/moldes";
+import {
+  getGrupos,
+  importarGrupoMolde,
+  renomearGrupo,
+  deleteGrupo,
+  previewMolde,
+  updateMolde,
+  deleteMolde,
+  buscarProdutos,
+} from "../api/moldes";
 import Modal from "../components/Modal/Modal";
 import GrupoAccordion from "../components/MoldesGrupo/GrupoAccordion";
 import ParteCard from "../components/ImportacaoMoldes/ParteCard";
@@ -58,7 +67,8 @@ function agruparEmPartes(pecas, tamanhosSelecionados) {
     const ordenado = [...bloco].sort((a, b) => a.area_cm2 - b.area_cm2);
     const pecasDaParte = ordenado.slice(0, N);
     pecasDaParte.forEach((p) => usadas.add(p));
-    const sentidoDetectado = bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
+    const sentidoDetectado =
+      bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
     partes.push({
       nome,
       tipo_corte: "simples",
@@ -82,7 +92,8 @@ function agruparEmPartes(pecas, tamanhosSelecionados) {
   for (let i = 0; i < nPartesGenericas; i++) {
     const bloco = genericas.slice(i * N, i * N + N);
     bloco.forEach((p) => usadas.add(p));
-    const sentidoDetectado = bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
+    const sentidoDetectado =
+      bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
     partes.push({
       nome: `Parte ${partes.length + 1}`,
       tipo_corte: "simples",
@@ -229,7 +240,10 @@ export default function MoldesPage() {
       fd.append("arquivo", arquivo);
       const data = await previewMolde(fd);
       // data.pecas já vêm ordenadas por área (backend ordena)
-      const { partes: partesGeradas, sobra: sobraGerada } = agruparEmPartes(data.pecas, tamanhosSelecionados);
+      const { partes: partesGeradas, sobra: sobraGerada } = agruparEmPartes(
+        data.pecas,
+        tamanhosSelecionados
+      );
       setSobra(sobraGerada);
       setPreviewMeta({ arquivo_path: data.arquivo_path, formato: data.formato });
       setPartes(partesGeradas);
@@ -271,7 +285,9 @@ export default function MoldesPage() {
       return;
     }
     if (partes.some((p) => p.pecas.some((pc) => !pc.geometria_json))) {
-      setErro("Alguma parte não tem peça para todos os tamanhos selecionados. Ajuste os tamanhos ou o arquivo importado.");
+      setErro(
+        "Alguma parte não tem peça para todos os tamanhos selecionados. Ajuste os tamanhos ou o arquivo importado."
+      );
       return;
     }
     setSalvando(true);
@@ -354,7 +370,8 @@ export default function MoldesPage() {
 
   async function excluirMoldeIndividual() {
     if (!editando) return;
-    if (!confirm("Tem certeza que deseja excluir este molde? Esta ação não pode ser desfeita.")) return;
+    if (!confirm("Tem certeza que deseja excluir este molde? Esta ação não pode ser desfeita."))
+      return;
     setSalvandoEdit(true);
     setErroEdit(null);
     try {
@@ -479,9 +496,7 @@ export default function MoldesPage() {
                   />
                   {buscaProduto.trim() && (
                     <div className={ms.autocompleteDropdown}>
-                      {buscandoProduto && (
-                        <div className={ms.autocompleteInfo}>Buscando...</div>
-                      )}
+                      {buscandoProduto && <div className={ms.autocompleteInfo}>Buscando...</div>}
                       {!buscandoProduto && resultadosProduto.length === 0 && (
                         <div className={ms.autocompleteInfo}>Nenhum produto encontrado.</div>
                       )}
@@ -520,10 +535,7 @@ export default function MoldesPage() {
 
             <div className={ms.campo}>
               <label className={ms.label}>Arquivo (DXF, PLT ou ADS) *</label>
-              <div
-                className={ms.fileDrop}
-                onClick={() => inputFileRef.current.click()}
-              >
+              <div className={ms.fileDrop} onClick={() => inputFileRef.current.click()}>
                 {uploadForm.arquivo ? (
                   <span className={ms.fileNome}>{uploadForm.arquivo.name}</span>
                 ) : (
@@ -571,10 +583,10 @@ export default function MoldesPage() {
 
             {genericasIgnoradas > 0 && (
               <p className={ms.avisoSobra}>
-                ⚠ {genericasIgnoradas} peça(s) do arquivo não foram agrupadas automaticamente
-                porque não possuem nome legível no arquivo DXF. Isso pode acontecer quando o
-                arquivo não contém textos identificando as peças. Verifique se o arquivo
-                exportado do Audaces contém as anotações de nome de cada peça.
+                ⚠ {genericasIgnoradas} peça(s) do arquivo não foram agrupadas automaticamente porque
+                não possuem nome legível no arquivo DXF. Isso pode acontecer quando o arquivo não
+                contém textos identificando as peças. Verifique se o arquivo exportado do Audaces
+                contém as anotações de nome de cada peça.
               </p>
             )}
 

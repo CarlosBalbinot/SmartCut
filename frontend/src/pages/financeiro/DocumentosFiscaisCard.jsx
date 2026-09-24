@@ -17,9 +17,18 @@ import styles from "./comprasVendas.module.css";
  *   onFechar           — () => void
  */
 export default function DocumentosFiscaisCard({
-  anchor, titulo, subtitulo, carregando,
-  anexoXml, anexoNf, mostrarGerarDanfe,
-  onGerarDanfe, onDownloadXml, onDownloadNf, onAnexarDocumento, onFechar,
+  anchor,
+  titulo,
+  subtitulo,
+  carregando,
+  anexoXml,
+  anexoNf,
+  mostrarGerarDanfe,
+  onGerarDanfe,
+  onDownloadXml,
+  onDownloadNf,
+  onAnexarDocumento,
+  onFechar,
 }) {
   const temDocumento = !!anexoXml || !!anexoNf;
 

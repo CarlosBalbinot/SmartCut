@@ -47,12 +47,7 @@ export default function UsuarioConfiguracoesPage() {
 
       <div className={styles.cardsGrid}>
         {cardsVisiveis.map((c) => (
-          <button
-            key={c.to}
-            type="button"
-            className={styles.card}
-            onClick={() => navigate(c.to)}
-          >
+          <button key={c.to} type="button" className={styles.card} onClick={() => navigate(c.to)}>
             <span className={styles.cardTitulo}>{c.titulo}</span>
             <span className={styles.cardDescricao}>{c.descricao}</span>
           </button>

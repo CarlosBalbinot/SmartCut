@@ -4,26 +4,28 @@ Senha e JWT têm implementação ÚNICA em services/auth_service.py (item 1.2);
 aqui ficam apenas as regras de negócio do usuário e aliases de
 compatibilidade usados pelos routers (auth.py, usuarios.py).
 """
+
 from sqlalchemy.orm import Session
 
 from models.usuario import Permissao, Usuario
-from services.auth_service import (
-    criar_token_admin,
-    hash_senha,
-    verificar_senha,
-)
+from services import auth_service as _auth
 
 # Alias de compatibilidade: routers/auth.py e routers/usuarios.py chamam
-# usuario_service.criar_token/hash_senha/verificar_senha.
-criar_token = criar_token_admin
+# usuario_service.criar_token/hash_senha/verificar_senha. Atribuição explícita
+# (e não só import) mantém os nomes exportados no módulo — o ruff F401 não
+# remove esses aliases como faria com um import sem uso interno.
+criar_token = _auth.criar_token_admin
+hash_senha = _auth.hash_senha
+verificar_senha = _auth.verificar_senha
 
 
 # ── Permissões ─────────────────────────────────────────────────────────
 
+
 def listar_permissoes(db: Session, usuario_id: int) -> list[dict]:
     permissoes = (
         db.query(Permissao)
-        .filter(Permissao.usuario_id == usuario_id, Permissao.permitido == True)
+        .filter(Permissao.usuario_id == usuario_id, Permissao.permitido == True)  # noqa: E712 — expressão SQL
         .all()
     )
     return [{"modulo": p.modulo, "acao": p.acao} for p in permissoes]
@@ -51,7 +53,7 @@ def sincronizar_permissoes_fiscais(db: Session) -> int:
             .filter(
                 Permissao.modulo == modulo,
                 Permissao.acao == "ver",
-                Permissao.permitido == True,
+                Permissao.permitido == True,  # noqa: E712 — expressão SQL
             )
             .all()
         )
@@ -62,7 +64,7 @@ def sincronizar_permissoes_fiscais(db: Session) -> int:
                     Permissao.usuario_id == p.usuario_id,
                     Permissao.modulo == modulo,
                     Permissao.acao == acao_exec,
-                    Permissao.permitido == True,
+                    Permissao.permitido == True,  # noqa: E712 — expressão SQL
                 )
                 .first()
             )

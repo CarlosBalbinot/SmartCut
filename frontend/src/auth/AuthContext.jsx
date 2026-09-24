@@ -80,15 +80,15 @@ export function AuthProvider({ children }) {
     (modulo, acao) => {
       if (!usuario) return false;
       if (usuario.is_admin) return true;
-      return (usuario.permissoes || []).some(
-        (p) => p.modulo === modulo && p.acao === acao
-      );
+      return (usuario.permissoes || []).some((p) => p.modulo === modulo && p.acao === acao);
     },
     [usuario]
   );
 
   return (
-    <AuthContext.Provider value={{ usuario, token, loading, login, logout, hasPermission, atualizarMe }}>
+    <AuthContext.Provider
+      value={{ usuario, token, loading, login, logout, hasPermission, atualizarMe }}
+    >
       {children}
     </AuthContext.Provider>
   );

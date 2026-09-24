@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -15,6 +15,7 @@ class TES(Base):
     Cada produto terá um TES Entrada e um TES Saída padrão (vínculo feito
     na Fase 3); por ora, apenas o cadastro.
     """
+
     __tablename__ = "tes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
