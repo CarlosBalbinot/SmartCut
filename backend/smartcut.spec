@@ -19,8 +19,9 @@ app_h = [
     'routers.cores_tecido', 'routers.encaixes', 'routers.financeiro',
     'routers.grupos_molde', 'routers.grupos_preco', 'routers.leads',
     'routers.lotes_tecido', 'routers.modelos_tecido', 'routers.moldes',
-    'routers.pedidos', 'routers.pedidos_venda', 'routers.precificacoes',
-    'routers.tabelas_preco', 'routers.tecidos', 'routers.vendedor_painel', 'routers.vendedores',
+    'routers.pedidos_venda', 'routers.precificacoes',
+    'routers.tabelas_preco', 'routers.vendedor_painel', 'routers.vendedores',
+    'routers.uploads',
     # models
     'models', 'models.encaixe', 'models.financeiro', 'models.grupo_molde',
     'models.molde', 'models.painel_vendedor', 'models.pedido', 'models.precificacao',
@@ -29,12 +30,15 @@ app_h = [
     'services', 'services.auth_service', 'services.cor_service', 'services.defeito_service',
     'services.encaixe_service', 'services.gramatura_service', 'services.grupo_service',
     'services.lote_service', 'services.modelo_service', 'services.molde_service',
-    'services.nesting_service', 'services.pdf_venda_service', 'services.pedido_service',
-    'services.precificacao_service', 'services.report_service',
-    'services.tecido_service', 'services.venda_service',
+    'services.nesting_service', 'services.pdf_venda_service',
+    'services.precificacao_service', 'services.rate_limit', 'services.report_service',
+    'services.venda_service', 'services.backup_service',
+    'services.segredo_service', 'services.db_migracoes',
+    # scripts (backup SQLite — item 3.3)
+    'scripts', 'scripts.backup_sqlite',
     # schemas
     'schemas', 'schemas.encaixe_schema', 'schemas.financeiro_schema', 'schemas.molde_schema',
-    'schemas.pedido_schema', 'schemas.precificacao_schema',
+    'schemas.precificacao_schema',
     'schemas.tecido_schema', 'schemas.venda_schema',
     # parsers / nesting
     'parsers', 'parsers.ads_parser', 'parsers.dxf_parser', 'parsers.plt_parser',
@@ -80,6 +84,11 @@ app_h = [
     'PIL.ImageFont',
     'shapely', 'shapely.geometry',
     'ezdxf',
+    # Alembic (item 5.2) + Mako (templates de migração)
+    'alembic',
+    'alembic.config', 'alembic.runtime.migration', 'alembic.ddl.sqlite',
+    'alembic.ddl.postgresql', 'alembic.operations', 'alembic.autogenerate',
+    'mako', 'mako.template', 'mako.lookup', 'mako.runtime',
 ]
 
 all_hidden = (
@@ -92,7 +101,13 @@ all_datas = (
     uvicorn_d + fastapi_d + starlette_d + pydantic_d +
     # Arquivos de nesting (js) necessários em runtime
     [('nesting/nest_worker.js', 'nesting'),
-     ('nesting/svgnest',        'nesting/svgnest')]
+     ('nesting/svgnest',        'nesting/svgnest'),
+     # Alembic (item 5.2): config + env + template + migrações versionadas
+     # (baseline). O boot roda alembic upgrade head (services/db_migracoes.py).
+     ('alembic.ini',             '.'),
+     ('alembic/env.py',          'alembic'),
+     ('alembic/script.py.mako',  'alembic'),
+     ('alembic/versions',        'alembic/versions')]
 )
 
 all_binaries = uvicorn_b + fastapi_b + starlette_b + pydantic_b
