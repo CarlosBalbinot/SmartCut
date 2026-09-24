@@ -9,4 +9,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getComprasPath: () => ipcRenderer.invoke('get-compras-path'),
   openComprasFolder: () => ipcRenderer.invoke('open-compras-folder'),
   openPdfBlob: (base64, filename) => ipcRenderer.invoke('open-pdf-blob', base64, filename),
+  // Item 4.1: diálogo nativo para escolher o caminho do certificado digital.
+  selecionarCertificado: () => ipcRenderer.invoke('selecionar-certificado'),
+  // Token de sessão criptografado via safeStorage (item 1.4): o token jamais
+  // fica em localStorage — apenas IPC com o main process tem acesso ao arquivo.
+  setToken: (token, escopo) => ipcRenderer.invoke('token-set', token, escopo),
+  getToken: (escopo) => ipcRenderer.invoke('token-get', escopo),
+  clearToken: (escopo) => ipcRenderer.invoke('token-clear', escopo),
 });

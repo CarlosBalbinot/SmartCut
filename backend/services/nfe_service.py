@@ -1,10 +1,10 @@
-import base64
 import os
 import random
 import tempfile
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 
 from lxml import etree
 from reportlab.graphics.barcode.code128 import Code128
@@ -17,12 +17,14 @@ from reportlab.platypus import (
 )
 from sqlalchemy.orm import Session
 
+from config import settings
 from models.cliente import Cliente  # noqa: F401 — referência futura (ver limitações no fim do arquivo)
 from models.nfe import NotaFiscal
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto import Produto
 from models.tes import TES
 from models.venda import Empresa
+from services.segredo_service import decifrar_segredo
 
 NFE_NS = "http://www.portalfiscal.inf.br/nfe"
 NSMAP = {None: NFE_NS}
@@ -30,12 +32,15 @@ NSMAP = {None: NFE_NS}
 # Estrutura de pastas — caminhos relativos ao cwd do processo (mesma
 # convenção de uploads/logos em routers/configuracao_empresa.py). O processo
 # roda com cwd = backend/, então "../Certificados" fica na raiz do projeto.
+# Item 4.1: o .pfx NÃO vive mais ao lado do código — o caminho vem da
+# configuração da empresa (escolhido pelo usuário; no desktop via diálogo
+# nativo). A pasta padrão (quando definida por CERTIFICADO_DIR) é criada
+# abaixo sem depender de caminho relativo à raiz do projeto.
 _NFE_BASE = "uploads/nfe"
 _PASTAS_NFE = [
     "Enviadas", "Geradas", "Retorno", "Recibos", "RetCanceladas",
     "SolicCancelamento", "CartasDeCorrecaoEnviadas", "LotesGerados", "Schemas",
 ]
-_PASTA_CERTIFICADOS = os.path.join("..", "Certificados")
 
 _URLS_SEFAZ_RS = {
     "Homologacao": "https://nfe-homologacao.sefazrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
@@ -64,7 +69,25 @@ _MODFRETE_POR_TIPO = {
 def criar_pastas_nfe() -> None:
     for nome in _PASTAS_NFE:
         os.makedirs(os.path.join(_NFE_BASE, nome), exist_ok=True)
-    os.makedirs(_PASTA_CERTIFICADOS, exist_ok=True)
+    os.makedirs(pasta_certificados_padrao(), exist_ok=True)
+
+
+def pasta_certificados_padrao() -> str:
+    """Pasta convencional dos certificados digitais (item 4.1).
+
+    Prioridade:
+      1. ``CERTIFICADO_DIR`` (settings/ambiente) — no desktop o Electron
+         injeta ``<userData>/Certificados`` (fora da árvore de código).
+      2. Sem override: a pasta ``Certificados/`` na raiz do repositório
+         (convenção do projeto, decidida com o usuário). Resolvida via
+         ``__file__`` — NUNCA via ``cwd``, que era o "bug" que quebrava a
+         localização no app empacotado (cwd = userData).
+    """
+    if settings.certificado_dir:
+        return settings.certificado_dir
+    # backend/services/nfe_service.py -> backend/ -> raiz do projeto
+    raiz_repo = Path(__file__).resolve().parents[2]
+    return str(raiz_repo / "Certificados")
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -406,7 +429,7 @@ def _carregar_certificado(empresa: Empresa):
     if not empresa.certificado_senha:
         raise ValueError("Senha do certificado não configurada.")
 
-    senha = base64.b64decode(empresa.certificado_senha).decode("utf-8")
+    senha = decifrar_segredo(empresa.certificado_senha)
     with open(empresa.certificado_path, "rb") as f:
         dados_pfx = f.read()
     try:
@@ -542,7 +565,7 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
     if not empresa.certificado_path or not os.path.exists(empresa.certificado_path):
         raise ValueError("Certificado digital não configurado ou arquivo .pfx não encontrado.")
 
-    senha = base64.b64decode(empresa.certificado_senha).decode("utf-8")
+    senha = decifrar_segredo(empresa.certificado_senha)
     with open(empresa.certificado_path, "rb") as f:
         dados_pfx = f.read()
     private_key, certificate, _ = pkcs12.load_key_and_certificates(dados_pfx, senha.encode("utf-8"))

@@ -23,9 +23,12 @@ router = APIRouter(prefix="/api/v1/nfe", tags=["nfe"])
 
 _VER = require_permission("fiscal_nfe", "ver")
 _CRIAR = require_permission("fiscal_nfe", "criar")
-_TRANSMITIR = require_permission("fiscal_transmitir", "ver")
-_CANCELAR = require_permission("fiscal_cancelar", "ver")
-_CARTA_CORRECAO = require_permission("fiscal_carta_correcao", "ver")
+# Item 5.1: operações de escrita exigem AÇÃO DE EXECUÇÃO específica — "ver"
+# não autoriza mais transmitir/cancelar/CC-e. Admins (is_admin) seguem
+# passando sempre (ver middleware/permissions.py).
+_TRANSMITIR = require_permission("fiscal_transmitir", "executar")
+_CANCELAR = require_permission("fiscal_cancelar", "cancelar")
+_CARTA_CORRECAO = require_permission("fiscal_carta_correcao", "criar")
 
 _XML_GERADAS = "uploads/nfe/Geradas"
 _XML_ENVIADAS = "uploads/nfe/Enviadas"

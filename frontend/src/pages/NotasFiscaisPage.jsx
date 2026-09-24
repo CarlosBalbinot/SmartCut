@@ -194,16 +194,16 @@ export default function NotasFiscaisPage() {
                 </td>
                 <td>
                   <div className={styles.actions}>
-                    {n.status === "Rascunho" && hasPermission("fiscal_transmitir", "ver") && (
+                    {n.status === "Rascunho" && hasPermission("fiscal_transmitir", "executar") && (
                       <button className={styles.btnLink} onClick={() => abrirTransmitir(n)}>Transmitir</button>
                     )}
                     {n.status === "Autorizada" && hasPermission(MODULO, "ver") && (
                       <button className={styles.btnLink} onClick={() => handleDanfe(n)}>DANFE</button>
                     )}
-                    {n.status === "Autorizada" && hasPermission("fiscal_carta_correcao", "ver") && (
+                    {n.status === "Autorizada" && hasPermission("fiscal_carta_correcao", "criar") && (
                       <button className={styles.btnLink} onClick={() => abrirCarta(n)}>Carta Correção</button>
                     )}
-                    {n.status === "Autorizada" && hasPermission("fiscal_cancelar", "ver") && (
+                    {n.status === "Autorizada" && hasPermission("fiscal_cancelar", "cancelar") && (
                       <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => abrirCancelar(n)}>
                         Cancelar
                       </button>

@@ -3,7 +3,8 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { app } = require('electron');
+const crypto = require('crypto');
+const { app, safeStorage } = require('electron');
 
 let backendProcess = null;
 
@@ -97,6 +98,64 @@ function attachLogs(proc) {
   proc.on('close', (code, signal) => log(`processo encerrou (close) — code: ${code} signal: ${signal}`));
 }
 
+// ── Chave de cifragem dos segredos em repouso (item 4.2) ─────────────────────
+// A senha do certificado nunca fica em texto claro no banco do backend: o
+// backend cifra (AES-256-GCM) com uma chave que recebe por ambiente. Aqui a
+// chave é gerada UMA vez por instalação, gravada protegida pelo cofre do
+// sistema (safeStorage — DPAPI no Windows) em userData/smartcut-cert-key.bin
+// e repassada ao backend somente via SMARTCUT_CERT_KEY. O renderer e os
+// scripts da página nunca têm acesso a este arquivo. Sem keyring disponível,
+// usa o prefixo "plain:" como fallback (mesma política do token, item 1.4).
+function certificadoKeyPath() {
+  return path.join(app.getPath('userData'), 'smartcut-cert-key.bin');
+}
+
+function garantirChaveCertificado() {
+  const caminho = certificadoKeyPath();
+  if (fs.existsSync(caminho)) {
+    const dados = fs.readFileSync(caminho);
+    if (safeStorage.isEncryptionAvailable()) return safeStorage.decryptString(dados);
+    const texto = dados.toString('utf8');
+    return texto.startsWith('plain:') ? texto.slice(6) : null;
+  }
+  const chave = crypto.randomBytes(32).toString('base64url');
+  const dados = safeStorage.isEncryptionAvailable()
+    ? safeStorage.encryptString(chave)
+    : Buffer.from(`plain:${chave}`, 'utf8');
+  fs.writeFileSync(caminho, dados);
+  return chave;
+}
+
+// ── Segredo JWT estável por instalação (item 6.3) ──────────────────────────
+// Sem um SECRET_KEY fixo, o painel do vendedor geraria tokens novos a cada
+// boot do backend — sessões cairiam reiniciando o app e o segredo caberia a
+// um valor efêmero (item 1.1). Aqui o segredo é gerado UMA vez por instalação,
+// cifrado com o cofre do sistema (safeStorage/DPAPI) em
+// userData/smartcut-jwt-secret.bin e repassado ao backend via SECRET_KEY —
+// mesmo padrão do item 4.2. Cada instalação tem segredo próprio (randomBytes
+// por máquina/usuário), ele nunca aparece em log e em texto claro só quando o
+// keyring está indisponível (fallback "plain:", mesma política do token).
+function jwtSegredoPath() {
+  return path.join(app.getPath('userData'), 'smartcut-jwt-secret.bin');
+}
+
+function garantirSegredoJwt() {
+  const caminho = jwtSegredoPath();
+  if (fs.existsSync(caminho)) {
+    const dados = fs.readFileSync(caminho);
+    if (safeStorage.isEncryptionAvailable()) return safeStorage.decryptString(dados);
+    const texto = dados.toString('utf8');
+    return texto.startsWith('plain:') ? texto.slice(6) : null;
+  }
+  // 48 bytes > 32 (mínimo recomendado para HS256): base64url sem padding.
+  const segredo = crypto.randomBytes(48).toString('base64url');
+  const dados = safeStorage.isEncryptionAvailable()
+    ? safeStorage.encryptString(segredo)
+    : Buffer.from(`plain:${segredo}`, 'utf8');
+  fs.writeFileSync(caminho, dados);
+  return segredo;
+}
+
 async function spawnBackend() {
   log(`--- spawnBackend iniciado ---`);
   log(`isPackaged: ${app.isPackaged}`);
@@ -132,11 +191,42 @@ async function spawnBackend() {
     const userData  = app.getPath('userData');
     const dbPath    = path.join(userData, 'smartcut.db');
     const uploadDir = path.join(userData, 'uploads');
+    const certificadosDir = path.join(userData, 'Certificados');
 
     log(`userData: ${userData}`);
     log(`dbPath: ${dbPath}`);
     log(`uploadDir: ${uploadDir}`);
+    log(`certificadosDir: ${certificadosDir}`);
+    try {
+      fs.mkdirSync(certificadosDir, { recursive: true });
+    } catch (e) {
+      log(`erro ao criar pasta de certificados: ${e.message}`);
+    }
     log(`spawning exe...`);
+
+    // Item 4.2: a chave de cifragem das senhas em repouso é gerada uma vez por
+    // instalação e vai para o backend somente via ambiente (o renderer nunca a
+    // vê). A chave fica protegida pelo cofre do sistema (safeStorage/DPAPI)
+    // em userData/smartcut-cert-key.bin.
+    let certKey = '';
+    try {
+      certKey = garantirChaveCertificado();
+      log(`chave de certificado pronta (${certKey ? 'ok' : 'indisponível'})`);
+    } catch (e) {
+      log(`erro ao obter chave de certificado: ${e.message}`);
+    }
+
+    // Item 6.3: segredo JWT estável por instalação (SECRET_KEY) — evita que o
+    // backend recaia no segredo efêmero (item 1.1) e derrube as sessões a cada
+    // boot. Mesmo mecanismo do item 4.2: gera uma vez, cifra com safeStorage e
+    // injeta somente via ambiente.
+    let jwtSecret = '';
+    try {
+      jwtSecret = garantirSegredoJwt();
+      log(`segredo JWT pronto (${jwtSecret ? 'ok' : 'indisponível'})`);
+    } catch (e) {
+      log(`erro ao obter segredo JWT: ${e.message}`);
+    }
 
     backendProcess = spawn(exePath, [], {
       cwd: userData,
@@ -144,6 +234,9 @@ async function spawnBackend() {
         ...process.env,
         SMARTCUT_DB_PATH: dbPath,
         UPLOAD_DIR: uploadDir,
+        CERTIFICADO_DIR: certificadosDir,
+        SMARTCUT_CERT_KEY: certKey,
+        SECRET_KEY: jwtSecret,
       },
       shell: false,
       windowsHide: true,

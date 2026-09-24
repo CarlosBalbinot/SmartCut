@@ -4,6 +4,10 @@ import { Eye, EyeOff } from "lucide-react";
 import { getFiscal, updateFiscal, testarCertificado } from "../api/configuracaoFiscal";
 import styles from "./UsuarioConfiguracoesFiscaisPage.module.css";
 
+// Item 4.1: no desktop o usuário escolhe o .pfx com o diálogo nativo do
+// sistema (Electron). No navegador o campo de caminho continua manual.
+const electron = typeof window !== "undefined" ? window.electronAPI : undefined;
+
 const UFS = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO",
   "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI",
@@ -55,6 +59,12 @@ export default function UsuarioConfiguracoesFiscaisPage() {
   }, []);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // Item 4.1: preenche o caminho com o arquivo escolhido no diálogo nativo.
+  const handleSelecionarCertificado = async () => {
+    const caminho = await electron.selecionarCertificado();
+    if (caminho) setForm((f) => ({ ...f, certificado_path: caminho }));
+  };
 
   const handleSalvar = async () => {
     setErro(null);
@@ -155,7 +165,17 @@ export default function UsuarioConfiguracoesFiscaisPage() {
                 value={form.certificado_path}
                 onChange={set("certificado_path")}
               />
-              <p className={styles.hint}>Informe o caminho completo do arquivo .pfx no computador</p>
+              {electron?.selecionarCertificado && (
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={handleSelecionarCertificado}
+                  style={{ marginTop: 8 }}
+                >
+                  Selecionar arquivo…
+                </button>
+              )}
+              <p className={styles.hint}>Escolha o arquivo do certificado digital no computador (fora da pasta do projeto)</p>
             </label>
             <label className={styles.field}>
               <span>Senha do certificado</span>

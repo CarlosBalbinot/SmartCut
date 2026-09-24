@@ -136,6 +136,7 @@ export default function TESPage() {
 
   const fecharModal = () => { setModal(null); setErro(null); };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
+  const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
   const setCheck = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.checked }));
 
   const handleSalvar = async () => {
@@ -275,17 +276,17 @@ export default function TESPage() {
 
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição *</span>
-                  <input className={styles.input} value={modal.descricao} onChange={setF("descricao")} placeholder="Ex: Venda de mercadoria" />
+                  <input className={styles.input} value={modal.descricao} onChange={setFUpper("descricao")} placeholder="Ex: Venda de mercadoria" />
                 </label>
 
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Natureza da Operação *</span>
-                  <input className={styles.input} value={modal.natureza_operacao} onChange={setF("natureza_operacao")} placeholder="Texto que vai para o XML da NF-e" />
+                  <input className={styles.input} value={modal.natureza_operacao} onChange={setFUpper("natureza_operacao")} placeholder="Texto que vai para o XML da NF-e" />
                 </label>
 
                 <label className={styles.field}>
                   <span>CFOP *</span>
-                  <input className={styles.input} value={modal.cfop} onChange={setF("cfop")} placeholder="Ex: 5102" maxLength={10} />
+                  <input className={styles.input} value={modal.cfop} onChange={setFUpper("cfop")} placeholder="Ex: 5102" maxLength={10} />
                 </label>
 
                 <label className={styles.field}>

@@ -126,6 +126,7 @@ export default function TransportadorasPage() {
 
   const fecharModal = () => { setModal(null); setErro(null); setCnpjStatus(null); setCepStatus(null); };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
+  const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
 
   const handleSalvar = async () => {
     setAbaErro(null);
@@ -354,12 +355,12 @@ export default function TransportadorasPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome *</span>
-                    <input className={styles.input} value={modal.nome} onChange={setF("nome")} placeholder="Razão social ou nome" />
+                    <input className={styles.input} value={modal.nome} onChange={setFUpper("nome")} placeholder="Razão social ou nome" />
                   </label>
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
-                    <input className={styles.input} value={modal.nome_fantasia} onChange={setF("nome_fantasia")} />
+                    <input className={styles.input} value={modal.nome_fantasia} onChange={setFUpper("nome_fantasia")} />
                   </label>
 
                   <label className={styles.field}>
@@ -440,24 +441,24 @@ export default function TransportadorasPage() {
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
-                      <input className={styles.input} value={modal.endereco} onChange={setF("endereco")} placeholder="Rua, Av…" />
-                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setF("numero")} placeholder="Nº" />
+                      <input className={styles.input} value={modal.endereco} onChange={setFUpper("endereco")} placeholder="Rua, Av…" />
+                      <input className={`${styles.input} ${styles.inputNumero}`} value={modal.numero} onChange={setFUpper("numero")} placeholder="Nº" />
                     </div>
                   </div>
 
                   <label className={styles.field}>
                     <span>Complemento</span>
-                    <input className={styles.input} value={modal.complemento} onChange={setF("complemento")} />
+                    <input className={styles.input} value={modal.complemento} onChange={setFUpper("complemento")} />
                   </label>
 
                   <label className={styles.field}>
                     <span>Bairro</span>
-                    <input className={styles.input} value={modal.bairro} onChange={setF("bairro")} />
+                    <input className={styles.input} value={modal.bairro} onChange={setFUpper("bairro")} />
                   </label>
 
                   <label className={styles.field}>
                     <span>Município</span>
-                    <input className={styles.input} value={modal.municipio} onChange={setF("municipio")} />
+                    <input className={styles.input} value={modal.municipio} onChange={setFUpper("municipio")} />
                   </label>
                 </div>
               )}
@@ -532,12 +533,12 @@ export default function TransportadorasPage() {
 
                   <label className={styles.field}>
                     <span>Home-Page</span>
-                    <input className={styles.input} value={modal.homepage} onChange={setF("homepage")} placeholder="https://…" />
+                    <input className={`${styles.input} no-uppercase`} value={modal.homepage} onChange={setF("homepage")} placeholder="https://…" />
                   </label>
 
                   <label className={styles.field}>
                     <span>Contato</span>
-                    <input className={styles.input} value={modal.contato} onChange={setF("contato")} placeholder="Nome do contato" />
+                    <input className={styles.input} value={modal.contato} onChange={setFUpper("contato")} placeholder="Nome do contato" />
                   </label>
                 </div>
               )}
