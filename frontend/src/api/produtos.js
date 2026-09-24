@@ -25,6 +25,7 @@ export const produtosApi = {
     const params = new URLSearchParams();
     if (filtros.status) params.set("status_produto", filtros.status);
     if (filtros.grupoId) params.set("grupo_id", filtros.grupoId);
+    if (filtros.excluirPais) params.set("excluir_pais", "true");
     const qs = params.toString();
     return request(`/produtos/${qs ? `?${qs}` : ""}`);
   },
@@ -33,6 +34,8 @@ export const produtosApi = {
   atualizar: (id, payload) =>
     request(`/produtos/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deletar: (id) => request(`/produtos/${id}`, { method: "DELETE" }),
+  buscaPedido: (q) => request(`/produtos/busca-pedido?q=${encodeURIComponent(q)}`),
+  gradePedido: (produtoPaiId) => request(`/produtos/${produtoPaiId}/grade-pedido`),
 };
 
 // ── Grupos de Produto ───────────────────────────────────────────────────

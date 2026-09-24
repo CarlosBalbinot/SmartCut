@@ -3,11 +3,16 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Situacao = Literal["ativo", "inativo"]
 IcmsIncidencia = Literal["normal", "st", "isento", "outros"]
 UmFaturamento = Literal["primeira_um", "segunda_um"]
+
+# Campos de texto livre convertidos para maiúsculo antes de salvar — segunda
+# garantia além do uppercase já aplicado no onChange do frontend. Aplicado só
+# em ProdutoCreate/ProdutoUpdate (não em ProdutoBase, para não afetar ProdutoOut).
+_CAMPOS_UPPER = ("descricao", "marca", "classe")
 
 
 # ── Grupo de Produto ───────────────────────────────────────────────────
@@ -72,9 +77,10 @@ class ProdutoBase(BaseModel):
     cod_barras: str | None = Field(None, max_length=50)
     peso_gramas: Decimal | None = None
     peso_kg: Decimal | None = None
-    linha_grade_id: uuid.UUID | None = None
-    coluna_grade_id: uuid.UUID | None = None
+    linha_grade_id: int | None = None
+    coluna_grade_id: int | None = None
     status: Situacao = "ativo"
+    tamanhos_disponiveis: list[str] | None = None
 
     # Impostos / Faturamento
     ncm: str | None = Field(None, min_length=8, max_length=8)
@@ -102,7 +108,10 @@ class ProdutoBase(BaseModel):
 
 
 class ProdutoCreate(ProdutoBase):
-    pass
+    @field_validator(*_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
 
 
 class ProdutoUpdate(BaseModel):
@@ -125,9 +134,10 @@ class ProdutoUpdate(BaseModel):
     cod_barras: str | None = Field(None, max_length=50)
     peso_gramas: Decimal | None = None
     peso_kg: Decimal | None = None
-    linha_grade_id: uuid.UUID | None = None
-    coluna_grade_id: uuid.UUID | None = None
+    linha_grade_id: int | None = None
+    coluna_grade_id: int | None = None
     status: Situacao | None = None
+    tamanhos_disponiveis: list[str] | None = None
 
     ncm: str | None = Field(None, min_length=8, max_length=8)
     cest: str | None = Field(None, max_length=10)
@@ -152,6 +162,11 @@ class ProdutoUpdate(BaseModel):
     fcp: bool | None = None
     um_faturamento: UmFaturamento | None = None
 
+    @field_validator(*_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
+
 
 class ProdutoOut(ProdutoBase):
     id: uuid.UUID
@@ -159,7 +174,140 @@ class ProdutoOut(ProdutoBase):
     data_cadastro: date
     criado_em: datetime
     grupo: GrupoProdutoOut | None = None
-    linha_grade: GradeItemOut | None = None
-    coluna_grade: GradeItemOut | None = None
+    linha_grade_nome: str | None = None
+    coluna_grade_nome: str | None = None
+    is_pai: bool = False
 
     model_config = {"from_attributes": True}
+
+
+# ── SKU (produto filho / combinação de grade) ────────────────────────────
+
+class ComboItem(BaseModel):
+    linha_item_id: int | None = None
+    coluna_item_id: int | None = None
+
+
+class SkuGerarRequest(BaseModel):
+    combinacoes: list[ComboItem]
+
+
+class SkuUpdate(BaseModel):
+    codigo: str | None = Field(None, max_length=50)
+    preco_venda: Decimal | None = None
+    situacao: str | None = None
+
+
+class ProdutoSkuOut(BaseModel):
+    id: int
+    produto_pai_id: uuid.UUID
+    linha_item_id: int | None = None
+    coluna_item_id: int | None = None
+    linha_item_descricao: str | None = None
+    coluna_item_descricao: str | None = None
+    codigo: str
+    preco_venda: Decimal | None = None
+    preco_manual: bool
+    situacao: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class PropagarPrecoResponse(BaseModel):
+    atualizados: int
+    ignorados: int
+    mensagem: str
+
+
+class SkuSincronizarRequest(BaseModel):
+    combinacoes: list[ComboItem] = []
+    remover_sku_ids: list[int] = []
+
+
+class SkuSincronizarResponse(BaseModel):
+    criados: int
+    removidos: int
+    bloqueados: list[str]
+
+
+# ── Listagem "vendável" (excluir_pais=true) ──────────────────────────────
+# Mistura produtos autônomos e SKUs filhos numa única forma de exibição —
+# ver produto_service.listar_sellable. `id` de um SKU é "sku-<int>" (string)
+# pois ProdutoSKU.id não é UUID; use produto_pai_id/sku_id para ações.
+
+class ProdutoListagemOut(BaseModel):
+    id: str
+    codigo: str
+    descricao: str
+    descricao_completa: str
+    grupo_id: uuid.UUID
+    unidade: str
+    preco_venda: Decimal
+    status: str
+    is_sku: bool = False
+    sku_id: int | None = None
+    produto_pai_id: uuid.UUID | None = None
+    codigo_pai: str | None = None
+    linha_desc: str | None = None
+    coluna_desc: str | None = None
+
+
+# ── Busca para adicionar item ao pedido de venda ─────────────────────────
+# Mistura produtos "pai" (com grade de SKUs) e "avulsos" (sem SKUs) — ver
+# produto_service.busca_pedido. Usado pelo Passo 1 do modal de adicionar
+# item em PedidoVendaDetalhePage.
+
+class ProdutoBuscaPedidoOut(BaseModel):
+    tipo: Literal["pai", "avulso"]
+    id: str
+    codigo: str
+    descricao: str
+    grupo: str | None = None
+    preco_venda: Decimal
+    unidade: str | None = None
+    descricao_completa: str | None = None
+    linha_grade_id: int | None = None
+    coluna_grade_id: int | None = None
+    linha_grade_nome: str | None = None
+    coluna_grade_nome: str | None = None
+
+
+# ── Grade de um produto pai, para o Passo 2 do modal de adicionar item ────
+
+class GradeEixoItemOut(BaseModel):
+    id: int
+    codigo_curto: str
+    descricao: str
+    ordem: int
+
+
+class GradeEixoOut(BaseModel):
+    id: int | None = None
+    descricao: str | None = None
+    itens: list[GradeEixoItemOut] = []
+
+
+class GradeProdutoResumoOut(BaseModel):
+    id: uuid.UUID
+    codigo: str
+    descricao: str
+    grupo: str | None = None
+
+
+class GradeSkuOut(BaseModel):
+    id: int
+    codigo: str
+    linha_item_id: int | None = None
+    coluna_item_id: int | None = None
+    preco_venda: Decimal | None = None
+    preco_origem: Literal["sku", "pai", "sem_preco"]
+    situacao: str
+
+
+class GradePedidoOut(BaseModel):
+    produto: GradeProdutoResumoOut
+    linha_grade: GradeEixoOut
+    coluna_grade: GradeEixoOut
+    skus: list[GradeSkuOut]

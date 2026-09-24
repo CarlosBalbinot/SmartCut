@@ -1,4 +1,3 @@
-import base64
 import os
 import uuid
 from decimal import Decimal
@@ -6,12 +5,19 @@ from typing import Optional
 
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
-from sqlalchemy import select, func
+from fastapi import HTTPException
+from sqlalchemy import exists, select, func
 from sqlalchemy.orm import Session
 
+from models.cliente import Cliente
+from models.nfe import NotaFiscal
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto import Produto
-from models.venda import Empresa, PrecoReferencia, TabelaPreco
+from models.produto_sku import ProdutoSKU
+from models.venda import (
+    Empresa, PrecoReferencia, PrecoTabelaProduto, Vendedor, VendedorTabelaComissao,
+)
+from services.segredo_service import chave_disponivel, cifrar_segredo
 
 _SENHA_MASCARADA = "••••••••"
 
@@ -20,6 +26,68 @@ def get_produto_do_item(item: ItemPedido, db: Session) -> Optional[Produto]:
     if item.produto_id is None:
         return None
     return db.get(Produto, item.produto_id)
+
+
+# ── Cópia do cliente no pedido (cliente_*) ────────────────────────────────────
+# Coluna do pedido → como ler do Cliente. Documento: CNPJ ou, se não tiver,
+# CPF (NF-e decide pela contagem de dígitos); telefone: fixo ou celular.
+SNAPSHOT_CLIENTE = {
+    "cliente_razao_social":          lambda c: c.razao_social,
+    "cliente_cnpj":                  lambda c: c.cnpj or c.cpf,
+    "cliente_ie":                    lambda c: c.ie,
+    "cliente_endereco":              lambda c: c.endereco,
+    "cliente_numero":                lambda c: c.numero,
+    "cliente_bairro":                lambda c: c.bairro,
+    "cliente_cidade":                lambda c: c.cidade,
+    "cliente_uf":                    lambda c: c.estado,
+    "cliente_cep":                   lambda c: c.cep,
+    "cliente_codigo_ibge_municipio": lambda c: c.codigo_ibge_municipio,
+    "cliente_codigo_pais":           lambda c: c.codigo_pais or "1058",
+    "cliente_telefone":              lambda c: c.telefone or c.celular,
+    "cliente_email":                 lambda c: c.email or c.email_nfe,
+}
+
+# Pedido cuja cópia ainda pode acompanhar o cadastro: Aberto e sem NF-e
+# (nfe_id nem nota em notas_fiscais). Fechado/Cancelado/com NF-e fica
+# como foi emitido.
+_TEM_NFE = exists().where(NotaFiscal.pedido_id == PedidoVenda.id)
+_FILTRO_SINCRONIZAVEL = (
+    PedidoVenda.status == "Aberto",
+    PedidoVenda.nfe_id.is_(None),
+    ~_TEM_NFE,
+)
+
+
+def aplicar_snapshot_cliente(pedido: PedidoVenda, cliente: Cliente) -> None:
+    """Liga o pedido ao cliente e copia o cadastro para os campos cliente_*
+    (lidos por PDF, NF-e, portal e relatórios). Não confere status — quem
+    chama decide (criação, troca de cliente, sincronizar_cliente_pedidos)."""
+    pedido.cliente_id = cliente.id
+    for campo, ler in SNAPSHOT_CLIENTE.items():
+        setattr(pedido, campo, ler(cliente))
+
+
+def pedido_sincronizavel(db: Session, pedido: PedidoVenda) -> bool:
+    if pedido.status != "Aberto" or pedido.nfe_id is not None:
+        return False
+    return not db.execute(
+        select(NotaFiscal.id).where(NotaFiscal.pedido_id == pedido.id).limit(1)
+    ).first()
+
+
+def sincronizar_cliente_pedidos(db: Session, cliente_id: int) -> int:
+    """Recopia o cadastro do cliente para os pedidos dele que ainda podem
+    mudar (Aberto, sem NF-e). Não faz commit — roda na transação de quem
+    chama. Retorna quantos pedidos foram atualizados."""
+    cliente = db.get(Cliente, cliente_id)
+    if cliente is None:
+        return 0
+    pedidos = db.execute(
+        select(PedidoVenda).where(PedidoVenda.cliente_id == cliente_id, *_FILTRO_SINCRONIZAVEL)
+    ).scalars().all()
+    for pedido in pedidos:
+        aplicar_snapshot_cliente(pedido, cliente)
+    return len(pedidos)
 
 
 def get_ou_criar_empresa(db: Session) -> Empresa:
@@ -48,10 +116,22 @@ def empresa_fiscal_out(empresa: Empresa) -> dict:
 
 
 def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
+    # Item 4.2: a senha do certificado NUNCA vai para o banco em texto claro
+    # nem em base64 reversível — vai cifrada (envelope AES-GCM `enc:v1:...`)
+    # com a chave mestre/do desktop. Sem chave, recusa salvar com mensagem
+    # clara (leia os trade-offs no README).
     if "certificado_senha" in payload and payload["certificado_senha"] is not None:
-        payload["certificado_senha"] = base64.b64encode(
-            payload["certificado_senha"].encode("utf-8")
-        ).decode("ascii")
+        senha = str(payload["certificado_senha"]).strip()
+        if senha:
+            if not senha.startswith("enc:v1:"):  # já-cifrado: passa direto
+                if not chave_disponivel():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Sem chave de segurança configurada para armazenar a senha do "
+                               "certificado. No desktop abra pelo SmartCut; fora dele defina "
+                               "CERT_SENHA_KEY no ambiente (ver README).",
+                    )
+                payload["certificado_senha"] = cifrar_segredo(senha)
     for field, val in payload.items():
         setattr(empresa, field, val)
     db.commit()
@@ -128,6 +208,71 @@ def get_preco(
     return Decimal(str(preco_ref.preco_aprazo))
 
 
+def _preco_por_condicao(registro, condicoes: str) -> Decimal:
+    # Mesma escolha de get_preco: "avista" → à vista; qualquer outra coisa
+    # (inclusive vazio) → a prazo.
+    if condicoes == "avista":
+        return Decimal(str(registro.preco_avista))
+    return Decimal(str(registro.preco_aprazo))
+
+
+def resolver_preco_item(
+    db: Session,
+    sku: Optional[ProdutoSKU],
+    tabela_preco_id: Optional[uuid.UUID],
+    condicoes: str,
+    produto: Optional[Produto] = None,
+    grupo_id: Optional[uuid.UUID] = None,
+) -> tuple[Optional[Decimal], Optional[str]]:
+    """Preço unitário de um item de pedido e a origem dele.
+
+    sku: SKU do item (None para produto avulso ou item legado de corte).
+    produto: produto do item — se omitido e houver sku, usa o pai do SKU.
+    grupo_id: GrupoMolde do item legado de corte (PrecoReferencia).
+
+    Prioridade:
+      1. "TABELA_SKU"     — preço do SKU na tabela (precos_tabela_produto)
+      2. "TABELA_PRODUTO" — preço do produto pai na tabela
+      3. "TABELA_GRUPO"   — PrecoReferencia do grupo (itens legados)
+      4. "SKU"/"PRODUTO"  — regra fora de tabela: preço manual do SKU >
+                            preço de venda do produto (ver
+                            produto_service.grade_pedido)
+      5. (None, None)     — sem preço
+    """
+    if produto is None and sku is not None:
+        produto = sku.produto_pai or db.get(Produto, sku.produto_pai_id)
+
+    if tabela_preco_id:
+        if sku is not None:
+            registro = db.execute(
+                select(PrecoTabelaProduto).where(
+                    PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
+                    PrecoTabelaProduto.sku_id == sku.id,
+                )
+            ).scalars().first()
+            if registro:
+                return _preco_por_condicao(registro, condicoes), "TABELA_SKU"
+        if produto is not None:
+            registro = db.execute(
+                select(PrecoTabelaProduto).where(
+                    PrecoTabelaProduto.tabela_preco_id == tabela_preco_id,
+                    PrecoTabelaProduto.produto_id == produto.id,
+                )
+            ).scalars().first()
+            if registro:
+                return _preco_por_condicao(registro, condicoes), "TABELA_PRODUTO"
+        if grupo_id is not None:
+            preco = get_preco(grupo_id, tabela_preco_id, condicoes, db)
+            if preco is not None:
+                return preco, "TABELA_GRUPO"
+
+    if sku is not None and sku.preco_manual and sku.preco_venda is not None:
+        return Decimal(str(sku.preco_venda)), "SKU"
+    if produto is not None and produto.preco_venda and produto.preco_venda > 0:
+        return Decimal(str(produto.preco_venda)), "PRODUTO"
+    return None, None
+
+
 def calcular_subtotal_itens(itens: list) -> Decimal:
     """Soma líquida dos itens: preco_total (bruto) - desconto + acréscimo
     de cada item. Comissão incide sobre este valor (mercadoria, sem frete/
@@ -141,14 +286,53 @@ def calcular_subtotal_itens(itens: list) -> Decimal:
     return subtotal
 
 
-def calcular_totais(
-    itens: list,
-    tabela: TabelaPreco | None,
-    condicoes: str,
+def resolver_comissao(
     db: Session,
-) -> tuple:
+    vendedor_id: Optional[uuid.UUID],
+    tabela_preco_id: Optional[uuid.UUID],
+) -> tuple[Decimal, str]:
+    """% de comissão (0–100) do par vendedor + tabela e a origem dele.
+
+    Prioridade:
+      1. "SEM_VENDEDOR"    — pedido sem vendedor → 0
+      2. "VINCULO"         — VendedorTabelaComissao do par (pulado sem tabela)
+      3. "PADRAO_VENDEDOR" — Vendedor.comissao_padrao_pct
+      4. "NENHUMA"         — nada configurado → 0
+
+    TabelaPreco.comissao_pct é legado e nunca é lido aqui.
+    """
+    if vendedor_id is None:
+        return Decimal("0"), "SEM_VENDEDOR"
+
+    if tabela_preco_id is not None:
+        vinculo = db.execute(
+            select(VendedorTabelaComissao).where(
+                VendedorTabelaComissao.vendedor_id == vendedor_id,
+                VendedorTabelaComissao.tabela_preco_id == tabela_preco_id,
+            )
+        ).scalars().first()
+        if vinculo is not None:
+            return Decimal(str(vinculo.comissao_pct)), "VINCULO"
+
+    vendedor = db.get(Vendedor, vendedor_id)
+    if vendedor is not None and vendedor.comissao_padrao_pct is not None:
+        return Decimal(str(vendedor.comissao_padrao_pct)), "PADRAO_VENDEDOR"
+
+    return Decimal("0"), "NENHUMA"
+
+
+def aplicar_comissao(db: Session, pedido: PedidoVenda) -> None:
+    """Grava no pedido o snapshot de comissao_pct/comissao_origem. Quem chama
+    decide quando (criação, troca de vendedor/tabela com pedido Aberto) —
+    recalcular_pedido só reaproveita o snapshot."""
+    pedido.comissao_pct, pedido.comissao_origem = resolver_comissao(
+        db, pedido.vendedor_id, pedido.tabela_preco_id,
+    )
+
+
+def calcular_totais(itens: list, comissao_pct) -> tuple:
     subtotal = calcular_subtotal_itens(itens)
-    comissao = subtotal * Decimal(str(tabela.comissao_pct or 0)) if tabela else Decimal("0")
+    comissao = subtotal * Decimal(str(comissao_pct or 0)) / 100
     return subtotal, comissao
 
 
@@ -157,8 +341,8 @@ def recalcular_pedido(db: Session, pedido_id: uuid.UUID) -> None:
 
     total_pedido = subtotal líquido dos itens (já com desconto/acréscimo
     por item) - desconto geral + acréscimo geral + frete + seguro +
-    despesas. Comissão incide só sobre o subtotal dos itens, não sobre
-    frete/seguro/despesas.
+    despesas. Comissão = subtotal dos itens × pedido.comissao_pct (snapshot,
+    ver aplicar_comissao) — não incide sobre frete/seguro/despesas.
     """
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
@@ -167,8 +351,7 @@ def recalcular_pedido(db: Session, pedido_id: uuid.UUID) -> None:
         select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)
     ).scalars().all()
 
-    tabela = db.get(TabelaPreco, pedido.tabela_preco_id) if pedido.tabela_preco_id else None
-    subtotal, comissao = calcular_totais(itens, tabela, pedido.condicoes or "", db)
+    subtotal, comissao = calcular_totais(itens, pedido.comissao_pct)
 
     total = (
         subtotal

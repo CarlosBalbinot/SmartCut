@@ -3,7 +3,15 @@ from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
+
+# Campos de texto livre do Vendedor convertidos para maiúsculo antes de
+# salvar — segunda garantia além do uppercase já aplicado no onChange do
+# frontend (ver VendedorCreate/VendedorUpdate mais abaixo).
+_VENDEDOR_CAMPOS_UPPER = (
+    "nome", "nome_fantasia", "endereco", "numero", "complemento",
+    "bairro", "municipio", "descricao",
+)
 
 
 # ── Empresa ───────────────────────────────────────────────────────────────
@@ -33,12 +41,10 @@ class EmpresaOut(BaseModel):
     def logo_url(self) -> Optional[str]:
         if not self.logo_path:
             return None
-        # Normaliza separadores e extrai a parte relativa a partir de "uploads/"
-        path = self.logo_path.replace("\\", "/")
-        if "uploads/" in path:
-            rel = path.split("uploads/")[-1]
-            return f"/uploads/{rel}"
-        return None
+        # Item 2.1: /uploads deixou de ser público (agora é servido com auth
+        # via GET /api/v1/uploads/*). O logo continua público por design por
+        # endpoint dedicado — aparece nas telas de login sem autenticação.
+        return "/api/v1/configuracao-empresa/logo"
 
 
 class EmpresaUpdate(BaseModel):
@@ -223,6 +229,11 @@ class VendedorCreate(BaseModel):
     email_nfe: Optional[str] = None
     status: str = "ativo"
 
+    @field_validator(*_VENDEDOR_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
+
 
 class VendedorUpdate(BaseModel):
     tipo_pessoa: Optional[str] = None
@@ -251,6 +262,11 @@ class VendedorUpdate(BaseModel):
     status: Optional[str] = None
     ativo: Optional[bool] = None
 
+    @field_validator(*_VENDEDOR_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
+
 
 # ── ItemPedidoVenda ───────────────────────────────────────────────────────
 
@@ -258,8 +274,10 @@ class ItemPedidoVendaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     pedido_id: UUID
-    grupo_id: UUID
+    grupo_id: Optional[UUID] = None
     produto_id: Optional[UUID] = None
+    sku_id: Optional[int] = None
+    lote_id: Optional[UUID] = None
     cor: Optional[str]
     qtd_p: int
     qtd_m: int
@@ -268,6 +286,7 @@ class ItemPedidoVendaOut(BaseModel):
     qtd_g1: int
     qtd_g2: int
     qtd_g3: int
+    quantidade: int = 0
     preco_unitario: Optional[Decimal]
     preco_total: Optional[Decimal]
     tes_id: Optional[int] = None
@@ -275,11 +294,18 @@ class ItemPedidoVendaOut(BaseModel):
     desconto_valor: Decimal = Decimal("0")
     acrescimo_pct: Decimal = Decimal("0")
     acrescimo_valor: Decimal = Decimal("0")
+    # Campos calculados (ver ItemPedido.ref_codigo/descricao_completa/
+    # quantidade_total em models/pedido.py) — cobrem tanto item legado de
+    # corte (grupo_id) quanto item novo do catálogo fiscal (produto/sku).
+    ref_codigo: Optional[str] = None
+    descricao_completa: str = ""
+    quantidade_total: int = 0
 
 
 class ItemPedidoVendaCreate(BaseModel):
     grupo_id: UUID
     produto_id: Optional[UUID] = None
+    lote_id: Optional[UUID] = None
     cor: Optional[str] = None
     qtd_p: int = 0
     qtd_m: int = 0
@@ -296,12 +322,32 @@ class ItemPedidoVendaCreate(BaseModel):
     acrescimo_valor: Decimal = Decimal("0")
 
 
+# ── Itens do catálogo fiscal (produto pai/SKU ou avulso) ──────────────────
+# Fluxo novo de adição de itens (grade visual) — ver POST
+# /pedidos-venda/{id}/itens/bulk. Independente de ItemPedidoVendaCreate
+# acima (que continua servindo o item legado por GrupoMolde).
+
+class ItemBulkCreate(BaseModel):
+    produto_id: UUID
+    sku_id: Optional[int] = None
+    quantidade: int
+    preco_unitario: Decimal
+    tes_id: Optional[int] = None
+    desconto_pct: Decimal = Decimal("0")
+
+
+class ItensBulkCreateRequest(BaseModel):
+    itens: List[ItemBulkCreate]
+
+
 # ── PedidoVenda ───────────────────────────────────────────────────────────
 
 # Campos fiscais/financeiros/transporte novos, compartilhados entre Create
 # e Update para não duplicar a lista (todos opcionais nos dois — a Create
 # aceita omissão e usa os defaults do model; a Update só aplica o que vier).
 class _PedidoVendaCamposFiscais(BaseModel):
+    condicao_pagamento_id: Optional[int] = None
+    primeiro_vencimento: Optional[date] = None
     tes_id: Optional[int] = None
     desconto_geral_pct: Optional[Decimal] = None
     desconto_geral_valor: Optional[Decimal] = None

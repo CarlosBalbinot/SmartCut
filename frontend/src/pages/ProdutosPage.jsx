@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { produtosApi, gruposProdutoApi, linhasGradeApi, colunasGradeApi } from "../api/produtos";
+import { produtosApi, gruposProdutoApi } from "../api/produtos";
+import * as tabelasGradeApi from "../api/tabelasGrade";
+import { atualizarSku, excluirSku } from "../api/gradeProdutos";
 import { useAuth } from "../auth/useAuth";
 import styles from "./ProdutosPage.module.css";
 
 const MODULO = "cadastros_produtos";
+
+const TAMANHOS_DISPONIVEIS = ["PP", "P", "M", "G", "GG", "XGG"];
 
 const VAZIO_PRODUTO = {
   grupo_id: "",
@@ -28,6 +32,7 @@ const VAZIO_PRODUTO = {
   linha_grade_id: "",
   coluna_grade_id: "",
   status: "ativo",
+  tamanhos_disponiveis: [],
   // Impostos
   ncm: "",
   cest: "",
@@ -81,7 +86,10 @@ function produtoParaForm(p) {
     peso_kg: p.peso_kg ?? "",
     linha_grade_id: p.linha_grade_id || "",
     coluna_grade_id: p.coluna_grade_id || "",
+    linha_grade_nome: p.linha_grade_nome || "",
+    coluna_grade_nome: p.coluna_grade_nome || "",
     status: p.status || "ativo",
+    tamanhos_disponiveis: p.tamanhos_disponiveis || [],
     ncm: p.ncm || "",
     cest: p.cest || "",
     origem: String(p.origem ?? 0),
@@ -128,9 +136,10 @@ function formParaPayload(f) {
     cod_barras: txtOuNull(f.cod_barras),
     peso_gramas: num(f.peso_gramas),
     peso_kg: num(f.peso_kg),
-    linha_grade_id: f.linha_grade_id || null,
-    coluna_grade_id: f.coluna_grade_id || null,
+    linha_grade_id: f.linha_grade_id ? Number(f.linha_grade_id) : null,
+    coluna_grade_id: f.coluna_grade_id ? Number(f.coluna_grade_id) : null,
     status: f.status,
+    tamanhos_disponiveis: f.tamanhos_disponiveis && f.tamanhos_disponiveis.length > 0 ? f.tamanhos_disponiveis : null,
     ncm: txtOuNull(f.ncm),
     cest: txtOuNull(f.cest),
     origem: parseInt(f.origem, 10) || 0,
@@ -163,8 +172,7 @@ export default function ProdutosPage() {
   const { hasPermission } = useAuth();
   const [produtos, setProdutos] = useState([]);
   const [grupos, setGrupos] = useState([]);
-  const [linhas, setLinhas] = useState([]);
-  const [colunas, setColunas] = useState([]);
+  const [tabelasGrade, setTabelasGrade] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [busca, setBusca] = useState("");
@@ -179,21 +187,23 @@ export default function ProdutosPage() {
 
   const [modalGrupos, setModalGrupos] = useState(false);
 
+  const [modalSku, setModalSku] = useState(null);
+  const [savingSku, setSavingSku] = useState(false);
+  const [erroSku, setErroSku] = useState(null);
+
   const carregarListas = useCallback(async () => {
-    const [g, l, c] = await Promise.all([
+    const [g, t] = await Promise.all([
       gruposProdutoApi.listar().catch(() => []),
-      linhasGradeApi.listar().catch(() => []),
-      colunasGradeApi.listar().catch(() => []),
+      tabelasGradeApi.listar().catch(() => []),
     ]);
     setGrupos(g || []);
-    setLinhas(l || []);
-    setColunas(c || []);
+    setTabelasGrade(t || []);
   }, []);
 
   const carregarProdutos = useCallback(async () => {
     setLoading(true);
     try {
-      const filtros = {};
+      const filtros = { excluirPais: true };
       if (filtroStatus) filtros.status = filtroStatus;
       if (filtroGrupo) filtros.grupoId = filtroGrupo;
       setProdutos((await produtosApi.listar(filtros)) || []);
@@ -208,8 +218,10 @@ export default function ProdutosPage() {
   useEffect(() => { carregarProdutos(); }, [carregarProdutos]);
 
   const gruposAtivos = useMemo(() => grupos.filter((g) => g.situacao === "ativo"), [grupos]);
-  const linhasAtivas = useMemo(() => linhas.filter((l) => l.situacao === "ativo"), [linhas]);
-  const colunasAtivas = useMemo(() => colunas.filter((c) => c.situacao === "ativo"), [colunas]);
+  const tabelasGradeAtivas = useMemo(
+    () => tabelasGrade.filter((t) => t.situacao === "Ativa"),
+    [tabelasGrade]
+  );
 
   const gruposPorId = useMemo(() => {
     const map = {};
@@ -221,7 +233,8 @@ export default function ProdutosPage() {
     if (!busca.trim()) return produtos;
     const termo = busca.trim().toLowerCase();
     return produtos.filter(
-      (p) => p.codigo.toLowerCase().includes(termo) || p.descricao.toLowerCase().includes(termo)
+      (p) => p.codigo.toLowerCase().includes(termo) ||
+        (p.descricao_completa || p.descricao).toLowerCase().includes(termo)
     );
   }, [produtos, busca]);
 
@@ -232,15 +245,31 @@ export default function ProdutosPage() {
     setErro(null);
   };
 
-  const abrirEditar = (p) => {
-    setModal({ id: p.id, codigo: p.codigo, data_cadastro: p.data_cadastro, ...produtoParaForm(p) });
-    setAba("dados");
-    setAbaErro(null);
-    setErro(null);
+  const abrirEditar = async (p) => {
+    // A listagem (excluir_pais=true) devolve uma forma reduzida — busca o
+    // produto completo antes de abrir o modal com todos os campos.
+    try {
+      const full = await produtosApi.obter(p.id);
+      setModal({ id: full.id, codigo: full.codigo, data_cadastro: full.data_cadastro, ...produtoParaForm(full) });
+      setAba("dados");
+      setAbaErro(null);
+      setErro(null);
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const fecharModal = () => { setModal(null); setErro(null); };
   const setF = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value }));
+  const setFUpper = (k) => (e) => setModal((m) => ({ ...m, [k]: e.target.value.toUpperCase() }));
+
+  const toggleTamanho = (t) => {
+    setModal((m) => {
+      const sel = m.tamanhos_disponiveis || [];
+      const novo = sel.includes(t) ? sel.filter((x) => x !== t) : [...sel, t];
+      return { ...m, tamanhos_disponiveis: TAMANHOS_DISPONIVEIS.filter((x) => novo.includes(x)) };
+    });
+  };
 
   const handleSalvar = async () => {
     setAbaErro(null);
@@ -265,9 +294,49 @@ export default function ProdutosPage() {
     }
   };
 
-  const handleExcluir = async (id) => {
+  const handleExcluir = async (p) => {
+    if (p.is_sku) {
+      if (!window.confirm(`Excluir o SKU "${p.codigo}"?`)) return;
+      try {
+        await excluirSku(p.produto_pai_id, p.sku_id);
+        await carregarProdutos();
+      } catch (e) {
+        alert(e.message);
+      }
+      return;
+    }
     if (!window.confirm("Deseja excluir este produto?")) return;
-    try { await produtosApi.deletar(id); await carregarProdutos(); } catch (e) { alert(e.message); }
+    try { await produtosApi.deletar(p.id); await carregarProdutos(); } catch (e) { alert(e.message); }
+  };
+
+  const abrirEditarSku = (p) => {
+    setModalSku({
+      produtoPaiId: p.produto_pai_id, skuId: p.sku_id,
+      codigo: p.codigo,
+      preco_venda: String(p.preco_venda ?? ""),
+      status: p.status,
+    });
+    setErroSku(null);
+  };
+
+  const fecharModalSku = () => { setModalSku(null); setErroSku(null); };
+
+  const handleSalvarSku = async () => {
+    if (!modalSku.codigo.trim()) { setErroSku("Código é obrigatório."); return; }
+    setSavingSku(true); setErroSku(null);
+    try {
+      await atualizarSku(modalSku.produtoPaiId, modalSku.skuId, {
+        codigo: modalSku.codigo.trim(),
+        preco_venda: modalSku.preco_venda === "" ? null : Number(modalSku.preco_venda),
+        situacao: modalSku.status === "ativo" ? "Ativo" : "Inativo",
+      });
+      await carregarProdutos();
+      fecharModalSku();
+    } catch (e) {
+      setErroSku(e.message);
+    } finally {
+      setSavingSku(false);
+    }
   };
 
   return (
@@ -323,7 +392,7 @@ export default function ProdutosPage() {
             ) : produtosFiltrados.map((p) => (
               <tr key={p.id}>
                 <td className={styles.tdMono}>{p.codigo}</td>
-                <td>{p.descricao}</td>
+                <td>{p.descricao_completa || p.descricao}</td>
                 <td>{gruposPorId[p.grupo_id]?.nome || "—"}</td>
                 <td>{p.unidade}</td>
                 <td className={styles.tdMono}>{money(p.preco_venda)}</td>
@@ -335,10 +404,12 @@ export default function ProdutosPage() {
                 <td>
                   <div className={styles.actions}>
                     {hasPermission(MODULO, "editar") && (
-                      <button className={styles.btnLink} onClick={() => abrirEditar(p)}>Editar</button>
+                      <button className={styles.btnLink} onClick={() => (p.is_sku ? abrirEditarSku(p) : abrirEditar(p))}>
+                        Editar
+                      </button>
                     )}
                     {hasPermission(MODULO, "excluir") && (
-                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(p.id)}>
+                      <button className={`${styles.btnLink} ${styles.btnDanger}`} onClick={() => handleExcluir(p)}>
                         Excluir
                       </button>
                     )}
@@ -395,7 +466,7 @@ export default function ProdutosPage() {
 
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição *</span>
-                    <input className={styles.input} value={modal.descricao} onChange={setF("descricao")} />
+                    <input className={styles.input} value={modal.descricao} onChange={setFUpper("descricao")} />
                   </label>
 
                   <label className={styles.field}>
@@ -430,12 +501,12 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Classe</span>
-                    <input className={styles.input} value={modal.classe} onChange={setF("classe")} />
+                    <input className={styles.input} value={modal.classe} onChange={setFUpper("classe")} />
                   </label>
 
                   <label className={styles.field}>
                     <span>Marca</span>
-                    <input className={styles.input} value={modal.marca} onChange={setF("marca")} />
+                    <input className={styles.input} value={modal.marca} onChange={setFUpper("marca")} />
                   </label>
 
                   <label className={styles.field}>
@@ -486,21 +557,27 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Linha Grade</span>
                     <select className={styles.input} value={modal.linha_grade_id} onChange={setF("linha_grade_id")}>
-                      <option value="">—</option>
-                      {linhasAtivas.map((l) => (
-                        <option key={l.id} value={l.id}>{l.nome}</option>
+                      <option value="">Nenhuma</option>
+                      {tabelasGradeAtivas.map((t) => (
+                        <option key={t.id} value={t.id}>{t.codigo} - {t.descricao}</option>
                       ))}
                     </select>
+                    {modal.linha_grade_nome && (
+                      <span className={styles.hint}>Atual: {modal.linha_grade_nome}</span>
+                    )}
                   </label>
 
                   <label className={styles.field}>
                     <span>Coluna Grade</span>
                     <select className={styles.input} value={modal.coluna_grade_id} onChange={setF("coluna_grade_id")}>
-                      <option value="">—</option>
-                      {colunasAtivas.map((c) => (
-                        <option key={c.id} value={c.id}>{c.nome}</option>
+                      <option value="">Nenhuma</option>
+                      {tabelasGradeAtivas.map((t) => (
+                        <option key={t.id} value={t.id}>{t.codigo} - {t.descricao}</option>
                       ))}
                     </select>
+                    {modal.coluna_grade_nome && (
+                      <span className={styles.hint}>Atual: {modal.coluna_grade_nome}</span>
+                    )}
                   </label>
 
                   <label className={styles.field}>
@@ -515,6 +592,24 @@ export default function ProdutosPage() {
                       <option value="inativo">Inativo</option>
                     </select>
                   </label>
+
+                  <div className={`${styles.field} ${styles.fieldFull}`}>
+                    <span>Tamanhos disponíveis</span>
+                    <div className={styles.tamanhosRow}>
+                      {TAMANHOS_DISPONIVEIS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`${styles.tamanhoPill} ${
+                            (modal.tamanhos_disponiveis || []).includes(t) ? styles.tamanhoPillAtivo : ""
+                          }`}
+                          onClick={() => toggleTamanho(t)}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -671,6 +766,49 @@ export default function ProdutosPage() {
               <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>Cancelar</button>
               <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
                 {saving ? "Salvando…" : "Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalSku && (
+        <div className={styles.overlay} onClick={fecharModalSku}>
+          <div className={`${styles.modal} ${styles.modalSm}`} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2 className={styles.modalTitle}>Editar SKU</h2>
+              <button className={styles.btnClose} onClick={fecharModalSku}>×</button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div className={styles.fieldGrid}>
+                <label className={styles.field}>
+                  <span>Código</span>
+                  <input className={styles.input} value={modalSku.codigo}
+                    onChange={(e) => setModalSku((m) => ({ ...m, codigo: e.target.value }))} />
+                </label>
+                <label className={styles.field}>
+                  <span>Situação</span>
+                  <select className={styles.input} value={modalSku.status}
+                    onChange={(e) => setModalSku((m) => ({ ...m, status: e.target.value }))}>
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                  </select>
+                </label>
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>Preço Venda</span>
+                  <input type="number" step="0.01" className={styles.input} value={modalSku.preco_venda}
+                    placeholder="Herdado do produto pai"
+                    onChange={(e) => setModalSku((m) => ({ ...m, preco_venda: e.target.value }))} />
+                </label>
+              </div>
+              {erroSku && <p className={styles.erro}>{erroSku}</p>}
+            </div>
+
+            <div className={styles.modalActions}>
+              <button className={styles.btnSecondary} onClick={fecharModalSku} disabled={savingSku}>Cancelar</button>
+              <button className={styles.btnPrimary} onClick={handleSalvarSku} disabled={savingSku}>
+                {savingSku ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>

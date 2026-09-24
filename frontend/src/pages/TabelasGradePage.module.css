@@ -1,0 +1,363 @@
+/* ── Layout dois painéis ── */
+.layout {
+  display: flex;
+  min-height: 480px;
+}
+
+/* Coluna esquerda — lista de cards */
+
+.left {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--sc-border);
+}
+
+.leftHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1rem 0.875rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.leftTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--sc-text-muted);
+}
+
+.btnNovo {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: var(--sc-radius-sm);
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+.btnNovo:hover { filter: brightness(0.92); }
+
+.emptyLeft {
+  padding: 1.25rem 1rem;
+  font-size: 0.82rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* Card de tabela */
+
+.card {
+  position: relative;
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.12s;
+}
+
+.card:hover { background: var(--sc-bg-secondary); }
+
+.cardSel {
+  border-left-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cardCodigo {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sc-text-muted);
+  font-family: monospace;
+}
+
+.cardDescricao {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 2px 0 5px;
+  line-height: 1.3;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardCount {
+  font-size: 11px;
+  color: var(--sc-text-muted);
+}
+
+/* Badges de situação */
+
+.badgeAtiva {
+  display: inline-block;
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.badgeInativa {
+  display: inline-block;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-muted);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Painel direito */
+
+.right {
+  flex: 1;
+  min-width: 0;
+  padding: 1.5rem 2rem;
+}
+
+.rightHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.rightNome {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.rightBtns {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  padding: 0.4rem 0.875rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnSecondary:hover { background: var(--sc-surface-hover); }
+
+/* Empty state */
+
+.emptyRight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 2rem;
+  color: var(--sc-text-muted);
+  text-align: center;
+  min-height: 280px;
+  gap: 0.5rem;
+}
+
+.emptyRight p {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--sc-text-muted);
+}
+
+/* Tabela de itens */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th {
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tr:hover { background: var(--sc-bg-secondary); }
+
+.td {
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--sc-border);
+  vertical-align: middle;
+  color: var(--sc-text-primary);
+}
+
+.tdMono {
+  font-family: monospace;
+  color: var(--sc-text-muted);
+}
+
+.codigoCurtoBadge {
+  display: inline-block;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btnLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.btnLink:hover { text-decoration: underline; }
+
+.btnDanger { color: var(--sc-danger-text); }
+
+.msgErro {
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+
+/* ── Formulário nos modais ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  font-weight: 400;
+}
+
+.input {
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.875rem;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus { border-color: var(--color-primary); }
+
+/* ── Modais estilo pill ── */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--sc-surface);
+  border-radius: 16px;
+  padding: 28px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.modalTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--sc-text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding-top: 0.5rem;
+}
+
+.btnPrimary {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.btnPrimary:hover    { filter: brightness(0.92); }
+.btnPrimary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btnPillSecondary {
+  background: transparent;
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 20px;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPillSecondary:hover { background: var(--sc-surface-hover); }

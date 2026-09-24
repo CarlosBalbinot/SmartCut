@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate, NavLink, useNavigate, useLocation, useParams } from "react-router-dom";
-import { FolderArchive } from "lucide-react";
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { FolderArchive, Package } from "lucide-react";
 import styles from "./App.module.css";
 import { useLogo } from "./contexts/LogoContext";
 import appIcon from "./assets/android-chrome-192x192.png";
 import DashboardPage from "./pages/DashboardPage";
 import TecidosPage from "./pages/TecidosPage";
-import PedidosPage from "./pages/PedidosPage";
-import PedidoDetalhePage from "./pages/PedidoDetalhePage";
 import MoldesPage from "./pages/MoldesPage";
 import EncaixesPage from "./pages/EncaixesPage";
 import EncaixePage from "./pages/EncaixePage";
 import PrecificacaoPage from "./pages/PrecificacaoPage";
 import ProjecaoPage from "./pages/ProjecaoPage";
-import { lotesApi } from "./services/api";
+import { getAlertasLotes } from "./api/tecidos";
 import PedidosVendaPage from "./pages/PedidosVendaPage";
 import PedidoVendaDetalhePage from "./pages/PedidoVendaDetalhePage";
 import TabelasPrecoPage from "./pages/TabelasPrecoPage";
@@ -32,6 +30,9 @@ import ClientesPage from "./pages/ClientesPage";
 import ProdutosPage from "./pages/ProdutosPage";
 import TransportadorasPage from "./pages/TransportadorasPage";
 import VendedoresPage from "./pages/VendedoresPage";
+import CondicoesPagamentoPage from "./pages/CondicoesPagamentoPage";
+import TabelasGradePage from "./pages/TabelasGradePage";
+import GradeProdutosPage from "./pages/GradeProdutosPage";
 import LoginPage from "./pages/LoginPage";
 import UsuariosPage from "./pages/UsuariosPage";
 import TESPage from "./pages/TESPage";
@@ -150,6 +151,7 @@ const IconDollarSign = () => (
 );
 
 const IconContabilidade = () => <FolderArchive size={15} strokeWidth={1.75} />;
+const IconProdutosGrupo = () => <Package size={15} strokeWidth={1.75} />;
 
 const IconProdutos = () => (
   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
@@ -172,6 +174,30 @@ const IconVendedores = () => (
     <circle cx="6" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
     <path d="M1.5 13c0-2.76 2.01-5 4.5-5s4.5 2.24 4.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
     <path d="M10 3.5L11 4.5L13 2.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const IconTabelaGrade = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M1.5 5.5h12M1.5 9.5h12M5.5 1.5v12M9.5 1.5v12" stroke="currentColor" strokeWidth="1.3"/>
+  </svg>
+);
+
+const IconGradeProdutos = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="8.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="1.5" y="8.5" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M9.7 11h4M11.7 9v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const IconCondicaoPagamento = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="1.5" y="2.5" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M1.5 5.5h12" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M4 8.5h2.5M8.5 8.5h2.5M4 10.5h2.5M8.5 10.5h2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
   </svg>
 );
 
@@ -214,18 +240,27 @@ const SECTIONS = [
     label: "CADASTROS",
     Icon: IconClientes,
     items: [
-      { to: "/cadastros/tecidos",   label: "Tecidos",   Icon: IconTecidos,   modulo: "tecidos" },
-      { to: "/cadastros/moldes",    label: "Moldes",    Icon: IconMoldes,    modulo: "moldes" },
-      { to: "/cadastros/produtos",  label: "Produtos",  Icon: IconProdutos,  modulo: "cadastros_produtos" },
       { to: "/cadastros/clientes",  label: "Clientes",  Icon: IconClientes,  modulo: "cadastros_clientes" },
       { to: "/cadastros/transportadoras", label: "Transportadoras", Icon: IconTransportadoras, modulo: "cadastros_transportadoras" },
       { to: "/cadastros/vendedores", label: "Vendedores", Icon: IconVendedores, modulo: "cadastros_vendedores" },
+      { to: "/cadastros/condicoes-pagamento", label: "Cond. de Pagamento", Icon: IconCondicaoPagamento, modulo: "configuracoes_ver" },
+    ],
+  },
+  {
+    label: "PRODUTOS",
+    Icon: IconProdutosGrupo,
+    items: [
+      { to: "/produtos/lista",         label: "Produtos",          Icon: IconProdutos,      modulo: "cadastros_produtos" },
+      { to: "/produtos/grade",         label: "Grade de Produtos", Icon: IconGradeProdutos, modulo: "cadastros_produtos" },
+      { to: "/produtos/tabelas-grade", label: "Tabelas da Grade",  Icon: IconTabelaGrade,   modulo: "configuracoes_ver" },
     ],
   },
   {
     label: "PRODUÇÃO",
     Icon: IconEncaixes,
     items: [
+      { to: "/producao/tecidos",        label: "Tecidos",        Icon: IconTecidos,   modulo: "tecidos" },
+      { to: "/producao/moldes",         label: "Moldes",         Icon: IconMoldes,    modulo: "moldes" },
       { to: "/producao/encaixe-rapido", label: "Encaixe Rápido", Icon: IconRelampago, modulo: "encaixe_rapido" },
       { to: "/producao/encaixes",       label: "Encaixes",      Icon: IconEncaixes,   modulo: "encaixes" },
     ],
@@ -285,11 +320,6 @@ function toTitulo(label) {
   return label.charAt(0) + label.slice(1).toLowerCase();
 }
 
-function RedirectComId({ base }) {
-  const { id } = useParams();
-  return <Navigate to={`${base}/${id}`} replace />;
-}
-
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -336,7 +366,7 @@ export default function App() {
   }, [sidebarOpen]);
 
   useEffect(() => {
-    lotesApi.listarAlertas().then(setAlertas).catch(() => {});
+    getAlertasLotes().then(setAlertas).catch(() => {});
   }, []);
 
   const mostrarBanner = !bannerFechado && alertas.length > 0;
@@ -541,7 +571,7 @@ export default function App() {
               {alertas.length === 1 ? "lote com estoque baixo" : "lotes com estoque baixo"} —{" "}
               <button
                 className={styles.alertaBannerLink}
-                onClick={() => { navigate("/cadastros/tecidos"); setBannerFechado(true); }}
+                onClick={() => { navigate("/producao/tecidos"); setBannerFechado(true); }}
               >
                 Ver tecidos
               </button>
@@ -560,27 +590,37 @@ export default function App() {
           <Routes>
             <Route path="/"                  element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard"         element={<ProtectedRoute modulo="financeiro_painel"><DashboardPage /></ProtectedRoute>} />
-            <Route path="/cadastros/tecidos"           element={<ProtectedRoute modulo="tecidos"><TecidosPage /></ProtectedRoute>} />
-            <Route path="/cadastros/moldes"            element={<ProtectedRoute modulo="moldes"><MoldesPage /></ProtectedRoute>} />
-            <Route path="/cadastros/produtos"               element={<ProtectedRoute modulo="cadastros_produtos"><ProdutosPage /></ProtectedRoute>} />
             <Route path="/cadastros/clientes"               element={<ProtectedRoute modulo="cadastros_clientes"><ClientesPage /></ProtectedRoute>} />
             <Route path="/cadastros/transportadoras"         element={<ProtectedRoute modulo="cadastros_transportadoras"><TransportadorasPage /></ProtectedRoute>} />
             <Route path="/cadastros/vendedores"              element={<ProtectedRoute modulo="cadastros_vendedores"><VendedoresPage /></ProtectedRoute>} />
+            <Route path="/cadastros/condicoes-pagamento"      element={<ProtectedRoute modulo="configuracoes_ver"><CondicoesPagamentoPage /></ProtectedRoute>} />
+
+            <Route path="/produtos/lista"         element={<ProtectedRoute modulo="cadastros_produtos"><ProdutosPage /></ProtectedRoute>} />
+            <Route path="/produtos/grade"         element={<ProtectedRoute modulo="cadastros_produtos"><GradeProdutosPage /></ProtectedRoute>} />
+            <Route path="/produtos/tabelas-grade" element={<ProtectedRoute modulo="configuracoes_ver"><TabelasGradePage /></ProtectedRoute>} />
 
             {/* Redirects de compatibilidade — URLs antigas sem o prefixo de grupo */}
-            <Route path="/tecidos"           element={<Navigate to="/cadastros/tecidos" replace />} />
-            <Route path="/moldes"            element={<Navigate to="/cadastros/moldes" replace />} />
-            <Route path="/produtos"          element={<Navigate to="/cadastros/produtos" replace />} />
+            <Route path="/tecidos"           element={<Navigate to="/producao/tecidos" replace />} />
+            <Route path="/moldes"            element={<Navigate to="/producao/moldes" replace />} />
+            <Route path="/produtos"          element={<Navigate to="/produtos/lista" replace />} />
             <Route path="/clientes"          element={<Navigate to="/cadastros/clientes" replace />} />
             <Route path="/transportadoras"   element={<Navigate to="/cadastros/transportadoras" replace />} />
             <Route path="/vendedores"        element={<Navigate to="/cadastros/vendedores" replace />} />
 
-            {/* Pedidos de corte (fluxo legado, sem item próprio no menu) */}
-            <Route path="/producao/pedidos"           element={<ProtectedRoute><PedidosPage /></ProtectedRoute>} />
-            <Route path="/producao/pedidos/:id"       element={<ProtectedRoute><PedidoDetalhePage /></ProtectedRoute>} />
-            <Route path="/pedidos"           element={<Navigate to="/producao/pedidos" replace />} />
-            <Route path="/pedidos/:id"       element={<RedirectComId base="/producao/pedidos" />} />
+            {/* Redirects — reorganização do menu PRODUTOS (movidos de CADASTROS) */}
+            <Route path="/cadastros/produtos"       element={<Navigate to="/produtos/lista" replace />} />
+            <Route path="/cadastros/grade-produtos" element={<Navigate to="/produtos/grade" replace />} />
+            <Route path="/cadastros/tabelas-grade"  element={<Navigate to="/produtos/tabelas-grade" replace />} />
 
+            {/* Redirects — Tecidos e Moldes movidos de CADASTROS para PRODUÇÃO */}
+            <Route path="/cadastros/tecidos" element={<Navigate to="/producao/tecidos" replace />} />
+            <Route path="/cadastros/moldes"  element={<Navigate to="/producao/moldes" replace />} />
+
+            {/* Pedidos de corte: fluxo antigo removido na item 7.2 — hoje o
+                fluxo vivo é o Pedido de Venda em /vendas/pedidos. */}
+
+            <Route path="/producao/tecidos"        element={<ProtectedRoute modulo="tecidos"><TecidosPage /></ProtectedRoute>} />
+            <Route path="/producao/moldes"         element={<ProtectedRoute modulo="moldes"><MoldesPage /></ProtectedRoute>} />
             <Route path="/producao/encaixe-rapido" element={<ProtectedRoute modulo="encaixe_rapido"><EncaixeRapidoPage /></ProtectedRoute>} />
             <Route path="/producao/encaixes"       element={<ProtectedRoute modulo="encaixes"><EncaixesPage /></ProtectedRoute>} />
             <Route path="/producao/encaixes/:id"   element={<ProtectedRoute modulo="encaixes"><EncaixePage /></ProtectedRoute>} />

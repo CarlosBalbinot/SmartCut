@@ -7,47 +7,6 @@
   margin-bottom: 1rem;
 }
 
-.searchWrap {
-  position: relative;
-  display: inline-block;
-}
-.searchWrap::before {
-  content: "";
-  position: absolute;
-  left: 11px;
-  top: 11px;
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid var(--sc-text-muted);
-  border-radius: 50%;
-  pointer-events: none;
-}
-.searchWrap::after {
-  content: "";
-  position: absolute;
-  left: 20px;
-  top: 21px;
-  width: 6px;
-  height: 1.5px;
-  background: var(--sc-text-muted);
-  transform: rotate(45deg);
-  transform-origin: left center;
-  pointer-events: none;
-}
-
-.busca {
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  height: 34px;
-  padding: 0 12px 0 32px;
-  font-size: 0.82rem;
-  color: var(--sc-text-primary);
-  background: var(--sc-surface);
-  outline: none;
-  width: 260px;
-}
-.busca:focus { border-color: var(--color-primary); }
-
 .select {
   border: 1px solid var(--sc-border-strong);
   border-radius: var(--sc-radius-sm);
@@ -60,6 +19,17 @@
   width: 160px;
 }
 .select:focus { border-color: var(--color-primary); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+.badgeAtiva { background: var(--sc-success-bg); color: var(--sc-success-text); }
+.badgeInativa { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
 
 /* ── Card da tabela — sc-card sem padding, tabela edge-to-edge ── */
 .tableCard {
@@ -93,7 +63,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 280px;
+  max-width: 260px;
 }
 
 .table tr:last-child td { border-bottom: none; }
@@ -114,16 +84,6 @@
   align-items: center;
 }
 
-.badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 20px;
-  font-size: 0.72rem;
-  font-weight: 500;
-}
-.badgeAtivo { background: var(--sc-success-bg); color: var(--sc-success-text); }
-.badgeInativo { background: var(--sc-bg-secondary); color: var(--sc-text-muted); }
-
 /* ── Botão de ação do cabeçalho (fora do modal) ── */
 .btnNovo {
   background: var(--color-primary);
@@ -140,7 +100,7 @@
 .btnNovo:hover    { filter: brightness(0.92); }
 .btnNovo:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── Buttons (usados também dentro dos modais — não alterados) ── */
+/* ── Buttons ── */
 .btnPrimary {
   background: var(--color-primary);
   color: var(--sc-action-text);
@@ -196,16 +156,14 @@
 .modal {
   background: var(--sc-surface);
   border-radius: var(--sc-radius-lg);
-  width: 700px;
+  width: 560px;
   max-width: 100%;
-  max-height: 80vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
-
-.modalSm { width: 560px; }
 
 .modalHead {
   display: flex;
@@ -252,44 +210,6 @@
   flex-shrink: 0;
 }
 
-/* ── Tabs ── */
-.tabs {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0 1.5rem;
-  border-bottom: 1px solid var(--sc-border);
-  flex-shrink: 0;
-}
-
-.tab {
-  background: none;
-  border: none;
-  padding: 0.8rem 0.25rem;
-  margin-right: 1.25rem;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--sc-text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-.tab:hover { color: var(--sc-text-primary); }
-.tabActive {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-.tabErro { color: var(--sc-danger-text) !important; }
-
-/* ── Section labels ── */
-.sectionLabel {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--sc-text-secondary);
-  margin: 0.5rem 0 0.75rem;
-}
-.sectionLabelMt { margin-top: 1.25rem; }
-
 /* ── Field grid ── */
 .fieldGrid {
   display: grid;
@@ -310,12 +230,55 @@
 
 .fieldFull { grid-column: span 2; }
 
-.hint {
-  font-size: 11px;
-  font-weight: 400;
+.helpWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.helpIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sc-text-muted);
+  cursor: help;
+  margin-left: 6px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.helpWrapper:hover .helpIcon { color: var(--color-primary); }
+
+/* Renderizado via portal em document.body — posição (top/left/z-index)
+   vem inline via JS (getBoundingClientRect), não depende do fluxo do modal. */
+.helpPopover {
+  width: 300px;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem 1.125rem;
+  font-size: 0.78rem;
+  color: var(--sc-text-primary);
+  line-height: 1.7;
+  pointer-events: none;
   text-transform: none;
   letter-spacing: normal;
-  color: var(--sc-text-muted);
+  font-weight: 400;
+}
+
+.helpPopover strong {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.helpPopover code {
+  background: var(--sc-bg-secondary);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--color-primary);
 }
 
 /* ── Inputs ── */
@@ -333,40 +296,12 @@
   font-family: inherit;
 }
 .input:focus { border-color: var(--color-primary); }
-.input:disabled, .input:read-only { background: var(--sc-bg-secondary); color: var(--sc-text-muted); cursor: not-allowed; }
+.input:disabled { background: var(--sc-bg-secondary); color: var(--sc-text-muted); cursor: not-allowed; }
 
-/* ── Tamanhos disponíveis (toggle pills) ── */
-.tamanhosRow {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.tamanhoPill {
-  border: 1px solid var(--sc-border);
-  background: var(--sc-surface);
-  color: var(--sc-text-secondary);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  text-transform: none;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-.tamanhoPill:hover { border-color: var(--color-primary); }
-
-.tamanhoPillAtivo {
-  background: var(--color-primary);
-  color: var(--sc-action-text);
-  border-color: var(--color-primary);
-}
-
-.textarea {
-  height: auto;
-  min-height: 56px;
-  padding: 0.5rem 0.75rem;
-  resize: vertical;
+.hint {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+  margin: 0;
 }
 
 /* ── Error ── */
@@ -376,11 +311,49 @@
   margin: 0.5rem 0 0;
 }
 
-/* ── Grupos modal: form inline ── */
-.grupoFormRow {
-  display: grid;
-  grid-template-columns: 1fr 100px 130px auto auto;
-  gap: 0.5rem;
-  align-items: end;
-  margin-bottom: 1.25rem;
+/* ── Preview de parcelas (modal) ── */
+.previewBox {
+  margin-top: 1rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-sm);
+  overflow: hidden;
+}
+
+.previewLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sc-text-secondary);
+  padding: 8px 12px;
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.previewTable th {
+  text-align: left;
+  padding: 6px 12px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+}
+
+.previewTable td {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--sc-text-primary);
+  border-top: 1px solid var(--sc-border);
+}
+
+.previewMuted {
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--sc-text-muted);
 }
