@@ -1,9 +1,12 @@
 import os
 import shutil
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db
 from middleware.permissions import require_permission
 from schemas.venda_schema import EmpresaOut, EmpresaUpdate, EmpresaFiscalUpdate, TestarCertificadoIn
@@ -26,6 +29,30 @@ _MOD_EDITAR = "configuracoes_editar"
 @router.get("/", dependencies=[Depends(require_permission(_MOD_VER, "ver"))])
 def get_empresa(db: Session = Depends(get_db)):
     return {"data": EmpresaOut.model_validate(get_ou_criar_empresa(db)), "error": None}
+
+
+@router.get("/logo")
+def get_logo(db: Session = Depends(get_db)):
+    """Logo da empresa — pública por design: é o único arquivo que aparece
+    nas telas de login (inclusive a do vendedor, que não exige autenticação).
+    Serve um único arquivo conhecido (`empresa_logo.*`); todos os demais
+    uploads passaram a ser servidos por `GET /api/v1/uploads/*` com
+    autenticação (item 2.1 — /uploads deixou de ser público).
+    """
+    empresa = get_ou_criar_empresa(db)
+    if not empresa.logo_path:
+        raise HTTPException(status_code=404, detail="Logo não configurada")
+
+    logo = str(empresa.logo_path).replace("\\", "/")
+    if "uploads/" in logo:
+        rel = logo.split("uploads/", 1)[-1]
+        arquivo = Path(settings.upload_dir).resolve() / rel
+    else:
+        arquivo = Path(logo).resolve()
+
+    if not arquivo.is_file():
+        raise HTTPException(status_code=404, detail="Logo não encontrada")
+    return FileResponse(str(arquivo))
 
 @router.patch("/", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 def update_empresa(payload: EmpresaUpdate, db: Session = Depends(get_db)):

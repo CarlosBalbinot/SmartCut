@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
+from models.pedido import PedidoVenda
 from schemas.encaixe_schema import EncaixeCreate, EncaixeOut
-from services import encaixe_service, nesting_service, pedido_service, report_service
+from services import encaixe_service, nesting_service, report_service
 
 router = APIRouter(prefix="/api/v1/encaixes", tags=["encaixes"])
 
@@ -41,6 +42,13 @@ def gerar_encaixe_automatico(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        )
+    except Exception as exc:
+        # Qualquer outra falha (ex.: dado inconsistente, atributo ausente) não
+        # pode virar um 500 sem corpo — vira mensagem clara para o frontend.
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao gerar encaixe: {exc}",
         )
 
 
@@ -93,12 +101,22 @@ def pdf_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Nenhum encaixe encontrado para este pedido.",
         )
-    pedido = pedido_service.obter_detalhe(db, pedido_id)
-    if not pedido:
+    pedido_row = db.get(PedidoVenda, pedido_id)
+    if not pedido_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pedido não encontrado.",
         )
+    # gerar_pdf_encaixe só usa esses 3 campos de cabeçalho — todo o resto
+    # (peças, tecido, mapa) já vem do mapa_json dos encaixes carregados
+    # acima. O router legado de pedidos (que acessava
+    # PedidoVenda.pedido_tecidos/.pecas) foi removido na reestruturação —
+    # por isso o PDF passa a ser montado a partir do mapa_json.
+    pedido = {
+        "num_pedido": pedido_row.numero,
+        "cliente": pedido_row.cliente_razao_social,
+        "data_pedido": pedido_row.data_emissao.isoformat() if pedido_row.data_emissao else None,
+    }
     pdf_bytes = report_service.gerar_pdf_encaixe(
         pedido, [e.model_dump() for e in encaixes]
     )

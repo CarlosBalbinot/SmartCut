@@ -2,9 +2,14 @@
 
 Extrai peças a partir de LWPOLYLINE, POLYLINE, SPLINE e LINE fechadas.
 Linhas independentes são agrupadas por layer quando formam contornos.
+
+Também varre textos (TEXT/MTEXT) para sugerir nomes de peça e linhas
+soltas para detectar o sentido do fio.
 """
 from __future__ import annotations
 
+import math
+import statistics
 from collections import defaultdict
 from typing import Any
 
@@ -15,6 +20,8 @@ from shapely.ops import unary_union
 
 
 MIN_AREA_CM2 = 1.0  # ignora entidades minúsculas (pontos de marcação)
+DISTANCIA_MAX_TEXTO_CM = 50.0  # limite para associar texto a uma peça
+FATOR_LINHA_FIO = 2.0  # linha do fio deve ser > 2x a mediana das demais
 
 
 def parse_dxf(caminho: str) -> list[dict[str, Any]]:
@@ -24,16 +31,20 @@ def parse_dxf(caminho: str) -> list[dict[str, Any]]:
     LINE são agrupadas por layer e unidas em polígonos quando fecham.
 
     Returns:
-        Lista de dicts com {nome_sugerido, geometria_json, area_cm2}.
+        Lista de dicts com {nome_sugerido, geometria_json, area_cm2,
+        sentido_fio_detectado}.
     """
     doc = ezdxf.readfile(caminho)
     msp = doc.modelspace()
 
     pecas: list[dict[str, Any]] = []
+    poligonos: list[Polygon] = []
     idx = 1
 
     # Coletor de segmentos LINE por layer (para montagem de contornos)
     lines_by_layer: dict[str, list[tuple[Vec2, Vec2]]] = defaultdict(list)
+    # Todas as linhas soltas do desenho (para detecção de sentido do fio)
+    todas_linhas: list[tuple[Vec2, Vec2]] = []
 
     for ent in msp:
         tipo = ent.dxftype()
@@ -66,28 +77,40 @@ def parse_dxf(caminho: str) -> list[dict[str, Any]]:
                 start = Vec2(ent.dxf.start.x, ent.dxf.start.y)
                 end = Vec2(ent.dxf.end.x, ent.dxf.end.y)
                 lines_by_layer[layer].append((start, end))
+                todas_linhas.append((start, end))
             except Exception:
                 pass
 
         if pontos is not None:
-            result = _make_peca(pontos, idx)
-            if result:
-                pecas.append(result)
+            resultado = _make_peca(pontos, idx)
+            if resultado:
+                dict_peca, poly = resultado
+                pecas.append(dict_peca)
+                poligonos.append(poly)
                 idx += 1
 
     # Tenta montar polígonos a partir dos segmentos LINE por layer
     for layer, segments in lines_by_layer.items():
-        polys = _segments_to_polygons(segments)
-        for poly in polys:
-            result = _poly_to_peca(poly, idx)
-            if result:
-                pecas.append(result)
+        for poly in _segments_to_polygons(segments):
+            resultado = _poly_to_peca(poly, idx)
+            if resultado:
+                dict_peca, poly_valido = resultado
+                pecas.append(dict_peca)
+                poligonos.append(poly_valido)
                 idx += 1
+
+    textos = _extrair_textos(msp)
+    for dict_peca, poly in zip(pecas, poligonos):
+        centroide = poly.centroid
+        nome = _texto_mais_proximo(centroide, textos)
+        if nome:
+            dict_peca["nome_sugerido"] = nome
+        dict_peca["sentido_fio_detectado"] = _detectar_sentido_fio(poly, todas_linhas)
 
     return pecas
 
 
-def _make_peca(pontos: list[tuple[float, float]], idx: int) -> dict[str, Any] | None:
+def _make_peca(pontos: list[tuple[float, float]], idx: int) -> tuple[dict[str, Any], Polygon] | None:
     try:
         poly = Polygon(pontos)
         if not poly.is_valid:
@@ -97,17 +120,19 @@ def _make_peca(pontos: list[tuple[float, float]], idx: int) -> dict[str, Any] | 
         return None
 
 
-def _poly_to_peca(poly: Polygon, idx: int) -> dict[str, Any] | None:
+def _poly_to_peca(poly: Polygon, idx: int) -> tuple[dict[str, Any], Polygon] | None:
     try:
         area = float(poly.area)
         if area < MIN_AREA_CM2:
             return None
         coords = [list(p) for p in poly.exterior.coords]
-        return {
+        dict_peca = {
             "nome_sugerido": f"Peça {idx}",
             "geometria_json": {"type": "Polygon", "coordinates": [coords]},
             "area_cm2": round(area, 4),
+            "sentido_fio_detectado": None,
         }
+        return dict_peca, poly
     except Exception:
         return None
 
@@ -160,3 +185,96 @@ def _segments_to_polygons(segments: list[tuple[Vec2, Vec2]]) -> list[Polygon]:
                 pass
 
     return polygons
+
+
+# ── Nomes de peça a partir de textos (TEXT/MTEXT) ──────────────────────
+
+
+def _extrair_textos(msp) -> list[tuple[Vec2, str]]:
+    """Varre TEXT/MTEXT do modelspace e retorna (posição, texto) já filtrados."""
+    textos: list[tuple[Vec2, str]] = []
+    for ent in msp:
+        tipo = ent.dxftype()
+        conteudo = None
+        posicao = None
+
+        if tipo == "TEXT":
+            try:
+                conteudo = ent.dxf.text
+                posicao = Vec2(ent.dxf.insert.x, ent.dxf.insert.y)
+            except Exception:
+                continue
+
+        elif tipo == "MTEXT":
+            try:
+                conteudo = ent.plain_text() if hasattr(ent, "plain_text") else ent.text
+                posicao = Vec2(ent.dxf.insert.x, ent.dxf.insert.y)
+            except Exception:
+                continue
+
+        if conteudo is None or posicao is None:
+            continue
+
+        conteudo = conteudo.strip()
+        if not conteudo or _is_texto_quantidade(conteudo):
+            continue
+
+        textos.append((posicao, conteudo))
+
+    return textos
+
+
+def _is_texto_quantidade(texto: str) -> bool:
+    """Filtra textos que indicam quantidade ('1 peça', '2 pares', '34')."""
+    t = texto.strip()
+    if not t:
+        return True
+    somente_numero = t.replace(",", "").replace(".", "")
+    if somente_numero.isdigit():
+        return True
+    return t[0].isdigit()
+
+
+def _texto_mais_proximo(centroide, textos: list[tuple[Vec2, str]]) -> str | None:
+    melhor_texto: str | None = None
+    melhor_dist = DISTANCIA_MAX_TEXTO_CM
+    for posicao, texto in textos:
+        dist = math.hypot(posicao.x - centroide.x, posicao.y - centroide.y)
+        if dist <= melhor_dist:
+            melhor_dist = dist
+            melhor_texto = texto
+    return melhor_texto
+
+
+# ── Detecção do sentido do fio ──────────────────────────────────────────
+
+
+def _detectar_sentido_fio(poly: Polygon, linhas: list[tuple[Vec2, Vec2]]) -> str | None:
+    minx, miny, maxx, maxy = poly.bounds
+    candidatas: list[tuple[float, Vec2, Vec2]] = []
+    for a, b in linhas:
+        if minx <= a.x <= maxx and miny <= a.y <= maxy and minx <= b.x <= maxx and miny <= b.y <= maxy:
+            candidatas.append(((a - b).magnitude, a, b))
+
+    if len(candidatas) < 2:
+        return None
+
+    candidatas.sort(key=lambda c: c[0], reverse=True)
+    comprimento_maior, a, b = candidatas[0]
+    mediana_outras = statistics.median(c[0] for c in candidatas[1:])
+
+    if mediana_outras <= 0 or comprimento_maior <= FATOR_LINHA_FIO * mediana_outras:
+        return None
+
+    angulo = math.degrees(math.atan2(b.y - a.y, b.x - a.x)) % 360
+    return _classificar_sentido(angulo)
+
+
+def _classificar_sentido(angulo: float) -> str | None:
+    if 80 <= angulo <= 100 or 260 <= angulo <= 280:
+        return "vertical"
+    if 0 <= angulo <= 10 or 170 <= angulo <= 190:
+        return "horizontal"
+    if 40 <= angulo <= 50 or 220 <= angulo <= 230:
+        return "45graus"
+    return None

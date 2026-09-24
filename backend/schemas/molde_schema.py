@@ -46,6 +46,7 @@ class PecaPreviewOut(BaseModel):
     nome_sugerido: str
     geometria_json: dict[str, Any]
     area_cm2: float
+    sentido_fio_detectado: str | None = None
 
 
 class PreviewOut(BaseModel):
@@ -81,6 +82,7 @@ class GrupoImportCreate(BaseModel):
     nome_grupo: str = Field(..., max_length=150)
     arquivo_path: str
     formato: str
+    produto_id: uuid.UUID | None = None
     partes: list[ParteCreate]
 
 
@@ -100,6 +102,9 @@ class GrupoMoldeOut(BaseModel):
     id: uuid.UUID
     nome: str
     codigo: str | None = None
+    produto_id: uuid.UUID | None = None
+    produto_nome: str | None = None
+    produto_grupo: str | None = None
     criado_em: datetime
     moldes: list[MoldeOut] = []
 

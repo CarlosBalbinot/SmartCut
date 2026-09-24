@@ -14,8 +14,8 @@ _MOD = "moldes"
 
 
 @router.get("/", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
-def listar_grupos(db: Session = Depends(get_db)):
-    grupos = grupo_service.listar(db)
+def listar_grupos(busca: str = "", db: Session = Depends(get_db)):
+    grupos = grupo_service.listar(db, busca=busca)
     return {"data": grupos, "error": None}
 
 

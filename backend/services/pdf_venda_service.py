@@ -215,7 +215,10 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
         ("E-MAIL", pedido.cliente_email, 0.50),
     ], w))
     story.append(_grid_row([
-        ("OBS", pedido.observacoes, 1.0),
+        # PedidoVenda não tem campo "observacoes" — usa informacoes_adicionais
+        # (visível ao cliente/XML da NF-e); observacoes_internas é de uso
+        # interno e não deve ir num PDF entregue ao cliente.
+        ("OBS", pedido.informacoes_adicionais, 1.0),
     ], w))
     story.append(Spacer(1, 4 * mm))
 
@@ -232,8 +235,11 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
     grupo_idx = 0
 
     for item in itens:
-        codigo = item.grupo.codigo if getattr(item, "grupo", None) else ""
-        nome = item.grupo.nome if getattr(item, "grupo", None) else ""
+        # Item novo do catálogo fiscal (produto/sku) não tem grupo — usa as
+        # propriedades genéricas do model (ItemPedido.ref_codigo/
+        # descricao_completa) para não deixar a linha em branco no PDF.
+        codigo = item.grupo.codigo if getattr(item, "grupo", None) else (item.ref_codigo or "")
+        nome = item.grupo.nome if getattr(item, "grupo", None) else (item.descricao_completa or "")
         cor = item.cor or ""
 
         pref = precos_ref.get(str(item.grupo_id))

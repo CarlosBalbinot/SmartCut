@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DefeitoCreate(BaseModel):
@@ -43,5 +43,10 @@ class EncaixeOut(BaseModel):
     criado_em: datetime
     data_corte: date | None
     defeitos: list[DefeitoOut] = []
+    # numero_enc/descricao: numeração e nome do encaixe (ver models/encaixe.py).
+    # validation_alias porque a coluna real se chama "numero" — "numero_enc"
+    # evita ambiguidade com PedidoVenda.numero no frontend.
+    numero_enc: int | None = Field(None, validation_alias="numero")
+    descricao: str | None = None
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

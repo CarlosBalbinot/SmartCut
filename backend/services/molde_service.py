@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from config import settings
 from models.molde import Molde
+from models.pedido import ItemPedido
 from parsers.ads_parser import parse_ads
 from parsers.dxf_parser import parse_dxf
 from parsers.plt_parser import parse_plt
@@ -97,6 +98,22 @@ def deletar(db: Session, molde_id: uuid.UUID) -> bool:
     molde = db.get(Molde, molde_id)
     if not molde:
         return False
+
+    if molde.grupo_id is not None:
+        # Vínculo real hoje é a nível de grupo: itens_pedido referencia o
+        # grupo de moldes, não o molde individual (PedidoPeca/molde_id foi
+        # removido na reestruturação e hoje é código morto).
+        vinculado = (
+            db.query(ItemPedido)
+            .filter(ItemPedido.grupo_id == molde.grupo_id)
+            .first()
+        )
+        if vinculado:
+            raise ValueError(
+                "Este molde não pode ser excluído pois está vinculado a um ou "
+                "mais encaixes. Remova os encaixes primeiro."
+            )
+
     db.delete(molde)
     db.commit()
     return True

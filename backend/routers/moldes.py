@@ -70,7 +70,10 @@ def atualizar_molde(
     dependencies=[Depends(require_permission(_MOD, "excluir"))],
 )
 def deletar_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
-    ok = molde_service.deletar(db, molde_id)
+    try:
+        ok = molde_service.deletar(db, molde_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Molde não encontrado")
     return {"data": {"deleted": True}, "error": None}

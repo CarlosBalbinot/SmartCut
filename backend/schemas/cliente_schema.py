@@ -1,7 +1,15 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+# Campos de texto livre convertidos para maiúsculo antes de salvar — segunda
+# garantia além do uppercase já aplicado no onChange do frontend (não inclui
+# email, senha, url/homepage ou campos dependentes de busca externa).
+_CAMPOS_UPPER = (
+    "razao_social", "nome_fantasia", "endereco", "numero", "complemento",
+    "bairro", "cidade", "observacoes", "contato", "rg", "ie", "inscricao_municipal",
+)
 
 
 class ClienteCreate(BaseModel):
@@ -43,6 +51,11 @@ class ClienteCreate(BaseModel):
     situacao: str = "ativo"
     observacoes: Optional[str] = None
 
+    @field_validator(*_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
+
 
 class ClienteUpdate(BaseModel):
     tipo_registro: Optional[str] = None
@@ -83,6 +96,11 @@ class ClienteUpdate(BaseModel):
     situacao: Optional[str] = None
     observacoes: Optional[str] = None
     ativo: Optional[bool] = None
+
+    @field_validator(*_CAMPOS_UPPER, mode="before")
+    @classmethod
+    def to_upper(cls, v):
+        return v.upper() if isinstance(v, str) else v
 
 
 class ClienteResponse(BaseModel):

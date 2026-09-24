@@ -3,6 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -92,6 +93,25 @@ class TESResponse(BaseModel):
 def listar_tes(db: Session = Depends(get_db)):
     rows = db.query(TES).order_by(TES.codigo).all()
     return {"data": [TESResponse.model_validate(r) for r in rows], "error": None}
+
+
+def buscar_tes_por_codigo(db: Session, codigo: str) -> TES | None:
+    """Busca por código digitado — trim + case-insensitive. Usado também
+    pela edição inline de itens em routers/pedidos_venda.py."""
+    codigo = (codigo or "").strip()
+    if not codigo:
+        return None
+    return db.query(TES).filter(func.lower(TES.codigo) == codigo.lower()).first()
+
+
+# Declarada antes de /{tes_id}: senão "validar" cai na rota com path param
+# int e volta 422 em vez de chegar aqui.
+@router.get("/validar", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
+def validar_tes(codigo: str, db: Session = Depends(get_db)):
+    tes = buscar_tes_por_codigo(db, codigo)
+    if not tes:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Código de TES inválido")
+    return {"data": {"id": tes.id, "codigo": tes.codigo, "descricao": tes.descricao}, "error": None}
 
 
 @router.get("/{tes_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])

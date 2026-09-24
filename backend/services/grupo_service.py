@@ -1,26 +1,34 @@
 import uuid
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
 
 from models.grupo_molde import GrupoMolde
 from models.molde import Molde
+from models.produto import Produto
 from schemas.molde_schema import GrupoImportCreate, GrupoMoldeUpdate
 
+_OPTS = (
+    selectinload(GrupoMolde.moldes),
+    selectinload(GrupoMolde.produto).selectinload(Produto.grupo),
+)
 
-def listar(db: Session) -> list[dict]:
-    grupos = (
-        db.query(GrupoMolde)
-        .options(selectinload(GrupoMolde.moldes))
-        .order_by(GrupoMolde.criado_em.desc())
-        .all()
-    )
+
+def listar(db: Session, busca: str = "") -> list[dict]:
+    query = db.query(GrupoMolde).options(*_OPTS)
+    if busca:
+        termo = f"%{busca}%"
+        query = query.filter(
+            or_(GrupoMolde.nome.ilike(termo), GrupoMolde.codigo.ilike(termo))
+        )
+    grupos = query.order_by(GrupoMolde.criado_em.desc()).all()
     return [_grupo_to_dict(g) for g in grupos]
 
 
 def obter(db: Session, grupo_id: uuid.UUID) -> dict | None:
     grupo = (
         db.query(GrupoMolde)
-        .options(selectinload(GrupoMolde.moldes))
+        .options(*_OPTS)
         .filter(GrupoMolde.id == grupo_id)
         .first()
     )
@@ -29,7 +37,7 @@ def obter(db: Session, grupo_id: uuid.UUID) -> dict | None:
 
 def importar_grupo(db: Session, payload: GrupoImportCreate) -> dict:
     """Cria o grupo e todos os moldes de todas as partes em uma transação."""
-    grupo = GrupoMolde(nome=payload.nome_grupo)
+    grupo = GrupoMolde(nome=payload.nome_grupo, produto_id=payload.produto_id)
     db.add(grupo)
     db.flush()  # gera grupo.id sem commit
 
@@ -91,6 +99,9 @@ def _grupo_to_dict(grupo: GrupoMolde) -> dict:
         "id": str(grupo.id),
         "nome": grupo.nome,
         "codigo": grupo.codigo,
+        "produto_id": str(grupo.produto_id) if grupo.produto_id else None,
+        "produto_nome": grupo.produto.descricao if grupo.produto else None,
+        "produto_grupo": grupo.produto.grupo.nome if grupo.produto and grupo.produto.grupo else None,
         "criado_em": grupo.criado_em.isoformat(),
         "moldes": [_molde_to_dict(m) for m in grupo.moldes],
     }

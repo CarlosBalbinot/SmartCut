@@ -1,9 +1,10 @@
 """nesting_service.py — Lógica de negócio para geração automática de encaixes.
 
 Fluxo principal (gerar_encaixe):
-  1. Carrega o pedido com todas as peças e tecidos vinculados.
-  2. Agrupa PedidoPecas por lote (nova hierarquia) ou tecido legado.
-  3. Para cada lote/tecido:
+  1. Carrega o pedido com todos os ItemPedido e seus grupo/lote vinculados.
+  2. Agrupa os moldes de cada item (grupo_id + tamanho com qtd > 0) por
+     lote_id (_agrupar_por_lote) — um pedido pode ter vários tecidos.
+  3. Para cada lote:
        a. Calcula num_camadas = min(modelo.max_camadas, max_qty_do_grupo).
        b. Monta a lista de moldes/polígonos para o worker (qty corrigida por
           camadas e pelo multiplicador de tipo_corte).
@@ -21,18 +22,13 @@ import math
 import uuid
 from dataclasses import dataclass
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe
+from models.grupo_molde import GrupoMolde
 from models.molde import Molde
-from models.pedido import PedidoVenda as Pedido
-
-# Stubs — PedidoPeca e PedidoTecido removidos na reestruturação
-class PedidoPeca:
-    pass
-
-class PedidoTecido:
-    pass
+from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from nesting.nesting_bridge import build_polygon, executar
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
@@ -41,7 +37,7 @@ from services.gramatura_service import aplicar_encolhimento, calcular_custo, met
 # 2 000 cm = 20 m (tamanho típico de mesa de corte).
 MAX_ENFESTO_CM: float = 2000.0
 
-# Multiplicador de corte por tipo_corte (mesmo mapeamento usado em pedido_service)
+# Multiplicador de corte por tipo_corte (mesmo mapeamento usado no pedido de venda)
 _MULT: dict[str, int] = {"simples": 1, "par": 2, "par_sem_espelho": 2}
 
 
@@ -132,58 +128,66 @@ def _poligono_rotacionado(molde: Molde) -> list[list[float]]:
     return _rotate_polygon(pts, molde.rotacao_base or 0)
 
 
-# ── Agrupamento por lote (nova hierarquia) ou tecido legado ──────────────────
+# ── Agrupamento por lote a partir dos itens do pedido ────────────────────────
 
-def _agrupar_por_lote_ou_tecido(
+# (campo de quantidade no ItemPedido, tamanho correspondente do Molde)
+TAMANHOS: list[tuple[str, str]] = [
+    ("qtd_p", "P"), ("qtd_m", "M"), ("qtd_g", "G"), ("qtd_gg", "GG"),
+    ("qtd_g1", "G1"), ("qtd_g2", "G2"), ("qtd_g3", "G3"),
+]
+
+
+def _agrupar_por_lote(
     pedido: Pedido,
-) -> dict[str, tuple[TecidoNesting, list[PedidoPeca]]]:
-    """Retorna {chave: (TecidoNesting, [pp, ...])}.
+) -> tuple[dict[uuid.UUID, tuple[TecidoNesting, list[tuple[Molde, int]]]], list[str]]:
+    """Retorna (grupos, avisos).
 
-    Prioridade:
-      1. Nova hierarquia: pp.cor_id → busca o lote do pedido cuja cor corresponde.
-      2. Legado: pp.tecido ou o primeiro tecido do pedido.
+    grupos: {lote_id: (TecidoNesting, [(molde, quantidade), ...])}
+    avisos: mensagens legíveis sobre itens/tamanhos ignorados. Não são
+    fatais por si só — cabe a gerar_encaixe decidir se viram erro (quando
+    nada sobra) ou só acompanham o resultado (quando é parcial).
 
-    Peças sem nenhum tecido associado são ignoradas.
+    Para cada ItemPedido: para cada tamanho com quantidade > 0, busca todos
+    os moldes do grupo com aquele tamanho (uma peça pode ter várias partes —
+    frente, costas, manga — cada uma um Molde distinto) e os agrupa pelo
+    lote de tecido do item.
     """
-    # Mapa cor_id → LoteTecido vindo de pedido_tecidos
-    cor_to_lote: dict[uuid.UUID, LoteTecido] = {}
-    for pt in pedido.pedido_tecidos:
-        if pt.lote and pt.lote.cor:
-            cor_id = pt.lote.cor.id
-            if cor_id not in cor_to_lote:
-                cor_to_lote[cor_id] = pt.lote
+    grupos: dict[uuid.UUID, tuple[TecidoNesting, list[tuple[Molde, int]]]] = {}
+    avisos: list[str] = []
 
-    # Tecido legado padrão (fallback)
-    default_tecido = (
-        pedido.pedido_tecidos[0].tecido
-        if pedido.pedido_tecidos and pedido.pedido_tecidos[0].tecido
-        else None
-    )
+    for item in pedido.itens:
+        nome_grupo = item.grupo.nome if item.grupo else str(item.grupo_id)
 
-    grupos: dict[str, tuple[TecidoNesting, list[PedidoPeca]]] = {}
-
-    for pp in pedido.pecas:
-        tn: TecidoNesting | None = None
-
-        # 1. Nova hierarquia: cor_id presente na peça
-        if pp.cor_id and pp.cor_id in cor_to_lote:
-            lote = cor_to_lote[pp.cor_id]
-            key = f"lote:{lote.id}"
-            if key not in grupos:
-                grupos[key] = (TecidoNesting.de_lote(lote), [])
-            grupos[key][1].append(pp)
+        if not item.lote_id or not item.lote:
+            aviso = f"Peça '{nome_grupo}' sem tecido vinculado — ignorada"
+            print(f"[NESTING] {aviso}")
+            avisos.append(aviso)
+            continue
+        if not item.grupo:
+            aviso = f"Item {item.id} sem grupo de moldes — ignorado"
+            print(f"[NESTING] {aviso}")
+            avisos.append(aviso)
             continue
 
-        # 2. Legado: tecido direto na peça ou fallback do pedido
-        tecido = pp.tecido or default_tecido
-        if tecido is None:
-            continue
-        key = f"tec:{tecido.id}"
-        if key not in grupos:
-            grupos[key] = (TecidoNesting.de_tecido_legado(tecido), [])
-        grupos[key][1].append(pp)
+        chave = item.lote_id
+        if chave not in grupos:
+            grupos[chave] = (TecidoNesting.de_lote(item.lote), [])
+        _, pares = grupos[chave]
 
-    return grupos
+        for campo, tamanho in TAMANHOS:
+            qtd = getattr(item, campo, 0) or 0
+            if qtd <= 0:
+                continue
+            moldes_tamanho = [m for m in item.grupo.moldes if m.tamanho == tamanho]
+            if not moldes_tamanho:
+                aviso = f"Grupo '{item.grupo.nome}': sem molde tamanho={tamanho} — tamanho ignorado"
+                print(f"[NESTING] {aviso}")
+                avisos.append(aviso)
+                continue
+            for molde in moldes_tamanho:
+                pares.append((molde, qtd))
+
+    return grupos, avisos
 
 
 # ── Geração de encaixes para um tecido ──────────────────────────────────────
@@ -192,29 +196,32 @@ def _gerar_para_tecido(
     db: Session,
     pedido: Pedido,
     tecido: TecidoNesting,
-    pecas: list[PedidoPeca],
-) -> list[dict]:
-    """Roda nesting para um grupo tecido e salva um ou mais Encaixes."""
+    pares: list[tuple[Molde, int]],
+) -> tuple[list[dict], list[str]]:
+    """Roda nesting para um lote de tecido e salva um ou mais Encaixes.
 
-    max_qty = max(pp.quantidade for pp in pecas) if pecas else 1
+    Retorna (encaixes_criados, avisos).
+    """
+    avisos: list[str] = []
+
+    max_qty = max(qtd for _, qtd in pares) if pares else 1
     num_camadas = max(1, min(tecido.max_camadas, max_qty))
 
     parts: list[dict] = []
-    for pp in pecas:
-        m = pp.molde
-        mult = _MULT.get(m.tipo_corte or "simples", 1)
-        qty_plano = math.ceil(pp.quantidade * mult / num_camadas)
+    for molde, qtd in pares:
+        mult = _MULT.get(molde.tipo_corte or "simples", 1)
+        qty_plano = math.ceil(qtd * mult / num_camadas)
         if qty_plano <= 0:
             continue
         parts.append({
-            "id": str(m.id),
-            "polygon": _poligono_rotacionado(m),
+            "id": str(molde.id),
+            "polygon": _poligono_rotacionado(molde),
             "quantity": qty_plano,
-            "rotations": _rotacoes(m.sentido_fio),
+            "rotations": _rotacoes(molde.sentido_fio),
         })
 
     if not parts:
-        return []
+        return [], avisos
 
     largura = tecido.largura_util_cm
 
@@ -224,19 +231,30 @@ def _gerar_para_tecido(
         parts=parts,
     )
 
+    if not result["placements"]:
+        # nest_worker descarta peças mais largas que o bin em silêncio
+        # (ver nest_worker.js: findBest retorna null e o item é pulado) —
+        # sem este aviso o usuário só vê 0% de aproveitamento sem saber por quê.
+        avisos.append(
+            f"Nenhuma peça foi posicionada no tecido '{tecido.nome}'. "
+            f"Verifique se a largura útil do tecido "
+            f"({tecido.largura_util_cm} cm) está correta e é maior que as "
+            f"peças a encaixar."
+        )
+
     encaixes_criados: list[dict] = []
 
     if result["width_used"] > MAX_ENFESTO_CM:
         encaixes_criados.extend(
-            _dividir_em_lotes(db, pedido, tecido, parts, largura, num_camadas, pecas=pecas)
+            _dividir_em_lotes(db, pedido, tecido, parts, largura, num_camadas, pecas=pares)
         )
     else:
         enc = _salvar_encaixe(
-            db, pedido, tecido, result, num_camadas, largura, parts, pecas=pecas
+            db, pedido, tecido, result, num_camadas, largura, parts, pecas=pares
         )
         encaixes_criados.append(enc)
 
-    return encaixes_criados
+    return encaixes_criados, avisos
 
 
 def _dividir_em_lotes(
@@ -296,12 +314,11 @@ def _salvar_encaixe(
     parts_map: dict[str, list] = {p["id"]: p["polygon"] for p in parts}
     pecas_map: dict[str, dict] = {}
     if pecas:
-        for pp in pecas:
-            mid = str(pp.molde.id)
-            pecas_map[mid] = {
-                "peca": pp.molde.peca,
-                "tamanho": pp.molde.tamanho,
-                "grupo_nome": pp.molde.grupo.nome if pp.molde.grupo else None,
+        for molde, _qtd in pecas:
+            pecas_map[str(molde.id)] = {
+                "peca": molde.peca,
+                "tamanho": molde.tamanho,
+                "grupo_nome": molde.grupo.nome if molde.grupo else None,
             }
 
     enriched_placements: list[dict] = []
@@ -326,6 +343,12 @@ def _salvar_encaixe(
         "parts_count": sum(p["quantity"] for p in parts),
     }
 
+    # Numeração sequencial própria do encaixe (ENC-001, ENC-002...) —
+    # recalculada a cada chamada, então cada Encaixe criado dentro do mesmo
+    # gerar_encaixe() (um por lote/tecido) recebe o próximo número, já que
+    # o commit logo abaixo torna este encaixe visível ao COUNT(*) seguinte.
+    proximo_numero = db.query(func.count(Encaixe.id)).scalar() + 1
+
     encaixe = Encaixe(
         pedido_id=pedido.id,
         lote_id=tecido.lote_id,
@@ -337,6 +360,8 @@ def _salvar_encaixe(
         desperdicio_pct=round(desperdicio_pct, 2),
         num_camadas=num_camadas,
         status="ativo",
+        numero=proximo_numero,
+        descricao=pedido.observacoes_internas,
     )
     db.add(encaixe)
     db.commit()
@@ -353,42 +378,35 @@ def _salvar_encaixe(
         "custo_total": float(encaixe.custo_total),
         "desperdicio_pct": float(encaixe.desperdicio_pct),
         "total_pecas_plano": mapa_json["parts_count"],
+        "numero_enc": encaixe.numero,
+        "descricao": encaixe.descricao,
     }
 
 
 # ── Ponto de entrada público ─────────────────────────────────────────────────
 
-def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> list[dict]:
-    """Gera encaixes automáticos para todos os lotes/tecidos do pedido.
+def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
+    """Gera encaixes automáticos para todos os lotes de tecido do pedido.
 
     Returns:
-        Lista de dicts com resumo de cada Encaixe criado.
+        {"encaixes": [...resumo de cada Encaixe criado...], "avisos": [...]}
+        — avisos cobre itens/tamanhos ignorados que não impediram a geração.
 
     Raises:
-        ValueError: se o pedido não existir ou não tiver peças/tecidos.
+        ValueError: se o pedido não existir, não tiver itens, ou se nenhuma
+            peça pôde ser agrupada (todas sem tecido/molde válido).
         RuntimeError: se o motor de nesting falhar.
     """
     pedido = (
         db.query(Pedido)
         .options(
-            # Nova hierarquia: lote → cor → modelo
-            selectinload(Pedido.pedido_tecidos)
-                .selectinload(PedidoTecido.lote)
+            selectinload(Pedido.itens)
+                .selectinload(ItemPedido.grupo)
+                .selectinload(GrupoMolde.moldes),
+            selectinload(Pedido.itens)
+                .selectinload(ItemPedido.lote)
                 .selectinload(LoteTecido.cor)
                 .selectinload(CorTecido.modelo),
-            # Legado
-            selectinload(Pedido.pedido_tecidos)
-                .selectinload(PedidoTecido.tecido),
-            # Peças: molde → grupo
-            selectinload(Pedido.pecas)
-                .selectinload(PedidoPeca.molde)
-                .selectinload(Molde.grupo),
-            # Peças: cor_tecido (nova hierarquia)
-            selectinload(Pedido.pecas)
-                .selectinload(PedidoPeca.cor_tecido),
-            # Peças: tecido legado
-            selectinload(Pedido.pecas)
-                .selectinload(PedidoPeca.tecido),
         )
         .filter(Pedido.id == pedido_id)
         .first()
@@ -397,23 +415,24 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> list[dict]:
     if not pedido:
         raise ValueError("Pedido não encontrado.")
 
-    if not pedido.pecas:
-        raise ValueError("O pedido não possui peças cadastradas.")
+    if not pedido.itens:
+        raise ValueError("O pedido não possui itens cadastrados.")
 
-    grupos = _agrupar_por_lote_ou_tecido(pedido)
+    grupos, avisos = _agrupar_por_lote(pedido)
 
     if not grupos:
         raise ValueError(
-            "Nenhuma peça possui tecido associado. "
-            "Vincule ao menos um tecido ao pedido e às peças."
+            "Nenhuma peça foi vinculada a um tecido. "
+            "Selecione um tecido para cada peça antes de gerar o encaixe."
         )
 
     resultado: list[dict] = []
-    for tn, pecas in grupos.values():
-        encaixes = _gerar_para_tecido(db, pedido, tn, pecas)
+    for tecido, pares in grupos.values():
+        encaixes, avisos_tecido = _gerar_para_tecido(db, pedido, tecido, pares)
         resultado.extend(encaixes)
+        avisos.extend(avisos_tecido)
 
-    return resultado
+    return {"encaixes": resultado, "avisos": avisos}
 
 
 # ── Legado: mantido para compatibilidade com chamadas existentes ─────────────
