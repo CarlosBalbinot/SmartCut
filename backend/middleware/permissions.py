@@ -1,33 +1,51 @@
 from typing import Optional
 
 import jwt as pyjwt
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
 from models.usuario import ACOES_VALIDAS, MODULOS_VALIDOS, Permissao, Usuario
-from services.usuario_service import decodificar_token
+from services.auth_service import PREFIXO_SUB_ADMIN, verificar_token
 
 
-def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> Usuario:
-    """Dependency FastAPI: extrai o Bearer token, valida o JWT (sistema
-    administrativo — secret e payload distintos do JWT do painel do
-    vendedor) e devolve o Usuario autenticado.
+def get_current_user(
+    authorization: Optional[str] = Header(None),
+    token_admin: str = Cookie(default="", alias="smartcut_token"),
+    db: Session = Depends(get_db),
+) -> Usuario:
+    """Dependency FastAPI: extrai o Bearer token (header no Electron, cookie
+    HttpOnly no navegador), valida o JWT (sistema administrativo — mesmo
+    segredo do painel do vendedor, diferenciado pela claim "tipo": admin e
+    subject prefixado "adm:") e devolve o Usuario autenticado.
 
     Uso: current_user: Usuario = Depends(get_current_user)
     """
-    if not authorization or not authorization.startswith("Bearer "):
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[len("Bearer "):]
+    elif token_admin:
+        token = token_admin
+    else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token não informado")
 
-    token = authorization[len("Bearer "):]
     try:
-        payload = decodificar_token(token)
+        payload = verificar_token(token)
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expirado")
     except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
 
-    usuario = db.get(Usuario, int(payload["sub"]))
+    # Itens 1.1/1.2: token de outro sistema (vendedor) não autentica no
+    # administrativo — claim "tipo" + subject prefixado "adm:".
+    sub = str(payload.get("sub", ""))
+    if payload.get("tipo") != "admin" or not sub.startswith(PREFIXO_SUB_ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido para o sistema administrativo",
+        )
+
+    usuario = db.get(Usuario, int(sub[len(PREFIXO_SUB_ADMIN):]))
     if not usuario or not usuario.ativo:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário inválido ou inativo")
 

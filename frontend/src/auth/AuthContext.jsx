@@ -1,6 +1,7 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../services/config";
-import { apiFetch, ADMIN_TOKEN_KEY } from "../services/api";
+import { apiFetch } from "../services/api";
+import { tokenStore } from "../services/tokenStore";
 
 const AUTH_BASE = `${API_BASE}/api/v1/auth`;
 
@@ -11,21 +12,23 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Item 1.4: o token não fica mais em localStorage. No Electron vem do
+  // safeStorage; no navegador a sessão vem do cookie HttpOnly — como o cookie
+  // não é legível por script, o carregamento inicial sempre valida via /me.
   useEffect(() => {
-    const salvo = localStorage.getItem(ADMIN_TOKEN_KEY);
-    if (!salvo) {
-      setLoading(false);
-      return;
-    }
-    setToken(salvo);
-    apiFetch(`${AUTH_BASE}/me`)
+    tokenStore
+      .obter("admin")
+      .then((tok) => {
+        if (tok) setToken(tok);
+        return apiFetch(`${AUTH_BASE}/me`);
+      })
       .then(async (res) => {
         if (!res.ok) throw new Error("sessão inválida");
         const json = await res.json();
         setUsuario(json.data);
       })
       .catch(() => {
-        localStorage.removeItem(ADMIN_TOKEN_KEY);
+        tokenStore.limpar("admin");
         setToken(null);
         setUsuario(null);
       })
@@ -35,6 +38,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (username, senha) => {
     const res = await fetch(`${AUTH_BASE}/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, senha }),
     });
@@ -42,7 +46,9 @@ export function AuthProvider({ children }) {
     if (!res.ok) {
       throw new Error(json.detail || json.error || "Não foi possível entrar.");
     }
-    localStorage.setItem(ADMIN_TOKEN_KEY, json.data.token);
+    // Item 1.4: Electron persiste via safeStorage; no navegador o cookie
+    // HttpOnly já foi emitido pelo backend na resposta do login.
+    await tokenStore.salvar(json.data.token, "admin");
     setToken(json.data.token);
     setUsuario(json.data.usuario);
     return json.data.usuario;
@@ -50,7 +56,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     apiFetch(`${AUTH_BASE}/logout`, { method: "POST" }).catch(() => {});
-    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    tokenStore.limpar("admin");
     setToken(null);
     setUsuario(null);
     window.location.hash = "/login";

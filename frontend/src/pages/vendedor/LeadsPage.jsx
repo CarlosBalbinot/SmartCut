@@ -1,23 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./LeadsPage.module.css";
-import { API_BASE } from "../../services/config";
-
-function vendedorFetch(path, options = {}) {
-  const token = localStorage.getItem("smartcut_vendedor_token");
-  return fetch(`${API_BASE}/api/v1${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-    ...options,
-  }).then(async (res) => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
-    return json.data;
-  });
-}
+import { vendedorFetch } from "../../services/vendedorApi";
 
 const STATUS_LIST = ["todos", "novo", "visitado", "orcamento", "cliente"];
 const STATUS_LABEL = {

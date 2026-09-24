@@ -17,6 +17,8 @@ const ACAO_LABEL = {
   excluir: "Excluir",
   confirmar: "Confirmar",
   gerar: "Gerar",
+  executar: "Executar",
+  cancelar: "Cancelar",
 };
 
 const CRUD = ["ver", "criar", "editar", "excluir"];
@@ -54,9 +56,11 @@ const GRUPOS = [
   ]},
   { grupo: "Fiscal", itens: [
     { modulo: "fiscal_nfe", label: "NF-e", acoes: CRUD },
-    { modulo: "fiscal_transmitir", label: "Transmitir", acoes: ["ver"] },
-    { modulo: "fiscal_cancelar", label: "Cancelar", acoes: ["ver"] },
-    { modulo: "fiscal_carta_correcao", label: "Carta de Correção", acoes: ["ver"] },
+    // Item 5.1: ações de execução em módulos próprios (o "ver" deixou de
+    // autorizar transmitir/cancelar/CC-e — era o bug de permissão).
+    { modulo: "fiscal_transmitir", label: "Transmitir NF-e", acoes: ["executar"] },
+    { modulo: "fiscal_cancelar", label: "Cancelar NF-e", acoes: ["cancelar"] },
+    { modulo: "fiscal_carta_correcao", label: "Carta de Correção", acoes: ["criar"] },
   ]},
   { grupo: "Configurações", itens: [
     { modulo: "configuracoes_ver", label: "Visualizar", acoes: ["ver"] },

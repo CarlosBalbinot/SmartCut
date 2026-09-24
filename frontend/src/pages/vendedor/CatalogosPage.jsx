@@ -2,27 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./CatalogosPage.module.css";
 import { API_BASE } from "../../services/config";
-
-function vendedorFetch(path, options = {}) {
-  const token = localStorage.getItem("smartcut_vendedor_token");
-  return fetch(`${API_BASE}/api/v1${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-    ...options,
-  }).then(async (res) => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
-    return json.data;
-  });
-}
+import { vendedorFetch } from "../../services/vendedorApi";
+import { tokenStore } from "../../services/tokenStore";
 
 async function downloadCatalogo(id, nome) {
-  const token = localStorage.getItem("smartcut_vendedor_token");
+  // Item 1.4: token via safeStorage (Electron) ou cookie HttpOnly (navegador).
+  const token = await tokenStore.obter("vendedor");
   const res = await fetch(`${API_BASE}/api/v1/vendedor/catalogos/${id}/download`, {
-    headers: { Authorization: `Bearer ${token}` },
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));

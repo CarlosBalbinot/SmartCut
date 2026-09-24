@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LoginVendedorPage.module.css";
-import { API_BASE } from "../../services/config";
+import { API_BASE, urlAbsoluta } from "../../services/config";
+import { tokenStore } from "../../services/tokenStore";
 
 export default function LoginVendedorPage() {
   const [username, setUsername] = useState("");
@@ -16,7 +17,7 @@ export default function LoginVendedorPage() {
       .then((r) => r.json())
       .then((j) => {
         const d = j.data ?? j;
-        if (d?.logo_url) setLogoUrl(d.logo_url);
+        if (d?.logo_url) setLogoUrl(urlAbsoluta(d.logo_url));
       })
       .catch(() => {});
   }, []);
@@ -28,12 +29,15 @@ export default function LoginVendedorPage() {
     try {
       const res = await fetch(`${API_BASE}/api/v1/vendedor/login`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, senha }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || json.detail || "Credenciais inválidas");
-      localStorage.setItem("smartcut_vendedor_token", json.data.token);
+      // Item 1.4: token fora do localStorage — safeStorage no Electron; no
+      // navegador o backend já emitiu o cookie HttpOnly.
+      await tokenStore.salvar(json.data.token, "vendedor");
       localStorage.setItem("smartcut_vendedor_info", JSON.stringify(json.data.vendedor || {}));
       navigate("/vendedor/dashboard");
     } catch (err) {

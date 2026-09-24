@@ -12,6 +12,7 @@ from schemas.usuario_schema import (
     UsuarioUpdate,
 )
 from services import usuario_service
+from services.auth_service import validar_politica_senha
 
 router = APIRouter(
     prefix="/api/v1/usuarios",
@@ -53,6 +54,11 @@ def obter_usuario(usuario_id: int, db: Session = Depends(get_db)):
 def criar_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
     _validar_permissoes(payload.permissoes)
 
+    # Item 1.3: política mínima de senha.
+    msg = validar_politica_senha(payload.senha)
+    if msg:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
+
     usuario = Usuario(
         username=payload.username,
         nome_completo=payload.nome_completo,
@@ -82,6 +88,10 @@ def atualizar_usuario(usuario_id: int, payload: UsuarioUpdate, db: Session = Dep
     dados = payload.model_dump(exclude_unset=True)
     senha = dados.pop("senha", None)
     if senha:
+        # Item 1.3: política mínima de senha.
+        msg = validar_politica_senha(senha)
+        if msg:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
         usuario.senha_hash = usuario_service.hash_senha(senha)
     for campo, valor in dados.items():
         setattr(usuario, campo, valor)

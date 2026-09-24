@@ -1,29 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./PedidosVendedorPage.module.css";
-import { API_BASE } from "../../services/config";
+import { vendedorFetch } from "../../services/vendedorApi";
 
 const fmt = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v ?? 0);
 
 const fmtData = (d) =>
   d ? new Date(d).toLocaleDateString("pt-BR") : "—";
-
-function vendedorFetch(path, options = {}) {
-  const token = localStorage.getItem("smartcut_vendedor_token");
-  return fetch(`${API_BASE}/api/v1${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-    ...options,
-  }).then(async (res) => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
-    return json.data;
-  });
-}
 
 const STATUS_COLORS = {
   aprovado: { bg: "#E8F8E8", color: "#1A7F37" },
