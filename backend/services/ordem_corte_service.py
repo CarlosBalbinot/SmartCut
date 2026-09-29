@@ -11,6 +11,8 @@ desses itens e acusa quando o pedido mudou depois (desatualizada).
 from __future__ import annotations
 
 import hashlib
+import logging
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -24,6 +26,7 @@ from models.ordem_corte import (
     COMPRIMENTO_MAX_MAX_CM,
     COMPRIMENTO_MAX_MIN_CM,
     MODOS_CAMADAS,
+    QUALIDADES,
     ItemOrdemCorte,
     OrdemCorte,
     OrdemCorteTecido,
@@ -33,6 +36,8 @@ from models.produto_sku import ProdutoSKU
 from models.tecido import ConsumoLote, CorTecido, LoteTecido
 from services import lote_service, nesting_service
 from services.plano_enfesto import linhas_enfesto, planejar
+
+logger = logging.getLogger(__name__)
 
 # Status em que a OC ainda aceita mudanças de itens, tecidos e modo.
 _EDITAVEL = "RASCUNHO"
@@ -398,6 +403,8 @@ def _resumo_out(db: Session, oc: OrdemCorte) -> dict:
         "status": oc.status,
         "modo_camadas": oc.modo_camadas,
         "comprimento_max_cm": oc.comprimento_max_cm,
+        "qualidade": oc.qualidade,
+        "sugestao_mesa": oc.sugestao_mesa,
         "observacoes": oc.observacoes,
         "criado_em": oc.criado_em.isoformat() if oc.criado_em else None,
         "atualizado_em": oc.atualizado_em.isoformat() if oc.atualizado_em else None,
@@ -481,7 +488,10 @@ def _encaixe_out(e) -> dict:
         "desperdicio_pct": float(e.desperdicio_pct) if e.desperdicio_pct is not None else None,
         "aproveitamento_pct": round(100.0 - float(e.desperdicio_pct), 2) if e.desperdicio_pct is not None else None,
         "pecas_por_tamanho": mapa.get("pecas_por_tamanho"),
+        "pecas_parte": mapa.get("pecas_parte"),
         "sobra_total": mapa.get("sobra_total"),
+        "motor_usado": mapa.get("motor_usado"),
+        "qualidade": mapa.get("qualidade"),
         "status": e.status,
     }
 
@@ -592,9 +602,10 @@ def definir_tecidos(db: Session, oc_id: uuid.UUID, escolhas: list[dict]) -> dict
 
 
 def atualizar(db: Session, oc_id: uuid.UUID, dados: dict) -> dict:
-    """dados: modo_camadas e comprimento_max_cm (só em RASCUNHO) e/ou
-    observacoes. Mudar o limite deixa os encaixes atuais desatualizados
-    (encaixes_desatualizados) até regerar."""
+    """dados: modo_camadas, comprimento_max_cm e qualidade (só em RASCUNHO)
+    e/ou observacoes. Mudar o limite deixa os encaixes atuais desatualizados
+    (encaixes_desatualizados) até regerar; a qualidade só vale para a
+    próxima geração."""
     oc = _carregar(db, oc_id)
     if not oc:
         raise ErroOC("Ordem de Corte não encontrada", 404)
@@ -617,6 +628,12 @@ def atualizar(db: Session, oc_id: uuid.UUID, dados: dict) -> dict:
             if e.status != "deletado":
                 # dict novo: a coluna JSON não rastreia mutação in-place.
                 e.mapa_json = {**(e.mapa_json or {}), _MARCA_LIMITE: True}
+    if dados.get("qualidade") is not None and dados["qualidade"] != oc.qualidade:
+        if dados["qualidade"] not in QUALIDADES:
+            raise ErroOC(f"Qualidade inválida: {dados['qualidade']}")
+        if oc.status != _EDITAVEL:
+            raise ErroOC("Qualidade do encaixe só pode ser alterada em RASCUNHO.", 409)
+        oc.qualidade = dados["qualidade"]
     if "observacoes" in dados:
         oc.observacoes = dados["observacoes"] or None
     db.commit()
@@ -877,30 +894,55 @@ def montar_pares_oc(db: Session, oc: OrdemCorte) -> tuple[list, list[str]]:
     return entradas, avisos
 
 
-def gerar_encaixes(db: Session, oc_id: uuid.UUID) -> dict:
-    """Gera (ou regera) os encaixes da OC: os anteriores viram 'deletado' e
-    os novos são gravados na MESMA transação — falha desfaz as duas coisas."""
+def validar_geracao(db: Session, oc_id: uuid.UUID) -> OrdemCorte:
+    """Regras para gerar encaixes — o router chama antes de enfileirar o job
+    (erro volta na hora, sem 202) e gerar_encaixes de novo ao rodar (a OC pode
+    ter mudado enquanto o job esperava na fila)."""
     oc = _obter_editavel(db, oc_id)
     if desatualizada(db, oc):
         raise ErroOC("O pedido mudou depois da Ordem de Corte. Use 'Atualizar do pedido' antes de gerar.", 409)
     bloqueios = [p["mensagem"] for p in conferir(db, oc) if p["bloqueia"]]
     if bloqueios:
         raise ErroOC("Resolva as pendências antes de gerar: " + " | ".join(bloqueios), 409)
+    return oc
+
+
+def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.Progresso | None = None) -> dict:
+    """Gera (ou regera) os encaixes da OC com o motor de Configurações >
+    Produção e a qualidade da OC. Os anteriores viram 'deletado' e os novos
+    são gravados na MESMA transação, só depois do nesting terminar — falha
+    ou cancelamento (GeracaoCancelada, vinda de `progresso`) não mexem em
+    nada. Roda em segundo plano (nesting_jobs); `progresso` é o do job.
+
+    Depois de gravar, se o limite da OC é menor que a maior mesa da fábrica,
+    simula a mesa maior (v2 RAPIDO, sem gravar) e deixa a sugestão na OC
+    quando a economia passa de alerta_economia_pct (_sugerir_mesa)."""
+    cfg = nesting_service.config_producao(db)
+    oc = validar_geracao(db, oc_id)
 
     entradas, avisos = montar_pares_oc(db, oc)
-    for e in oc.encaixes:
-        if e.status != "deletado":
-            e.status = "deletado"
+
+    def _substituir_anteriores() -> None:
+        for e in oc.encaixes:
+            if e.status != "deletado":
+                e.status = "deletado"
+        oc.sugestao_mesa = None
+
     pedido = oc.pedido
+    modo, limite, qualidade = oc.modo_camadas, oc.comprimento_max_cm, oc.qualidade
     try:
         resultado = nesting_service.gerar_de_entradas(
             db,
             pedido,
             entradas,
-            modo=oc.modo_camadas,
+            modo=modo,
             ordem_corte_id=oc.id,
             descricao=f"{numero_fmt(oc.numero)} · Pedido {pedido.numero}",
-            comprimento_max_cm=oc.comprimento_max_cm,
+            comprimento_max_cm=limite,
+            motor=cfg["motor_encaixe"],
+            qualidade=qualidade,
+            progresso=progresso,
+            antes_de_gravar=_substituir_anteriores,
         )
     except ValueError as exc:
         raise ErroOC(str(exc))
@@ -911,32 +953,129 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID) -> dict:
     oc = _carregar(db, oc_id)
     lotes = {t.lote.id: t.lote.codigo_lote for t in oc.tecidos if t.lote}
 
-    # Totais por tamanho somando cada enfesto uma vez (um enfesto dividido
-    # em partes repete o pecas_por_tamanho do enfesto em cada parte — o que
-    # cada parte corta de fato está em pecas_parte).
+    # Totais por tamanho somando cada enfesto uma vez (o v1 repete o
+    # pecas_por_tamanho do enfesto em cada parte; o v2 só o põe na parte 1 —
+    # o que cada parte corta de fato está em pecas_parte).
     por_tamanho: dict[tuple, dict] = {}
     vistos: set[tuple] = set()
     for enc in resultado["encaixes"]:
         enc["lote_codigo"] = lotes.get(uuid.UUID(enc["lote_id"])) if enc["lote_id"] else None
         chave_enfesto = (enc["lote_id"], enc["enfesto"])
-        if chave_enfesto in vistos:
+        if chave_enfesto in vistos or not enc["pecas_por_tamanho"]:
             continue
         vistos.add(chave_enfesto)
-        for linha in enc["pecas_por_tamanho"] or []:
+        for linha in enc["pecas_por_tamanho"]:
             k = (linha.get("grupo_nome"), linha.get("tamanho"))
             acc = por_tamanho.setdefault(k, {"grupo_nome": k[0], "tamanho": k[1], "pecas": 0, "sobra": 0})
             acc["pecas"] += linha["pecas"]
             acc["sobra"] += linha["sobra"]
 
+    avisos_out = [
+        {"codigo": "MOTOR_RESERVA" if m == nesting_service.AVISO_RESERVA else "AVISO", "mensagem": m}
+        for m in avisos + resultado["avisos"]
+    ] + avisos_estoque(db, oc)
+
+    sugestao = None
+    if resultado["motor_usado"] == "v2" and limite < cfg["comprimento_max_mesa_cm"]:
+        sugestao = _sugerir_mesa(db, oc, entradas, modo, resultado["totais"], cfg, progresso)
+
     return {
         "ordem_corte_id": str(oc.id),
-        "modo_camadas": oc.modo_camadas,
-        "comprimento_max_cm": oc.comprimento_max_cm,
+        "modo_camadas": modo,
+        "comprimento_max_cm": limite,
+        "qualidade": qualidade,
+        "motor_usado": resultado["motor_usado"],
+        "aviso_motor": nesting_service.AVISO_RESERVA if resultado["reserva"] else None,
         "encaixes": resultado["encaixes"],
-        "avisos": [{"codigo": "AVISO", "mensagem": m} for m in avisos + resultado["avisos"]] + avisos_estoque(db, oc),
+        "avisos": avisos_out,
         "pecas_por_tamanho": list(por_tamanho.values()),
         "sobra_total": sum(p["sobra_total"] for p in resultado["planos"].values()),
+        "totais": resultado["totais"],
+        "sugestao_mesa": sugestao,
     }
+
+
+# Teto duro da simulação de mesa maior (o tempo_max_s do RAPIDO é brando).
+SIMULACAO_MAX_S = 300.0
+
+
+def _sugerir_mesa(
+    db: Session,
+    oc: OrdemCorte,
+    entradas: list,
+    modo: str,
+    atual: dict,
+    cfg: dict,
+    progresso: nesting_service.Progresso | None,
+) -> dict | None:
+    """Simula a OC na maior mesa da fábrica (v2 RAPIDO, sem gravar encaixes)
+    e grava oc.sugestao_mesa se a economia em metros (todas as camadas) for
+    >= alerta_economia_pct. Falha, tempo excedido ou cancelamento: só log —
+    os encaixes já estão gravados e a sugestão é opcional."""
+    mesa = cfg["comprimento_max_mesa_cm"]
+    inicio = time.monotonic()
+
+    def _progresso(**estado) -> None:
+        if time.monotonic() - inicio > SIMULACAO_MAX_S:
+            raise TimeoutError(f"simulação passou de {SIMULACAO_MAX_S:g} s")
+        if progresso is not None:
+            progresso(**{**estado, "fase": f"Simulando mesa de {mesa} cm · {estado.get('fase', '')}"})
+
+    try:
+        sugerido = nesting_service.simular_totais(
+            entradas, modo=modo, comprimento_max_cm=mesa, qualidade="RAPIDO", progresso=_progresso
+        )
+    except Exception as exc:  # inclui GeracaoCancelada: o resultado já foi gravado
+        logger.warning("[OC] %s: simulação da mesa de %s cm ignorada: %s", numero_fmt(oc.numero), mesa, exc)
+        return None
+
+    metros = atual["metros"]
+    economia_m = round(metros - sugerido["metros"], 3)
+    economia_pct = round(economia_m / metros * 100, 2) if metros > 0 else 0.0
+    logger.info(
+        "[OC] %s: mesa de %s cm → %.3f m (atual %.3f m, economia %.2f%%)",
+        numero_fmt(oc.numero),
+        mesa,
+        sugerido["metros"],
+        metros,
+        economia_pct,
+    )
+    if economia_pct < cfg["alerta_economia_pct"]:
+        return None
+    sugestao = {
+        "limite_cm": mesa,
+        "metros_atual": metros,
+        "metros_sugerido": sugerido["metros"],
+        "enfestos_atual": atual["mesas"],
+        "enfestos_sugerido": sugerido["mesas"],
+        "economia_m": economia_m,
+        "economia_pct": economia_pct,
+        "economia_kg": round(atual["peso_kg"] - sugerido["peso_kg"], 3),
+        "economia_rs": round(atual["custo"] - sugerido["custo"], 2),
+    }
+    oc.sugestao_mesa = sugestao
+    db.commit()
+    return sugestao
+
+
+def aplicar_sugestao_mesa(db: Session, oc_id: uuid.UUID) -> dict:
+    """Passa o comprimento máximo da OC para o da sugestão (os encaixes
+    atuais ficam desatualizados) — o router dispara a nova geração."""
+    oc = _obter_editavel(db, oc_id)
+    if not oc.sugestao_mesa:
+        raise ErroOC("A Ordem de Corte não tem sugestão de mesa.", 404)
+    limite = int(oc.sugestao_mesa["limite_cm"])
+    oc.sugestao_mesa = None
+    return atualizar(db, oc_id, {"comprimento_max_cm": limite})
+
+
+def descartar_sugestao_mesa(db: Session, oc_id: uuid.UUID) -> dict:
+    """Some com a sugestão — ela só volta se uma nova geração a recalcular."""
+    oc = _obter_editavel(db, oc_id)
+    oc.sugestao_mesa = None
+    db.commit()
+    db.expire_all()
+    return ordem_out(db, _carregar(db, oc_id))
 
 
 # ModeloTecido.max_camadas tem default 15 — usado na simulação de linhas

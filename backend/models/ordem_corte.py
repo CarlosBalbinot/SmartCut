@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -37,6 +38,10 @@ MODOS_CAMADAS = ("SEM_SOBRA", "MENOS_ENFESTOS")
 COMPRIMENTO_MAX_PADRAO_CM = 150
 COMPRIMENTO_MAX_MIN_CM = 50
 COMPRIMENTO_MAX_MAX_CM = 2000
+# Qualidade do encaixe (motor v2): quanto tempo o spyrrow ganha por mesa —
+# ver nesting_service.QUALIDADES.
+QUALIDADES = ("RAPIDO", "EQUILIBRADO", "MAXIMO")
+QUALIDADE_PADRAO = "EQUILIBRADO"
 
 
 class OrdemCorte(Base):
@@ -69,6 +74,15 @@ class OrdemCorte(Base):
     comprimento_max_cm: Mapped[int] = mapped_column(
         Integer, nullable=False, default=COMPRIMENTO_MAX_PADRAO_CM, server_default=str(COMPRIMENTO_MAX_PADRAO_CM)
     )
+    qualidade: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=QUALIDADE_PADRAO, server_default=QUALIDADE_PADRAO
+    )
+    # Alerta de mesa maior (M2a): gravado pela geração quando a mesa da
+    # configuração (comprimento_max_mesa_cm) economizaria >= alerta_economia_pct.
+    # {limite_cm, metros_atual, metros_sugerido, enfestos_atual,
+    #  enfestos_sugerido, economia_m, economia_pct, economia_kg, economia_rs}.
+    # Nulo = sem sugestão (ou descartada até a próxima geração).
+    sugestao_mesa: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # sha256 dos itens do pedido (id, produto, SKU, quantidade) na geração.
     pedido_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

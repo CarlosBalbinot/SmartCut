@@ -2,23 +2,38 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
+  aplicarSugestaoMesa,
   atualizarOrdemCorte,
   atualizarOrdemCorteDoPedido,
   definirTecidosOrdemCorte,
+  descartarSugestaoMesa,
   gerarEncaixesOrdemCorte,
+  getJobOrdemCorte,
   getLotesDisponiveis,
   getOrdemCorte,
   simularOrdemCorte,
 } from "../../api/ordensCorte";
 import useOverlayDismiss from "../../hooks/useOverlayDismiss";
+import ProgressoEncaixe, {
+  AlertaMesaMaior,
+  CardMesa,
+  ResumoEnfesto,
+  agruparEnfestos,
+  cardsGridClass,
+} from "../ProgressoEncaixe/ProgressoEncaixe";
 import styles from "./OrdemCorteAssistente.module.css";
 
 /**
  * Assistente da Ordem de Corte (3 passos): Conferência → Tecidos → Encaixes.
  *
  * Tudo o que o usuário escolhe é gravado na hora (lote de cada produto/cor,
- * modo de camadas, comprimento máximo do enfesto) — fechar em qualquer passo deixa a OC em RASCUNHO com as
- * escolhas feitas, e reabrir continua de onde parou.
+ * modo de camadas, comprimento máximo do enfesto, qualidade do encaixe) —
+ * fechar em qualquer passo deixa a OC em RASCUNHO com as escolhas feitas, e
+ * reabrir continua de onde parou.
+ *
+ * A geração roda em segundo plano (job no backend): o passo 3 mostra o
+ * ProgressoEncaixe e o assistente pode ser fechado no meio — o detalhe da OC
+ * (ou o assistente reaberto) volta a mostrar o progresso.
  *
  * Props:
  *   ocId     — id da Ordem de Corte
@@ -50,6 +65,13 @@ const MODOS = [
 ];
 
 const norm = (s) => (s || "").trim().toUpperCase();
+// Qualidade do encaixe (motor v2): quanto tempo o motor tem por mesa.
+const QUALIDADES = [
+  { valor: "RAPIDO", rotulo: "Rápido" },
+  { valor: "EQUILIBRADO", rotulo: "Equilibrado (padrão)" },
+  { valor: "MAXIMO", rotulo: "Máximo" },
+];
+
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 const fmtNum = (v, casas = 2) =>
   v == null || v === ""
@@ -58,14 +80,6 @@ const fmtNum = (v, casas = 2) =>
         minimumFractionDigits: casas,
         maximumFractionDigits: casas,
       });
-const fmtEnc = (n) => (n != null ? `ENC-${String(n).padStart(3, "0")}` : "ENC-—");
-// "parte 1 de 3" — só para enfesto dividido (encaixes antigos só têm "1/2").
-const fmtParte = (e) => {
-  if (e.total_partes > 1) return `parte ${e.parte_numero} de ${e.total_partes}`;
-  if (!e.parte) return "";
-  const [n, total] = String(e.parte).split("/");
-  return total ? `parte ${n} de ${total}` : `parte ${e.parte}`;
-};
 
 // Comprimento máximo do enfesto (limite da mesa de corte), em cm.
 const COMP_MIN = 50;
@@ -134,7 +148,8 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
   const [lotes, setLotes] = useState(null);
   const [simulacao, setSimulacao] = useState(null);
   const [simulando, setSimulando] = useState(false);
-  const [gerando, setGerando] = useState(false);
+  const [gerando, setGerando] = useState(false); // POST gerar-encaixes em andamento
+  const [jobAtivo, setJobAtivo] = useState(false); // job no backend (FILA/RODANDO)
   const [avisosGeracao, setAvisosGeracao] = useState(null);
 
   const overlayProps = useOverlayDismiss(onFechar, { enabled: !lookupLinha });
@@ -157,6 +172,10 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
       .then(setOc)
       .catch((e) => setErro(e.message))
       .finally(() => setCarregando(false));
+    // Geração que ficou rodando (assistente fechado no meio): volta a mostrar.
+    getJobOrdemCorte(ocId)
+      .then((j) => j && ["FILA", "RODANDO"].includes(j.status) && setJobAtivo(true))
+      .catch(() => {});
   }, [ocId]);
 
   const editavel = oc?.status === "RASCUNHO";
@@ -262,6 +281,19 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
     }
   };
 
+  const mudarQualidade = async (qualidade) => {
+    if (qualidade === oc.qualidade) return;
+    setSalvando(true);
+    setErro(null);
+    try {
+      setOc(await atualizarOrdemCorte(oc.id, { qualidade }));
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const atualizarDoPedido = async () => {
     setAtualizando(true);
     setErro(null);
@@ -275,13 +307,19 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
     }
   };
 
+  const recarregar = () =>
+    getOrdemCorte(oc.id)
+      .then(setOc)
+      .catch((e) => setErro(e.message));
+
+  // Inicia o job; o resultado chega pelo ProgressoEncaixe (onConcluido).
   const gerar = async () => {
     setGerando(true);
     setErro(null);
     try {
-      const r = await gerarEncaixesOrdemCorte(oc.id);
-      setAvisosGeracao(r.avisos || []);
-      setOc(await getOrdemCorte(oc.id));
+      await gerarEncaixesOrdemCorte(oc.id);
+      setAvisosGeracao(null);
+      setJobAtivo(true);
     } catch (e) {
       setErro(e.message);
       // 409 (pendência/desatualizada): o estado da OC pode ter mudado.
@@ -291,6 +329,46 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
           .catch(() => {});
     } finally {
       setGerando(false);
+    }
+  };
+
+  const jobConcluido = (estado) => {
+    setJobAtivo(false);
+    setAvisosGeracao(estado.resultado?.avisos || []);
+    recarregar();
+  };
+
+  const jobEncerrado = () => {
+    setJobAtivo(false);
+    recarregar();
+  };
+
+  // Alerta de mesa maior: usar troca o limite e já dispara a nova geração.
+  const usarMesaMaior = async () => {
+    setSalvando(true);
+    setErro(null);
+    try {
+      const r = await aplicarSugestaoMesa(oc.id);
+      setOc(r.ordem_corte);
+      setAvisosGeracao(null);
+      setJobAtivo(true);
+    } catch (e) {
+      setErro(e.message);
+      recarregar();
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const manterMesa = async () => {
+    setSalvando(true);
+    setErro(null);
+    try {
+      setOc(await descartarSugestaoMesa(oc.id));
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -387,14 +465,21 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
               onLookup={abrirLookup}
               onModo={mudarModo}
               onComprimento={mudarComprimento}
+              onQualidade={mudarQualidade}
             />
           ) : (
             <PassoEncaixes
               oc={oc}
               editavel={editavel}
               gerando={gerando}
+              jobAtivo={jobAtivo}
+              salvando={salvando}
               avisosGeracao={avisosGeracao}
               onGerar={gerar}
+              onJobConcluido={jobConcluido}
+              onJobEncerrado={jobEncerrado}
+              onUsarMesa={usarMesaMaior}
+              onManterMesa={manterMesa}
             />
           )}
         </div>
@@ -426,7 +511,7 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
               <button
                 type="button"
                 className={styles.btnPrimario}
-                disabled={!temEncaixes || gerando}
+                disabled={(!temEncaixes && !jobAtivo) || gerando}
                 onClick={concluir}
               >
                 Concluir
@@ -540,6 +625,7 @@ function PassoTecidos({
   onLookup,
   onModo,
   onComprimento,
+  onQualidade,
 }) {
   const gravado = oc.comprimento_max_cm ?? COMP_PADRAO;
   const [comp, setComp] = useState(String(gravado));
@@ -642,6 +728,26 @@ function PassoTecidos({
             Limite da mesa. Riscos menores saem com o tamanho real; maiores são divididos em partes.
           </span>
         </fieldset>
+
+        <fieldset className={styles.modos} disabled={!editavel || salvando}>
+          <legend className={styles.secao}>
+            <label htmlFor="oc-qualidade">Qualidade do encaixe</label>
+          </legend>
+          <select
+            id="oc-qualidade"
+            className="sc-input"
+            style={{ width: "12rem" }}
+            value={oc.qualidade || "EQUILIBRADO"}
+            onChange={(e) => onQualidade(e.target.value)}
+          >
+            {QUALIDADES.map((q) => (
+              <option key={q.valor} value={q.valor}>
+                {q.rotulo}
+              </option>
+            ))}
+          </select>
+          <span className={styles.nota}>Máximo economiza mais tecido e demora mais.</span>
+        </fieldset>
       </div>
 
       <h3 className={styles.secao}>Comparação dos modos</h3>
@@ -729,51 +835,76 @@ function FragmentoCab({ classe }) {
 
 // ── Passo 3 — Encaixes ────────────────────────────────────────────────────────
 
-function PassoEncaixes({ oc, editavel, gerando, avisosGeracao, onGerar }) {
+function PassoEncaixes({
+  oc,
+  editavel,
+  gerando,
+  jobAtivo,
+  salvando,
+  avisosGeracao,
+  onGerar,
+  onJobConcluido,
+  onJobEncerrado,
+  onUsarMesa,
+  onManterMesa,
+}) {
   const lotes = Object.fromEntries(
     oc.tecidos.filter((t) => t.lote).map((t) => [t.lote.id, t.lote])
   );
   // Sem geração nesta sessão, os avisos vêm da conferência da OC (estoque).
   const avisos = avisosGeracao ?? oc.pendencias.filter((p) => !p.bloqueia);
   const encaixes = oc.encaixes;
+  const enfestos = agruparEnfestos(encaixes);
 
   // Sobra por enfesto (um enfesto dividido em partes repete a sobra).
-  const vistos = new Set();
-  let sobraTotal = 0;
-  for (const e of encaixes) {
-    const k = `${e.lote_id}|${e.enfesto}`;
-    if (vistos.has(k)) continue;
-    vistos.add(k);
-    sobraTotal += e.sobra_total || 0;
-  }
+  const sobraTotal = enfestos.reduce((s, g) => s + (g.mesas[0].sobra_total || 0), 0);
   const pesoTotal = encaixes.reduce((s, e) => s + (e.peso_total_kg || 0), 0);
 
   return (
     <>
       {editavel && (
         <div className={styles.barraGerar}>
-          <button type="button" className={styles.btnPrimario} onClick={onGerar} disabled={gerando}>
-            {gerando ? "Gerando encaixes…" : encaixes.length ? "Gerar novamente" : "Gerar encaixes"}
-          </button>
-          <span className={styles.nota}>
-            {gerando
-              ? "O cálculo do encaixe pode levar alguns segundos por tecido."
-              : encaixes.length
-                ? "Gerar novamente substitui os encaixes atuais desta OC."
-                : `Modo: ${MODOS.find((m) => m.valor === oc.modo_camadas)?.rotulo.toLowerCase()} · comprimento máximo ${oc.comprimento_max_cm ?? COMP_PADRAO} cm.`}
-          </span>
-          {gerando && <span className={styles.spinner} aria-hidden="true" />}
+          {jobAtivo ? (
+            <ProgressoEncaixe ocId={oc.id} onConcluido={onJobConcluido} onFim={onJobEncerrado} />
+          ) : (
+            <>
+              <button
+                type="button"
+                className={styles.btnPrimario}
+                onClick={onGerar}
+                disabled={gerando || salvando}
+              >
+                {gerando ? "Iniciando…" : encaixes.length ? "Gerar novamente" : "Gerar encaixes"}
+              </button>
+              <span className={styles.nota}>
+                {encaixes.length
+                  ? "Gerar novamente substitui os encaixes atuais desta OC."
+                  : `Modo: ${MODOS.find((m) => m.valor === oc.modo_camadas)?.rotulo.toLowerCase()} · comprimento máximo ${oc.comprimento_max_cm ?? COMP_PADRAO} cm.`}{" "}
+                A geração continua mesmo se você fechar o assistente.
+              </span>
+            </>
+          )}
         </div>
       )}
 
-      {oc.encaixes_desatualizados && !gerando && (
+      {editavel && !jobAtivo && (
+        <AlertaMesaMaior
+          sugestao={oc.sugestao_mesa}
+          limiteAtual={oc.comprimento_max_cm}
+          ocupado={salvando || gerando}
+          onUsar={onUsarMesa}
+          onManter={onManterMesa}
+        />
+      )}
+
+      {oc.encaixes_desatualizados && !jobAtivo && (
         <div className={styles.boxAviso}>
           <IconeAlerta />
           <span>Regere os encaixes para aplicar o novo limite.</span>
         </div>
       )}
 
-      {avisos.length > 0 && (
+      {avisos.length > 0 && !jobAtivo && (
         <div className={styles.boxAviso}>
           <IconeAlerta />
           <ul className={styles.listaAvisos}>
@@ -785,51 +916,24 @@ function PassoEncaixes({ oc, editavel, gerando, avisosGeracao, onGerar }) {
       )}
 
       {encaixes.length === 0 ? (
-        <p className={styles.estado}>{gerando ? "" : "Nenhum encaixe gerado ainda."}</p>
+        <p className={styles.estado}>{jobAtivo ? "" : "Nenhum encaixe gerado ainda."}</p>
       ) : (
-        <div className={styles.tabelaWrap}>
-          <table className={styles.tabela}>
-            <thead>
-              <tr>
-                <th>Encaixe</th>
-                <th>Tecido / lote</th>
-                <th className={styles.num}>Camadas</th>
-                <th className={styles.num}>Comprimento (m)</th>
-                <th className={styles.num}>Peso total (kg)</th>
-                <th className={styles.num}>Aproveitamento</th>
-                <th className={styles.num}>Sobra</th>
-              </tr>
-            </thead>
-            <tbody>
-              {encaixes.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    {fmtEnc(e.numero_enc)}
-                    {fmtParte(e) && <span className={styles.parte}> · {fmtParte(e)}</span>}
-                  </td>
-                  <td>
-                    {lotes[e.lote_id]?.codigo_lote || "—"} · {e.tecido_nome}
-                  </td>
-                  <td className={styles.num}>{e.num_camadas}</td>
-                  <td className={styles.num}>{fmtNum(e.comp_metros, 2)}</td>
-                  <td className={styles.num}>{fmtNum(e.peso_total_kg, 3)}</td>
-                  <td className={styles.num}>
-                    {e.aproveitamento_pct != null ? `${fmtNum(e.aproveitamento_pct, 1)}%` : "—"}
-                  </td>
-                  <td className={styles.num}>{e.sobra_total ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={4}>Total</td>
-                <td className={styles.num}>{fmtNum(pesoTotal, 3)}</td>
-                <td />
-                <td className={styles.num}>{sobraTotal}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <>
+          {enfestos.map((g) => (
+            <section key={g.chave}>
+              <ResumoEnfesto grupo={g} loteCodigo={lotes[g.lote_id]?.codigo_lote} />
+              <div className={cardsGridClass}>
+                {g.mesas.map((e) => (
+                  <CardMesa key={e.id} encaixe={e} />
+                ))}
+              </div>
+            </section>
+          ))}
+          <p className={styles.resumo}>
+            {plural(encaixes.length, "mesa", "mesas")} · peso total {fmtNum(pesoTotal, 3)} kg ·
+            sobra {plural(sobraTotal, "peça", "peças")}
+          </p>
+        </>
       )}
     </>
   );

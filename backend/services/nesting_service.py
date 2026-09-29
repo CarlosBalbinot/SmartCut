@@ -18,6 +18,15 @@ Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
   4. Numera (MAX+1) e grava todos os encaixes num único commit — erro em
      qualquer lote descarta tudo.
   5. Retorna os resumos dos encaixes, avisos e o plano de cada lote.
+
+Motores (M2a) — o passo 3b/3c tem dois motores:
+  v1  nesting_bridge (Node, skyline por bounding box) + _partes_do_enfesto;
+  v2  services/nesting_v2 (spyrrow + OR-Tools): uma mesa = um encaixe.
+O motor vem de Configurações > Produção (motor_encaixe, padrão v2). Se o v2
+falhar, a geração inteira é refeita com o v1 (reserva) e a resposta avisa
+(AVISO_RESERVA). A qualidade (QUALIDADES) só vale para o v2. O v2 aceita um
+callback de progresso — é por ele que nesting_jobs mostra a mesa atual e
+cancela (GeracaoCancelada), sem gravar nada.
 """
 
 from __future__ import annotations
@@ -25,6 +34,7 @@ from __future__ import annotations
 import logging
 import math
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import func
@@ -34,17 +44,60 @@ from sqlalchemy.orm import Session, selectinload
 from models.encaixe import Encaixe
 from models.grupo_molde import GrupoMolde
 from models.molde import Molde
-from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM
+from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, QUALIDADE_PADRAO
 from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from nesting.nesting_bridge import build_polygon, executar
+from services import nesting_v2
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
 from services.plano_enfesto import linhas_enfesto, planejar
+from services.precificacao_service import get_ou_criar_config
 
 logger = logging.getLogger(__name__)
 
 # Multiplicador de corte por tipo_corte (mesmo mapeamento usado no pedido de venda)
 _MULT: dict[str, int] = {"simples": 1, "par": 2, "par_sem_espelho": 2}
+
+# ── Motor e qualidade ────────────────────────────────────────────────────────
+
+MOTORES = ("v1", "v2")
+
+# Qualidade → orçamentos do v2 (segundos por chamada do spyrrow e teto brando
+# da geração). EQUILIBRADO é o padrão do M1-B (PRETO 150: ~110 s, 5,69 m).
+# O spyrrow trabalha em segundos inteiros com piso de 1 s, então o RAPIDO
+# corta o polimento (reencaixe final) para chegar a ~30% do tempo.
+QUALIDADES: dict[str, dict[str, float]] = {
+    "RAPIDO": {"segundos_mesa": 1.0, "segundos_polimento": 0.0, "segundos_faixa": 10.0, "tempo_max_s": 180.0},
+    "EQUILIBRADO": {
+        "segundos_mesa": nesting_v2.motor.SEGUNDOS_MESA,
+        "segundos_polimento": nesting_v2.motor.SEGUNDOS_POLIMENTO,
+        "segundos_faixa": nesting_v2.motor.SEGUNDOS_FAIXA,
+        "tempo_max_s": nesting_v2.motor.TEMPO_MAX_S,
+    },
+    "MAXIMO": {"segundos_mesa": 6.0, "segundos_polimento": 18.0, "segundos_faixa": 90.0, "tempo_max_s": 1800.0},
+}
+
+AVISO_RESERVA = "Motor principal falhou; usado o motor reserva"
+
+
+class GeracaoCancelada(Exception):
+    """Levantada pelo callback de progresso para interromper a geração —
+    nunca cai no motor reserva e nunca grava nada."""
+
+
+# progresso(fase=..., mesa_atual=..., total_mesas=..., aproveitamento_parcial=...)
+Progresso = Callable[..., None]
+
+
+def config_producao(db: Session) -> dict:
+    """Configurações > Produção (singleton configuracao_empresa)."""
+    cfg = get_ou_criar_config(db)
+    return {
+        "motor_encaixe": cfg.motor_encaixe if cfg.motor_encaixe in MOTORES else "v2",
+        "comprimento_max_mesa_cm": int(cfg.comprimento_max_mesa_cm),
+        "alerta_economia_pct": float(cfg.alerta_economia_pct),
+    }
+
 
 # Folga (cm) nas comparações com o limite: o topo da peça é recalculado aqui
 # com a mesma conta do worker, mas cos/sin do V8 e do CPython podem diferir
@@ -225,23 +278,48 @@ def _rotulo(moldes_da_chave: list[Molde]) -> dict:
     return {"grupo_nome": m.grupo.nome if m.grupo else None, "tamanho": (m.tamanho or "").strip()}
 
 
+class _Andamento:
+    """Progresso acumulado de uma geração (todos os lotes e enfestos):
+    mesa_atual/total_mesas contam as mesas já fechadas dos enfestos
+    anteriores mais as do enfesto em andamento."""
+
+    def __init__(self, progresso: Progresso | None):
+        self.progresso = progresso
+        self.mesas_fechadas = 0
+
+    def avisar(self, fase: str, mesa: int = 0, total: int = 0, aproveitamento: float | None = None) -> None:
+        if self.progresso is None:
+            return
+        self.progresso(
+            fase=fase,
+            mesa_atual=self.mesas_fechadas + mesa,
+            total_mesas=self.mesas_fechadas + max(total, mesa),
+            aproveitamento_parcial=round(aproveitamento, 4) if aproveitamento is not None else None,
+        )
+
+
 def _gerar_para_tecido(
-    db: Session,
-    pedido: Pedido,
+    pedido: Pedido | None,
     tecido: TecidoNesting,
     moldes_qtd: dict[uuid.UUID, list],
     modo: str,
     ordem_corte_id: uuid.UUID | None,
     descricao: str | None,
     limite_cm: int,
+    motor: str = "v1",
+    qualidade: str = QUALIDADE_PADRAO,
+    andamento: _Andamento | None = None,
 ) -> tuple[list[Encaixe], list[str], dict]:
     """Planeja os enfestos do lote (plano_enfesto) e roda o nesting de cada
     um — cada enfesto vira um Encaixe, ou várias partes (todas <= limite_cm,
-    mesmas camadas) quando o risco não cabe na mesa. Tudo adicionado à
-    sessão sem número e sem commit.
+    mesmas camadas) quando o risco não cabe na mesa. Os encaixes saem
+    montados, fora da sessão, sem número e sem commit.
+
+    motor "v2": cada mesa do nesting_v2 vira uma parte (_enfesto_v2).
 
     Retorna (encaixes_montados, avisos, plano).
     """
+    andamento = andamento or _Andamento(None)
     avisos: list[str] = []
 
     por_chave: dict[tuple, list[Molde]] = {}
@@ -260,6 +338,35 @@ def _gerar_para_tecido(
 
     for n, enfesto in enumerate(plano["enfestos"], start=1):
         camadas = enfesto["camadas"]
+        if motor == "v2":
+            fase = f"{tecido.nome} · enfesto {n}/{len(plano['enfestos'])}"
+            extras = {
+                "modo_camadas": modo,
+                "enfesto": n,
+                "total_enfestos": len(plano["enfestos"]),
+                "sobra_total": sum(enfesto["sobra_por_tamanho"].values()),
+                "comprimento_max_cm": limite_cm,
+                "motor_usado": "v2",
+                "qualidade": qualidade,
+            }
+            montados = _enfesto_v2(
+                pedido,
+                tecido,
+                [(m, c) for k, c in enfesto["conjuntos_por_tamanho"].items() for m in por_chave[k]],
+                camadas,
+                limite_cm,
+                qualidade,
+                extras,
+                linhas_enfesto(enfesto, rotulos),
+                ordem_corte_id,
+                descricao,
+                lambda f, mesa, total, aprov, fase=fase: andamento.avisar(f"{fase} · {f}", mesa, total, aprov),
+            )
+            andamento.mesas_fechadas += len(montados)
+            encaixes.extend(montados)
+            continue
+
+        andamento.avisar(f"{tecido.nome} · enfesto {n}/{len(plano['enfestos'])} · v1")
         parts: list[dict] = []
         for k, conjuntos in enfesto["conjuntos_por_tamanho"].items():
             for molde in por_chave[k]:
@@ -280,6 +387,7 @@ def _gerar_para_tecido(
             "total_enfestos": len(plano["enfestos"]),
             "pecas_por_tamanho": linhas_enfesto(enfesto, rotulos),
             "sobra_total": sum(enfesto["sobra_por_tamanho"].values()),
+            "motor_usado": "v1",
         }
         largura = tecido.largura_util_cm
         partes, avisos_partes = _partes_do_enfesto(parts, largura, limite_cm, pares, moldes_por_id)
@@ -317,7 +425,6 @@ def _gerar_para_tecido(
                 extras_parte["parte"] = f"{i}/{total}"
             encaixes.append(
                 _montar_encaixe(
-                    db,
                     pedido,
                     tecido,
                     result_parte,
@@ -330,9 +437,108 @@ def _gerar_para_tecido(
                     descricao=descricao,
                 )
             )
+        andamento.mesas_fechadas += total
 
     # A mesma peça grande em vários enfestos gera o mesmo aviso — uma vez só.
     return encaixes, list(dict.fromkeys(avisos)), plano
+
+
+# ── Motor v2: um enfesto → uma mesa por encaixe ──────────────────────────────
+
+
+def _peca_v2(molde: Molde, conjuntos: int) -> nesting_v2.Peca:
+    """Molde → linha de entrada do v2 com o MESMO polígono do v1
+    (_poligono_rotacionado, rotacao_base já aplicada — por isso
+    rotacao_base=0 aqui) e as mesmas rotações; a quantidade conta as cópias
+    físicas (conjuntos × multiplicador do tipo_corte), como no benchmark."""
+    tipo = molde.tipo_corte or "simples"
+    return nesting_v2.Peca(
+        id=str(molde.id),
+        poligono=_poligono_rotacionado(molde),
+        quantidade=conjuntos * _MULT.get(tipo, 1),
+        rotacoes=tuple(float(r) for r in _rotacoes(molde.sentido_fio)),
+        tipo_corte=tipo,
+        peca=molde.peca,
+        tamanho=(molde.tamanho or "").strip(),
+        grupo_nome=molde.grupo.nome if molde.grupo else None,
+    )
+
+
+def _pecas_parte_v2(mesa: nesting_v2.Mesa, camadas: int) -> list[dict]:
+    """Moldes da mesa (nesting_v2.geometria.por_molde: molde_id, peca,
+    grupo_nome, tamanho, por_camada, espelhadas, total — as chaves do v1)
+    mais a forma curta molde/tamanho/produto/quantidade (por camada)."""
+    return [
+        {**linha, "molde": linha["peca"], "produto": linha["grupo_nome"], "quantidade": linha["por_camada"]}
+        for linha in mesa.moldes(camadas)
+    ]
+
+
+def _enfesto_v2(
+    pedido: Pedido | None,
+    tecido: TecidoNesting,
+    moldes_conjuntos: list[tuple[Molde, int]],
+    camadas: int,
+    limite_cm: int,
+    qualidade: str,
+    extras: dict,
+    pecas_por_tamanho: list[dict],
+    ordem_corte_id: uuid.UUID | None,
+    descricao: str | None,
+    ao_progresso: Callable[[str, int, int, float | None], None],
+) -> list[Encaixe]:
+    """Roda o nesting_v2 num enfesto e monta um Encaixe por mesa.
+
+    mapa_json no formato do v1: placements com o polígono já espelhado na
+    metade virada de um `par` + flag `espelhada` para o desenho. A grade do
+    enfesto (pecas_por_tamanho, com a sobra do plano) e o resumo do v2 vão
+    SÓ na parte 1 — as demais partes têm apenas os moldes delas
+    (pecas_parte), para o enfesto não ser somado uma vez por parte.
+
+    Raises: nesting_v2.ErroEncaixe / qualquer erro do motor (o chamador cai
+    no v1); GeracaoCancelada vinda de ao_progresso.
+    """
+    pecas = [_peca_v2(m, c) for m, c in moldes_conjuntos if c > 0]
+    if not pecas:
+        return []
+    resultado = nesting_v2.gerar(
+        pecas,
+        tecido.largura_util_cm,
+        limite_cm,
+        camadas,
+        ao_progresso=ao_progresso,
+        **QUALIDADES.get(qualidade, QUALIDADES[QUALIDADE_PADRAO]),
+    )
+    resumo = {k: v for k, v in resultado.resumo_enfesto().items() if k != "pecas_por_tamanho"}
+    total = len(resultado.mesas)
+    encaixes: list[Encaixe] = []
+    for mesa in resultado.mesas:
+        extras_parte = {
+            **extras,
+            "parte_numero": mesa.indice,
+            "total_partes": total,
+            "pecas_parte": _pecas_parte_v2(mesa, camadas),
+            "parts_count": len(mesa.pecas),
+        }
+        if total > 1:
+            extras_parte["parte"] = f"{mesa.indice}/{total}"
+        if mesa.indice == 1:
+            extras_parte["pecas_por_tamanho"] = pecas_por_tamanho
+            extras_parte["resumo_enfesto"] = resumo
+        encaixes.append(
+            _montar_encaixe(
+                pedido,
+                tecido,
+                {"placements": mesa.pecas, "efficiency": mesa.aproveitamento, "width_used": mesa.comprimento_cm},
+                camadas,
+                tecido.largura_util_cm,
+                parts=[],
+                extras=extras_parte,
+                ordem_corte_id=ordem_corte_id,
+                descricao=descricao,
+            )
+        )
+    return encaixes
 
 
 # ── Divisão do enfesto em partes (comprimento máximo) ────────────────────────
@@ -478,8 +684,7 @@ def _pecas_parte(parts_parte: list[dict], moldes_por_id: dict[str, Molde], camad
 
 
 def _montar_encaixe(
-    db: Session,
-    pedido: Pedido,
+    pedido: Pedido | None,
     tecido: TecidoNesting,
     result: dict,
     num_camadas: int,
@@ -490,8 +695,9 @@ def _montar_encaixe(
     ordem_corte_id: uuid.UUID | None = None,
     descricao: str | None = None,
 ) -> Encaixe:
-    """Calcula métricas e adiciona o Encaixe à sessão — sem flush/commit e
-    sem número: gerar_de_entradas numera e grava todos juntos numa transação.
+    """Calcula métricas e monta o Encaixe FORA da sessão e sem número:
+    _gravar adiciona, numera e grava todos juntos numa transação (e a
+    simulação de mesa maior só lê os números, sem gravar).
 
     peso_kg/custo_total são de UMA camada (comprimento do encaixe);
     mapa_json.peso_total_kg = peso_kg × camadas (consumo real do lote)."""
@@ -544,7 +750,7 @@ def _montar_encaixe(
     # flush (o default do model só é aplicado na gravação).
     encaixe = Encaixe(
         id=uuid.uuid4(),
-        pedido_id=pedido.id,
+        pedido_id=pedido.id if pedido else None,
         ordem_corte_id=ordem_corte_id,
         lote_id=tecido.lote_id,
         mapa_json=mapa_json,
@@ -556,7 +762,6 @@ def _montar_encaixe(
         status="ativo",
         descricao=descricao,
     )
-    db.add(encaixe)
     return encaixe
 
 
@@ -581,6 +786,7 @@ def _gravar(db: Session, encaixes: list[Encaixe]) -> None:
     """Numera e grava todos os encaixes da chamada num único commit — junto
     com o que mais estiver pendente na sessão (ex.: encaixes anteriores da
     OC marcados como deletados)."""
+    db.add_all(encaixes)
     for tentativa in range(1, _TENTATIVAS_NUMERACAO + 1):
         _numerar(db, encaixes)
         try:
@@ -619,12 +825,52 @@ def _resumo(encaixe: Encaixe) -> dict:
         "pecas_parte": mapa.get("pecas_parte"),
         "pecas_por_tamanho": mapa.get("pecas_por_tamanho"),
         "sobra_total": mapa.get("sobra_total"),
+        "motor_usado": mapa.get("motor_usado"),
+        "qualidade": mapa.get("qualidade"),
+        "resumo_enfesto": mapa.get("resumo_enfesto"),
         "numero_enc": encaixe.numero,
         "descricao": encaixe.descricao,
     }
 
 
+def totais(encaixes: list[Encaixe]) -> dict:
+    """Consumo de todas as camadas (comp_metros/peso_kg/custo_total do
+    Encaixe são de UMA camada) e quantas mesas foram abertas."""
+    return {
+        "metros": round(sum(float(e.comp_metros) * (e.num_camadas or 1) for e in encaixes), 3),
+        "mesas": len(encaixes),
+        "peso_kg": round(sum(float(e.peso_kg) * (e.num_camadas or 1) for e in encaixes), 3),
+        "custo": round(sum(float(e.custo_total) * (e.num_camadas or 1) for e in encaixes), 2),
+    }
+
+
 # ── Pontos de entrada públicos ───────────────────────────────────────────────
+
+
+def _montar_todos(
+    pedido: Pedido | None,
+    grupos: dict,
+    modo: str,
+    ordem_corte_id: uuid.UUID | None,
+    descricao: str | None,
+    limite_cm: int,
+    motor: str,
+    qualidade: str,
+    progresso: Progresso | None,
+) -> tuple[list[Encaixe], list[str], dict[str, dict]]:
+    """Todos os lotes com um motor — nada vai para a sessão."""
+    andamento = _Andamento(progresso)
+    encaixes: list[Encaixe] = []
+    avisos: list[str] = []
+    planos: dict[str, dict] = {}
+    for lote_id, (tecido, moldes_qtd) in grupos.items():
+        montados, avisos_lote, plano = _gerar_para_tecido(
+            pedido, tecido, moldes_qtd, modo, ordem_corte_id, descricao, limite_cm, motor, qualidade, andamento
+        )
+        encaixes.extend(montados)
+        avisos.extend(avisos_lote)
+        planos[str(lote_id)] = plano
+    return encaixes, avisos, planos
 
 
 def gerar_de_entradas(
@@ -636,52 +882,104 @@ def gerar_de_entradas(
     ordem_corte_id: uuid.UUID | None = None,
     descricao: str | None = None,
     comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM,
+    motor: str = "v1",
+    qualidade: str = QUALIDADE_PADRAO,
+    progresso: Progresso | None = None,
+    antes_de_gravar: Callable[[], None] | None = None,
 ) -> dict:
     """Núcleo comum: agrupa as entradas por lote, planeja os enfestos, roda o
     nesting e grava tudo numa transação — erro em qualquer lote desfaz tudo
     (inclusive o que o chamador deixou pendente na sessão).
 
     comprimento_max_cm: limite de cada encaixe (mesa de corte) — risco maior
-    é dividido em partes (_partes_do_enfesto).
+    é dividido em partes (_partes_do_enfesto no v1, mesas no v2).
+    motor/qualidade: ver MOTORES/QUALIDADES. Falha no v2 → log e a geração
+    INTEIRA é refeita com o v1 (motor_usado="v1" + AVISO_RESERVA).
+    progresso: callback (ver _Andamento); GeracaoCancelada levantada nele
+    interrompe sem gravar.
+    antes_de_gravar: chamado depois do nesting e antes do commit, na mesma
+    transação (a OC marca os encaixes anteriores como deletados aqui — o
+    nesting pode levar minutos e nada é tocado antes de terminar).
 
-    Returns: {"encaixes": [...resumos], "avisos": [...], "planos": {lote_id: plano}}
+    Returns: {"encaixes": [...resumos], "avisos": [...], "planos": {lote_id: plano},
+              "motor_usado": "v1"|"v2", "reserva": bool, "totais": {...}}
     Raises: ValueError se nenhuma entrada tiver quantidade; RuntimeError
-        se o motor de nesting falhar.
+        se o motor de nesting falhar; GeracaoCancelada.
     """
     grupos = _agrupar_por_lote(entradas)
     if not grupos:
         db.rollback()
         raise ValueError("Nenhuma peça para encaixar: verifique tecidos, moldes e quantidades.")
 
-    encaixes: list[Encaixe] = []
-    avisos: list[str] = []
-    planos: dict[str, dict] = {}
+    motor = motor if motor in MOTORES else "v2"
+    reserva = False
+    args = (pedido, grupos, modo, ordem_corte_id, descricao, comprimento_max_cm)
     try:
-        for lote_id, (tecido, moldes_qtd) in grupos.items():
-            montados, avisos_lote, plano = _gerar_para_tecido(
-                db, pedido, tecido, moldes_qtd, modo, ordem_corte_id, descricao, comprimento_max_cm
-            )
-            encaixes.extend(montados)
-            avisos.extend(avisos_lote)
-            planos[str(lote_id)] = plano
+        try:
+            encaixes, avisos, planos = _montar_todos(*args, motor, qualidade, progresso)
+        except GeracaoCancelada:
+            raise
+        except Exception:
+            if motor != "v2":
+                raise
+            logger.exception("[NESTING] motor v2 falhou — refazendo com o v1 (reserva)")
+            motor, reserva = "v1", True
+            encaixes, avisos, planos = _montar_todos(*args, "v1", qualidade, progresso)
+            avisos.insert(0, AVISO_RESERVA)
+        if antes_de_gravar is not None:
+            antes_de_gravar()
         if encaixes:
             _gravar(db, encaixes)
     except Exception:
         db.rollback()
         raise
 
-    return {"encaixes": [_resumo(e) for e in encaixes], "avisos": avisos, "planos": planos}
+    return {
+        "encaixes": [_resumo(e) for e in encaixes],
+        "avisos": avisos,
+        "planos": planos,
+        "motor_usado": motor,
+        "reserva": reserva,
+        "totais": totais(encaixes),
+    }
 
 
-def gerar_encaixe(db: Session, pedido_id: uuid.UUID, comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM) -> dict:
+def simular_totais(
+    entradas: list[Entrada],
+    *,
+    modo: str,
+    comprimento_max_cm: int,
+    qualidade: str = "RAPIDO",
+    progresso: Progresso | None = None,
+) -> dict:
+    """Roda o v2 SEM gravar nada e devolve só os totais (ver totais) — é a
+    simulação do alerta de mesa maior. Erro do v2 sobe (sem reserva)."""
+    grupos = _agrupar_por_lote(entradas)
+    encaixes, _, _ = _montar_todos(None, grupos, modo, None, None, comprimento_max_cm, "v2", qualidade, progresso)
+    return totais(encaixes)
+
+
+def gerar_encaixe(
+    db: Session,
+    pedido_id: uuid.UUID,
+    comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM,
+    *,
+    motor: str | None = None,
+    qualidade: str = QUALIDADE_PADRAO,
+    progresso: Progresso | None = None,
+) -> dict:
     """Encaixe Rápido: gera encaixes para todos os lotes do pedido interno
     (formato legado). Mantém a regra antiga de camadas (MENOS_ENFESTOS: um
     enfesto por lote, camadas = min(max_camadas, maior quantidade)) e divide
     em partes o risco que passar de comprimento_max_cm.
 
+    motor None = o de Configurações > Produção (ver gerar_de_entradas para
+    motor, qualidade, progresso e a reserva v1).
+
     Returns:
-        {"encaixes": [...resumo de cada Encaixe criado...], "avisos": [...]}
-        — avisos cobre itens/tamanhos ignorados que não impediram a geração.
+        {"encaixes": [...resumo de cada Encaixe criado...], "avisos": [...],
+         "motor_usado": ...} — avisos cobre itens/tamanhos ignorados que não
+        impediram a geração (e o aviso do motor reserva).
 
     Raises:
         ValueError: se o pedido não existir, não tiver itens, ou se nenhuma
@@ -707,6 +1005,8 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID, comprimento_max_cm: int = C
     if not pedido.itens:
         raise ValueError("O pedido não possui itens cadastrados.")
 
+    if motor is None:
+        motor = config_producao(db)["motor_encaixe"]
     entradas, avisos = montar_pares_legado(pedido)
     for aviso in avisos:
         logger.info("[NESTING] %s", aviso)
@@ -723,5 +1023,13 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID, comprimento_max_cm: int = C
         modo="MENOS_ENFESTOS",
         descricao=pedido.observacoes_internas,
         comprimento_max_cm=comprimento_max_cm,
+        motor=motor,
+        qualidade=qualidade,
+        progresso=progresso,
     )
-    return {"encaixes": resultado["encaixes"], "avisos": avisos + resultado["avisos"]}
+    return {
+        "encaixes": resultado["encaixes"],
+        "avisos": avisos + resultado["avisos"],
+        "motor_usado": resultado["motor_usado"],
+        "reserva": resultado["reserva"],
+    }

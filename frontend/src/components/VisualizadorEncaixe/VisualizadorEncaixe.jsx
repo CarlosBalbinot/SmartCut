@@ -293,7 +293,7 @@ export default function VisualizadorEncaixe({
                     setHover({
                       cx: groupX + cxLocal,
                       cy: groupY + cyLocal,
-                      nome: pl.peca ?? pl.grupo_nome ?? "Peça",
+                      nome: `${pl.peca ?? pl.grupo_nome ?? "Peça"}${pl.espelhada ? " (esp.)" : ""}`,
                       tamanho: pl.tamanho,
                       area: poligonoArea(pl.polygon),
                     });
@@ -304,13 +304,29 @@ export default function VisualizadorEncaixe({
                     setHover(null);
                   }}
                 >
+                  {/* Metade espelhada de um par (motor v2): o polígono já
+                      vem virado no mapa_json; aqui só se marca — contorno
+                      tracejado e etiqueta "(esp.)" no centro da peça. */}
                   <Line
                     points={scaledPts}
                     fill={hexToRgba(cor, fillAlpha)}
                     stroke={cor}
-                    strokeWidth={1 / view.scale}
+                    strokeWidth={(pl.espelhada ? 1.4 : 1) / view.scale}
+                    dash={pl.espelhada ? [6 / view.scale, 3 / view.scale] : undefined}
                     closed
                   />
+                  {pl.espelhada && (
+                    <Text
+                      x={cxLocal - 20 / view.scale}
+                      y={cyLocal - 5 / view.scale}
+                      width={40 / view.scale}
+                      align="center"
+                      text="(esp.)"
+                      fontSize={10 / view.scale}
+                      fill="#1D1D1F"
+                      listening={false}
+                    />
+                  )}
                 </Group>
               );
             })}

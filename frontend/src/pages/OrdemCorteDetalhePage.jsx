@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
+  aplicarSugestaoMesa,
   atualizarOrdemCorte,
   atualizarOrdemCorteDoPedido,
   cancelarOrdemCorte,
   concluirOrdemCorte,
+  descartarSugestaoMesa,
   enviarOrdemCorte,
   gerarEncaixesOrdemCorte,
+  getConfigProducao,
+  getJobOrdemCorte,
   getLotesDisponiveis,
   getOrdemCorte,
   iniciarOrdemCorte,
@@ -19,6 +23,13 @@ import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
 import MenuDropdown from "../components/MenuDropdown/MenuDropdown";
 import Modal from "../components/Modal/Modal";
 import OrdemCorteAssistente from "../components/OrdemCorteAssistente/OrdemCorteAssistente";
+import ProgressoEncaixe, {
+  AlertaMesaMaior,
+  MoldesMesa,
+  ResumoEnfesto,
+  RotuloMotor,
+  agruparEnfestos,
+} from "../components/ProgressoEncaixe/ProgressoEncaixe";
 import { useAuth } from "../auth/useAuth";
 import styles from "./OrdemCorteDetalhePage.module.css";
 
@@ -193,6 +204,13 @@ export default function OrdemCorteDetalhePage() {
   const [obs, setObs] = useState("");
   const [obsSalva, setObsSalva] = useState(false);
   const [comp, setComp] = useState(String(COMP_PADRAO));
+  // Geração em segundo plano (job do backend): enquanto ativa, o progresso
+  // fica no lugar do botão e as ações que mudam a OC ficam travadas.
+  const [jobAtivo, setJobAtivo] = useState(false);
+  const [avisoMotor, setAvisoMotor] = useState(null);
+  // Motor de Configurações > Produção — distingue "v1 configurado" de "v1
+  // reserva" no rótulo do motor. null se o usuário não pode ver a config.
+  const [motorConfig, setMotorConfig] = useState(null);
 
   const aplicar = (dados) => {
     setOc(dados);
@@ -222,8 +240,20 @@ export default function OrdemCorteDetalhePage() {
   useEffect(() => {
     setCarregando(true);
     setOc(null);
+    setJobAtivo(false);
+    setAvisoMotor(null);
     carregar();
+    // Geração iniciada em outra tela (assistente fechado no meio).
+    getJobOrdemCorte(id)
+      .then((j) => j && ["FILA", "RODANDO"].includes(j.status) && setJobAtivo(true))
+      .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    getConfigProducao()
+      .then((c) => setMotorConfig(c.motor_encaixe))
+      .catch(() => setMotorConfig(null));
+  }, []);
 
   const grades = useMemo(() => montarGrades(oc?.itens || []), [oc]);
 
@@ -277,7 +307,8 @@ export default function OrdemCorteDetalhePage() {
   const st = STATUS_OC[oc.status];
   const temEncaixes = oc.encaixes.length > 0;
   const bloqueios = (oc.pendencias || []).filter((p) => p.bloqueia);
-  const ocupado = !!acao;
+  const ocupado = !!acao || jobAtivo;
+  const enfestos = agruparEnfestos(oc.encaixes);
 
   // Reserva e livre do lote. `null` nos dois quando o mapa não veio (a
   // seção mostra "—" e não acende alerta). Com o mapa em mãos, um lote fora
@@ -315,7 +346,49 @@ export default function OrdemCorteDetalhePage() {
     executar("comp", () => atualizarOrdemCorte(oc.id, { comprimento_max_cm: cm }));
   };
 
-  const gerar = () => executar("gerar", () => gerarEncaixesOrdemCorte(oc.id), { recarregar: true });
+  // Inicia o job; o resultado chega pelo ProgressoEncaixe.
+  const gerar = async () => {
+    setAcao("gerar");
+    setErro(null);
+    setAvisoMotor(null);
+    try {
+      await gerarEncaixesOrdemCorte(oc.id);
+      setJobAtivo(true);
+    } catch (e) {
+      setErro(e.message);
+      if (e.status === 409) carregar();
+    } finally {
+      setAcao(null);
+    }
+  };
+
+  const jobConcluido = (estado) => {
+    setJobAtivo(false);
+    setAvisoMotor(estado.resultado?.aviso_motor || null);
+    carregar();
+  };
+
+  const jobEncerrado = () => {
+    setJobAtivo(false);
+    carregar();
+  };
+
+  // Alerta de mesa maior: usar troca o limite e já dispara a nova geração.
+  const usarMesaMaior = async () => {
+    setAcao("mesa");
+    setErro(null);
+    setAvisoMotor(null);
+    try {
+      const r = await aplicarSugestaoMesa(oc.id);
+      aplicar(r.ordem_corte);
+      setJobAtivo(true);
+    } catch (e) {
+      setErro(e.message);
+      carregar();
+    } finally {
+      setAcao(null);
+    }
+  };
 
   const confirmacoes = {
     regerar: {
@@ -415,6 +488,7 @@ export default function OrdemCorteDetalhePage() {
                   Desatualizada
                 </span>
               )}
+              <RotuloMotor encaixes={oc.encaixes} motorConfig={motorConfig} />
               {obsSalva && <span className={styles.msgSalvo}>Observações salvas.</span>}
             </div>
           </div>
@@ -449,7 +523,7 @@ export default function OrdemCorteDetalhePage() {
                 Editar tecidos
               </button>
             )}
-            {rascunho && podeCriar && (
+            {rascunho && podeCriar && !jobAtivo && (
               <button
                 type="button"
                 className={temEncaixes ? styles.btnHeaderSecondary : styles.btnHeaderPrimario}
@@ -464,7 +538,7 @@ export default function OrdemCorteDetalhePage() {
                 }
               >
                 {acao === "gerar"
-                  ? "Gerando encaixes…"
+                  ? "Iniciando…"
                   : temEncaixes
                     ? "Regerar encaixes"
                     : "Gerar encaixes"}
@@ -544,6 +618,28 @@ export default function OrdemCorteDetalhePage() {
 
         {erro && <p className={styles.erroInline}>{erro}</p>}
 
+        {jobAtivo && (
+          <ProgressoEncaixe ocId={oc.id} onConcluido={jobConcluido} onFim={jobEncerrado} />
+        )}
+
+        {avisoMotor && !jobAtivo && (
+          <div className={`${styles.avisoWarn} ${styles.avisoLinha}`}>
+            <span>
+              {avisoMotor}. Os encaixes foram feitos pelo motor v1, que aproveita menos tecido.
+            </span>
+          </div>
+        )}
+
+        {rascunho && !jobAtivo && (
+          <AlertaMesaMaior
+            sugestao={oc.sugestao_mesa}
+            limiteAtual={oc.comprimento_max_cm}
+            ocupado={ocupado || !podeCriar}
+            onUsar={usarMesaMaior}
+            onManter={() => executar("manter", () => descartarSugestaoMesa(oc.id))}
+          />
+        )}
+
         {oc.desatualizada && !final && (
           <div className={`${styles.avisoWarn} ${styles.avisoLinha}`}>
             <span>
@@ -563,7 +659,7 @@ export default function OrdemCorteDetalhePage() {
           </div>
         )}
 
-        {oc.encaixes_desatualizados && (
+        {oc.encaixes_desatualizados && !jobAtivo && (
           <div className={`${styles.avisoWarn} ${styles.avisoLinha}`}>
             <span>Regere os encaixes para aplicar o novo limite.</span>
             {podeCriar && (
@@ -847,66 +943,56 @@ export default function OrdemCorteDetalhePage() {
               {rascunho ? "Nenhum encaixe gerado ainda." : "Nenhum encaixe nesta OC."}
             </p>
           ) : (
-            <div className={styles.encaixes}>
-              {oc.encaixes.map((e) => {
-                const lote = oc.tecidos.find((t) => t.lote?.id === e.lote_id)?.lote;
-                const tecidoLote = [e.tecido_nome || "—", lote && `lote ${lote.codigo_lote}`]
-                  .filter(Boolean)
-                  .join(" · ");
-                return (
-                  <article key={e.id} className={styles.encaixeCard}>
-                    <div className={styles.encaixeTopo}>
-                      <div className={styles.encaixeId}>
-                        <strong>{fmtEnc(e.numero_enc)}</strong>
-                        {e.enfesto != null && (
-                          <span className={styles.encaixeParte}>
-                            {[fmtParte(e), `enfesto ${e.enfesto}`].filter(Boolean).join(" · ")}
-                          </span>
-                        )}
-                      </div>
-                      <Link className={styles.linkEncaixe} to={`/producao/encaixes/${e.id}`}>
-                        Ver encaixe
-                      </Link>
-                    </div>
-                    <div className={styles.encaixeTecido} title={tecidoLote}>
-                      {tecidoLote}
-                    </div>
-                    <dl className={styles.metricas}>
-                      <div>
-                        <dt title="Camadas">Camadas</dt>
-                        <dd>{e.num_camadas}</dd>
-                      </div>
-                      <div>
-                        <dt title="Comprimento">Comprimento</dt>
-                        <dd>{numBR(e.comp_metros, 2)} m</dd>
-                      </div>
-                      <div>
-                        <dt title="Peso total">Peso total</dt>
-                        <dd>{numBR(e.peso_total_kg, 3)} kg</dd>
-                      </div>
-                      <div>
-                        <dt title="Aproveitamento">Aproveitamento</dt>
-                        <dd>
-                          {e.aproveitamento_pct != null
-                            ? `${numBR(e.aproveitamento_pct, 1)}%`
-                            : "—"}
-                        </dd>
-                      </div>
-                    </dl>
-                    {(e.pecas_por_tamanho || []).length > 0 && (
-                      <div className={styles.pecas}>
-                        {e.pecas_por_tamanho.map((p, i) => (
-                          <span key={i} className={styles.pecaTam} title={p.grupo_nome || ""}>
-                            {p.tamanho} <strong>{p.pecas}</strong>
-                            {p.sobra > 0 && <span className={styles.sobra}> +{p.sobra}</span>}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
+            // Um bloco por enfesto: a grade por tamanho fica no resumo do
+            // enfesto; cada card (mesa) lista só os moldes que corta.
+            enfestos.map((g) => {
+              const lote = oc.tecidos.find((t) => t.lote?.id === g.lote_id)?.lote;
+              return (
+                <div key={g.chave}>
+                  <ResumoEnfesto grupo={g} loteCodigo={lote?.codigo_lote} />
+                  <div className={styles.encaixes}>
+                    {g.mesas.map((e) => (
+                      <article key={e.id} className={styles.encaixeCard}>
+                        <div className={styles.encaixeTopo}>
+                          <div className={styles.encaixeId}>
+                            <strong>{fmtEnc(e.numero_enc)}</strong>
+                            <span className={styles.encaixeParte}>
+                              {fmtParte(e) || "mesa única"}
+                            </span>
+                          </div>
+                          <Link className={styles.linkEncaixe} to={`/producao/encaixes/${e.id}`}>
+                            Ver encaixe
+                          </Link>
+                        </div>
+                        <dl className={styles.metricas}>
+                          <div>
+                            <dt title="Camadas">Camadas</dt>
+                            <dd>{e.num_camadas}</dd>
+                          </div>
+                          <div>
+                            <dt title="Comprimento">Comprimento</dt>
+                            <dd>{numBR(e.comp_metros, 2)} m</dd>
+                          </div>
+                          <div>
+                            <dt title="Peso total">Peso total</dt>
+                            <dd>{numBR(e.peso_total_kg, 3)} kg</dd>
+                          </div>
+                          <div>
+                            <dt title="Aproveitamento">Aproveitamento</dt>
+                            <dd>
+                              {e.aproveitamento_pct != null
+                                ? `${numBR(e.aproveitamento_pct, 1)}%`
+                                : "—"}
+                            </dd>
+                          </div>
+                        </dl>
+                        <MoldesMesa pecas={e.pecas_parte} />
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
           )}
         </section>
       </div>

@@ -1,0 +1,356 @@
+/* ── Progresso do job ── */
+
+.progresso {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-bg-tertiary);
+}
+
+.linhaTopo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.principal {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--sc-font-size-body);
+  font-weight: 500;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tempo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--sc-font-size-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-text-secondary);
+}
+
+.trilho {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sc-200);
+  overflow: hidden;
+}
+
+.barra {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  transition: width 0.4s ease;
+}
+
+.barraIndeterminada {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  border-radius: 999px;
+  background: var(--color-primary);
+  animation: vaivem 1.4s ease-in-out infinite;
+}
+
+@keyframes vaivem {
+  0% {
+    left: -30%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barraIndeterminada {
+    animation: none;
+    left: 0;
+    width: 100%;
+    opacity: 0.35;
+  }
+}
+
+.nota {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-secondary);
+}
+
+.erro {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
+.erro > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.erroTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-primary);
+}
+
+/* ── Botões ── */
+
+.btnPrimario,
+.btnSecundario,
+.btnPerigo {
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-font-size-body);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btnPrimario {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--sc-action-text);
+}
+.btnPrimario:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+.btnSecundario {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-primary);
+}
+.btnSecundario:hover:not(:disabled) {
+  background: var(--sc-surface-hover);
+}
+.btnPerigo {
+  background: var(--sc-danger-text);
+  border: 1px solid var(--sc-danger-text);
+  color: var(--sc-action-text);
+}
+.btnPrimario:disabled,
+.btnSecundario:disabled,
+.btnPerigo:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Confirmação (acima do assistente, z-index 200/300) ── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialogo {
+  width: 100%;
+  max-width: 420px;
+  padding: 20px;
+  border-radius: var(--sc-radius-xl);
+  background: var(--sc-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+.dialogoTitulo {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+.dialogoTexto {
+  margin: 0 0 18px;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-secondary);
+}
+.dialogoAcoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Alerta de mesa maior (informativo) ── */
+
+.alertaMesa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--sc-info-border);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-info-bg);
+}
+.alertaMesa > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
+}
+.alertaTexto {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-primary);
+}
+.alertaTexto span {
+  color: var(--sc-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.alertaAcoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+}
+
+/* ── Moldes da mesa ── */
+
+.moldes {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--sc-border);
+  font-size: var(--sc-font-size-small);
+}
+.moldesRotulo {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-muted);
+}
+.moldesLista {
+  min-width: 0;
+  color: var(--sc-text-primary);
+  line-height: 1.45;
+}
+
+/* ── Resumo do enfesto ── */
+
+.enfesto {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 4px 0 8px;
+  font-size: var(--sc-font-size-small);
+}
+.enfestoTitulo {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+.enfestoInfo {
+  color: var(--sc-text-secondary);
+}
+.grade {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gradeTam {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  white-space: nowrap;
+}
+.gradeTam strong {
+  color: var(--sc-text-primary);
+}
+.sobra {
+  color: var(--sc-text-warning);
+}
+
+/* ── Cards de mesa (assistente) ── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-surface);
+}
+.cardTopo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--sc-font-size-body);
+}
+.cardParte {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+}
+.cardMetricas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.cardMetricas dt {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardMetricas dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-text-primary);
+  white-space: nowrap;
+}
+
+/* ── Motor ── */
+
+.motor {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+  white-space: nowrap;
+}
+.motorReserva {
+  color: var(--sc-text-warning);
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}

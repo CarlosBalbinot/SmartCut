@@ -43,7 +43,8 @@ export const getOrdemCorteDoPedido = async (pedidoId) =>
 export const definirTecidosOrdemCorte = (id, escolhas) =>
   request(`/${id}/tecidos`, { method: "PUT", body: JSON.stringify(escolhas) });
 
-// payload: { modo_camadas?, observacoes? }
+// payload: { modo_camadas?, comprimento_max_cm?, qualidade?, observacoes? }
+// qualidade: RAPIDO | EQUILIBRADO | MAXIMO (tempo do motor v2).
 export const atualizarOrdemCorte = (id, payload) =>
   request(`/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 
@@ -93,7 +94,38 @@ export const reabrirOrdemCorte = (id, { quem, observacao } = {}) =>
 export const simularOrdemCorte = (id, modo) =>
   request(`/${id}/simular${modo ? `?modo=${modo}` : ""}`);
 
+// ── Geração de encaixes em segundo plano (M2a) ───────────────────────────────
+//
+// gerar-encaixes responde 202 { job_id } — o resultado sai em GET /job, que a
+// tela consulta (ProgressoEncaixe). Estado do job: { job_id, status (FILA,
+// RODANDO, CONCLUIDO, ERRO, CANCELADO), fase, mesa_atual, total_mesas,
+// aproveitamento_parcial, iniciado_em, erro, resultado }.
+
 export const gerarEncaixesOrdemCorte = (id) => request(`/${id}/gerar-encaixes`, { method: "POST" });
+
+// Estado do job atual (ou do último) da OC; null se não houve nenhum desde
+// que o backend subiu (a API responde 404).
+export const getJobOrdemCorte = (id) =>
+  request(`/${id}/job`).catch((e) => {
+    if (e.status === 404) return null;
+    throw e;
+  });
+
+// Cancela a geração — os encaixes anteriores da OC ficam como estavam.
+export const cancelarJobOrdemCorte = (id) => request(`/${id}/job/cancelar`, { method: "POST" });
+
+// Alerta de mesa maior (oc.sugestao_mesa): aplicar troca o comprimento máximo
+// e já dispara a nova geração (202 { job_id, ordem_corte }); descartar
+// esconde a sugestão até a próxima geração.
+export const aplicarSugestaoMesa = (id) =>
+  request(`/${id}/aplicar-sugestao-mesa`, { method: "POST" });
+
+export const descartarSugestaoMesa = (id) =>
+  request(`/${id}/descartar-sugestao-mesa`, { method: "POST" });
+
+// Configurações > Produção: { motor_encaixe, comprimento_max_mesa_cm,
+// alerta_economia_pct } — exige permissão de ver configurações.
+export const getConfigProducao = () => request("/configuracao-producao");
 
 // Lotes que podem ser escolhidos (sem arquivados/esgotados), com modelo,
 // cor, largura, gramatura e peso disponível.

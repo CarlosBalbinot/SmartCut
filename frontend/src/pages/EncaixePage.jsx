@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getEncaixe, getEncaixes, getPdfEncaixe } from "../api/encaixes";
+import { getConfigProducao } from "../api/ordensCorte";
 import { imprimirRelatorio, RELATORIO_FORMULARIO_CORTE } from "../api/relatorios";
+import { RotuloMotor } from "../components/ProgressoEncaixe/ProgressoEncaixe";
 import VisualizadorEncaixe from "../components/VisualizadorEncaixe/VisualizadorEncaixe";
 import styles from "./EncaixePage.module.css";
 
@@ -39,20 +41,41 @@ function buildColorIdx(placements) {
   return map;
 }
 
-function agregarPecas(placements) {
+// Moldes da mesa (por camada). Encaixes gerados a partir do M1-B trazem
+// mapa_json.pecas_parte (a tabela da mesa, com as metades espelhadas de
+// cada par); os antigos não — aí conta pelos placements.
+function agregarPecas(placements, pecasParte) {
   const map = {};
-  for (const pl of placements) {
-    const key = pl.id;
-    if (!map[key]) {
-      map[key] = {
-        id: pl.id,
-        peca: pl.peca ?? null,
-        tamanho: pl.tamanho ?? null,
-        grupo_nome: pl.grupo_nome ?? null,
+  if (pecasParte?.length) {
+    for (const p of pecasParte) {
+      const key = p.molde_id;
+      map[key] = map[key] ?? {
+        id: key,
+        peca: p.peca ?? p.molde ?? null,
+        tamanho: p.tamanho ?? null,
+        grupo_nome: p.grupo_nome ?? p.produto ?? null,
         count: 0,
+        espelhadas: 0,
       };
+      map[key].count += p.por_camada ?? p.quantidade ?? 0;
+      map[key].espelhadas += p.espelhadas ?? 0;
     }
-    map[key].count++;
+  } else {
+    for (const pl of placements) {
+      const key = pl.id;
+      if (!map[key]) {
+        map[key] = {
+          id: pl.id,
+          peca: pl.peca ?? null,
+          tamanho: pl.tamanho ?? null,
+          grupo_nome: pl.grupo_nome ?? null,
+          count: 0,
+          espelhadas: 0,
+        };
+      }
+      map[key].count++;
+      if (pl.espelhada) map[key].espelhadas++;
+    }
   }
   return Object.values(map).sort((a, b) => {
     const ga = a.grupo_nome ?? "";
@@ -122,6 +145,15 @@ export default function EncaixePage() {
   const [pecaSelecionada, setPecaSelecionada] = useState(null);
   const [listaAberta, setListaAberta] = useState(true);
   const [showJustificativa, setShowJustificativa] = useState(false);
+  // Motor de Configurações > Produção — só para distinguir "v1 reserva" de
+  // "v1 configurado" no rótulo do motor (null sem permissão).
+  const [motorConfig, setMotorConfig] = useState(null);
+
+  useEffect(() => {
+    getConfigProducao()
+      .then((c) => setMotorConfig(c.motor_encaixe))
+      .catch(() => setMotorConfig(null));
+  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -219,7 +251,8 @@ export default function EncaixePage() {
   const colorMap = Object.fromEntries(
     Object.entries(colorIdx).map(([id, idx]) => [id, PALETTE[idx]])
   );
-  const pecasAgregadas = agregarPecas(placements);
+  const pecasAgregadas = agregarPecas(placements, mapa.pecas_parte);
+  const temEspelhadas = pecasAgregadas.some((p) => p.espelhadas > 0);
   const temVisualizador =
     mapa.largura_cm && mapa.comprimento_cm && placements.some((p) => p.polygon);
 
@@ -269,6 +302,10 @@ export default function EncaixePage() {
             )}
             {(ehRapido || !pedido) && (enc.descricao || (ehRapido ? "Encaixe Rápido" : ""))}
           </p>
+          <RotuloMotor
+            encaixes={[{ motor_usado: mapa.motor_usado, qualidade: mapa.qualidade }]}
+            motorConfig={motorConfig}
+          />
         </div>
         {nav && nav.total > 1 && (
           <div className={styles.painelBadges}>
@@ -379,7 +416,9 @@ export default function EncaixePage() {
               className={styles.pecasSectionHeader}
               onClick={() => setListaAberta((v) => !v)}
             >
-              <span>Peças no enfesto</span>
+              <span title="O que esta mesa corta, por camada. A grade por tamanho é do enfesto (Ordem de Corte).">
+                Moldes da mesa
+              </span>
               <span
                 className={`${styles.pecasChevron} ${listaAberta ? styles.pecasChevronAberto : ""}`}
               >
@@ -407,9 +446,20 @@ export default function EncaixePage() {
                           : (p.peca ?? "Molde")}
                       </span>
                       {p.tamanho && <span className={styles.pecaTamanho}>{p.tamanho}</span>}
-                      <span className={styles.pecaQtd}>×{p.count}</span>
+                      <span
+                        className={styles.pecaQtd}
+                        title={`${p.count} por camada × ${enc.num_camadas} = ${p.count * enc.num_camadas}${p.espelhadas ? ` · ${p.espelhadas} espelhada(s)` : ""}`}
+                      >
+                        ×{p.count}
+                        {p.espelhadas > 0 && " (esp.)"}
+                      </span>
                     </button>
                   ))
+                )}
+                {temEspelhadas && (
+                  <p className={styles.semDados}>
+                    Contorno tracejado no desenho: metade espelhada do par.
+                  </p>
                 )}
               </div>
             )}

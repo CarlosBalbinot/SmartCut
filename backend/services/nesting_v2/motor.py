@@ -44,11 +44,20 @@ Memória e tempo
     passado `tempo_max_s` o resto roda no piso de 1 s e o polimento é pulado;
   * o pico de memória do processo durante a geração volta em
     `Resultado.pico_memoria_mb` (memoria.MedidorPico).
+
+Progresso e cancelamento
+------------------------
+`ao_progresso(fase, mesa, total_mesas, aproveitamento)` é chamado antes de
+cada chamada do spyrrow (fases "grandes", "pequenas", "polimento"). Quem roda
+em segundo plano (services/nesting_jobs.py) usa para mostrar a mesa atual e,
+levantando uma exceção dentro dele, cancelar entre uma mesa/fase e outra — a
+geração só devolve algo no fim, então cancelar não deixa nada pela metade.
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -91,6 +100,9 @@ TEMPO_MAX_S = 600.0  # teto brando da geração inteira
 
 # Piso de uma chamada: o spyrrow trabalha em segundos inteiros.
 SEGUNDO_PISO = 1.0
+
+# (fase, mesa, total_mesas, aproveitamento da última faixa que coube)
+Progresso = Callable[[str, int, int, float | None], None]
 
 
 @dataclass
@@ -194,6 +206,7 @@ def gerar(
     segundos_polimento: float = SEGUNDOS_POLIMENTO,
     segundos_faixa: float = SEGUNDOS_FAIXA,
     tempo_max_s: float = TEMPO_MAX_S,
+    ao_progresso: Progresso | None = None,
 ) -> Resultado:
     """Divide as peças do enfesto em mesas de comprimento <= limite.
 
@@ -207,6 +220,8 @@ def gerar(
     segundos_*         teto de tempo de cada chamada do spyrrow
     tempo_max_s        teto brando da geração: passado dele, as chamadas vão
                        para o piso de 1 s e o polimento é pulado
+    ao_progresso       callback antes de cada chamada do spyrrow (ver topo);
+                       exceção levantada nele interrompe a geração
     """
     if largura_cm <= 0:
         raise ErroEncaixe(f"Largura do tecido inválida: {largura_cm}")
@@ -225,10 +240,12 @@ def gerar(
             segundos_mesa=segundos_mesa,
             tempo_max_s=tempo_max_s,
             inicio=inicio,
+            ao_progresso=ao_progresso,
         )
         if not unidades:
             mesas: list[Mesa] = []
         elif ctx.limite is None:
+            ctx.em("faixa", 1)
             mesas = _finaliza([_Aberta(unidades, ctx.encaixar(unidades, segundos_faixa))])
         else:
             abertas = _encher_grandes(ctx, [u for u in unidades if _altura_min(u) > ctx.limite / 2])
@@ -271,7 +288,17 @@ class _Contexto:
     segundos_mesa: float
     tempo_max_s: float
     inicio: float
+    ao_progresso: Progresso | None = None
     chamadas: int = 0
+    fase: str = ""
+    mesa: int = 0
+    total_mesas: int = 0
+    aproveitamento: float | None = None
+
+    def em(self, fase: str, mesa: int, total_mesas: int | None = None) -> None:
+        """Marca onde a geração está (vai no próximo aviso de progresso)."""
+        self.fase, self.mesa = fase, mesa
+        self.total_mesas = max(self.total_mesas, mesa, total_mesas or 0)
 
     @property
     def estourou(self) -> bool:
@@ -279,6 +306,8 @@ class _Contexto:
 
     def encaixar(self, unidades: list[Unidade], segundos: float | None = None) -> Faixa:
         seg = SEGUNDO_PISO if self.estourou else max(SEGUNDO_PISO, segundos or self.segundos_mesa)
+        if self.ao_progresso is not None:
+            self.ao_progresso(self.fase, self.mesa, self.total_mesas, self.aproveitamento)
         self.chamadas += 1
         faixa = encaixar(
             unidades,
@@ -290,6 +319,8 @@ class _Contexto:
             nome=f"mesa{self.chamadas}",
         )
         _checar_largura(faixa)
+        if self.cabe(faixa):
+            self.aproveitamento = faixa.aproveitamento
         return faixa
 
     def cabe(self, faixa: Faixa) -> bool:
@@ -318,6 +349,7 @@ def _encher_grandes(ctx: _Contexto, grandes: list[Unidade]) -> list[_Aberta]:
     pendentes = list(grandes)
     while pendentes:
         mesa = _Aberta([])
+        ctx.em("grandes", len(abertas) + 1)
         recusadas: set[tuple] = set()
         for bloco in planejador.blocos(pendentes):
             forma = tuple(u.forma for u in bloco)
@@ -346,8 +378,10 @@ def _encher_pequenas(ctx: _Contexto, abertas: list[_Aberta], pequenas: list[Unid
     for mesa in sorted(abertas, key=lambda m: m.comprimento_cm):
         if not pendentes:
             return
+        ctx.em("pequenas", abertas.index(mesa) + 1, len(abertas))
         pendentes = _completar(ctx, mesa, pendentes)
     while pendentes:
+        ctx.em("pequenas", len(abertas) + 1)
         mesa = _Aberta([])
         restantes = _completar(ctx, mesa, pendentes)
         if len(restantes) == len(pendentes):
@@ -400,9 +434,10 @@ def _polir(ctx: _Contexto, abertas: list[_Aberta], segundos: float) -> None:
     """Etapa 3: reencaixa cada mesa com mais tempo e fica com a mais curta."""
     if segundos <= 0:
         return
-    for mesa in abertas:
+    for i, mesa in enumerate(abertas, start=1):
         if ctx.estourou:
             return
+        ctx.em("polimento", i, len(abertas))
         faixa = ctx.encaixar(mesa.unidades, segundos)
         if ctx.cabe(faixa) and faixa.comprimento_cm < mesa.comprimento_cm - EPS_CM:
             mesa.faixa = faixa

@@ -13,15 +13,23 @@
     pedido    numero, emissao, cliente, cliente_codigo, vendedor
     grades[]  produto_codigo, produto_descricao, tamanhos[], total, totais_tamanho[],
               linhas[] { cor, quantidades[] (na ordem de tamanhos), total }
-    enfestos[] numero, numero_formatado (ENC-012), enfesto, parte (1/2 quando dividido),
-              parte_numero, total_partes (vazios no enfesto inteiro), comprimento_max_cm,
-              avisos[] (peça mais comprida que o limite),
+    enfestos[] UMA MESA (encaixe) cada: numero, numero_formatado (ENC-012), enfesto,
+              parte (1/2 quando dividido), parte_numero, total_partes (vazios no enfesto
+              inteiro), comprimento_max_cm, avisos[] (peça mais comprida que o limite),
               tecido { nome, modelo, cor, lote }, largura_util_cm, comprimento_m
               (uma camada), camadas, peso_total_kg (todas as camadas), aproveitamento,
-              pecas_por_camada, pecas_total, sobra_total,
-              pecas_por_tamanho[] { produto, tamanhos[] { tamanho, por_camada, total, sobra } },
-              miniatura_svg (desenho do encaixe gerado pelo SmartCut)
-    totais    pecas, enfestos, metros (todas as camadas), peso_total_kg
+              motor ("Motor v2 · Equilibrado", "Motor v1" ou vazio),
+              moldes[] { produto, moldes[] { molde, tamanho, por_camada, total, espelhadas } }
+              (o que ESTA mesa corta), moldes_por_camada, moldes_total, tem_espelhadas,
+              pecas_por_tamanho[] (grade do enfesto como gravada no encaixe — use a de grupos[]),
+              miniatura_svg (desenho do encaixe; metade espelhada de par tracejada)
+    grupos[]  UM ENFESTO cada, com as mesas dele: enfesto, tecido, largura_util_cm, camadas,
+              motor, total_mesas, comprimento_m (soma das mesas, uma camada), peso_total_kg,
+              pecas_por_tamanho[] { produto, tamanhos[] { tamanho, por_camada, total, sobra } }
+              (a grade sai UMA vez por enfesto), pecas_por_camada, pecas_total, sobra_total,
+              mesas[] (itens de enfestos[])
+    totais    pecas (do pedido), pecas_cortadas e sobra (uma vez por enfesto), enfestos,
+              mesas, metros (todas as camadas), peso_total_kg
     impressao data, hora, nome_relatorio, codigo, modelo
 
   FILTROS: moeda, numero(casas), data, cnpj_cpf, cep, telefone (ver relVen001)
@@ -81,10 +89,25 @@
   .grade .tot { font-weight: bold; }
   .grade tfoot td { font-weight: bold; border-top: 0.5pt solid #000; }
 
-  /* Enfesto: um bloco por encaixe, nunca quebrado no meio */
-  .enfesto { margin-top: 2.5mm; padding: 1.5mm 2mm 2mm; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
-  .enfesto-titulo { font-size: 8.5pt; font-weight: bold; }
+  /* Enfesto (grupo): cabeçalho + grade por tamanho uma vez; mesas abaixo */
+  .grupo { margin-top: 3mm; }
+  .grupo-cab { padding: 1.2mm 2mm; background: #f2f2f2; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
+  .grupo-titulo { font-size: 8.5pt; font-weight: bold; }
+  .grupo-motor { float: right; font-weight: normal; font-size: 7pt; }
+
+  /* Mesa: um bloco por encaixe, nunca quebrado no meio */
+  .enfesto { margin-top: 1.5mm; padding: 1.5mm 2mm 2mm; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
+  .enfesto-titulo { font-size: 8pt; font-weight: bold; }
   .enfesto-nota { margin-top: 0.8mm; font-style: italic; }
+
+  /* Moldes da mesa: MOLDE | TAMANHO | QTD POR CAMADA | TOTAL */
+  .moldes { width: 110mm; table-layout: fixed; margin-top: 1.5mm; }
+  .moldes th, .moldes td { padding: 0.4mm 1.5mm; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .moldes th { font-weight: bold; border-bottom: 0.5pt solid #000; }
+  .moldes .esq { text-align: left; padding-left: 0; }
+  .moldes .produto td { font-weight: bold; text-align: left; padding: 1mm 0 0.3mm; }
+  .moldes tfoot td { font-weight: bold; border-top: 0.5pt solid #000; }
+  .legenda { margin-top: 0.6mm; font-size: 6.5pt; font-style: italic; }
 
   /* Linha de dados em grade: colunas iguais, rótulo sobre o valor */
   .grade-dados { table-layout: fixed; margin-top: 1mm; }
@@ -181,85 +204,136 @@
   {% endfor %}
 </div>
 
-<!-- ═══ Enfestos (um bloco por encaixe) ═══ -->
+<!-- ═══ Enfestos: grade por tamanho uma vez por enfesto; cada mesa lista os moldes ═══ -->
 <div class="secao">
   <div class="secao-titulo">ENFESTOS</div>
-  {% for e in enfestos %}
-  {% set tecido = [e.tecido.modelo, e.tecido.cor] | select | join(" ") or e.tecido.nome %}
-  <div class="enfesto">
-    <div class="enfesto-titulo">
-      {{ e.numero_formatado }}
-      {%- if e.total_partes %} · parte {{ e.parte_numero }} de {{ e.total_partes }}{% endif %}
-      {%- if tecido %} · {{ tecido }}{% endif %}
-      {%- if e.tecido.lote %} · Lote {{ e.tecido.lote }}{% endif %}
-    </div>
-    <table class="grade-dados">
-      <tr>
-        <td><span class="rot">Largura</span>{{ e.largura_util_cm | numero(1) }} cm</td>
-        <td><span class="rot">Comprimento</span>{{ e.comprimento_m | numero(2) }} m</td>
-        <td><span class="rot">Camadas</span>{{ e.camadas }}</td>
-        <td><span class="rot">Peso total</span>{{ e.peso_total_kg | numero(3) }} kg</td>
-        <td><span class="rot">Aproveitamento</span>{% if e.aproveitamento is not none %}{{ e.aproveitamento | numero(1) }}%{% else %}—{% endif %}</td>
-      </tr>
-    </table>
-    {% for aviso in e.avisos %}
-    <div class="enfesto-nota">Atenção: {{ aviso }}.</div>
-    {% endfor %}
-
-    {% set tem_sobra = e.sobra_total > 0 %}
-    <table class="tamanhos">
-      {% if tem_sobra %}
-      <colgroup><col><col style="width: 20mm"><col style="width: 16mm"><col style="width: 16mm"></colgroup>
-      {% else %}
-      <colgroup><col><col style="width: 24mm"><col style="width: 20mm"></colgroup>
-      {% endif %}
-      <thead>
+  {% for g in grupos %}
+  {% set tecido = [g.tecido.modelo, g.tecido.cor] | select | join(" ") or g.tecido.nome %}
+  <div class="grupo">
+    <div class="grupo-cab">
+      <div class="grupo-titulo">
+        {% if g.motor %}<span class="grupo-motor">{{ g.motor }}</span>{% endif %}
+        {% if g.enfesto is not none %}Enfesto {{ g.enfesto }}{% else %}Enfesto{% endif %}
+        {%- if tecido %} · {{ tecido }}{% endif %}
+        {%- if g.tecido.lote %} · Lote {{ g.tecido.lote }}{% endif %}
+      </div>
+      <table class="grade-dados">
         <tr>
-          <th class="esq">Tamanho</th><th>Por camada</th><th>Total</th>
-          {% if tem_sobra %}<th>Sobra</th>{% endif %}
+          <td><span class="rot">Largura</span>{{ g.largura_util_cm | numero(1) }} cm</td>
+          <td><span class="rot">Camadas</span>{{ g.camadas }}</td>
+          <td><span class="rot">Mesas</span>{{ g.total_mesas }}</td>
+          <td><span class="rot">Comprimento (1 camada)</span>{{ g.comprimento_m | numero(2) }} m</td>
+          <td><span class="rot">Peso total</span>{{ g.peso_total_kg | numero(3) }} kg</td>
         </tr>
-      </thead>
-      {% for g in e.pecas_por_tamanho %}
-      <tbody>
-        {% if g.produto %}
-        <tr class="produto"><td colspan="{{ 4 if tem_sobra else 3 }}">{{ g.produto }}</td></tr>
+      </table>
+
+      {% if g.pecas_por_tamanho %}
+      {% set tem_sobra = g.sobra_total > 0 %}
+      <table class="tamanhos">
+        {% if tem_sobra %}
+        <colgroup><col><col style="width: 20mm"><col style="width: 16mm"><col style="width: 16mm"></colgroup>
+        {% else %}
+        <colgroup><col><col style="width: 24mm"><col style="width: 20mm"></colgroup>
         {% endif %}
-        {% for p in g.tamanhos %}
-        <tr>
-          <td class="esq">{{ p.tamanho }}</td>
-          <td>{{ p.por_camada }}</td>
-          <td>{{ p.total }}</td>
-          {% if tem_sobra %}<td>{{ p.sobra if p.sobra else "" }}</td>{% endif %}
-        </tr>
+        <thead>
+          <tr>
+            <th class="esq">Tamanho</th><th>Por camada</th><th>Total</th>
+            {% if tem_sobra %}<th>Sobra</th>{% endif %}
+          </tr>
+        </thead>
+        {% for pg in g.pecas_por_tamanho %}
+        <tbody>
+          {% if pg.produto %}
+          <tr class="produto"><td colspan="{{ 4 if tem_sobra else 3 }}">{{ pg.produto }}</td></tr>
+          {% endif %}
+          {% for p in pg.tamanhos %}
+          <tr>
+            <td class="esq">{{ p.tamanho }}</td>
+            <td>{{ p.por_camada }}</td>
+            <td>{{ p.total }}</td>
+            {% if tem_sobra %}<td>{{ p.sobra if p.sobra else "" }}</td>{% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
         {% endfor %}
-      </tbody>
-      {% endfor %}
-      <tfoot>
-        <tr>
-          <td class="esq">Total</td><td>{{ e.pecas_por_camada }}</td><td>{{ e.pecas_total }}</td>
-          {% if tem_sobra %}<td>{{ e.sobra_total }}</td>{% endif %}
-        </tr>
-      </tfoot>
-    </table>
+        <tfoot>
+          <tr>
+            <td class="esq">Total do enfesto</td><td>{{ g.pecas_por_camada }}</td><td>{{ g.pecas_total }}</td>
+            {% if tem_sobra %}<td>{{ g.sobra_total }}</td>{% endif %}
+          </tr>
+        </tfoot>
+      </table>
+      {% endif %}
+    </div>
 
-    {% if e.miniatura_svg %}
-    <div class="miniatura">{{ e.miniatura_svg }}</div>
-    {% else %}
-    <div class="sem-miniatura">Desenho do encaixe não disponível.</div>
-    {% endif %}
+    {% for e in g.mesas %}
+    <div class="enfesto">
+      <div class="enfesto-titulo">
+        {{ e.numero_formatado }}
+        {%- if e.total_partes %} · Mesa {{ e.parte_numero }} de {{ e.total_partes }}{% else %} · Mesa única{% endif %}
+      </div>
+      <table class="grade-dados">
+        <tr>
+          <td><span class="rot">Comprimento</span>{{ e.comprimento_m | numero(2) }} m</td>
+          <td><span class="rot">Camadas</span>{{ e.camadas }}</td>
+          <td><span class="rot">Peso total</span>{{ e.peso_total_kg | numero(3) }} kg</td>
+          <td><span class="rot">Aproveitamento</span>{% if e.aproveitamento is not none %}{{ e.aproveitamento | numero(1) }}%{% else %}—{% endif %}</td>
+        </tr>
+      </table>
+      {% for aviso in e.avisos %}
+      <div class="enfesto-nota">Atenção: {{ aviso }}.</div>
+      {% endfor %}
+
+      {% if e.moldes %}
+      {% set varios_produtos = e.moldes | length > 1 %}
+      <table class="moldes">
+        <colgroup><col><col style="width: 20mm"><col style="width: 26mm"><col style="width: 16mm"></colgroup>
+        <thead>
+          <tr><th class="esq">Molde</th><th>Tamanho</th><th>Qtd por camada</th><th>Total</th></tr>
+        </thead>
+        {% for mg in e.moldes %}
+        <tbody>
+          {% if varios_produtos and mg.produto %}
+          <tr class="produto"><td colspan="4">{{ mg.produto }}</td></tr>
+          {% endif %}
+          {% for m in mg.moldes %}
+          <tr>
+            <td class="esq">{{ m.molde }}{% if m.espelhadas %} ({{ m.espelhadas }} esp.){% endif %}</td>
+            <td>{{ m.tamanho }}</td>
+            <td>{{ m.por_camada }}</td>
+            <td>{{ m.total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        {% endfor %}
+        <tfoot>
+          <tr><td class="esq">Total da mesa</td><td></td><td>{{ e.moldes_por_camada }}</td><td>{{ e.moldes_total }}</td></tr>
+        </tfoot>
+      </table>
+      {% endif %}
+
+      {% if e.miniatura_svg %}
+      <div class="miniatura">{{ e.miniatura_svg }}</div>
+      {% if e.tem_espelhadas %}<div class="legenda">Contorno tracejado: metade espelhada do par.</div>{% endif %}
+      {% else %}
+      <div class="sem-miniatura">Desenho do encaixe não disponível.</div>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <div class="enfesto">Nenhum encaixe gerado para esta Ordem de Corte.</div>
   {% endfor %}
 </div>
 
-<!-- ═══ Resumo ═══ -->
+<!-- ═══ Resumo (cada enfesto conta uma vez, mesmo dividido em várias mesas) ═══ -->
 <div class="secao" style="break-inside: avoid; page-break-inside: avoid;">
   <div class="secao-titulo">RESUMO</div>
   <table class="grade-dados">
     <tr>
-      <td><span class="rot">Total de peças</span>{{ totais.pecas | numero(0) }}</td>
-      <td><span class="rot">Enfestos</span>{{ totais.enfestos }}</td>
+      <td><span class="rot">Peças do pedido</span>{{ totais.pecas | numero(0) }}</td>
+      <td><span class="rot">Peças cortadas</span>{{ totais.pecas_cortadas | numero(0) }}{% if totais.sobra %} (sobra {{ totais.sobra }}){% endif %}</td>
+      <td><span class="rot">Enfestos / mesas</span>{{ totais.enfestos }} / {{ totais.mesas }}</td>
       <td><span class="rot">Metros</span>{{ totais.metros | numero(2) }} m</td>
       <td><span class="rot">Peso total</span>{{ totais.peso_total_kg | numero(3) }} kg</td>
     </tr>

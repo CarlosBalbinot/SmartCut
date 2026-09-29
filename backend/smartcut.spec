@@ -6,6 +6,12 @@ uvicorn_d,   uvicorn_b,   uvicorn_h   = collect_all('uvicorn')
 fastapi_d,   fastapi_b,   fastapi_h   = collect_all('fastapi')
 starlette_d, starlette_b, starlette_h = collect_all('starlette')
 pydantic_d,  pydantic_b,  pydantic_h  = collect_all('pydantic')
+# Motor de encaixe v2 (services/nesting_v2): spyrrow (extensão Rust) e
+# OR-Tools CP-SAT. O OR-Tools carrega as DLLs de ortools/.libs/ por caminho
+# relativo ao próprio __init__ (WinDLL em _load_ortools_libs) — sem o
+# collect_all elas não entram no exe e o v2 cai sempre no motor reserva (v1).
+spyrrow_d,   spyrrow_b,   spyrrow_h   = collect_all('spyrrow')
+ortools_d,   ortools_b,   ortools_h   = collect_all('ortools')
 
 sqlalchemy_h        = collect_submodules('sqlalchemy')
 pydantic_settings_h = collect_submodules('pydantic_settings')
@@ -93,12 +99,14 @@ app_h = [
 
 all_hidden = (
     uvicorn_h + fastapi_h + starlette_h + pydantic_h +
+    spyrrow_h + ortools_h +
     sqlalchemy_h + pydantic_settings_h + anyio_h +
     app_h
 )
 
 all_datas = (
     uvicorn_d + fastapi_d + starlette_d + pydantic_d +
+    spyrrow_d + ortools_d +
     # Arquivos de nesting (js) necessários em runtime
     [('nesting/nest_worker.js', 'nesting'),
      ('nesting/svgnest',        'nesting/svgnest'),
@@ -110,7 +118,7 @@ all_datas = (
      ('alembic/versions',        'alembic/versions')]
 )
 
-all_binaries = uvicorn_b + fastapi_b + starlette_b + pydantic_b
+all_binaries = uvicorn_b + fastapi_b + starlette_b + pydantic_b + spyrrow_b + ortools_b
 
 a = Analysis(
     ['server.py'],
