@@ -1,34 +1,49 @@
-"""motor.py — o v2 de ponta a ponta: preparar → planejar → encaixar → ajustar.
+"""motor.py — o v2 de ponta a ponta: preparar → encher mesa por mesa → polir.
 
-`gerar(pecas, largura_cm, comprimento_max_cm, camadas, tempo_limite_s=30, seed=0)`
-devolve a lista de mesas do enfesto. Cada mesa sai no mesmo formato de
-mapa_json do motor v1, com uma diferença deliberada:
+`gerar(pecas, largura_cm, comprimento_max_cm, camadas)` devolve um
+`Resultado`: as mesas do enfesto (cada uma no formato de mapa_json do v1) e o
+resumo do enfesto (grade por tamanho, metros, tempo, pico de memória).
 
-  * pecas_por_tamanho é DA MESA. O v1 punha a linha do enfesto inteiro em
-    todas as partes (nesting_service._pecas_parte: "pecas_por_tamanho continua
-    sendo do enfesto inteiro"), o que fazia o card de cada mesa e o relatório
-    de produção mostrarem o total do enfesto em cada mesa — e a soma do
-    relatório contar o mesmo enfesto uma vez por parte. `pecas_parte` continua
-    no mapa (mesmo formato) mas agora é redundante.
+Tabela por mesa × resumo do enfesto
+-----------------------------------
+Cada mesa lista os MOLDES que corta (FRENTE G x1, COSTAS M x2 — `pecas_parte`
+no mapa_json). A grade por tamanho (P1 M2 G3) é do enfesto e sai só em
+`Resultado.resumo_enfesto()`. O v1 repetia a grade do enfesto em todas as
+partes (nesting_service: `extras["pecas_por_tamanho"]` copiado em cada parte),
+e o relatório de produção somava o mesmo enfesto uma vez por parte.
 
-Como o K é escolhido
---------------------
-O spyrrow minimiza o comprimento mas não tem teto, então quem impõe o limite é
-o conjunto: o CP-SAT abre K mesas com capacidade = largura × limite ×
-densidade_alvo, o spyrrow enche cada uma, e a mesa que passa do limite tem as
-peças que passam devolvidas ao CP-SAT com a restrição extra "esta peça não
-volta para esta mesa". Cada volta refaz só as mesas ainda abertas. Se as
-`ciclos_max` voltas não fecharem, sobe-se o K e recomeça — mais mesa é mais
-tecido, então se prefere sempre a menor K que fecha.
+Como as mesas são montadas (M1-B)
+---------------------------------
+O spyrrow minimiza o comprimento de uma faixa mas não tem teto, então a
+divisão em mesas é feita aqui, UMA MESA POR VEZ, com o spyrrow como oráculo
+("coube em <= limite?"):
 
-Tempo
------
-`tempo_limite_s` é o orçamento de spyrrow de UMA passada pelas K mesas (K ×
-tempo_limite_s / K). As voltas de ajuste (máx. `ciclos_max` por tentativa) e a
-escalada de K são etapas separadas que usam o orçamento de cada passada de
-novo — sem isso o ciclo de ajuste e a escalada nunca rodariam. O spyrrow não
-tem cancelamento: ele termina a mesa em curso mesmo depois do cronômetro, o
-estouro é no máximo alguns segundos.
+  1. GRANDES — peças que não cabem duas vezes no comprimento da mesa
+     (altura > limite/2: FRENTE/COSTAS de ~99 cm numa mesa de 150). Elas
+     definem quantas mesas existem. Enche-se a mesa com a maior peça que
+     ainda cabe, testando no spyrrow; uma forma que não coube não é testada
+     de novo nesta mesa. Quando nada mais cabe, abre-se a próxima.
+  2. PEQUENAS — vão para as folgas, começando pela mesa mais curta. O
+     CP-SAT (planejador.mochila) propõe o lote de maior área que cabe na área
+     livre; o spyrrow encaixa mesa + lote; o que passar do limite é cortado
+     (a faixa até o limite continua válida) e volta para a fila. Se nenhuma
+     mesa aceita mais nada, abre-se uma mesa nova do mesmo jeito.
+  3. POLIMENTO — cada mesa é reencaixada com mais tempo; fica a mais curta.
+
+Por que não equilibrar: a versão M1 dividia por CP-SAT em K mesas de área
+parecida, o que espalhava as peças pequenas e deixava cada mesa com uma
+fileira de grandes + uma faixa de pequenas (PRETO 150: 6,04 m). Enchendo
+mesa por mesa as pequenas fecham os buracos das mesas mais curtas
+(PRETO 150: ~5,7 m).
+
+Memória e tempo
+---------------
+  * spyrrow com no máximo encaixador.MAX_WORKERS threads e UM por vez no
+    processo (lock em encaixador.py) — nunca dois motores em paralelo;
+  * cada chamada tem teto de tempo (`segundos_mesa`, `segundos_polimento`);
+    passado `tempo_max_s` o resto roda no piso de 1 s e o polimento é pulado;
+  * o pico de memória do processo durante a geração volta em
+    `Resultado.pico_memoria_mb` (memoria.MedidorPico).
 """
 
 from __future__ import annotations
@@ -38,19 +53,43 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from services.nesting_v2 import planejador
-from services.nesting_v2.encaixador import ErroEncaixe, Faixa, Posicao, comprimento_de, desloca, encaixar
-from services.nesting_v2.geometria import EPS_CM, Peca, Unidade, area_total, por_tamanho, preparar
+from services.nesting_v2.encaixador import (
+    MAX_WORKERS,
+    ErroEncaixe,
+    Faixa,
+    Posicao,
+    comprimento_de,
+    desloca,
+    encaixar,
+)
+from services.nesting_v2.geometria import (
+    EPS_CM,
+    Peca,
+    Unidade,
+    area_total,
+    bbox,
+    grade_por_tamanho,
+    por_molde,
+    preparar,
+    rotacionar,
+)
+from services.nesting_v2.memoria import MedidorPico
 
-# Densidade que se espera de um bom encaixe com polígono real. Medida nos
-# dados do pedido 000001: o spyrrow chega a 84% numa faixa sem teto e a 80%
-# com o corte em mesas de 150 cm. É o que define o K mínimo do CP-SAT.
-DENSIDADE_ALVO = 0.80
+# Fração da mesa que a mochila tenta preencher. Otimista de propósito: o
+# spyrrow decide o que coube e o excedente volta para a fila.
+DENSIDADE_ALVO = 0.90
 
-# Voltas do ciclo de ajuste por tentativa de K (enunciado do M1).
-CICLOS_MAX = 5
+# Tentativas de um lote numa mesa antes de desistir dela (cada uma encolhe o
+# lote para o que coube na anterior).
+TENTATIVAS_LOTE = 3
 
-# Piso do orçamento de uma mesa, em segundos (o spyrrow trabalha em segundos
-# inteiros e um orçamento de 0 não é orçamento).
+# Orçamentos padrão do spyrrow, em segundos por chamada.
+SEGUNDOS_MESA = 2.0  # teste "coube?" durante o enchimento
+SEGUNDOS_POLIMENTO = 6.0  # reencaixe final de cada mesa
+SEGUNDOS_FAIXA = 30.0  # sem limite de mesa: uma faixa só
+TEMPO_MAX_S = 600.0  # teto brando da geração inteira
+
+# Piso de uma chamada: o spyrrow trabalha em segundos inteiros.
 SEGUNDO_PISO = 1.0
 
 
@@ -62,17 +101,21 @@ class Mesa:
     comprimento_cm: float
     aproveitamento: float
     pecas: list[dict] = field(default_factory=list)
-    pecas_por_tamanho: list[dict] = field(default_factory=list)
     unidades: list[Unidade] = field(default_factory=list)
     posicoes: list[Posicao] = field(default_factory=list)
+
+    def moldes(self, camadas: int = 1) -> list[dict]:
+        """O que esta mesa corta, por molde (ver geometria.por_molde)."""
+        return por_molde(self.unidades, camadas)
 
     def mapa_json(self, *, largura_cm: float, camadas: int = 1, **contexto: Any) -> dict:
         """mapa_json no formato do v1 (nesting_service._montar_encaixe).
 
-        `contexto` entra por último, como os `extras` do v1: quem chama passa
-        lote_id / tecido_id / tecido_nome / peso_total_kg / pecas_parte /
-        total_partes e sobrescreve o que quiser. `parte` (o texto "2/5") só sai
-        quando há mais de uma mesa, como no v1.
+        `pecas_parte` é a tabela DA MESA, por molde. Não há
+        `pecas_por_tamanho` aqui: a grade é do enfesto e sai no
+        `Resultado.resumo_enfesto()`. `contexto` entra por último, como os
+        `extras` do v1 (lote_id, tecido_id, total_partes...). `parte` (o texto
+        "2/5") só sai quando há mais de uma mesa, como no v1.
         """
         mapa: dict[str, Any] = {
             "largura_cm": largura_cm,
@@ -81,8 +124,7 @@ class Mesa:
             "efficiency": round(self.aproveitamento, 4),
             "placements": self.pecas,
             "parts_count": len(self.pecas),
-            "pecas_por_tamanho": self.pecas_por_tamanho,
-            "pecas_parte": self._pecas_parte(camadas),
+            "pecas_parte": self.moldes(camadas),
             "parte_numero": self.indice,
             **contexto,
         }
@@ -90,25 +132,50 @@ class Mesa:
             mapa["parte"] = f"{self.indice}/{int(contexto['total_partes'])}"
         return mapa
 
-    def _pecas_parte(self, camadas: int) -> list[dict]:
-        """Detalhe por molde desta mesa — o pecas_parte do v1."""
-        acc: dict[tuple, dict] = {}
-        for u in self.unidades:
-            k = (u.molde_id, u.peca, u.tamanho, u.grupo_nome)
-            acc.setdefault(
-                k,
-                {
-                    "molde_id": u.molde_id,
-                    "peca": u.peca,
-                    "grupo_nome": u.grupo_nome,
-                    "tamanho": u.tamanho,
-                    "por_camada": 0,
-                    "total": 0,
-                },
-            )["por_camada"] += 1
-        for linha in acc.values():
-            linha["total"] = linha["por_camada"] * camadas
-        return list(acc.values())
+
+@dataclass
+class Resultado:
+    """Mesas do enfesto + o que se mediu para gerá-las."""
+
+    mesas: list[Mesa]
+    largura_cm: float
+    camadas: int
+    segundos: float = 0.0
+    pico_memoria_mb: float | None = None
+    chamadas_spyrrow: int = 0
+
+    @property
+    def comprimento_total_cm(self) -> float:
+        return sum(m.comprimento_cm for m in self.mesas)
+
+    @property
+    def aproveitamento_medio(self) -> float:
+        total = self.comprimento_total_cm
+        cortada = sum(u.area_cm2 for m in self.mesas for u in m.unidades)
+        return cortada / (self.largura_cm * total) if total > EPS_CM else 0.0
+
+    @property
+    def pior_mesa(self) -> float:
+        return min((m.aproveitamento for m in self.mesas), default=0.0)
+
+    def resumo_enfesto(self) -> dict:
+        """Resumo do ENFESTO: a grade por tamanho fica aqui, uma vez só."""
+        return {
+            "pecas_por_tamanho": grade_por_tamanho([u for m in self.mesas for u in m.unidades], self.camadas),
+            "total_partes": len(self.mesas),
+            "comprimento_total_cm": round(self.comprimento_total_cm, 3),
+            "aproveitamento_medio": round(self.aproveitamento_medio, 4),
+            "pior_mesa": round(self.pior_mesa, 4),
+            "segundos": round(self.segundos, 2),
+            "pico_memoria_mb": round(self.pico_memoria_mb, 1) if self.pico_memoria_mb is not None else None,
+        }
+
+    def mapas_json(self, **contexto: Any) -> list[dict]:
+        """Um mapa_json por mesa, já com total_partes."""
+        return [
+            m.mapa_json(largura_cm=self.largura_cm, camadas=self.camadas, total_partes=len(self.mesas), **contexto)
+            for m in self.mesas
+        ]
 
 
 # ── Geração ──────────────────────────────────────────────────────────────────
@@ -117,158 +184,250 @@ class Mesa:
 def gerar(
     pecas: list[Peca],
     largura_cm: float,
-    comprimento_max_cm: float,
+    comprimento_max_cm: float | None,
     camadas: int = 1,
-    tempo_limite_s: float = 30.0,
-    seed: int = 0,
     *,
+    seed: int = 0,
+    workers: int = MAX_WORKERS,
     margem_cm: float = 0.0,
-    densidade_alvo: float = DENSIDADE_ALVO,
-    ciclos_max: int = CICLOS_MAX,
-    k_max: int | None = None,
-) -> list[Mesa]:
+    segundos_mesa: float = SEGUNDOS_MESA,
+    segundos_polimento: float = SEGUNDOS_POLIMENTO,
+    segundos_faixa: float = SEGUNDOS_FAIXA,
+    tempo_max_s: float = TEMPO_MAX_S,
+) -> Resultado:
     """Divide as peças do enfesto em mesas de comprimento <= limite.
 
     largura_cm         largura útil do tecido (eixo x das mesas)
-    comprimento_max_cm limite da OC: nenhuma mesa pode passar disso
-    camadas            quantas camadas do mesmo risco se cortam de uma vez —
-                       não muda o plano, entra no mapa_json
-    tempo_limite_s     orçamento de spyrrow de cada passada pelas K mesas
+    comprimento_max_cm limite da OC; None = sem limite (uma faixa só)
+    camadas            camadas do mesmo risco — não muda o plano, entra no
+                       mapa_json e nos totais
     seed               semente do spyrrow e do CP-SAT
+    workers            threads do spyrrow (teto: encaixador.MAX_WORKERS)
     margem_cm          separação mínima entre peças (min_items_separation)
-    densidade_alvo     fração da mesa que se espera preencher; define o K mínimo
-    ciclos_max         voltas do ajuste por tentativa de K
-    k_max              teto de mesas (por padrão: uma por peça, o pior caso)
+    segundos_*         teto de tempo de cada chamada do spyrrow
+    tempo_max_s        teto brando da geração: passado dele, as chamadas vão
+                       para o piso de 1 s e o polimento é pulado
     """
-    unidades = preparar(pecas)
-    if not unidades:
-        return []
-
-    limite = float(comprimento_max_cm)
-    if limite <= 0:
-        raise ErroEncaixe(f"Comprimento máximo inválido: {comprimento_max_cm}")
     if largura_cm <= 0:
         raise ErroEncaixe(f"Largura do tecido inválida: {largura_cm}")
-
-    area = area_total(unidades)
-    capacidade = planejador.capacidade_cm2(largura_cm, limite, densidade_alvo)
-    k = planejador.k_minimo(area, capacidade)
-    teto = k_max if k_max is not None else len(unidades)
+    if comprimento_max_cm is not None and comprimento_max_cm <= 0:
+        raise ErroEncaixe(f"Comprimento máximo inválido: {comprimento_max_cm}")
 
     inicio = time.perf_counter()
-    tentativas: list[str] = []
-    while k <= teto:
-        mesas, motivo = _tentar(
-            unidades, k, largura_cm, limite, capacidade, tempo_limite_s, margem_cm, seed, ciclos_max
+    with MedidorPico() as memoria:
+        unidades = preparar(pecas)
+        ctx = _Contexto(
+            largura_cm=float(largura_cm),
+            limite=float(comprimento_max_cm) if comprimento_max_cm is not None else None,
+            seed=seed,
+            workers=workers,
+            margem_cm=margem_cm,
+            segundos_mesa=segundos_mesa,
+            tempo_max_s=tempo_max_s,
+            inicio=inicio,
         )
-        if mesas is not None:
-            return mesas
-        tentativas.append(f"K={k} ({motivo})")
-        k += 1
+        if not unidades:
+            mesas: list[Mesa] = []
+        elif ctx.limite is None:
+            mesas = _finaliza([_Aberta(unidades, ctx.encaixar(unidades, segundos_faixa))])
+        else:
+            abertas = _encher_grandes(ctx, [u for u in unidades if _altura_min(u) > ctx.limite / 2])
+            _encher_pequenas(ctx, abertas, [u for u in unidades if _altura_min(u) <= ctx.limite / 2])
+            _polir(ctx, abertas, segundos_polimento)
+            mesas = _finaliza(abertas)
 
-    raise ErroEncaixe(
-        f"Não foi possível encaixar {len(unidades)} peças ({area:.0f} cm²) em mesas de "
-        f"{limite:g} × {largura_cm:g} cm com densidade alvo {densidade_alvo:.0%}. "
-        f"Tentativas: {'; '.join(tentativas)} em {time.perf_counter() - inicio:.1f}s."
+    postas = sum(len(m.unidades) for m in mesas)
+    if postas != len(unidades):  # pragma: no cover - rede de segurança
+        raise ErroEncaixe(f"Encaixe incompleto: {postas} de {len(unidades)} peças")
+    return Resultado(
+        mesas=mesas,
+        largura_cm=float(largura_cm),
+        camadas=camadas,
+        segundos=time.perf_counter() - inicio,
+        pico_memoria_mb=memoria.pico_mb,
+        chamadas_spyrrow=ctx.chamadas,
     )
 
 
-def _tentar(
-    unidades: list[Unidade],
-    k: int,
-    largura_cm: float,
-    limite: float,
-    capacidade: float,
-    tempo_limite_s: float,
-    margem_cm: float,
-    seed: int,
-    ciclos_max: int,
-) -> tuple[list[Mesa] | None, str]:
-    """Uma tentativa com K mesas. Devolve (mesas, motivo_da_falha).
+@dataclass
+class _Aberta:
+    """Mesa em montagem: as unidades e a última faixa que coube."""
 
-    `tempo_limite_s` é o orçamento de UMA passada pelas K mesas (K ×
-    orçamento por mesa); as voltas de ajuste e a escalada de K são etapas
-    separadas e usam o orçamento de cada passada de novo — é o que permite o
-    ajuste existir de verdade.
+    unidades: list[Unidade]
+    faixa: Faixa | None = None
 
-    Uma mesa que fecha (comprimento <= limite) não é mais tocada. Uma que
-    estourou volta a ficar ABERTA no ciclo seguinte, com a área das peças que
-    passaram do limite marcada como proibida para ela — é a "restrição extra"
-    do enunciado. Peças postas saem da lista de pendentes; as demais voltam
-    para o planejamento.
+    @property
+    def comprimento_cm(self) -> float:
+        return self.faixa.comprimento_cm if self.faixa else 0.0
+
+
+@dataclass
+class _Contexto:
+    largura_cm: float
+    limite: float | None
+    seed: int
+    workers: int
+    margem_cm: float
+    segundos_mesa: float
+    tempo_max_s: float
+    inicio: float
+    chamadas: int = 0
+
+    @property
+    def estourou(self) -> bool:
+        return time.perf_counter() - self.inicio > self.tempo_max_s
+
+    def encaixar(self, unidades: list[Unidade], segundos: float | None = None) -> Faixa:
+        seg = SEGUNDO_PISO if self.estourou else max(SEGUNDO_PISO, segundos or self.segundos_mesa)
+        self.chamadas += 1
+        faixa = encaixar(
+            unidades,
+            self.largura_cm,
+            segundos=seg,
+            seed=self.seed,
+            num_workers=self.workers,
+            margem_cm=self.margem_cm,
+            nome=f"mesa{self.chamadas}",
+        )
+        _checar_largura(faixa)
+        return faixa
+
+    def cabe(self, faixa: Faixa) -> bool:
+        return self.limite is None or faixa.comprimento_cm <= self.limite + EPS_CM
+
+
+def _altura_min(u: Unidade) -> float:
+    """Menor extensão no comprimento entre as rotações permitidas."""
+    alturas = []
+    for r in u.rotacoes or (0.0,):
+        _, min_y, _, max_y = bbox(rotacionar(u.poligono, r))
+        alturas.append(max_y - min_y)
+    return min(alturas)
+
+
+def _sem(unidades: list[Unidade], tirar: list[Unidade]) -> list[Unidade]:
+    ids = {u.indice for u in tirar}
+    return [u for u in unidades if u.indice not in ids]
+
+
+def _encher_grandes(ctx: _Contexto, grandes: list[Unidade]) -> list[_Aberta]:
+    """Etapa 1: uma mesa por vez, a maior peça que ainda cabe."""
+    assert ctx.limite is not None
+    teto_area = ctx.largura_cm * ctx.limite
+    abertas: list[_Aberta] = []
+    pendentes = list(grandes)
+    while pendentes:
+        mesa = _Aberta([])
+        recusadas: set[tuple] = set()
+        for bloco in planejador.blocos(pendentes):
+            forma = tuple(u.forma for u in bloco)
+            if forma in recusadas:
+                continue
+            if area_total(mesa.unidades) + planejador.area_bloco(bloco) > teto_area:
+                recusadas.add(forma)
+                continue
+            faixa = ctx.encaixar(mesa.unidades + bloco)
+            if ctx.cabe(faixa):
+                mesa.unidades += bloco
+                mesa.faixa = faixa
+            elif not mesa.unidades:
+                raise ErroEncaixe(f"{_nomes(bloco)} não cabe numa mesa de {ctx.limite:g} cm")
+            else:
+                recusadas.add(forma)
+        abertas.append(mesa)
+        pendentes = _sem(pendentes, mesa.unidades)
+    return abertas
+
+
+def _encher_pequenas(ctx: _Contexto, abertas: list[_Aberta], pequenas: list[Unidade]) -> None:
+    """Etapa 2: pequenas nas folgas, da mesa mais curta para a mais longa;
+    o que sobrar abre mesas novas."""
+    pendentes = list(pequenas)
+    for mesa in sorted(abertas, key=lambda m: m.comprimento_cm):
+        if not pendentes:
+            return
+        pendentes = _completar(ctx, mesa, pendentes)
+    while pendentes:
+        mesa = _Aberta([])
+        restantes = _completar(ctx, mesa, pendentes)
+        if len(restantes) == len(pendentes):
+            # nem o lote mínimo coube numa mesa vazia: a maior peça sozinha
+            bloco = planejador.blocos(pendentes)[0]
+            faixa = ctx.encaixar(bloco)
+            if not ctx.cabe(faixa):
+                raise ErroEncaixe(f"{_nomes(bloco)} não cabe numa mesa de {ctx.limite:g} cm")
+            mesa = _Aberta(list(bloco), faixa)
+            restantes = _sem(pendentes, bloco)
+        abertas.append(mesa)
+        pendentes = restantes
+
+
+def _completar(ctx: _Contexto, mesa: _Aberta, pendentes: list[Unidade]) -> list[Unidade]:
+    """Põe na mesa o que couber de `pendentes`; devolve o que sobrou.
+
+    A mochila propõe o lote; se a faixa passa do limite, fica o que está
+    dentro dele (a faixa cortada no limite continua válida — só se tiram
+    peças). Um par só entra inteiro.
     """
-    orcao = max(SEGUNDO_PISO, tempo_limite_s / k)
-    fechadas: dict[int, Faixa] = {}
-    areas: dict[int, float] = {}
-    postas: set[int] = set()
-    proibidas: set[tuple[int, int]] = set()
+    assert ctx.limite is not None
+    capacidade = planejador.capacidade_cm2(ctx.largura_cm, ctx.limite, DENSIDADE_ALVO)
+    while pendentes:
+        lote = planejador.mochila(planejador.blocos(pendentes), capacidade - area_total(mesa.unidades), seed=ctx.seed)
+        entrou = False
+        for _ in range(TENTATIVAS_LOTE):
+            if not lote:
+                break
+            novas = [u for b in lote for u in b]
+            faixa = ctx.encaixar(mesa.unidades + novas)
+            dentro, _ = _cortar(faixa, ctx.limite)
+            ids = {p.unidade.indice for p in dentro}
+            base_dentro = all(u.indice in ids for u in mesa.unidades)
+            if base_dentro and any(u.indice in ids for u in novas):
+                mesa.unidades = [p.unidade for p in dentro]
+                mesa.faixa = _faixa_de(dentro, ctx.largura_cm)
+                pendentes = _sem(pendentes, mesa.unidades)
+                entrou = True
+                break
+            # nada novo coube (ou a base saiu do limite): lote menor, das
+            # menores peças, que encaixam em buracos
+            lote = lote[len(lote) // 2 :] if len(lote) > 1 else []
+        if not entrou:
+            return pendentes
+    return pendentes
 
-    for ciclo in range(1, ciclos_max + 1):
-        if len(postas) == len(unidades):
-            return _finaliza(fechadas), ""
-        # Cada passada (ciclo) tem o ORÇAMENTO TODO de novo. Sem isso o ajuste
-        # morria de fome: a primeira passada consumia tudo e qualquer mesa que
-        # estourasse por pouco escalava o K em vez de re-planejar com a
-        # restrição extra.
-        restante = float(tempo_limite_s)
-        if restante < SEGUNDO_PISO:
-            return None, f"orçamento de {orcao:.0f}s/mesa acabou no ciclo {ciclo}"
-        abertos = [t for t in range(k) if t not in fechadas]
-        if not abertos:
-            return None, f"as {k} mesas fecharam e ainda falta peça (ciclo {ciclo})"
 
-        pendentes = [u for u in unidades if u.indice not in postas]
-        capacidades = [capacidade - areas.get(t, 0.0) for t in abertos]
-        part = planejador.dividir(pendentes, abertos, capacidades, proibidas=proibidas, seed=seed)
-        if part is None:
-            return None, f"CP-SAT sem solução no ciclo {ciclo}"
+def _polir(ctx: _Contexto, abertas: list[_Aberta], segundos: float) -> None:
+    """Etapa 3: reencaixa cada mesa com mais tempo e fica com a mais curta."""
+    if segundos <= 0:
+        return
+    for mesa in abertas:
+        if ctx.estourou:
+            return
+        faixa = ctx.encaixar(mesa.unidades, segundos)
+        if ctx.cabe(faixa) and faixa.comprimento_cm < mesa.comprimento_cm - EPS_CM:
+            mesa.faixa = faixa
 
-        for j, t in enumerate(abertos):
-            grupo = part.mesas[j]
-            if not grupo:
-                continue
-            orcao_mesa = min(orcao, max(SEGUNDO_PISO, restante))
-            faixa = encaixar(
-                grupo,
-                largura_cm,
-                segundos=orcao_mesa,
-                seed=seed,
-                num_workers=1,
-                margem_cm=margem_cm,
-                nome=f"mesa{t}",
-            )
-            _checar_largura(faixa)
-            restante -= orcao_mesa
-            if faixa.comprimento_cm <= limite + EPS_CM:
-                fechadas[t] = faixa
-                areas[t] = sum(p.unidade.area_cm2 for p in faixa.posicoes)
-                postas.update(p.unidade.indice for p in faixa.posicoes)
-                continue
-            _, fora = _cortar(faixa, limite)
-            proibidas.update((u.indice, t) for u in fora)
 
-    if len(postas) == len(unidades):
-        return _finaliza(fechadas), ""
-    return None, f"não fechou em {ciclos_max} ciclos"
+def _faixa_de(posicoes: list[Posicao], largura_cm: float) -> Faixa:
+    comprimento = comprimento_de(posicoes) - min((p.y for p in posicoes), default=0.0)
+    cortada = sum(p.unidade.area_cm2 for p in posicoes)
+    aproveitamento = cortada / (largura_cm * comprimento) if comprimento > EPS_CM else 0.0
+    return Faixa(comprimento_cm=comprimento, aproveitamento=min(1.0, aproveitamento), posicoes=list(posicoes))
 
 
 def _cortar(faixa: Faixa, limite_cm: float) -> tuple[list[Posicao], list[Unidade]]:
     """Separa o que cabe até o limite do que passa.
 
     Devolve (posições que ficam, unidades que saem). Uma peça que cruza a linha
-    vai para a próxima mesa INTEIRA — nunca cortada, como no v1 — e, se ela é
-    metade de um par, a outra metade vai junto: o par não se separa entre
-    mesas (é o _fechar_pares do v1).
+    sai INTEIRA — nunca cortada, como no v1 — e, se é metade de um par, a outra
+    metade sai junto: o par não se separa entre mesas (_fechar_pares do v1).
     """
-    dentro = [p for p in faixa.posicoes if p.y_max <= limite_cm + EPS_CM]
-    fora = [p for p in faixa.posicoes if p.y_max > limite_cm + EPS_CM]
-    if not fora:
-        return dentro, []
-    pares = {p.unidade.par for p in fora if p.unidade.par is not None}
-    if pares:
-        dentro = [p for p in dentro if p.unidade.par not in pares]
-        fora = [p for p in faixa.posicoes if p.unidade.par in pares or p.y_max > limite_cm + EPS_CM]
-    return dentro, [p.unidade for p in fora]
+    y0 = min((p.y for p in faixa.posicoes), default=0.0)
+    fora = {p.unidade.indice for p in faixa.posicoes if p.y_max - y0 > limite_cm + EPS_CM}
+    pares = {p.unidade.par for p in faixa.posicoes if p.unidade.indice in fora and p.unidade.par is not None}
+    dentro = [p for p in faixa.posicoes if p.unidade.indice not in fora and p.unidade.par not in pares]
+    ficam = {p.unidade.indice for p in dentro}
+    return dentro, [p.unidade for p in faixa.posicoes if p.unidade.indice not in ficam]
 
 
 def _checar_largura(faixa: Faixa) -> None:
@@ -276,19 +435,21 @@ def _checar_largura(faixa: Faixa) -> None:
     também (nest_worker.findBest devolve null) — lá virava um aviso genérico de
     0% de aproveitamento. Aqui é erro explícito, porque uma mesa sem a peça é
     uma mesa com menos peças do que o plano pediu."""
-    if not faixa.nao_encaixadas:
-        return
-    nomes = sorted({f"{u.peca or ''} {u.tamanho or ''}".strip() or u.molde_id for u in faixa.nao_encaixadas})
-    raise ErroEncaixe(f"Peça mais larga que a largura útil do tecido: {', '.join(nomes)}")
+    if faixa.nao_encaixadas:
+        raise ErroEncaixe(f"Peça mais larga que a largura útil do tecido: {_nomes(faixa.nao_encaixadas)}")
 
 
-def _finaliza(fechadas: dict[int, Faixa]) -> list[Mesa]:
+def _nomes(unidades: list[Unidade]) -> str:
+    return ", ".join(sorted({f"{u.peca or ''} {u.tamanho or ''}".strip() or u.molde_id for u in unidades}))
+
+
+def _finaliza(abertas: list[_Aberta]) -> list[Mesa]:
     """Monta as mesas na ordem, cada uma ancorada em y = 0."""
     mesas: list[Mesa] = []
-    for i, t in enumerate(sorted(fechadas), start=1):
-        faixa = fechadas[t]
+    for i, aberta in enumerate(abertas, start=1):
+        faixa = aberta.faixa
+        assert faixa is not None
         posicoes = desloca(faixa.posicoes, 0.0, -min((p.y for p in faixa.posicoes), default=0.0))
-        unidades = [p.unidade for p in posicoes]
         mesas.append(
             Mesa(
                 indice=i,
@@ -301,14 +462,14 @@ def _finaliza(fechadas: dict[int, Faixa]) -> list[Mesa]:
                         "y": round(p.y, 3),
                         "rotation": p.rotacao,
                         "polygon": p.unidade.poligono,
+                        "espelhada": p.unidade.espelhada,
                         "peca": p.unidade.peca,
                         "tamanho": p.unidade.tamanho,
                         "grupo_nome": p.unidade.grupo_nome,
                     }
                     for p in posicoes
                 ],
-                pecas_por_tamanho=por_tamanho(unidades),
-                unidades=unidades,
+                unidades=[p.unidade for p in posicoes],
                 posicoes=posicoes,
             )
         )

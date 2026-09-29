@@ -23,6 +23,7 @@ consumidor reconstrói exatamente os mesmos pontos.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 
 import spyrrow
@@ -31,6 +32,15 @@ from services.nesting_v2.geometria import EPS_CM, Unidade, rotacionar
 
 # Um Item por forma+rotações distintas; o id do spyrrow é o índice do grupo.
 _Item = tuple[spyrrow.Item, list[Unidade]]
+
+# Teto de threads do spyrrow por chamada. Sem teto ele usa todos os núcleos
+# lógicos, e a rodada longa do M0 caiu por falta de memória; 2 é o que o M1-B
+# mediu como suficiente (ver RELATORIO_M1B.md).
+MAX_WORKERS = 2
+
+# Um spyrrow por vez no processo inteiro: duas gerações simultâneas (duas
+# abas, dois enfestos) disputariam CPU e memória. Quem chega espera.
+_UM_POR_VEZ = threading.Lock()
 
 
 class ErroEncaixe(RuntimeError):
@@ -113,10 +123,10 @@ def encaixar(
 
     segundos    orçamento do spyrrow para ESTA mesa (o motor.py reparte o
                 tempo limite total entre as mesas)
-    seed        com num_workers=1 e converged=True o resultado é
-                reproduzível; ver `convergiu` no retorno de Faixa
-    num_workers 1 por padrão: com vários workers o sparrow escalona o
-                trabalho entre threads e o resultado muda a cada execução
+    seed        com num_workers=1 o resultado é reproduzível
+    num_workers threads do spyrrow, limitado a MAX_WORKERS. Com mais de 1 o
+                sparrow escalona o trabalho entre threads e o resultado pode
+                variar entre execuções
     margem_cm   separação mínima entre peças (e também das bordas da faixa, por
                 isso ela come largura). 0 = peças encostam, como no v1.
 
@@ -133,12 +143,13 @@ def encaixar(
     cfg = spyrrow.StripPackingConfig(
         early_termination=True,
         total_computation_time=max(1, int(round(segundos))),
-        num_workers=max(1, int(num_workers)),
+        num_workers=max(1, min(MAX_WORKERS, int(num_workers))),
         seed=int(seed),
         min_items_separation=float(margem_cm),
     )
     try:
-        sol = inst.solve(cfg)
+        with _UM_POR_VEZ:
+            sol = inst.solve(cfg)
     except (ValueError, RuntimeError) as exc:
         raise ErroEncaixe(f"spyrrow recusou a instancia: {exc}") from exc
 

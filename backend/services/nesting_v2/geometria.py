@@ -90,6 +90,13 @@ class Unidade:
     grupo_nome: str | None
 
     @property
+    def altura_cm(self) -> float:
+        """Extensão no comprimento da mesa (y) — o fio vertical só gira 180°,
+        então é a mesma em qualquer rotação permitida (0/180)."""
+        _, min_y, _, max_y = bbox(self.poligono)
+        return max_y - min_y
+
+    @property
     def forma(self) -> tuple[tuple[Ponto, ...], tuple[float, ...]]:
         """Chave de identidade geométrica: duas unidades com a mesma `forma` e
         as mesmas `rotacoes` viram um único Item do spyrrow com demand > 1."""
@@ -128,16 +135,31 @@ def rotacionar(pontos: list[list[float]], graus: float) -> list[list[float]]:
     return [[x * cos_a - y * sin_a, x * sin_a + y * cos_a] for x, y in pontos]
 
 
-def espelhar(pontos: list[list[float]]) -> list[list[float]]:
-    """Espelho esquerda<->direita, em torno do centro do bounding box.
+def eixo_do_fio(rotacoes: tuple[float, ...]) -> str:
+    """Eixo do molde (no referencial dele) que fica paralelo ao fio do tecido.
 
-    O eixo do espelho é o do COMPRIMENTO (x = largura): o par de uma peça
-    simétrica é a outra metade lado a lado no tecido, como na figura. O
-    espelho muda a quiralidade, não a área nem o bounding box — para o
-    empacotador é a mesma pegada, então o resultado não muda; o espelho existe
-    para a peça cortada ser a peça de verdade.
+    O fio corre no COMPRIMENTO da mesa (y). Com as rotações da regra do v1
+    (nesting_service._rotacoes), só o fio horizontal (90/270) põe o eixo x do
+    molde no comprimento; vertical, 45° e sem restrição usam o eixo y.
     """
-    min_x, _, max_x, _ = bbox(pontos)
+    if rotacoes and all(float(r) % 180 == 90 for r in rotacoes):
+        return "x"
+    return "y"
+
+
+def espelhar(pontos: list[list[float]], eixo_fio: str = "y") -> list[list[float]]:
+    """Espelho da peça sobre uma reta PARALELA AO FIO, pelo centro do bbox.
+
+    É o "flip no eixo do fio" do par: a segunda metade de uma peça de `par`
+    (manga esquerda/direita, frente esquerda/direita) é a primeira virada
+    sobre o fio, e continua no fio depois do espelho. Fio em y → x vira
+    2·cx − x; fio em x → y vira 2·cy − y. O espelho muda a quiralidade, não a
+    área nem o bounding box.
+    """
+    min_x, min_y, max_x, max_y = bbox(pontos)
+    if eixo_fio == "x":
+        eixo = (min_y + max_y) / 2.0
+        return [[x, 2 * eixo - y] for x, y in pontos]
     eixo = (min_x + max_x) / 2.0
     return [[2 * eixo - x, y] for x, y in pontos]
 
@@ -181,7 +203,7 @@ def preparar(pecas: list[Peca]) -> list[Unidade]:
                 grupo = proximo_par
                 proximo_par += 1
             espelhada = eh_par and p.tipo_corte == "par" and k % 2 == 1
-            poligono = espelhar(base) if espelhada else base
+            poligono = espelhar(base, eixo_do_fio(p.rotacoes)) if espelhada else base
             unidades.append(
                 Unidade(
                     indice=len(unidades),
@@ -203,33 +225,46 @@ def area_total(unidades: list[Unidade]) -> float:
     return sum(u.area_cm2 for u in unidades)
 
 
-def por_tamanho(unidades: list[Unidade]) -> list[dict]:
-    """pecas_por_tamanho DESTA mesa, no formato que o mapa_json do v1 usa.
+def por_molde(unidades: list[Unidade], camadas: int = 1) -> list[dict]:
+    """Moldes que UMA mesa corta: FRENTE G x1, COSTAS M x2...
 
-    Correção do bug do v1: lá a linha era do ENFESTO inteiro e ia repetida em
-    todas as partes, então o card de cada mesa e o relatório de produção
-    mostravam o total do enfesto em cada mesa. Aqui a linha é da mesa.
+    A tabela da mesa é por molde, não por tamanho de roupa: uma mesa pode ter
+    a FRENTE de um G e não as COSTAS dele, então a "grade" (P1 M2 G3) não
+    descreve a mesa. `por_camada` conta as peças físicas da mesa (as duas
+    metades de um par contam 2; `espelhadas` diz quantas são a metade virada);
+    `total` = por_camada × camadas.
+    """
+    acc: dict[tuple, dict] = {}
+    for u in unidades:
+        linha = acc.setdefault(
+            (u.molde_id, u.peca, u.tamanho, u.grupo_nome),
+            {
+                "molde_id": u.molde_id,
+                "peca": u.peca,
+                "grupo_nome": u.grupo_nome,
+                "tamanho": u.tamanho,
+                "por_camada": 0,
+                "espelhadas": 0,
+                "total": 0,
+            },
+        )
+        linha["por_camada"] += 1
+        linha["espelhadas"] += int(u.espelhada)
+    for linha in acc.values():
+        linha["total"] = linha["por_camada"] * camadas
+    return list(acc.values())
 
-    Uma mesa é UMA camada, então `conjuntos` (peças por camada no relatório) e
-    `pecas` são o mesmo número aqui; `total` = pecas × camadas é calculado de
-    fora. `sobra` é 0: quem decide sobra é o plano de enfesto
-    (services.plano_enfesto), e ele entrega só as peças que deben ser cortadas.
+
+def grade_por_tamanho(unidades: list[Unidade], camadas: int = 1) -> list[dict]:
+    """Grade do ENFESTO inteiro por tamanho — só para o resumo do enfesto.
+
+    É o que o v1 punha (errado) em cada parte, no formato do `pecas_por_tamanho`
+    dele. Conta peças físicas por (grupo, tamanho) somando TODAS as mesas;
+    `total` = pecas × camadas. `sobra` é 0: quem decide sobra é o plano de
+    enfesto (services.plano_enfesto), que entrega só o que deve ser cortado.
     """
     acc: dict[tuple[str | None, str | None], int] = {}
-    ordem: list[tuple[str | None, str | None]] = []
     for u in unidades:
         k = (u.grupo_nome, u.tamanho)
-        if k not in acc:
-            acc[k] = 0
-            ordem.append(k)
-        acc[k] += 1
-    return [
-        {
-            "grupo_nome": g,
-            "tamanho": t,
-            "conjuntos": acc[(g, t)],
-            "pecas": acc[(g, t)],
-            "sobra": 0,
-        }
-        for g, t in ordem
-    ]
+        acc[k] = acc.get(k, 0) + 1
+    return [{"grupo_nome": g, "tamanho": t, "pecas": n, "total": n * camadas, "sobra": 0} for (g, t), n in acc.items()]

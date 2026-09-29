@@ -9,26 +9,26 @@ algoritmos de verdade:
   * OR-Tools CP-SAT (Apache-2.0) — decide como dividir as peças do enfesto em
     K mesas de comprimento <= limite, equilibrando área e respeitando pares.
 
-Fluxo de `motor.gerar()`:
+Fluxo de `motor.gerar()` (M1-B):
 
   1. PREPARAÇÃO   geometria.preparar  — molde → unidade de corte (polígono
-     real, allowed_orientations pelo sentido do fio, par espelhado como item
-     próprio, margem via min_items_separation).
-  2. PLANEJAMENTO planejador.dividir  — CP-SAT separa as unidades em K mesas
-     (capacidade = largura × limite × densidade_alvo), K mínimo viável.
-  3. ENCAIXE      encaixador.encaixar — spyrrow em cada mesa (strip_height =
-     largura útil do tecido), minimizando o comprimento.
-  4. AJUSTE       motor._montar       — mesa acima do limite tem as peças que
-     passam devolvidas ao CP-SAT (restrição extra: não voltam para a mesma
-     mesa) e tudo é reencaixado; no máximo `ciclos_max` ciclos por tentativa.
-  5. SAÍDA        motor.Mesa.mapa_json — mesmo formato do mapa_json do v1, com
-     pecas_por_tamanho DA MESA (o v1 repetia o do enfesto em cada parte).
+     real, allowed_orientations pelo sentido do fio, segunda metade de `par`
+     espelhada sobre o eixo do fio, margem via min_items_separation).
+  2. GRANDES      motor._encher_grandes — peças que não cabem duas vezes no
+     comprimento enchem uma mesa por vez (spyrrow diz se coube).
+  3. PEQUENAS     motor._encher_pequenas — CP-SAT (planejador.mochila) propõe
+     o lote para a folga de cada mesa; o spyrrow encaixa e o que passar do
+     limite volta para a fila.
+  4. POLIMENTO    motor._polir — reencaixe final de cada mesa com mais tempo.
+  5. SAÍDA        motor.Resultado — mesas no formato do mapa_json do v1, com a
+     tabela da mesa POR MOLDE; a grade por tamanho só no resumo do enfesto.
+     Tempo, chamadas do spyrrow e pico de memória vêm junto.
 
 O motor v1 (nesting/nesting_bridge.py + services/nesting_service.py) NÃO é
 alterado: o v2 convive com ele e é usado só por quem o chamar.
 """
 
 from services.nesting_v2.geometria import Peca, Unidade, preparar
-from services.nesting_v2.motor import ErroEncaixe, Mesa, gerar
+from services.nesting_v2.motor import ErroEncaixe, Mesa, Resultado, gerar
 
-__all__ = ["ErroEncaixe", "Mesa", "Peca", "Unidade", "gerar", "preparar"]
+__all__ = ["ErroEncaixe", "Mesa", "Peca", "Resultado", "Unidade", "gerar", "preparar"]

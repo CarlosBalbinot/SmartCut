@@ -119,8 +119,13 @@ _CORES = {
 }
 
 
-def svg(tec: dict, partes: list[list[dict]], m: dict, titulo: str, destino: Path) -> None:
-    """Desenha as partes lado a lado; comprimento na horizontal."""
+def svg(
+    tec: dict, partes: list[list[dict]], m: dict, titulo: str, destino: Path, limite: float | None = LIMITE_CM
+) -> None:
+    """Desenha as partes lado a lado; comprimento na horizontal.
+
+    Tracejado vermelho = limite da mesa (nenhum se `limite` é None). Peça com
+    "espelhada": True sai com contorno tracejado e o rótulo "(esp.)"."""
     W = tec["largura_cm"]
     nomes = {p["id"]: p for p in tec["pecas"]}
     gap = 20
@@ -131,7 +136,7 @@ def svg(tec: dict, partes: list[list[dict]], m: dict, titulo: str, destino: Path
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{total_w * esc:.0f}" height="{alt * esc:.0f}" '
         f'viewBox="0 0 {total_w:.1f} {alt:.1f}" font-family="sans-serif">',
-        f'<rect width="100%" height="100%" fill="#fff"/>',
+        '<rect width="100%" height="100%" fill="#fff"/>',
         f'<text x="{gap}" y="12" font-size="7" font-weight="bold">{html.escape(titulo)}</text>',
         f'<text x="{gap}" y="22" font-size="5">{m["metros"]:.2f} m · {m["partes"]} parte(s) · '
         f'aprov. médio {m["aproveitamento_medio"] * 100:.1f}% · pior {m["aproveitamento_pior"] * 100:.1f}% · '
@@ -143,21 +148,24 @@ def svg(tec: dict, partes: list[list[dict]], m: dict, titulo: str, destino: Path
         ef = m["aproveitamento_partes"][i] * 100
         out.append(f'<text x="{x0}" y="{oy - 3}" font-size="4.5">Parte {i + 1}: {c:.1f} cm · {ef:.1f}%</text>')
         out.append(f'<rect x="{x0}" y="{oy}" width="{c:.2f}" height="{W}" fill="#f4f4f4" stroke="#999" stroke-width="0.4"/>')
-        out.append(
-            f'<rect x="{x0}" y="{oy}" width="{LIMITE_CM}" height="{W}" fill="none" stroke="#c00" '
-            f'stroke-width="0.3" stroke-dasharray="2 2"/>'
-        )
+        if limite:
+            out.append(
+                f'<rect x="{x0}" y="{oy}" width="{limite:g}" height="{W}" fill="none" stroke="#c00" '
+                f'stroke-width="0.3" stroke-dasharray="2 2"/>'
+            )
         y0 = min((p[1] for pc in parte for p in pc["points"]), default=0)
         for pc in parte:
             info = nomes.get(pc["id"], {})
             cor = _CORES.get((info.get("peca") or "").upper(), "#bab0ac")
             pts = " ".join(f"{x0 + (y - y0):.2f},{oy + x:.2f}" for x, y in pc["points"])
-            out.append(f'<polygon points="{pts}" fill="{cor}" fill-opacity="0.75" stroke="#222" stroke-width="0.25"/>')
+            traco = ' stroke-dasharray="1.2 0.8" stroke-width="0.5"' if pc.get("espelhada") else ' stroke-width="0.25"'
+            out.append(f'<polygon points="{pts}" fill="{cor}" fill-opacity="0.75" stroke="#222"{traco}/>')
             cx = sum(p[1] - y0 for p in pc["points"]) / len(pc["points"]) + x0
             cy = sum(p[0] for p in pc["points"]) / len(pc["points"]) + oy
             out.append(
                 f'<text x="{cx:.1f}" y="{cy:.1f}" font-size="3.2" text-anchor="middle">'
-                f'{html.escape(info.get("nome", "?"))}{" ↻" if pc.get("rotation") else ""}</text>'
+                f'{html.escape(info.get("nome", "?"))}{" ↻" if pc.get("rotation") else ""}'
+                f'{" (esp.)" if pc.get("espelhada") else ""}</text>'
             )
         x0 += c + gap
     out.append("</svg>")

@@ -1,5 +1,10 @@
 # v1 × v2 — Motor de encaixe v2 embutido (relatório final)
 
+> **Histórico (M1).** O v2 descrito aqui (CP-SAT equilibrando K mesas) foi
+> substituído no M1-B pelo enchimento mesa por mesa — ver `RELATORIO_M1B.md`.
+> O `comparar_v1_v2.py` citado abaixo saiu; a comparação atual é
+> `comparar_m1b.py`.
+
 > **Status: completo.** Motor v2 (spyrrow + OR-Tools CP-SAT, backend puro) convive
 > com o v1 (SVGnest via bridge, intacto) e ganha nos dois critérios de aceite
 > nos cenários com limite de mesa: **menos metros E menos mesas que o v1**.

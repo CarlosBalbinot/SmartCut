@@ -5,7 +5,9 @@ motores externos rodam em processos separados; o motor atual é importado
 direto do código de produção (`nesting_service._partes_do_enfesto` +
 `nesting_bridge.executar`).
 
-Resultado: `resultados/RELATORIO.md` (tabela, recomendação, estimativa).
+Resultado: `resultados/RELATORIO.md` (M0: tabela, recomendação, estimativa),
+`resultados/RELATORIO_V2.md` (M1, histórico) e `resultados/RELATORIO_M1B.md`
+(M1-B: motor v2 mesa por mesa, comparação atual).
 
 ## Arquivos
 
@@ -18,6 +20,7 @@ Resultado: `resultados/RELATORIO.md` (tabela, recomendação, estimativa).
 | `motores.py` | Chamadas a SVGnest (Node), sparrow e lbf (Rust) |
 | `estrategia_c.py` | Faixa única + corte (C1) e corte + reencaixe (C2) |
 | `benchmark.py` | Roda tudo (3 sementes) → `resultados/` |
+| `comparar_m1b.py` | M1-B: v1 × SVGnest corrigido (B2) × v2 (`services/nesting_v2`), limites 150/200/sem limite, um motor por vez em subprocesso com pico de memória → `resultados/m1b/` (substitui o `comparar_v1_v2.py` do M1) |
 
 ## Como reproduzir
 
@@ -29,6 +32,8 @@ py -3.12 -m venv experimentos/nesting/.venv     # depois: include-system-site-pa
 experimentos/nesting/.venv/Scripts/python.exe -m pip install shapely pyclipper
 (cd experimentos/nesting && npm install)          # clipper-lib (só diagnóstico)
 experimentos/nesting/.venv/Scripts/python.exe -m experimentos.nesting.benchmark   # ~40 min
+# M1-B (só py -3.12 do sistema: spyrrow/ortools/shapely do requirements.txt + node_modules)
+py -3.12 -m experimentos.nesting.comparar_m1b                                      # ~15 min
 ```
 
 Ferramentas Rust (em `.tools/`, fora do git):

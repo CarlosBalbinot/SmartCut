@@ -1,0 +1,1452 @@
+[
+ {
+  "tecido": "PRETO",
+  "limite": 150.0,
+  "motor": "v1",
+  "pico_mb": 123.3,
+  "metros": 9.109,
+  "partes": 9,
+  "comprimentos_cm": [
+   98.6,
+   98.6,
+   96.6,
+   99.0,
+   129.0,
+   99.0,
+   127.0,
+   143.9,
+   19.0
+  ],
+  "aproveitamento_medio": 0.4927,
+  "aproveitamento_pior": 0.3407,
+  "aproveitamento_partes": [
+   0.5958,
+   0.5766,
+   0.5498,
+   0.3925,
+   0.3407,
+   0.3925,
+   0.3703,
+   0.7173,
+   0.424
+  ],
+  "segundos": 0.7,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "PRETO",
+  "limite": 150.0,
+  "motor": "b2",
+  "pico_mb": 341.9,
+  "metros": 6.009,
+  "partes": 5,
+  "comprimentos_cm": [
+   149.0,
+   141.8,
+   114.1,
+   99.0,
+   97.0
+  ],
+  "aproveitamento_medio": 0.7469,
+  "aproveitamento_pior": 0.7172,
+  "aproveitamento_partes": [
+   0.7172,
+   0.7397,
+   0.7682,
+   0.7747,
+   0.7493
+  ],
+  "segundos": 15.6,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 3
+ },
+ {
+  "tecido": "PRETO",
+  "limite": 150.0,
+  "motor": "v2",
+  "pico_mb": 158.5,
+  "metros": 5.687,
+  "partes": 5,
+  "comprimentos_cm": [
+   99.0,
+   99.0,
+   117.8,
+   107.2,
+   145.6
+  ],
+  "aproveitamento_medio": 0.7891,
+  "aproveitamento_pior": 0.7605,
+  "aproveitamento_partes": [
+   0.7847,
+   0.7644,
+   0.7605,
+   0.8223,
+   0.8077
+  ],
+  "segundos": 108.87,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 4,
+     "espelhadas": 0,
+     "total": 4
+    }
+   ],
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ],
+   [
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "423a266b9da24faba72ba576ad466d93",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "c836e65899a043d481b823f592949918",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "628dedac5c064ad4a630468f3af8f6d1",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    }
+   ],
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    }
+   ],
+   [
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "b4832c8316df486497f9ae69a5542dc0",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 15,
+     "total": 15,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 10,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "P",
+     "pecas": 5,
+     "total": 5,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 5,
+   "comprimento_total_cm": 568.7,
+   "aproveitamento_medio": 0.7891,
+   "pior_mesa": 0.7605,
+   "segundos": 108.27,
+   "pico_memoria_mb": 158.5
+  },
+  "pico_interno_mb": 158.50390625,
+  "chamadas_spyrrow": 41
+ },
+ {
+  "tecido": "PRETO",
+  "limite": 200.0,
+  "motor": "v1",
+  "pico_mb": 122.9,
+  "metros": 6.28,
+  "partes": 4,
+  "comprimentos_cm": [
+   198.0,
+   198.0,
+   193.9,
+   38.0
+  ],
+  "aproveitamento_medio": 0.7146,
+  "aproveitamento_pior": 0.6608,
+  "aproveitamento_partes": [
+   0.7803,
+   0.6608,
+   0.7114,
+   0.6693
+  ],
+  "segundos": 0.36,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "PRETO",
+  "limite": 200.0,
+  "motor": "b2",
+  "pico_mb": 337.2,
+  "metros": 5.842,
+  "partes": 3,
+  "comprimentos_cm": [
+   197.1,
+   198.2,
+   188.9
+  ],
+  "aproveitamento_medio": 0.7681,
+  "aproveitamento_pior": 0.7152,
+  "aproveitamento_partes": [
+   0.8153,
+   0.7716,
+   0.7152
+  ],
+  "segundos": 17.21,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 2
+ },
+ {
+  "tecido": "PRETO",
+  "limite": 200.0,
+  "motor": "v2",
+  "pico_mb": 138.7,
+  "metros": 5.77,
+  "partes": 3,
+  "comprimentos_cm": [
+   191.5,
+   191.0,
+   194.5
+  ],
+  "aproveitamento_medio": 0.7778,
+  "aproveitamento_pior": 0.7387,
+  "aproveitamento_partes": [
+   0.8056,
+   0.7387,
+   0.7889
+  ],
+  "segundos": 46.64,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "423a266b9da24faba72ba576ad466d93",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "628dedac5c064ad4a630468f3af8f6d1",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    }
+   ],
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "b4832c8316df486497f9ae69a5542dc0",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    },
+    {
+     "molde_id": "c836e65899a043d481b823f592949918",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    }
+   ],
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 6,
+     "espelhadas": 0,
+     "total": 6
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 15,
+     "total": 15,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 10,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "P",
+     "pecas": 5,
+     "total": 5,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 3,
+   "comprimento_total_cm": 576.966,
+   "aproveitamento_medio": 0.7778,
+   "pior_mesa": 0.7387,
+   "segundos": 46.22,
+   "pico_memoria_mb": 138.7
+  },
+  "pico_interno_mb": 138.7421875,
+  "chamadas_spyrrow": 14
+ },
+ {
+  "tecido": "PRETO",
+  "limite": null,
+  "motor": "v1",
+  "pico_mb": 122.9,
+  "metros": 6.21,
+  "partes": 1,
+  "comprimentos_cm": [
+   621.0
+  ],
+  "aproveitamento_medio": 0.7226,
+  "aproveitamento_pior": 0.7226,
+  "aproveitamento_partes": [
+   0.7226
+  ],
+  "segundos": 0.09,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "PRETO",
+  "limite": null,
+  "motor": "b2",
+  "pico_mb": 341.8,
+  "metros": 5.98,
+  "partes": 1,
+  "comprimentos_cm": [
+   598.0
+  ],
+  "aproveitamento_medio": 0.7504,
+  "aproveitamento_pior": 0.7504,
+  "aproveitamento_partes": [
+   0.7504
+  ],
+  "segundos": 18.58,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "PRETO",
+  "limite": null,
+  "motor": "v2",
+  "pico_mb": 132.0,
+  "metros": 5.337,
+  "partes": 1,
+  "comprimentos_cm": [
+   533.7
+  ],
+  "aproveitamento_medio": 0.8409,
+  "aproveitamento_pior": 0.8409,
+  "aproveitamento_partes": [
+   0.8409
+  ],
+  "segundos": 31.4,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    },
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "b4832c8316df486497f9ae69a5542dc0",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 6,
+     "espelhadas": 0,
+     "total": 6
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 4,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "423a266b9da24faba72ba576ad466d93",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    },
+    {
+     "molde_id": "c836e65899a043d481b823f592949918",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "628dedac5c064ad4a630468f3af8f6d1",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 15,
+     "total": 15,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 10,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "P",
+     "pecas": 5,
+     "total": 5,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 1,
+   "comprimento_total_cm": 533.693,
+   "aproveitamento_medio": 0.8409,
+   "pior_mesa": 0.8409,
+   "segundos": 30.99,
+   "pico_memoria_mb": 132.0
+  },
+  "pico_interno_mb": 132.0,
+  "chamadas_spyrrow": 1
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 150.0,
+  "motor": "v1",
+  "pico_mb": 122.0,
+  "metros": 3.436,
+  "partes": 3,
+  "comprimentos_cm": [
+   98.6,
+   148.0,
+   97.0
+  ],
+  "aproveitamento_medio": 0.4643,
+  "aproveitamento_pior": 0.4012,
+  "aproveitamento_partes": [
+   0.6091,
+   0.4092,
+   0.4012
+  ],
+  "segundos": 0.22,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 150.0,
+  "motor": "b2",
+  "pico_mb": 292.5,
+  "metros": 2.323,
+  "partes": 2,
+  "comprimentos_cm": [
+   133.3,
+   99.0
+  ],
+  "aproveitamento_medio": 0.6868,
+  "aproveitamento_pior": 0.611,
+  "aproveitamento_partes": [
+   0.743,
+   0.611
+  ],
+  "segundos": 5.44,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 1
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 150.0,
+  "motor": "v2",
+  "pico_mb": 134.0,
+  "metros": 1.977,
+  "partes": 2,
+  "comprimentos_cm": [
+   99.0,
+   98.6
+  ],
+  "aproveitamento_medio": 0.8071,
+  "aproveitamento_pior": 0.8069,
+  "aproveitamento_partes": [
+   0.8074,
+   0.8069
+  ],
+  "segundos": 26.64,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    }
+   ],
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 2,
+   "comprimento_total_cm": 197.677,
+   "aproveitamento_medio": 0.8071,
+   "pior_mesa": 0.8069,
+   "segundos": 26.27,
+   "pico_memoria_mb": 134.0
+  },
+  "pico_interno_mb": 134.046875,
+  "chamadas_spyrrow": 9
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 200.0,
+  "motor": "v1",
+  "pico_mb": 121.6,
+  "metros": 2.937,
+  "partes": 2,
+  "comprimentos_cm": [
+   195.7,
+   98.0
+  ],
+  "aproveitamento_medio": 0.5433,
+  "aproveitamento_pior": 0.5169,
+  "aproveitamento_partes": [
+   0.5169,
+   0.5961
+  ],
+  "segundos": 0.2,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 200.0,
+  "motor": "b2",
+  "pico_mb": 356.6,
+  "metros": 2.265,
+  "partes": 2,
+  "comprimentos_cm": [
+   196.5,
+   30.0
+  ],
+  "aproveitamento_medio": 0.7043,
+  "aproveitamento_pior": 0.3491,
+  "aproveitamento_partes": [
+   0.7586,
+   0.3491
+  ],
+  "segundos": 6.57,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": 200.0,
+  "motor": "v2",
+  "pico_mb": 127.9,
+  "metros": 1.938,
+  "partes": 1,
+  "comprimentos_cm": [
+   193.8
+  ],
+  "aproveitamento_medio": 0.8233,
+  "aproveitamento_pior": 0.8233,
+  "aproveitamento_partes": [
+   0.8233
+  ],
+  "segundos": 9.43,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 1,
+   "comprimento_total_cm": 193.803,
+   "aproveitamento_medio": 0.8233,
+   "pior_mesa": 0.8233,
+   "segundos": 8.95,
+   "pico_memoria_mb": 127.9
+  },
+  "pico_interno_mb": 127.94921875,
+  "chamadas_spyrrow": 2
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": null,
+  "motor": "v1",
+  "pico_mb": 121.3,
+  "metros": 2.926,
+  "partes": 1,
+  "comprimentos_cm": [
+   292.6
+  ],
+  "aproveitamento_medio": 0.5453,
+  "aproveitamento_pior": 0.5453,
+  "aproveitamento_partes": [
+   0.5453
+  ],
+  "segundos": 0.07,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": null,
+  "motor": "b2",
+  "pico_mb": 292.8,
+  "metros": 1.977,
+  "partes": 1,
+  "comprimentos_cm": [
+   197.7
+  ],
+  "aproveitamento_medio": 0.8068,
+  "aproveitamento_pior": 0.8068,
+  "aproveitamento_partes": [
+   0.8068
+  ],
+  "segundos": 6.28,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0
+ },
+ {
+  "tecido": "VERDE MILITAR",
+  "limite": null,
+  "motor": "v2",
+  "pico_mb": 125.0,
+  "metros": 1.937,
+  "partes": 1,
+  "comprimentos_cm": [
+   193.7
+  ],
+  "aproveitamento_medio": 0.8237,
+  "aproveitamento_pior": 0.8237,
+  "aproveitamento_partes": [
+   0.8237
+  ],
+  "segundos": 31.58,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 4
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 5,
+     "total": 10,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 1,
+   "comprimento_total_cm": 193.709,
+   "aproveitamento_medio": 0.8237,
+   "pior_mesa": 0.8236,
+   "segundos": 31.13,
+   "pico_memoria_mb": 125.0
+  },
+  "pico_interno_mb": 124.95703125,
+  "chamadas_spyrrow": 1
+ },
+ {
+  "tecido": "PRETO (COSTAS como par, sintético)",
+  "limite": 150.0,
+  "motor": "v2",
+  "pico_mb": 160.2,
+  "metros": 5.705,
+  "partes": 5,
+  "comprimentos_cm": [
+   99.0,
+   99.0,
+   119.6,
+   107.2,
+   145.6
+  ],
+  "aproveitamento_medio": 0.7867,
+  "aproveitamento_pior": 0.7493,
+  "aproveitamento_partes": [
+   0.7847,
+   0.7642,
+   0.7493,
+   0.8223,
+   0.8077
+  ],
+  "segundos": 109.84,
+  "valido": true,
+  "problemas": [],
+  "pares_divididos": 0,
+  "moldes_por_mesa": [
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 4,
+     "espelhadas": 2,
+     "total": 4
+    }
+   ],
+   [
+    {
+     "molde_id": "51af8526c3e641cba13db19241914550",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 1,
+     "total": 2
+    },
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 1,
+     "total": 2
+    }
+   ],
+   [
+    {
+     "molde_id": "78d6a5db36094bc49c6b9f51df1d0a86",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 1,
+     "total": 2
+    },
+    {
+     "molde_id": "423a266b9da24faba72ba576ad466d93",
+     "peca": "COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 2,
+     "espelhadas": 1,
+     "total": 2
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "c836e65899a043d481b823f592949918",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "628dedac5c064ad4a630468f3af8f6d1",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    }
+   ],
+   [
+    {
+     "molde_id": "1958ad008b6742e798011b0d2bdaf430",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 3,
+     "espelhadas": 0,
+     "total": 3
+    }
+   ],
+   [
+    {
+     "molde_id": "7947968f33084f7f8871b9d6909f00e8",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "b4832c8316df486497f9ae69a5542dc0",
+     "peca": "FRENTE",
+     "grupo_nome": null,
+     "tamanho": "P",
+     "por_camada": 1,
+     "espelhadas": 0,
+     "total": 1
+    },
+    {
+     "molde_id": "22d23b3cf7c041aa8046b8d8ab5e9b6f",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "d4c5fc24fc8b4677a15805a4084c22cd",
+     "peca": "CÓS COSTAS",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "78cec06a7ec84f6881fdcec713fd6453",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "G",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    },
+    {
+     "molde_id": "45d21d7da2f9450b9b1debfee5316f51",
+     "peca": "CÓS FRENTE",
+     "grupo_nome": null,
+     "tamanho": "M",
+     "por_camada": 2,
+     "espelhadas": 0,
+     "total": 2
+    }
+   ]
+  ],
+  "resumo_enfesto": {
+   "pecas_por_tamanho": [
+    {
+     "grupo_nome": null,
+     "tamanho": "G",
+     "pecas": 15,
+     "total": 15,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "M",
+     "pecas": 10,
+     "total": 10,
+     "sobra": 0
+    },
+    {
+     "grupo_nome": null,
+     "tamanho": "P",
+     "pecas": 5,
+     "total": 5,
+     "sobra": 0
+    }
+   ],
+   "total_partes": 5,
+   "comprimento_total_cm": 570.481,
+   "aproveitamento_medio": 0.7867,
+   "pior_mesa": 0.7493,
+   "segundos": 109.33,
+   "pico_memoria_mb": 160.2
+  },
+  "pico_interno_mb": 160.203125,
+  "chamadas_spyrrow": 41,
+  "conferencia_espelho": {
+   "pecas_conferidas": 12,
+   "ok": 12,
+   "erros": 0,
+   "problemas": []
+  }
+ }
+]
