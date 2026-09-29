@@ -19,6 +19,7 @@ from sqlalchemy.pool import StaticPool
 import main as main_mod  # noqa: F401
 
 from database import Base, get_db
+from models.cliente import Cliente
 from models.usuario import Usuario
 from services.auth_service import criar_token_admin, hash_senha
 
@@ -93,6 +94,28 @@ def app(override_get_db):
 def client(app):
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture()
+def cliente(db_session):
+    """Cliente de teste compartilhado pelos módulos de pedido de venda."""
+    c = Cliente(
+        codigo="0001",
+        tipo_registro="cliente",
+        tipo_pessoa="juridica",
+        razao_social="CLIENTE LTDA",
+        cnpj="12345678000190",
+        endereco="RUA A",
+        numero="10",
+        bairro="CENTRO",
+        cidade="CAXIAS DO SUL",
+        estado="RS",
+        cep="95000000",
+        codigo_ibge_municipio="4305108",
+    )
+    db_session.add(c)
+    db_session.commit()
+    return c
 
 
 @pytest.fixture()

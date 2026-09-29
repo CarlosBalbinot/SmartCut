@@ -5,6 +5,7 @@ import {
   salvarPrecosProdutoTabela,
 } from "../../api/tabelasPreco";
 import { produtosApi } from "../../api/produtos";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import styles from "./PrecosProdutoTabela.module.css";
 
 /*
@@ -546,6 +547,7 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
   const [precos, setPrecos] = useState({ preco_avista: "", preco_aprazo: "" });
   const [erros, setErros] = useState({});
   const [salvando, setSalvando] = useState(false);
+  const overlayProps = useOverlayDismiss(() => onFechar());
 
   useEffect(() => {
     const q = busca.trim();
@@ -556,7 +558,8 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
     const t = setTimeout(async () => {
       setBuscando(true);
       try {
-        const r = await produtosApi.buscaPedido(q);
+        // Termo em maiúsculo: ilike do SQLite só ignora caixa em ASCII.
+        const r = await produtosApi.buscaPedido(q.toUpperCase());
         setResultados((r || []).filter((p) => p.tipo === "pai" && !existentes.has(String(p.id))));
       } catch {
         setResultados([]);
@@ -591,9 +594,7 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
   return (
     <div
       className={styles.overlay}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onFechar();
-      }}
+      {...overlayProps}
       onKeyDown={(e) => {
         if (e.key === "Escape") onFechar();
       }}
@@ -625,7 +626,7 @@ function ModalAdicionarProduto({ existentes, onFechar, onSalvar }) {
                 className={`${styles.inputModal} ${erros.produto ? styles.campoErro : ""}`}
                 title={erros.produto || ""}
                 value={busca}
-                onChange={(e) => setBusca(e.target.value.toUpperCase())}
+                onChange={(e) => setBusca(e.target.value)}
                 placeholder="DIGITE PARA BUSCAR…"
                 autoFocus
               />

@@ -300,9 +300,9 @@ function PainelDados({ detalhe, isProprio, onSalvo, onErro }) {
       <label className={styles.field}>
         <span>Nome completo</span>
         <input
-          className={styles.input}
+          className={`${styles.input} sc-upper`}
           value={form.nome_completo}
-          onChange={(e) => setForm((f) => ({ ...f, nome_completo: e.target.value }))}
+          onChange={(e) => setForm((f) => ({ ...f, nome_completo: e.target.value.toUpperCase() }))}
         />
       </label>
 
@@ -495,9 +495,11 @@ function ModalNovoUsuario({ onClose, onCriado, onErro }) {
         <label className={styles.field} style={{ marginTop: 10 }}>
           <span>Nome completo</span>
           <input
-            className={styles.input}
+            className={`${styles.input} sc-upper`}
             value={form.nome_completo}
-            onChange={(e) => setForm((f) => ({ ...f, nome_completo: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, nome_completo: e.target.value.toUpperCase() }))
+            }
             autoComplete="name"
           />
         </label>

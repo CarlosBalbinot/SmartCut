@@ -32,10 +32,7 @@ _VAL = ParagraphStyle("val", fontName="Helvetica", fontSize=8.5, leading=11)
 _H_ITENS = ParagraphStyle(
     "hdr_itens", fontName="Helvetica-Bold", fontSize=7.5, leading=9, alignment=1, textColor=_BRANCO
 )
-_H_CORTE = ParagraphStyle("hdr_corte", fontName="Helvetica-Bold", fontSize=8, leading=10, alignment=1, textColor=_PRETO)
-_GT = ParagraphStyle("gt", fontName="Helvetica-Bold", fontSize=10, leading=18, backColor=_CINZA_LABEL, leftIndent=4)
 _CAPTION = ParagraphStyle("cap", fontName="Helvetica", fontSize=8, leading=10, alignment=1)
-_TITULO = ParagraphStyle("titulo", fontName="Helvetica-Bold", fontSize=13, leading=16)
 
 _COND_LABEL = {"avista": "À Vista", "aprazo": "A Prazo"}
 
@@ -81,11 +78,8 @@ def _numero_fmt(numero) -> str:
 
 
 def nome_arquivo_pedido(pedido) -> str:
+    # OBSOLETA — usada só pelo layout antigo (ver gerar_pdf_pedido).
     return f"{_primeiro_nome(pedido.cliente_razao_social)}-pedido{_numero_fmt(pedido.numero)}.pdf"
-
-
-def nome_arquivo_corte(pedido) -> str:
-    return f"CORTE-{_primeiro_nome(pedido.cliente_razao_social)}-pedido{_numero_fmt(pedido.numero)}.pdf"
 
 
 def _ts_base() -> list:
@@ -143,7 +137,12 @@ def _tamanho_valores(item, cols, only=None) -> list:
 
 
 def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
-    """precos_ref: dict opcional {str(grupo_id): PrecoReferencia} usado para
+    """OBSOLETA — layout antigo do pedido ("PEDIDO Nº", REFERÊNCIA | NOME DA
+    PEÇA | COR, "TOTAL PEDIDO"). Nenhuma rota chama mais: o pedido é
+    impresso pelo relatório configurável relVen001 e GET .../pdf-pedido
+    responde 410. Mantida só até a remoção definitiva.
+
+    precos_ref: dict opcional {str(grupo_id): PrecoReferencia} usado para
     saber quais referências têm plus size e obter o preço plus da tabela."""
     precos_ref = precos_ref or {}
 
@@ -415,109 +414,6 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
         )
     )
     story.append(assinaturas)
-
-    doc.build(story)
-    return buf.getvalue()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PDF CORTE
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def gerar_pdf_corte(pedido, itens) -> bytes:
-    buf = BytesIO()
-    doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        leftMargin=15 * mm,
-        rightMargin=15 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm,
-    )
-    w = doc.width
-    story = []
-
-    primeiro = _primeiro_nome(pedido.cliente_razao_social)
-    story.append(Paragraph(f"CORTE — {primeiro}", _TITULO))
-    story.append(Paragraph(f"Data: {pedido.data_emissao.strftime('%d/%m/%Y')}", _N))
-    story.append(Paragraph(f"Cliente: {pedido.cliente_razao_social or '—'}", _N))
-    story.append(Spacer(1, 6 * mm))
-
-    # Agrupa itens por grupo_id, mantendo ordem por código/nome
-    grupos_map: dict = {}
-    for item in itens:
-        gid = str(item.grupo_id)
-        if gid not in grupos_map:
-            grupos_map[gid] = {"grupo": getattr(item, "grupo", None), "itens": []}
-        grupos_map[gid]["itens"].append(item)
-
-    def _sort_key(entry):
-        g = entry["grupo"]
-        return (g.codigo or "", g.nome or "") if g else ("", "")
-
-    for entry in sorted(grupos_map.values(), key=_sort_key):
-        grupo = entry["grupo"]
-        g_itens = entry["itens"]
-
-        ativos = [(lbl, attr) for lbl, attr in SIZE_COLS if any(getattr(i, attr, 0) for i in g_itens)]
-        if not ativos:
-            continue
-
-        if grupo and grupo.codigo:
-            titulo = f"{grupo.nome} — REF: {grupo.codigo}"
-        else:
-            titulo = grupo.nome if grupo else "—"
-        story.append(Paragraph(titulo.upper(), _GT))
-        story.append(Spacer(1, 1.5 * mm))
-
-        col_labels = ["COR"] + [lbl for lbl, _ in ativos]
-        cor_w = w * 0.28
-        size_w = (w - cor_w) / len(ativos)
-        col_w = [cor_w] + [size_w] * len(ativos)
-
-        rows = [[Paragraph(c, _H_CORTE) for c in col_labels]]
-        row_groups = []
-        plus_rows = []
-        grupo_idx = 0
-
-        for item in g_itens:
-            qty_plus = (item.qtd_g1 or 0) + (item.qtd_g2 or 0) + (item.qtd_g3 or 0)
-            qty_normal = (item.qtd_p or 0) + (item.qtd_m or 0) + (item.qtd_g or 0) + (item.qtd_gg or 0)
-
-            if qty_plus > 0 and qty_normal > 0:
-                linha1 = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos, only=NORMAL_ATTRS)
-                linha2 = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos, only=PLUS_ATTRS)
-                rows.append(linha1)
-                row_groups.append(grupo_idx)
-                rows.append(linha2)
-                row_groups.append(grupo_idx)
-                plus_rows.append(len(rows) - 1)
-            else:
-                linha = [Paragraph(item.cor or "", _N)] + _tamanho_valores(item, ativos)
-                rows.append(linha)
-                row_groups.append(grupo_idx)
-
-            grupo_idx += 1
-
-        ts = _ts_base() + [
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("BACKGROUND", (0, 0), (-1, 0), _CINZA_HEADER),
-            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-            ("BOX", (0, 0), (-1, -1), 0.5, _PRETO),
-            ("INNERGRID", (0, 0), (-1, -1), 0.3, _CINZA_HEADER),
-        ]
-        for i in range(1, len(rows)):
-            if row_groups[i - 1] % 2 == 1:
-                ts.append(("BACKGROUND", (0, i), (-1, i), _CINZA_CLARO))
-        for idx in plus_rows:
-            ts.append(("LINEABOVE", (0, idx), (-1, idx), 0, _BRANCO))
-
-        t = Table(rows, colWidths=col_w, repeatRows=1)
-        t.setStyle(TableStyle(ts))
-        story.append(t)
-        story.append(Spacer(1, 5 * mm))
 
     doc.build(story)
     return buf.getvalue()

@@ -91,4 +91,114 @@
   --sc-card-shadow: var(--shadow);
   --sc-card-radius: var(--sc-radius-md);
   --sc-card-border: 1px solid var(--sc-border);
+
+  /* ── Densidade compacta (telas tipo ERP desktop, ver .sc-compact) ── */
+  --sc-compact-control-height: 32px;
+  --sc-compact-font-size: 13px;
+  --sc-compact-label-size: 10.5px;
+  --sc-compact-gap-x: 16px;
+  --sc-compact-gap-y: 14px;
+  --sc-compact-card-padding: 16px 20px;
+
+  /* ── Escala de larguras de campo (ver .sc-field-*) ── */
+  --sc-field-xs: 90px;
+  --sc-field-s: 110px;
+  --sc-field-m: 140px;
+  --sc-field-l: 200px;
+  --sc-field-xl: 280px;
+
+  /* ── Grid de formulário (ver .sc-grid-12) ── */
+  --sc-form-max-width: 1120px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   .sc-compact — densidade compacta opt-in. Só vale dentro de um
+   container com a classe (hoje: pedido de venda); outras telas não
+   mudam. Seletores estruturais porque os componentes de lookup
+   (ClienteInput, TesInput) não têm tokens de altura próprios.
+   Tabelas ficam de fora (as células têm padrão próprio). Botões e abas
+   usam os tokens nas próprias classes: ícones (×, lupa) e links-botão
+   dos lookups têm tamanho próprio que uma regra genérica quebraria.
+   ═══════════════════════════════════════════════════════════ */
+.sc-compact {
+  font-size: var(--sc-compact-font-size);
+}
+
+/* Campos simples: <label><span/><input|select/></label> */
+.sc-compact label > :is(input:not([type="checkbox"]):not([type="radio"]), select) {
+  height: var(--sc-compact-control-height);
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--sc-compact-font-size);
+}
+
+.sc-compact label > textarea {
+  font-size: var(--sc-compact-font-size);
+}
+
+/* Lookups: caixa com borda que contém os inputs (ex.: ClienteInput). */
+.sc-compact div:has(> input):not(table *) {
+  height: var(--sc-compact-control-height);
+}
+.sc-compact div:has(> input):not(table *) > input {
+  font-size: var(--sc-compact-font-size);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Escala de larguras de campo — no wrapper do campo (rótulo +
+   controle), dentro de uma linha flex. Largura fixa, sem esticar
+   nem encolher; .sc-field-flex ocupa a sobra (mín. 320px).
+   ═══════════════════════════════════════════════════════════ */
+.sc-field-xs,
+.sc-field-s,
+.sc-field-m,
+.sc-field-l,
+.sc-field-xl {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+.sc-field-xs {
+  width: var(--sc-field-xs);
+}
+.sc-field-s {
+  width: var(--sc-field-s);
+}
+.sc-field-m {
+  width: var(--sc-field-m);
+}
+.sc-field-l {
+  width: var(--sc-field-l);
+}
+.sc-field-xl {
+  width: var(--sc-field-xl);
+}
+.sc-field-flex {
+  flex: 1 1 0;
+  min-width: 320px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Grid de formulário — 12 colunas compartilhadas por todas as
+   linhas: todo campo começa e termina numa linha-guia. Limitado a
+   --sc-form-max-width, alinhado à esquerda. align-items: start —
+   campo com conteúdo abaixo do controle não desalinha os vizinhos.
+   ═══════════════════════════════════════════════════════════ */
+.sc-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--sc-compact-gap-y) var(--sc-compact-gap-x);
+  align-items: start;
+  max-width: var(--sc-form-max-width);
+}
+.sc-grid-12 > * {
+  min-width: 0;
+}
+.sc-col-2 {
+  grid-column: span 2;
+}
+.sc-col-3 {
+  grid-column: span 3;
+}
+.sc-col-9 {
+  grid-column: span 9;
 }

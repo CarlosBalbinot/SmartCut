@@ -21,6 +21,8 @@ import {
 } from "../../api/financeiro";
 import { useAuth } from "../../auth/useAuth";
 import styles from "./FluxoCaixa.module.css";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
+import { upperOnChange } from "../../utils/uppercase";
 
 const MODULO = "financeiro_fluxo";
 
@@ -150,6 +152,20 @@ const TRANSF_VAZIO = {
 const CONTA_VAZIA = { nome: "", tipo: "BANCO" };
 
 export default function FluxoCaixa() {
+  const modalPagOverlay = useOverlayDismiss(() => !savingPag && setModalPag(null));
+  const modalDesfazerOverlay = useOverlayDismiss(() => !desfazendo && setModalDesfazer(null));
+  const modalExcluirOverlay = useOverlayDismiss(() => !excluindo && setModalExcluir(null));
+  const modalAnexosOverlay = useOverlayDismiss(() => setModalAnexos(null));
+  const modalLancOverlay = useOverlayDismiss(() => setModalLanc(false));
+  const drawerAbertoOverlay = useOverlayDismiss(() => setDrawerAberto(false));
+  const modalContaOverlay = useOverlayDismiss(() => !savingConta && setModalConta(null));
+  const modalEditarParcelaOverlay = useOverlayDismiss(
+    () => !savingEditParcela && setModalEditarParcela(null)
+  );
+  const modalExcluirContaOverlay = useOverlayDismiss(
+    () => !excluindoConta && setModalExcluirConta(null)
+  );
+
   const { hasPermission } = useAuth();
   const now = new Date();
   const [mes, setMes] = useState(now.getMonth() + 1);
@@ -1162,7 +1178,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Confirmar Pagamento / Recebimento ── */}
       {modalPag && (
-        <div className={styles.overlay} onClick={() => !savingPag && setModalPag(null)}>
+        <div className={styles.overlay} {...modalPagOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>
@@ -1277,7 +1293,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Desfazer Pagamento ── */}
       {modalDesfazer && (
-        <div className={styles.overlay} onClick={() => !desfazendo && setModalDesfazer(null)}>
+        <div className={styles.overlay} {...modalDesfazerOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Desfazer Pagamento</h2>
@@ -1319,10 +1335,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Editar Parcela ── */}
       {modalEditarParcela && (
-        <div
-          className={styles.overlay}
-          onClick={() => !savingEditParcela && setModalEditarParcela(null)}
-        >
+        <div className={styles.overlay} {...modalEditarParcelaOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar Parcela</h2>
@@ -1370,10 +1383,10 @@ export default function FluxoCaixa() {
               <label className={`${styles.field} ${styles.fieldSpacer}`}>
                 <span>Observação</span>
                 <textarea
-                  className={styles.textarea}
+                  className={`${styles.textarea} sc-upper`}
                   value={editParcelaForm.observacao}
                   onChange={(e) =>
-                    setEditParcelaForm((f) => ({ ...f, observacao: e.target.value }))
+                    setEditParcelaForm((f) => ({ ...f, observacao: e.target.value.toUpperCase() }))
                   }
                   placeholder="Anotação livre sobre esta parcela…"
                 />
@@ -1411,7 +1424,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Excluir Lançamento ── */}
       {modalExcluir && (
-        <div className={styles.overlay} onClick={() => !excluindo && setModalExcluir(null)}>
+        <div className={styles.overlay} {...modalExcluirOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Excluir Lançamento</h2>
@@ -1455,7 +1468,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Ver Anexos ── */}
       {modalAnexos && (
-        <div className={styles.overlay} onClick={() => setModalAnexos(null)}>
+        <div className={styles.overlay} {...modalAnexosOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Anexos</h2>
@@ -1498,7 +1511,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Novo Lançamento Manual ── */}
       {modalLanc && (
-        <div className={styles.overlay} onClick={() => setModalLanc(false)}>
+        <div className={styles.overlay} {...modalLancOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Novo Lançamento Manual</h2>
@@ -1518,9 +1531,9 @@ export default function FluxoCaixa() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={lancForm.descricao}
-                    onChange={setLanc("descricao")}
+                    onChange={upperOnChange(setLanc("descricao"))}
                     placeholder="Ex: Aluguel, Energia elétrica…"
                   />
                 </label>
@@ -1548,9 +1561,9 @@ export default function FluxoCaixa() {
                 <label className={styles.field}>
                   <span>Categoria</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={lancForm.categoria}
-                    onChange={setLanc("categoria")}
+                    onChange={upperOnChange(setLanc("categoria"))}
                     placeholder="Ex: Fornecedores"
                   />
                 </label>
@@ -1582,7 +1595,7 @@ export default function FluxoCaixa() {
 
       {/* ── Drawer: Configurações de Contas ── */}
       {drawerAberto && (
-        <div className={styles.drawerOverlay} onClick={() => setDrawerAberto(false)}>
+        <div className={styles.drawerOverlay} {...drawerAbertoOverlay}>
           <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
             <div className={styles.drawerHeader}>
               <h2 className={styles.drawerTitle}>Configurações de Contas</h2>
@@ -1787,10 +1800,10 @@ export default function FluxoCaixa() {
                     <label className={`${styles.field} ${styles.fieldFull}`}>
                       <span>Descrição</span>
                       <input
-                        className={styles.input}
+                        className={`${styles.input} sc-upper`}
                         value={transfForm.descricao}
                         onChange={(e) =>
-                          setTransfForm({ ...transfForm, descricao: e.target.value })
+                          setTransfForm({ ...transfForm, descricao: e.target.value.toUpperCase() })
                         }
                         placeholder="Opcional"
                       />
@@ -1845,7 +1858,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Nova/Editar Conta Bancária ── */}
       {modalConta && (
-        <div className={styles.overlay} onClick={() => !savingConta && setModalConta(null)}>
+        <div className={styles.overlay} {...modalContaOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modalConta.id ? "Editar Conta" : "Nova Conta"}</h2>
@@ -1862,9 +1875,11 @@ export default function FluxoCaixa() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Nome *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={contaForm.nome}
-                    onChange={(e) => setContaForm({ ...contaForm, nome: e.target.value })}
+                    onChange={(e) =>
+                      setContaForm({ ...contaForm, nome: e.target.value.toUpperCase() })
+                    }
                     placeholder="Ex: Banrisul PJ"
                   />
                 </label>
@@ -1905,10 +1920,7 @@ export default function FluxoCaixa() {
 
       {/* ── Modal: Remover Conta Bancária ── */}
       {modalExcluirConta && (
-        <div
-          className={styles.overlay}
-          onClick={() => !excluindoConta && setModalExcluirConta(null)}
-        >
+        <div className={styles.overlay} {...modalExcluirContaOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Remover Conta</h2>

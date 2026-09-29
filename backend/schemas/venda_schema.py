@@ -381,6 +381,22 @@ class _PedidoVendaCamposFiscais(BaseModel):
     placa_veiculo: Optional[str] = None
     uf_veiculo: Optional[str] = None
 
+    # Data apagada no formulário pode chegar como "" — vale o mesmo que null
+    # (na Update, campo enviado como null limpa; campo omitido não altera).
+    @field_validator("primeiro_vencimento", mode="before")
+    @classmethod
+    def _data_vazia_e_nula(cls, v):
+        return None if isinstance(v, str) and not v.strip() else v
+
+
+class ProducaoOCOut(BaseModel):
+    """Ordem de Corte ativa do pedido (OC6a). Null quando o pedido ainda não
+    tem OC, ou quando ela foi cancelada."""
+
+    oc_id: UUID
+    oc_numero: str
+    status: str
+
 
 class PedidoVendaOut(_PedidoVendaCamposFiscais):
     model_config = ConfigDict(from_attributes=True)
@@ -410,6 +426,10 @@ class PedidoVendaOut(_PedidoVendaCamposFiscais):
     comissao_valor: Decimal
     nfe_id: Optional[int] = None
     criado_em: datetime
+    # Preenchido pelo router (não é coluna do pedido): OC ativa, com status
+    # de produção. Default None = o model_validate do ORM não acha o
+    # atributo e usa o padrão.
+    producao: Optional[ProducaoOCOut] = None
 
 
 class PedidoVendaComItensOut(PedidoVendaOut):

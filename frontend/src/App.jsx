@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { FolderArchive, Package } from "lucide-react";
 import styles from "./App.module.css";
-import { useLogo } from "./contexts/LogoContext";
 import appIcon from "./assets/android-chrome-192x192.png";
 import DashboardPage from "./pages/DashboardPage";
 import TecidosPage from "./pages/TecidosPage";
 import MoldesPage from "./pages/MoldesPage";
 import EncaixesPage from "./pages/EncaixesPage";
 import EncaixePage from "./pages/EncaixePage";
+import OrdensCortePage from "./pages/OrdensCortePage";
+import OrdemCorteDetalhePage from "./pages/OrdemCorteDetalhePage";
 import PrecificacaoPage from "./pages/PrecificacaoPage";
 import ProjecaoPage from "./pages/ProjecaoPage";
 import { getAlertasLotes } from "./api/tecidos";
@@ -67,6 +68,18 @@ const IconMoldes = () => (
     <circle cx="3.5" cy="11.5" r="2" stroke="currentColor" strokeWidth="1.5" />
     <path
       d="M12 2L5.5 5.5M10 13L5.5 9.5M5.5 5.5L5.5 9.5"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const IconOrdemCorte = () => (
+  <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+    <rect x="2" y="1.5" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M5 5H10M5 7.5H10M5 10H8"
       stroke="currentColor"
       strokeWidth="1.5"
       strokeLinecap="round"
@@ -434,6 +447,12 @@ const SECTIONS = [
         Icon: IconRelampago,
         modulo: "encaixe_rapido",
       },
+      {
+        to: "/producao/ordens-corte",
+        label: "Ordens de Corte",
+        Icon: IconOrdemCorte,
+        modulo: "encaixes",
+      },
       { to: "/producao/encaixes", label: "Encaixes", Icon: IconEncaixes, modulo: "encaixes" },
     ],
   },
@@ -541,9 +560,7 @@ export default function App() {
   const isUsuarioConfigActive = location.pathname.startsWith("/usuario/");
   const [alertas, setAlertas] = useState([]);
   const [bannerFechado, setBannerFechado] = useState(false);
-  const { logoUrl: logoEmpresa } = useLogo();
   const { usuario, hasPermission, logout } = useAuth();
-  const logoParaExibir = logoEmpresa || appIcon;
   const isLoginRoute = location.pathname === "/login";
 
   const isSectionActive = (items) => items.some((item) => isPathActive(location.pathname, item.to));
@@ -624,29 +641,12 @@ export default function App() {
 
         {/* scrollable nav content */}
         <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0 }}>
+          {/* Marca do sistema — sempre SmartCut, mesmo com logo da empresa cadastrado. */}
           <div className={styles.logoWrap}>
-            {logoEmpresa ? (
-              <img
-                src={logoParaExibir}
-                alt="Logo da empresa"
-                className={styles.sidebarLogoImg}
-                style={{ objectFit: "contain", mixBlendMode: "multiply" }}
-              />
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <img
-                  src={logoParaExibir}
-                  alt="SmartCut"
-                  className={styles.sidebarLogoIcon}
-                  style={{ objectFit: "contain", mixBlendMode: "multiply" }}
-                />
-                <div>
-                  <div className={styles.logo}>
-                    <span className={styles.labelText}>SmartCut</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className={styles.brand}>
+              <img src={appIcon} alt="SmartCut" className={styles.sidebarLogoIcon} />
+              <span className={`${styles.logo} ${styles.labelText}`}>SmartCut</span>
+            </div>
           </div>
 
           {hasPermission(DASHBOARD_ITEM.modulo, "ver") && (
@@ -937,6 +937,22 @@ export default function App() {
               element={
                 <ProtectedRoute modulo="encaixe_rapido">
                   <EncaixeRapidoPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/producao/ordens-corte"
+              element={
+                <ProtectedRoute modulo="encaixes">
+                  <OrdensCortePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/producao/ordens-corte/:id"
+              element={
+                <ProtectedRoute modulo="encaixes">
+                  <OrdemCorteDetalhePage />
                 </ProtectedRoute>
               }
             />

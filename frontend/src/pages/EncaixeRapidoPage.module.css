@@ -706,3 +706,25 @@
     width: 100%;
   }
 }
+
+/* ---- Espacamento do botao "+ Adicionar Tecido" (era inline, OC-L) ---- */
+.btnAddComEspaco {
+  margin-top: 0.75rem;
+}
+
+.btnAddSemEspaco {
+  margin-top: 0.5rem;
+}
+
+/* Aproveitamento: a cor vem de data-nivel, nao de JS (limpeza OC-L). */
+.resultMetricValue[data-nivel="bom"] {
+  color: var(--sc-success-text);
+}
+
+.resultMetricValue[data-nivel="medio"] {
+  color: var(--color-primary);
+}
+
+.resultMetricValue[data-nivel="ruim"] {
+  color: var(--sc-danger-text);
+}

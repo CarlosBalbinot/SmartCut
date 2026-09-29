@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import styles from "./Modal.module.css";
 
 export default function Modal({ titulo, onClose, children, largura, largura95vw }) {
@@ -10,12 +11,14 @@ export default function Modal({ titulo, onClose, children, largura, largura95vw 
     return () => document.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  const overlayProps = useOverlayDismiss(onClose);
+
   const style = {};
   if (largura) style.maxWidth = largura;
   if (largura95vw) style.width = "95vw";
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} {...overlayProps}>
       <div
         className={styles.modal}
         style={Object.keys(style).length ? style : undefined}

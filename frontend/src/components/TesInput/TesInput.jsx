@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { validarTes } from "../../api/tes";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import styles from "./TesInput.module.css";
 
 /**
@@ -12,8 +13,17 @@ import styles from "./TesInput.module.css";
  *   tesList   — lista de TES já carregada pela página (modal + descrição)
  *   readOnly
  *   onChange  — ({ id, codigo }) => Promise; rejeitar mostra o erro no campo
+ *   variant   — "full" (padrão: ocupa a largura do contêiner) | "code":
+ *               campo estreito só com o código (~70px) + lupa; a descrição
+ *               fica no tooltip (cabeçalho do pedido, coluna TES dos itens)
  */
-export default function TesInput({ tesId, tesList = [], readOnly = false, onChange }) {
+export default function TesInput({
+  tesId,
+  tesList = [],
+  readOnly = false,
+  onChange,
+  variant = "full",
+}) {
   const atual = tesList.find((t) => t.id === tesId) || null;
   const codigoAtual = atual?.codigo || "";
 
@@ -95,15 +105,15 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
   };
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${variant === "code" ? styles.wrapCodigo : ""}`}>
       <div className={styles.campo}>
         <input
           ref={inputRef}
-          className={`${styles.input} ${erro ? styles.inputErro : ""}`}
+          className={`${styles.input} ${erro ? styles.inputErro : ""} sc-upper`}
           value={texto}
           readOnly={readOnly || salvando}
           tabIndex={readOnly ? -1 : 0}
-          title={erro || atual?.descricao || ""}
+          title={erro || (atual ? `${atual.codigo} — ${atual.descricao}` : "")}
           placeholder={readOnly ? "" : "CÓDIGO"}
           onChange={(e) => setTexto(e.target.value.toUpperCase())}
           onFocus={(e) => {
@@ -163,7 +173,7 @@ export default function TesInput({ tesId, tesList = [], readOnly = false, onChan
 function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
   const [busca, setBusca] = useState("");
   const [ativo, setAtivo] = useState(0);
-  const overlayMouseDown = useRef(null);
+  const overlayProps = useOverlayDismiss(() => onFechar());
   const listaRef = useRef(null);
 
   const q = busca.trim().toLowerCase();
@@ -199,17 +209,7 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
   };
 
   return ReactDOM.createPortal(
-    <div
-      className={styles.overlay}
-      onMouseDown={(e) => {
-        overlayMouseDown.current = e.target;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget)
-          onFechar();
-      }}
-      onKeyDown={handleKeyDown}
-    >
+    <div className={styles.overlay} {...overlayProps} onKeyDown={handleKeyDown}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>Selecionar TES</h2>
@@ -224,7 +224,7 @@ function TesModal({ tesList, selecionadoId, onSelecionar, onFechar }) {
             placeholder="BUSCAR POR CÓDIGO OU DESCRIÇÃO..."
             value={busca}
             onChange={(e) => {
-              setBusca(e.target.value.toUpperCase());
+              setBusca(e.target.value);
               setAtivo(0);
             }}
             autoFocus

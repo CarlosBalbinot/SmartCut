@@ -31,8 +31,10 @@ class EncaixeCreate(BaseModel):
 
 class EncaixeOut(BaseModel):
     id: uuid.UUID
-    pedido_id: uuid.UUID
-    tecido_id: uuid.UUID | None
+    # Opcional: encaixe sem pedido (pedido excluído → SET NULL, ou gerado
+    # fora de um pedido) não pode derrubar a listagem.
+    pedido_id: uuid.UUID | None = None
+    lote_id: uuid.UUID | None = None
     mapa_json: dict[str, Any] | None
     comp_metros: float | None
     peso_kg: float | None

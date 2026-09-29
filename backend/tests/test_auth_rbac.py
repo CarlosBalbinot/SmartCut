@@ -93,6 +93,15 @@ class TestLoginAdmin:
         assert res.status_code == 401
         assert res.json()["detail"] == "Credenciais inválidas"
 
+    def test_login_usuario_qualquer_caixa(self, client, admin):
+        for nome in ("ADMIN", "Admin", " admin "):
+            res = client.post("/api/v1/auth/login", json={"username": nome, "senha": SENHA})
+            assert res.status_code == 200, nome
+
+    def test_login_senha_diferencia_caixa(self, client, admin):
+        res = client.post("/api/v1/auth/login", json={"username": "admin", "senha": SENHA.swapcase()})
+        assert res.status_code == 401
+
     def test_login_usuario_inativo(self, client, admin, db_session):
         admin.ativo = False
         db_session.commit()

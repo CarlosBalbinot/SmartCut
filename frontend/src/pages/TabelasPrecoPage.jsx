@@ -522,7 +522,7 @@ export default function TabelasPrecoPage() {
               <label className={styles.field}>
                 <span>Nome</span>
                 <input
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   value={editForm.nome}
                   style={{ ...UPPER, ...(errEdit?.nome ? ERRO_CAMPO : {}) }}
                   title={errEdit?.nome || ""}
@@ -585,7 +585,7 @@ function ModalNovaTabela({ onClose, onCreated }) {
         <label className={styles.field}>
           <span>Nome</span>
           <input
-            className={styles.input}
+            className={`${styles.input} sc-upper`}
             value={form.nome}
             style={{ ...UPPER, ...(err?.nome ? ERRO_CAMPO : {}) }}
             title={err?.nome || ""}

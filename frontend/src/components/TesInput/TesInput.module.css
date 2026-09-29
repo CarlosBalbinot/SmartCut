@@ -12,6 +12,16 @@
   min-width: 0;
 }
 
+/* variant="code": ~70px de texto + lupa (padding direito 1.6rem). O input
+   estica na altura do .campo quando o contêiner define uma (cabeçalho). */
+.wrapCodigo {
+  width: 104px;
+  max-width: 100%;
+}
+.wrapCodigo .campo > .input {
+  align-self: stretch;
+}
+
 .input {
   width: 100%;
   min-width: 0;
@@ -21,7 +31,6 @@
   border-radius: var(--sc-radius-sm);
   background: var(--sc-input-bg);
   font-size: var(--sc-font-size-input);
-  text-transform: uppercase;
   text-overflow: ellipsis;
   color: var(--sc-text-primary);
   outline: none;
@@ -149,7 +158,6 @@
   border-radius: var(--sc-radius-sm);
   padding: 0.5rem 0.7rem;
   font-size: var(--sc-font-size-input);
-  text-transform: uppercase;
   color: var(--sc-text-primary);
   background: var(--sc-surface);
   outline: none;

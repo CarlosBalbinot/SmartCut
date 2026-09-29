@@ -1,0 +1,49 @@
+{#
+  Cabeçalho da empresa, comum a todos os relatórios (extraído do relVen001).
+  Uso no modelo: {% include "_comum/cabecalho_empresa.html" %}
+  Campos: empresa.* (nome, endereco, numero, complemento, bairro, cep, cidade,
+  uf, cnpj, ie, telefone, email, logo). Se o modelo já definiu "logo", usa ele;
+  senão, o logo das Configurações ou assets/logo.png.
+  Logo | nome e endereço | contato, centralizados na vertical; linhas vazias
+  não são geradas (sem buracos).
+#}
+{% set logo = logo if logo is defined else (empresa.logo or asset("logo.png")) %}
+<style>
+  .empresa { table-layout: fixed; width: 100%; border-collapse: collapse; }
+  .empresa td { padding: 1.5mm 0; vertical-align: middle; text-align: left; font-weight: normal; }
+  .empresa .logo { width: 40mm; padding-right: 3mm; }
+  .empresa .logo img { display: block; max-width: 37mm; max-height: 20mm; }
+  .empresa .contato { width: 48mm; padding-left: 3mm; }
+  .empresa .bloco-linhas div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empresa-nome { font-size: 9pt; font-weight: bold; }
+  .empresa.linha-cima { border-top: 0.5pt solid #000; }
+  .empresa.linha-baixo { border-bottom: 0.5pt solid #000; }
+</style>
+{% set end_empresa -%}
+  {{ empresa.endereco }}{% if empresa.numero %} {{ empresa.numero }}{% endif %}
+  {%- if empresa.complemento %} {{ empresa.complemento }}{% endif %}
+  {%- if empresa.bairro %} - {{ empresa.bairro }}{% endif %}
+  {%- if empresa.cep %} - CEP {{ empresa.cep | cep }}{% endif %}
+{%- endset %}
+{% set end_empresa = end_empresa | trim | trim("-") | trim %}
+<table class="empresa linha-cima linha-baixo">
+  <colgroup><col style="width: 40mm"><col><col style="width: 48mm"></colgroup>
+  <tr>
+    <td class="logo">{% if logo %}<img src="{{ logo }}" alt="">{% endif %}</td>
+    <td class="bloco-linhas">
+      {% if empresa.nome %}<div class="empresa-nome">{{ empresa.nome }}</div>{% endif %}
+      {% if end_empresa %}<div>{{ end_empresa }}</div>{% endif %}
+      {% if empresa.cidade %}<div>{{ empresa.cidade }}{% if empresa.uf %} - {{ empresa.uf }}{% endif %} - BRASIL</div>{% endif %}
+      {% if empresa.cnpj or empresa.ie %}
+      <div>
+        {%- if empresa.cnpj %}CNPJ: {{ empresa.cnpj | cnpj_cpf }}{% endif %}
+        {%- if empresa.ie %}{% if empresa.cnpj %} - {% endif %}IE: {{ empresa.ie }}{% endif -%}
+      </div>
+      {% endif %}
+    </td>
+    <td class="contato bloco-linhas">
+      {% if empresa.telefone %}<div>{{ empresa.telefone | telefone }}</div>{% endif %}
+      {% if empresa.email %}<div>{{ empresa.email }}</div>{% endif %}
+    </td>
+  </tr>
+</table>

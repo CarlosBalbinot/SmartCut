@@ -4,636 +4,528 @@
   font-size: 0.9rem;
 }
 
-.btnBack {
-  display: inline-block;
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  color: var(--sc-text-secondary);
-  font-size: 13px;
-  padding: 6px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-bottom: 0.75rem;
-}
-.btnBack:hover {
-  background: #f5f5f5;
-  color: var(--sc-text-primary);
-}
-
-/* ── Cabeçalho ── */
-
-/* Faixa do cabeçalho: título/status/cliente à esquerda, ações à direita.
-   flex-wrap: em tela estreita as ações descem para a linha de baixo e o
-   margin-left: auto mantém elas alinhadas à direita. */
-.cabecalho {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.5rem;
-  margin-bottom: 1.25rem;
-}
-
-/* Encolhe (razão social longa vira reticências) antes de empurrar as ações
-   para baixo; só quebra de linha quando nem 240px sobram. */
-.cabecalhoTitulo {
-  flex: 1 1 240px;
+/* ══ Layout: altura pelo conteúdo — a página rola pelo .content (App)
+   quando o card de itens (altura ajustável pela alça) passa da tela. ══ */
+.pagina,
+.itensArea {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 
-.tituloLinha,
-.actionBar {
-  min-height: 34px;
-}
-
-.tituloLinha {
+.compacto {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 12px;
 }
-
-.titulo {
-  margin: 0;
-  font-size: var(--sc-font-size-page-title);
-  font-weight: var(--sc-font-weight-title);
-  color: var(--sc-text-primary);
-  white-space: nowrap;
-}
-
-.clienteLinha {
-  margin: 0;
-  font-size: var(--sc-font-size-body);
-  color: var(--sc-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.actionBar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.actionBarSeparator {
-  width: 1px;
-  height: 20px;
-  background: var(--sc-border);
-  margin: 0 8px;
+.compacto > * {
   flex-shrink: 0;
 }
 
-.btnHeaderSecondary {
+/* ══ Barra do topo ══
+   Esquerda: link de volta em cima, título + status embaixo. Direita:
+   Imprimir ▾ | Salvar | Fechar | ⋯, alinhados à linha do título. */
+.faixa {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px var(--sc-compact-gap-x);
+}
+
+/* Mínimo = Voltar + título + status (+ "Alterações não salvas"). Sem
+   espaço para o mínimo, as ações descem para a linha de baixo em vez de
+   sobrepor. */
+.faixaEsq {
+  flex: 1 1 0;
+  min-width: min-content;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.identificacao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* "← Pedidos de Venda": link discreto, sublinha no hover. */
+.linkVoltar {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: var(--sc-compact-label-size);
+  color: var(--sc-text-muted);
+  cursor: pointer;
+}
+.linkVoltar:hover,
+.linkVoltar:focus-visible {
+  color: var(--sc-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.btnBack {
+  flex-shrink: 0;
+  height: var(--sc-compact-control-height);
+  padding: 0 12px;
   background: var(--sc-surface);
   border: 1px solid var(--sc-border-strong);
-  color: var(--sc-text-primary);
-  padding: 6px 14px;
-  font-size: 0.82rem;
   border-radius: var(--sc-radius-sm);
+  color: var(--sc-text-secondary);
+  font-size: var(--sc-compact-font-size);
   cursor: pointer;
 }
-.btnHeaderSecondary:hover {
+.btnBack:hover {
   background: var(--sc-surface-hover);
-}
-.btnHeaderSecondary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+  color: var(--sc-text-primary);
 }
 
-.btnHeaderCancelar {
-  background: var(--sc-surface);
-  border: 1px solid #dc2626;
-  color: #dc2626;
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  border-radius: var(--sc-radius-sm);
-  cursor: pointer;
-}
-.btnHeaderCancelar:hover {
-  background: #fee2e2;
-}
-.btnHeaderCancelar:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+/* Negrito (1/3): título do pedido. */
+.titulo {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  white-space: nowrap;
 }
 
-.btnHeaderFechar {
+/* Badge de status (somente leitura — troca é feita pelos botões de ação) */
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-block;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: var(--sc-compact-label-size);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.stAberto {
   background: var(--color-primary);
-  color: #fff;
-  border: none;
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  border-radius: var(--sc-radius-sm);
-  cursor: pointer;
-  transition: filter 0.15s;
+  color: var(--sc-action-text);
 }
-.btnHeaderFechar:hover {
-  filter: brightness(0.92);
+.stFechado {
+  background: var(--sc-success-text);
+  color: var(--sc-action-text);
 }
-.btnHeaderFechar:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .stCancelado {
   background: var(--sc-danger-bg);
   color: var(--sc-danger-text);
   border-color: var(--sc-danger-border);
 }
 
-/* Badge de status (somente leitura — troca é feita pelos botões de ação) */
-.statusBadge {
-  display: inline-block;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.3rem 0.85rem;
-  font-size: 0.78rem;
-  font-weight: 600;
+/* "Alterações não salvas" — âmbar, só com pendência. */
+.pendente {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--sc-border-warning);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-bg-warning);
+  color: var(--sc-text-warning);
+  font-size: var(--sc-compact-label-size);
+  white-space: nowrap;
 }
-.stAberto {
+
+.msgSalvo {
+  flex-shrink: 0;
+  font-size: var(--sc-compact-label-size);
+  color: var(--sc-success-text);
+  white-space: nowrap;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.btnHeaderSecondary,
+.btnHeaderPrimario {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--sc-compact-control-height);
+  padding: 0 14px;
+  font-size: var(--sc-compact-font-size);
+  border-radius: var(--sc-radius-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.btnHeaderPrimario:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnHeaderSecondary {
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  color: var(--sc-text-primary);
+}
+.btnHeaderSecondary:hover:not(:disabled) {
+  background: var(--sc-surface-hover);
+}
+/* Neutro desabilitado (ex.: Salvar Pedido sem pendência) — cinza, não
+   um primário esmaecido. */
+.btnHeaderSecondary:disabled {
+  background: var(--sc-bg-secondary);
+  border-color: var(--sc-border);
+  color: var(--sc-text-muted);
+  cursor: not-allowed;
+}
+
+.btnHeaderPrimario {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--sc-action-text);
+  border: 1px solid var(--color-primary);
 }
-.stFechado {
-  background: var(--sc-success-text);
-  color: #fff;
+.btnHeaderPrimario:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+/* "⋯": botão quadrado só com ícone. */
+.btnHeaderIcone {
+  justify-content: center;
+  width: var(--sc-compact-control-height);
+  padding: 0;
+  color: var(--sc-text-secondary);
 }
 
 .erroInline {
-  margin: -0.75rem 0 1rem;
-  padding: 0.5rem 0.75rem;
+  margin: 0;
+  padding: 6px 10px;
   background: var(--sc-danger-bg);
   border: 1px solid var(--sc-danger-border);
   border-radius: var(--sc-radius-sm);
-  font-size: 0.82rem;
+  font-size: var(--sc-compact-font-size);
   color: var(--sc-danger-text);
 }
 
-/* ── Abas (CSS puro) ── */
+.avisoWarn {
+  padding: 0.6rem 0.875rem;
+  background: var(--sc-bg-warning);
+  border: 1px solid var(--sc-border-warning);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-text-warning);
+}
+
+.avisoLinha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-compact-gap-x);
+  padding: 4px 10px;
+}
+
+/* ══ Card do cabeçalho: abas no topo, corpo em grid de 12 colunas ══
+   .compacto .headerCard: precisa vencer o padding do .sc-card global, que
+   carrega depois dos módulos e empataria com uma classe só. */
+.compacto .headerCard {
+  padding: 0;
+  /* + gap de 12px do .compacto = 24px até o card de itens */
+  margin-bottom: 12px;
+}
+
 .tabBar {
   display: flex;
-  gap: 0.25rem;
+  gap: 2px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--sc-border);
-  margin-bottom: 1.5rem;
 }
 
 .tabBtn {
+  height: 36px;
+  padding: 0 12px;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 8px 16px;
-  font-size: 0.82rem;
+  margin-bottom: -1px;
+  font-size: var(--sc-compact-font-size);
   font-weight: 500;
   color: var(--sc-text-secondary);
   cursor: pointer;
-  margin-bottom: -1px;
 }
 .tabBtn:hover {
   color: var(--sc-text-primary);
 }
-
 .tabBtnActive {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
+}
+
+/* Abas empilhadas numa célula só: a aba Dados (com os totais) fica sempre
+   montada — oculta com visibility nas outras abas — e define a altura
+   mínima do corpo; Transporte/Outros ficam por cima, alinhadas ao topo, com
+   o resto vazio. Acompanha o redimensionamento sem medir nada em JS, e o
+   estado da aba Dados (desconto geral etc.) nunca desmonta. */
+.cardCorpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: 16px 20px 20px;
+}
+.painel {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+/* visibility (não display): mantém a altura e tira do foco/Tab. */
+.painelOculto {
+  visibility: hidden;
+}
+
+/* Grid de 12 colunas na largura toda do card (sem o --sc-form-max-width
+   do .sc-grid-12 global): as linhas e spans continuam os mesmos, e a linha
+   de totais (6 × 2) termina na borda direita — VALOR TOTAL encostado nela.
+   Só neste card; o global continua limitado. */
+.cardCorpo :global(.sc-grid-12) {
+  max-width: none;
+}
+
+/* Abaixo de 1100px: 2 campos por linha, na ordem. Cliente ocupa a linha
+   inteira e cada linha do desenho de 12 colunas começa numa linha nova
+   (.inicioLinha), para não misturar campos de linhas diferentes. */
+@media (max-width: 1100px) {
+  .cardCorpo :global(.sc-grid-12) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cardCorpo :global(.sc-grid-12) > * {
+    grid-column: span 1;
+  }
+  .cardCorpo :global(.sc-grid-12) > .campoCliente {
+    grid-column: 1 / -1;
+  }
+  .cardCorpo :global(.sc-grid-12) > .inicioLinha {
+    grid-column: 1 / span 1;
+  }
+}
+
+/* Abas Transporte/Outros: linhas flex, alinhadas à esquerda, cada campo
+   com a largura da escala (.sc-field-*, variables.css). A aba Dados e os
+   totais usam o grid de 12 colunas (.sc-grid-12). */
+.linhas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-compact-gap-y);
+}
+
+.linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: var(--sc-compact-gap-y) var(--sc-compact-gap-x);
+}
+
+/* Campo: rótulo em cima, controle embaixo. No card, sem o gap/fonte do
+   .field dos modais. */
+.compacto .field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  font-size: inherit;
+  font-weight: 400;
+  color: inherit;
+}
+
+.rotulo {
+  margin-bottom: 4px;
+  font-size: var(--sc-compact-label-size);
   font-weight: 500;
-}
-
-.tabPanel {
-  margin-bottom: 1.5rem;
-}
-
-/* Labels de campo dentro das abas — mais discretos que o padrão de
-   modal (.field é compartilhado com os 3 modais desta página, então
-   o ajuste fica restrito a este escopo via seletor descendente). */
-.tabPanel .field {
-  font-size: 0.72rem;
+  line-height: 1.2;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--sc-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ── Campos compactos — padrão reaproveitado pelas abas Dados,
-   Transporte e Outros (grid denso, sem scroll) ── */
-.compactoCampos {
-  padding: 1rem;
+/* ── Parcelas: linha curta à direita, abaixo do VALOR TOTAL ──
+   Textos curtos ("3 parcelas", "Sem condição", "Sem valor", "Parcelas
+   indisponíveis") e nunca cortados: nowrap sem ellipsis; se a coluna for
+   mais estreita que o texto, ele avança para a esquerda (flex-end). */
+.parcelas {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.compactoCampos .field {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.parcelasMotivo {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: var(--sc-compact-label-size);
   color: var(--sc-text-muted);
-  gap: 3px;
+}
+.parcelasMotivo[title] {
+  cursor: help;
 }
 
-.compactoCampos .input {
-  height: 34px;
-  padding: 6px 10px;
-  font-size: 0.82rem;
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
+.linkParcelas {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: var(--sc-compact-label-size);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linkParcelas:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Valores: peso 400. Altura vem do .sc-compact (tokens).
+   Caixa (borda completa + fundo) só nos editáveis; .sc-readonly (global)
+   fica só com a linha de baixo. */
+.compacto .input {
   width: 100%;
+  height: var(--sc-compact-control-height);
+  padding: 0 10px;
+  font-size: var(--sc-compact-font-size);
+  font-weight: 400;
+  color: var(--sc-text-primary);
 }
-
-.compactoCampos .textarea {
-  height: auto;
-  min-height: 72px;
-  padding: 6px 10px;
-  font-size: 0.82rem;
+.compacto .input:not(:global(.sc-readonly)) {
   border: 1px solid var(--sc-border-strong);
   border-radius: var(--sc-radius-sm);
+  background: var(--sc-surface);
+}
+.compacto .input:not(:global(.sc-readonly)):focus {
+  border-color: var(--color-primary);
+}
+
+/* Desabilitado (pedido fechado / sem permissão): borda mais clara, sem
+   fundo cinza — não parece "tela desabilitada"; texto legível. */
+.compacto .input:disabled {
+  border-color: var(--sc-border);
+  color: var(--sc-text-primary);
+  cursor: default;
+}
+
+/* Data: placeholder nativo em minúsculas ("dd/mm/aaaa"). */
+.compacto input[type="date"].input {
+  text-transform: none;
+}
+
+/* Cliente: a razão social (sempre só leitura) sem fundo cinza. Com o
+   ClienteInput todo em só leitura, a caixa vira o padrão .sc-readonly
+   (só a linha de baixo). O código só leitura tem tabindex -1. */
+.compacto .campoCliente input {
+  background: transparent;
+}
+.compacto .campoCliente div:has(> input:first-child[tabindex="-1"]) {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--sc-border);
+  border-radius: 0;
+}
+
+/* TES no grid: o TesInput "code" tem 104px fixos — aqui ocupa a célula. */
+.campoTes > div {
+  width: 100%;
+  max-width: none;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selects de lista fixa (Indicador presença, Preço da tabela): texto como
+   vem, em caixa normal. Dados do usuário seguem em maiúsculas. */
+.compacto .semCaixaAlta {
+  text-transform: none;
+}
+
+/* Comissão com origem NENHUMA (vendedor sem comissão para a tabela). */
+.compacto .inputAlerta {
+  border-color: var(--sc-border-warning);
+  color: var(--sc-text-warning);
+}
+
+.compacto .textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 8px 10px;
+  line-height: 1.4;
   resize: vertical;
 }
 
-.grid3Compacto {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-}
+/* Negrito (2/3): razão social do cliente — no próprio ClienteInput. */
 
-.colSpan2 {
-  grid-column: span 2;
-}
-.colSpan3 {
-  grid-column: span 3;
-}
-
-/* Barra "Salvar Alterações" do cabeçalho (Dados/Transporte/Outros) */
-.headerSaveBar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding-top: 1rem;
+/* ── Totais: mesma cara de campo, separados por divisória sutil ── */
+.totais {
+  margin-top: var(--sc-compact-gap-y);
+  padding-top: var(--sc-compact-gap-y);
   border-top: 1px solid var(--sc-border);
 }
 
-.msgSalvo {
-  font-size: 0.82rem;
-  color: var(--sc-success-text);
+/* Negrito (3/3): VALOR TOTAL. Seletor longo de propósito: precisa vencer
+   o font-size da regra .sc-compact label > input (variables.css). */
+.compacto .totais .field > input.valorTotal {
+  font-size: 16px;
+  font-weight: 700;
+  text-align: right;
 }
 
-.tesSelectInline {
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  padding: 0.3rem 0.4rem;
-  font-size: 0.78rem;
-  color: var(--sc-text-primary);
+/* ── Popover de parcelas (abre abaixo do link, alinhado à direita) ── */
+.parcelasPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 280px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px 0;
   background: var(--sc-surface);
-  outline: none;
-}
-.tesSelectInline:disabled {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-muted);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+.parcelasLista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.parcelasLista li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--sc-compact-gap-x);
+  padding: 4px 12px;
+  font-size: var(--sc-compact-font-size);
+  font-variant-numeric: tabular-nums;
+  color: var(--sc-text-primary);
+}
+.parcelaValor {
+  text-align: right;
+}
+
+/* ══ Modais da página (cancelar pedido / emitir NF-e) — fora do
+   .sc-compact, visual padrão ══ */
 .textarea {
   resize: vertical;
   font-family: inherit;
   line-height: 1.5;
 }
 
-/* ── Seção itens ── */
-.sectionHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--sc-border);
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.sectionTitle {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--sc-text-primary);
-  margin: 0;
-}
-
-.sectionHeadRight {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.descontoHeader {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.descontoHeaderLabel {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--sc-text-muted);
-  white-space: nowrap;
-}
-
-.descontoInputSm {
-  width: 80px;
-  padding: 4px 8px;
-  font-size: 0.82rem;
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  color: var(--sc-text-primary);
-  background: var(--sc-surface);
-  outline: none;
-  box-sizing: border-box;
-}
-.descontoInputSm:focus {
-  border-color: var(--sc-action);
-}
-.descontoInputSm:disabled {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-muted);
-}
-
-.descontoUnit {
-  font-size: 0.78rem;
-  color: var(--sc-text-muted);
-}
-
-.btnAplicar {
-  padding: 5px 12px;
-  background: var(--sc-bg-secondary);
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--sc-text-primary);
-  cursor: pointer;
-}
-.btnAplicar:hover {
-  background: var(--sc-surface-hover);
-}
-.btnAplicar:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.headSeparator {
-  color: var(--sc-border-strong);
-  font-size: 0.9rem;
-}
-
-/* ── Card / Table — sc-card sem padding, tabela edge-to-edge ── */
-.tableCard {
-  padding: 0;
-  overflow: hidden;
-}
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-/* Larguras vêm do <colgroup> (useResizableColumns); a largura/min-width da
-   tabela é calculada no componente para a Descrição flexível (mín. 220px). */
-.table {
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.table th,
-.table td {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.table th {
-  position: relative;
-  text-align: left;
-  padding: 6px 8px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--sc-text-muted);
-  background: var(--sc-bg-secondary);
-  border-bottom: 1px solid var(--sc-border);
-  user-select: none;
-}
-
-.thNum {
-  text-align: right !important;
-}
-
-.resizeHandle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  background: transparent;
-  transition: background 0.1s;
-}
-.resizeHandle:hover,
-.resizeHandleAtivo {
-  background: var(--color-primary);
-}
-
-.table td {
-  padding: 6px 8px;
-  font-size: var(--sc-font-size-body);
-  color: var(--sc-text-primary);
-  border-bottom: 1px solid var(--sc-border);
-  vertical-align: middle;
-}
-
-/* First row of a grupo group gets a thicker top border */
-.trFirst td {
-  border-top: 2px solid var(--sc-border);
-}
-.trFirst:first-child td {
-  border-top: none;
-}
-
-.table tr:last-child td {
-  border-bottom: none;
-}
-.table tbody tr:hover td {
-  background: var(--sc-bg-secondary);
-}
-
-.tdRef {
-  border-right: 1px solid var(--sc-border);
-}
-
-.tdRef code {
-  display: inline-block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
-  font-family: monospace;
-  font-size: var(--sc-font-size-body);
-  background: var(--sc-bg-secondary);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-}
-
-.tdNome {
-  border-right: 1px solid var(--sc-border);
-}
-
-.tdTotal {
-  text-align: right;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-.tdTes .tesSelectInline {
-  width: 100%;
-}
-.tdAcao {
-  text-align: center;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-
-/* ── Célula editável (Qtde / P. Unit. / Desc.) ── */
-.tdEdit {
-  padding: 3px 4px !important;
-}
-
-.celulaEdit {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.inputCelula {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-sm);
-  background: var(--sc-input-bg);
-  font-size: var(--sc-font-size-input);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  text-transform: uppercase;
-  text-overflow: ellipsis;
-  color: var(--sc-text-primary);
-  outline: none;
-  transition:
-    border-color 0.1s,
-    box-shadow 0.1s;
-}
-.inputCelula:hover:not(:read-only) {
-  border-color: var(--sc-border-strong);
-}
-.inputCelula:focus:not(:read-only) {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-.inputCelula:read-only {
-  border-color: transparent;
-  background: transparent;
-  cursor: default;
-}
-
-.inputCelulaErro,
-.inputCelulaErro:hover,
-.inputCelulaErro:focus {
-  border-color: var(--sc-danger-text) !important;
-}
-
-.celulaErro {
-  margin-top: 2px;
-  font-size: var(--sc-font-size-small);
-  color: var(--sc-danger-text);
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Preço digitado à mão (preco_manual) — ponto discreto à esquerda. */
-.marcadorManual {
-  position: absolute;
-  top: 50%;
-  left: 5px;
-  width: 6px;
-  height: 6px;
-  margin-top: -3px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  z-index: 1;
-}
-.celulaEdit:has(.celulaErro) .marcadorManual {
-  top: 0.95rem;
-}
-
-.empty {
-  padding: 2rem;
-  text-align: center;
-  color: var(--sc-text-muted);
-  font-size: 0.875rem;
-}
-
-/* ── Totais ── */
-.totais {
-  border-top: 1px solid var(--sc-border);
-  padding: 1rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.35rem;
-}
-
-.totaisLinha {
-  display: flex;
-  gap: 2rem;
-  font-size: 0.9rem;
-  color: var(--sc-text-secondary);
-}
-
-.totaisLinha span:last-child {
-  min-width: 120px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.totaisTotal {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--sc-text-primary);
-  margin-top: 0.25rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--sc-border);
-}
-
-.btnExcluir {
-  background: none;
-  border: none;
-  color: var(--sc-text-muted);
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  line-height: 1;
-}
-.btnExcluir:hover {
-  background: var(--sc-danger-bg);
-  color: var(--sc-danger-text);
-}
-
-/* ── Buttons (.btnPrimary também usado dentro dos modais — não alterado) ── */
 .btnPrimary {
-  background: var(--sc-action);
+  background: var(--color-primary);
   color: var(--sc-action-text);
   border: none;
   padding: 0.5rem 1rem;
@@ -644,18 +536,13 @@
   transition: background 0.15s;
 }
 .btnPrimary:hover {
-  background: var(--sc-action-hover);
+  background: var(--color-primary-hover);
 }
 .btnPrimary:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* Secundário — branco, usado no cabeçalho (Reabrir Pedido) e também
-   dentro dos modais (Cancelar/Voltar/Fechar); background explícito
-   var(--sc-surface) fica idêntico ao "transparent" anterior dentro
-   dos modais (já brancos), mas corrige o cabeçalho, que fica sobre
-   var(--sc-content-bg) e não branco puro. */
 .btnSecondary {
   background: var(--sc-surface);
   color: var(--sc-text-primary);
@@ -670,8 +557,7 @@
   background: var(--sc-surface-hover);
 }
 
-/* Destrutivo — branco, borda e texto na cor de perigo. Compartilhado
-   com o botão de confirmação do modal de cancelamento. */
+/* Destrutivo — confirmação do modal de cancelamento. */
 .btnDanger {
   background: var(--sc-surface);
   color: var(--sc-danger-text);
@@ -702,7 +588,6 @@
   color: var(--sc-text-primary);
 }
 
-/* ── Overlay & Modals ── */
 .overlay {
   position: fixed;
   inset: 0;
@@ -713,19 +598,6 @@
   z-index: 200;
 }
 
-/* Medium modal — adicionar item */
-.modalMd {
-  background: var(--sc-surface);
-  border-radius: var(--sc-radius-lg);
-  width: 520px;
-  max-width: 95vw;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
-}
-
-/* Small modal — confirmar exclusão */
 .modalSm {
   background: var(--sc-surface);
   border-radius: var(--sc-radius-lg);
@@ -733,14 +605,6 @@
   max-width: 90vw;
   padding: 2rem;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
-}
-
-.modalHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 1.75rem 0;
-  flex-shrink: 0;
 }
 
 .modalTitle {
@@ -753,15 +617,6 @@
   margin: 0;
 }
 
-.modalBody {
-  overflow-y: auto;
-  padding: 1.25rem 1.75rem;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .modalActions {
   display: flex;
   gap: 0.75rem;
@@ -769,14 +624,6 @@
   padding: 1.25rem 1.75rem 1.5rem;
   border-top: 1px solid var(--sc-border);
   flex-shrink: 0;
-}
-
-/* ── Form shared ── */
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.875rem 1.25rem;
-  margin-bottom: 0.5rem;
 }
 
 .field {
@@ -801,27 +648,11 @@
   box-sizing: border-box;
 }
 .input:focus {
-  border-color: var(--sc-action);
+  border-color: var(--color-primary);
 }
 .input:disabled {
   background: var(--sc-bg-secondary);
   color: var(--sc-text-muted);
-}
-
-/* Só leitura com o mesmo visual de :disabled — readOnly (e não disabled)
-   para o tooltip (title) aparecer no hover em qualquer navegador. */
-.inputSomenteLeitura,
-.inputSomenteLeitura:focus {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-muted);
-  border-color: var(--sc-border-strong);
-  cursor: default;
-}
-
-/* Comissão com origem NENHUMA: borda amarela suave. */
-.compactoCampos .inputAlerta,
-.compactoCampos .inputAlerta:focus {
-  border-color: var(--sc-border-warning);
 }
 
 .aviso {
@@ -844,237 +675,9 @@
   color: var(--sc-danger-text);
 }
 
-/* ── Preview de parcelas (Aba Dados) ── */
-.parcelasPreview {
-  margin-top: 0.75rem;
-  padding: 0.6rem 0.875rem;
-  background: var(--sc-bg-secondary);
-  border: 1px solid var(--sc-border);
-  border-radius: var(--sc-radius-sm);
-}
-
-.parcelasPreviewTitulo {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--sc-text-secondary);
-  margin: 0 0 0.4rem;
-}
-
-.parcelasPreviewLista {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.82rem;
-  color: var(--sc-text-primary);
-  font-variant-numeric: tabular-nums;
-}
-
-.parcelasPreviewMsg {
-  font-size: 0.8rem;
-  color: var(--sc-text-muted);
-  margin: 0;
-}
-
 .confirmText {
   font-size: 0.9rem;
   color: var(--sc-text-secondary);
   line-height: 1.55;
   margin: 0 0 1.5rem;
-}
-
-/* ── Item modal specific ── */
-.searchWrap {
-  position: relative;
-}
-
-.autocomplete {
-  position: fixed;
-  background: var(--sc-surface);
-  border: 1px solid var(--sc-border-strong);
-  border-radius: var(--sc-radius-sm);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 1050;
-  list-style: none;
-  margin: 0;
-  padding: 0.25rem 0;
-  max-height: 300px;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-
-.acItem {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 0.875rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-.acItem:hover {
-  background: var(--sc-surface-hover);
-}
-
-.acIcone {
-  flex-shrink: 0;
-  width: 1.1rem;
-  text-align: center;
-  color: var(--sc-text-muted);
-}
-
-.acCod {
-  font-family: monospace;
-  font-size: 0.78rem;
-  background: var(--sc-bg-secondary);
-  padding: 0.1rem 0.35rem;
-  border-radius: 3px;
-  color: var(--sc-text-secondary);
-  flex-shrink: 0;
-}
-
-.acNome {
-  font-weight: 600;
-  color: var(--sc-text-primary);
-}
-
-.acNomeCol {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.acGrupo {
-  font-size: 0.72rem;
-  color: var(--sc-text-muted);
-}
-
-.precoHint {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--sc-text-muted);
-  margin-top: 0.2rem;
-}
-
-.itemTotal {
-  font-size: 0.9rem;
-  color: var(--sc-text-secondary);
-  padding: 0.625rem 0.875rem;
-  background: var(--sc-bg-secondary);
-  border-radius: var(--sc-radius-sm);
-  border: 1px solid var(--sc-border);
-}
-.itemTotal strong {
-  color: var(--sc-text-primary);
-  font-size: 1rem;
-}
-
-/* ── Modal "Adicionar Item" — largura por passo ── */
-.modalBusca {
-  width: 560px;
-}
-.modalGrade {
-  width: 820px;
-}
-.modalAvulso {
-  width: 480px;
-}
-
-.btnVoltarModal {
-  background: none;
-  border: none;
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--sc-text-secondary);
-  cursor: pointer;
-  padding: 0 0.3rem 0 0;
-  margin-right: 0.4rem;
-}
-.btnVoltarModal:hover {
-  color: var(--color-primary);
-}
-
-.avisoWarn {
-  padding: 0.6rem 0.875rem;
-  background: #fef9c3;
-  border: 1px solid #fde68a;
-  border-radius: var(--sc-radius-sm);
-  font-size: 0.82rem;
-  color: #854d0e;
-}
-
-/* ── Passo 2 — grade do produto pai ── */
-.gradeWrap {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  overflow-x: auto;
-}
-
-.gradeTable {
-  border-collapse: collapse;
-}
-.gradeTable th,
-.gradeTable td {
-  padding: 4px 6px;
-  text-align: center;
-}
-.gradeTable thead th {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--sc-text-muted);
-}
-.gradeTable tbody th {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--sc-text-secondary);
-  text-align: left;
-  padding-right: 0.5rem;
-  white-space: nowrap;
-}
-
-.gradeCell {
-  width: 60px;
-  padding: 4px 6px;
-  text-align: center;
-  font-size: 0.82rem;
-  border: 1px solid var(--sc-border);
-  border-radius: 4px;
-  color: var(--sc-text-primary);
-  background: var(--sc-surface);
-  outline: none;
-}
-.gradeCell:focus {
-  border-color: var(--sc-action);
-}
-.gradeCell:disabled {
-  background: var(--sc-bg-secondary);
-  color: var(--sc-text-muted);
-}
-
-.gradePrecoTable {
-  border-collapse: collapse;
-  flex-shrink: 0;
-}
-.gradePrecoTable th,
-.gradePrecoTable td {
-  padding: 4px 6px;
-  text-align: right;
-  font-size: 0.78rem;
-  white-space: nowrap;
-}
-.gradePrecoTable thead th {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--sc-text-muted);
-}
-.gradePrecoTable tbody td {
-  color: var(--color-primary);
-}
-.gradePrecoSemPreco {
-  color: var(--sc-danger-text, #dc2626) !important;
 }

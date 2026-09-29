@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { listar, criar, transmitir, cancelar, getDanfe, cartaCorrecao } from "../api/nfe";
 import { useAuth } from "../auth/useAuth";
 import styles from "./NotasFiscaisPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "fiscal_nfe";
 
@@ -39,6 +40,12 @@ const fmtMoeda = (v) =>
     : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
 export default function NotasFiscaisPage() {
+  const modalNovaOverlay = useOverlayDismiss(() => setModalNova(null));
+  const modalTransmitirOverlay = useOverlayDismiss(() => setModalTransmitir(null));
+  const modalCancelarOverlay = useOverlayDismiss(() => setModalCancelar(null));
+  const modalCartaOverlay = useOverlayDismiss(() => setModalCarta(null));
+  const modalDetalhesOverlay = useOverlayDismiss(() => setModalDetalhes(null));
+
   const { hasPermission } = useAuth();
   const [lista, setLista] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -293,7 +300,7 @@ export default function NotasFiscaisPage() {
 
       {/* ══ MODAL — Nova NF-e ══ */}
       {modalNova && (
-        <div className={styles.overlay} onClick={() => setModalNova(null)}>
+        <div className={styles.overlay} {...modalNovaOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Nova NF-e</h2>
@@ -369,7 +376,7 @@ export default function NotasFiscaisPage() {
 
       {/* ══ MODAL — Transmitir ══ */}
       {modalTransmitir && (
-        <div className={styles.overlay} onClick={() => setModalTransmitir(null)}>
+        <div className={styles.overlay} {...modalTransmitirOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Transmitir NF-e</h2>
@@ -412,7 +419,7 @@ export default function NotasFiscaisPage() {
 
       {/* ══ MODAL — Cancelar ══ */}
       {modalCancelar && (
-        <div className={styles.overlay} onClick={() => setModalCancelar(null)}>
+        <div className={styles.overlay} {...modalCancelarOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Cancelar NF-e</h2>
@@ -447,7 +454,7 @@ export default function NotasFiscaisPage() {
 
       {/* ══ MODAL — Carta de Correção ══ */}
       {modalCarta && (
-        <div className={styles.overlay} onClick={() => setModalCarta(null)}>
+        <div className={styles.overlay} {...modalCartaOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Carta de Correção</h2>
@@ -459,9 +466,11 @@ export default function NotasFiscaisPage() {
               <label className={styles.field}>
                 <span>Texto da correção</span>
                 <textarea
-                  className={styles.textarea}
+                  className={`${styles.textarea} sc-upper`}
                   value={modalCarta.texto}
-                  onChange={(e) => setModalCarta((m) => ({ ...m, texto: e.target.value }))}
+                  onChange={(e) =>
+                    setModalCarta((m) => ({ ...m, texto: e.target.value.toUpperCase() }))
+                  }
                   placeholder="Descreva a correção (mínimo 15 caracteres)…"
                 />
               </label>
@@ -490,7 +499,7 @@ export default function NotasFiscaisPage() {
 
       {/* ══ MODAL — Detalhes ══ */}
       {modalDetalhes && (
-        <div className={styles.overlay} onClick={() => setModalDetalhes(null)}>
+        <div className={styles.overlay} {...modalDetalhesOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>

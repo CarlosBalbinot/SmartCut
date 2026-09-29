@@ -11,6 +11,7 @@ from fastapi import (
 )
 from jwt import InvalidTokenError
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -187,9 +188,12 @@ def setup(body: SetupInput, response: Response, db: Session = Depends(get_db)):
 @router_admin.post("/login")
 def login_admin(body: LoginAdminInput, request: Request, response: Response, db: Session = Depends(get_db)):
     ip = request.client.host if request.client else "desconhecido"
+    # Usuário sem diferenciar maiúsculas/minúsculas (lower nos dois lados);
+    # a senha continua diferenciando.
+    username = body.username.strip().lower()
 
     # Item 1.3: bloqueio temporário após falhas consecutivas (força bruta).
-    restante = rate_limit.verificar_bloqueio(body.username, ip)
+    restante = rate_limit.verificar_bloqueio(username, ip)
     if restante:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -198,14 +202,14 @@ def login_admin(body: LoginAdminInput, request: Request, response: Response, db:
 
     usuario = (
         db.query(UsuarioSistema)
-        .filter(UsuarioSistema.username == body.username, UsuarioSistema.ativo == True)  # noqa: E712 — expressão SQL
+        .filter(func.lower(UsuarioSistema.username) == username, UsuarioSistema.ativo == True)  # noqa: E712 — expressão SQL
         .first()
     )
     if not usuario or not usuario_service.verificar_senha(body.senha, usuario.senha_hash):
-        rate_limit.registrar_falha(body.username, ip)
+        rate_limit.registrar_falha(username, ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
 
-    rate_limit.registrar_sucesso(body.username, ip)
+    rate_limit.registrar_sucesso(username, ip)
 
     usuario.ultimo_acesso = datetime.now(timezone.utc)
     db.commit()

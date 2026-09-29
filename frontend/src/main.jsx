@@ -4,7 +4,6 @@ import { HashRouter, useLocation } from "react-router-dom";
 import App from "./App";
 import AppVendedor from "./AppVendedor";
 import { ToastProvider } from "./contexts/ToastContext";
-import { LogoProvider } from "./contexts/LogoContext";
 import { AuthProvider } from "./auth/AuthContext";
 import "./index.css";
 
@@ -16,9 +15,7 @@ function Root() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <LogoProvider>
-          <App />
-        </LogoProvider>
+        <App />
       </ToastProvider>
     </AuthProvider>
   );

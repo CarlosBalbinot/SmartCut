@@ -209,6 +209,24 @@
 .metricas {
   font-size: 0.78rem;
   color: var(--sc-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.metricaItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.metricaRotulo {
+  color: var(--sc-text-muted);
+}
+
+.metricaValor {
+  color: var(--sc-text-secondary);
+  font-weight: 600;
 }
 
 .cardBodyRight {
@@ -303,4 +321,39 @@
   border-color: var(--sc-danger-text, #dc2626);
   color: var(--sc-danger-text, #dc2626);
   background-color: var(--sc-danger-bg, #fee2e2);
+}
+
+/* ---- Titulo de grupo (OC / sem OC) e links - extraidos do JSX (OC-L) ---- */
+.grupoTitulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 1.25rem 0 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-secondary);
+}
+
+.grupoLink {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.grupoLink:hover {
+  text-decoration: underline;
+}
+
+.grupoSuave {
+  font-weight: 400;
+  text-transform: none;
+}
+
+.grupoContagem {
+  color: var(--sc-text-muted);
+}
+
+.pillSemSublinhado {
+  text-decoration: none;
 }

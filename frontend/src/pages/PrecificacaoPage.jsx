@@ -602,10 +602,12 @@ export default function PrecificacaoPage() {
               <div className={styles.campo}>
                 <label className={styles.label}>Tamanho</label>
                 <input
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   placeholder="P, M, G, 38, 40…"
                   value={form.tamanho}
-                  onChange={(e) => setForm((f) => ({ ...f, tamanho: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, tamanho: e.target.value.toUpperCase() }))
+                  }
                 />
               </div>
             )}

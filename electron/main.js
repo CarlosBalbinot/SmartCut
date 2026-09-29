@@ -39,7 +39,10 @@ const CSP_PRODUCAO = [
   "img-src 'self' data: blob: http://127.0.0.1:8000",
   "connect-src 'self' http://127.0.0.1:8000",
   "font-src 'self' data:",
-  "object-src 'none'",
+  // RL5: o visualizador de relatórios mostra o PDF (blob: criado pelo
+  // próprio app) num iframe com o visualizador de PDF do Chromium.
+  "frame-src 'self' blob:",
+  "object-src 'self' blob:",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
@@ -114,6 +117,8 @@ function createWindow() {
       // servido pelo protocolo app:// (não file://), então não há motivo
       // para desativar a segurança do Chromium.
       webSecurity: true,
+      // RL5: visualizador de PDF do Chromium no iframe do RelatorioViewer.
+      plugins: true,
     },
   });
 
@@ -203,7 +208,7 @@ ipcMain.handle('token-set', (_e, token, escopo) => {
   }
 });
 
-ipcMain.handle('token-get', (_e, escopo) => {
+function lerToken(escopo) {
   try {
     const caminho = tokenPath(escopo);
     if (!fs.existsSync(caminho)) return null;
@@ -215,7 +220,9 @@ ipcMain.handle('token-get', (_e, escopo) => {
     log(`erro ao ler token: ${e.message}`);
     return null;
   }
-});
+}
+
+ipcMain.handle('token-get', (_e, escopo) => lerToken(escopo));
 
 ipcMain.handle('token-clear', (_e, escopo) => {
   try {
@@ -223,6 +230,160 @@ ipcMain.handle('token-clear', (_e, escopo) => {
     if (fs.existsSync(caminho)) fs.unlinkSync(caminho);
   } catch (e) {
     log(`erro ao limpar token: ${e.message}`);
+  }
+});
+
+// ── Relatórios (RL2) ──────────────────────────────────────────────────────
+// O HTML vem do backend (/relatorios/{codigo}/html — modelo Jinja2 da pasta
+// relatorios/), é carregado numa janela oculta sem JavaScript e impresso em
+// PDF A4 com o rodapé padrão (data/hora, código do relatório, página X/Y).
+// RL5: o PDF volta para o renderer (RelatorioViewer mostra num iframe, na
+// mesma aba) ou, com acao "salvar", é gravado onde o usuário escolher.
+// Erro: { ok: false, status, erro, modelo } — modelo = { arquivo, linha,
+// mensagem } quando o erro é no .html (422).
+const BACKEND_URL = 'http://127.0.0.1:8000';
+
+const doisDigitos = (n) => String(n).padStart(2, '0');
+
+function rodapeRelatorio(codigo) {
+  const agora = new Date();
+  const data = `${doisDigitos(agora.getDate())}/${doisDigitos(agora.getMonth() + 1)}/${agora.getFullYear()}`;
+  const hora = `${doisDigitos(agora.getHours())}:${doisDigitos(agora.getMinutes())}`;
+  // Chromium desenha o rodapé na margem inferior do @page (10mm), sem o
+  // CSS da página: fonte e tamanho precisam vir inline.
+  const coluna = 'flex: 1; white-space: nowrap;';
+  return `
+    <div style="width: 100%; margin: 0 10mm; display: flex; font-family: Tahoma, Verdana, sans-serif; font-size: 7pt; color: #000;">
+      <span style="${coluna} text-align: left;">Data: ${data}&nbsp;&nbsp;Hora: ${hora}</span>
+      <span style="${coluna} text-align: center;">${codigo}</span>
+      <span style="${coluna} text-align: right;">Página <span class="pageNumber"></span>/<span class="totalPages"></span></span>
+    </div>`;
+}
+
+// RL6: o modelo não roda JavaScript — a CSP abaixo entra no <head> do HTML
+// antes de carregar. O JS da janela oculta fica ligado só para o main
+// process verificar as imagens (executeJavaScript não é barrado pela CSP).
+const CSP_MODELO = `<meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'">`;
+
+function bloquearScriptsDoModelo(html) {
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, (tag) => `${tag}${CSP_MODELO}`);
+  // Sem <head>: logo após o doctype (antes dele o documento cairia em quirks mode).
+  const doctype = html.match(/^\s*<!doctype[^>]*>/i);
+  return doctype ? doctype[0] + CSP_MODELO + html.slice(doctype[0].length) : CSP_MODELO + html;
+}
+
+// did-finish-load (fim do loadFile) garante as imagens baixadas, não
+// decodificadas: sem esperar o decode, o printToPDF pode sair sem o logo.
+const SCRIPT_IMAGENS = 'Promise.all(Array.from(document.images, (img) => img.decode().catch(() => null))).then(() => true)';
+const LIMITE_IMAGENS_MS = 3000;
+
+async function aguardarImagens(janela, codigo) {
+  let timer = null;
+  const limite = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(false), LIMITE_IMAGENS_MS);
+  });
+  try {
+    const ok = await Promise.race([janela.webContents.executeJavaScript(SCRIPT_IMAGENS, true), limite]);
+    if (!ok) log(`relatório ${codigo}: imagens não decodificaram em ${LIMITE_IMAGENS_MS} ms — gerando assim mesmo`);
+  } catch (e) {
+    log(`relatório ${codigo}: falha ao verificar imagens: ${e.message}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function gerarPdfRelatorio(codigo, id, variante) {
+  // Entram na URL e no rodapé: só o formato esperado.
+  if (!/^[A-Za-z0-9_]+$/.test(String(codigo || ''))) {
+    return { ok: false, status: 400, erro: 'Código de relatório inválido.' };
+  }
+
+  const params = new URLSearchParams({ id: String(id || '') });
+  if (variante) params.set('variante', String(variante));
+  const url = `${BACKEND_URL}/api/v1/relatorios/${codigo}/html?${params}`;
+
+  const tempDir = path.join(app.getPath('temp'), 'smartcut');
+  fs.mkdirSync(tempDir, { recursive: true });
+  const htmlPath = path.join(tempDir, `${Date.now()}-${codigo}.html`);
+  let janela = null;
+
+  try {
+    const token = lerToken('admin');
+    const resp = await net.fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!resp.ok) {
+      const json = await resp.json().catch(() => ({}));
+      const detalhe = typeof json.detail === 'string' ? json.detail : null;
+      return {
+        ok: false,
+        status: resp.status,
+        erro: json.error || detalhe || `Erro ${resp.status} ao gerar o relatório.`,
+        modelo: json.modelo || null,
+      };
+    }
+    fs.writeFileSync(htmlPath, bloquearScriptsDoModelo(await resp.text()), 'utf8');
+
+    // Janela oculta só para impressão, em sandbox; scripts do modelo
+    // barrados pela CSP_MODELO; navegação e popups bloqueados.
+    janela = new BrowserWindow({
+      show: false,
+      width: 794,
+      height: 1123,
+      webPreferences: { javascript: true, sandbox: true, contextIsolation: true },
+    });
+    janela.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    janela.webContents.on('will-navigate', (ev) => ev.preventDefault());
+    await janela.loadFile(htmlPath);
+    await aguardarImagens(janela, codigo);
+
+    const pdf = await janela.webContents.printToPDF({
+      pageSize: 'A4',
+      landscape: false,
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: true,
+      headerTemplate: '<span></span>',
+      footerTemplate: rodapeRelatorio(codigo),
+    });
+    // <title> do modelo (ex.: "ORÇAMENTO 000001"): título do visualizador.
+    return { ok: true, pdf, titulo: janela.webContents.getTitle() || codigo };
+  } catch (e) {
+    log(`relatório ${codigo}: erro ao gerar PDF: ${e.message}`);
+    return { ok: false, status: 0, erro: 'Não foi possível gerar o PDF do relatório.' };
+  } finally {
+    // close(), não destroy(): destroy() derruba o serviço de rede do
+    // Chromium e a impressão seguinte falha com ERR_FAILED.
+    if (janela && !janela.isDestroyed()) janela.close();
+    fs.rm(htmlPath, { force: true }, () => {});
+  }
+}
+
+// O preload repassa só (codigo, id, variante): as opções chegam no 3º
+// argumento como objeto { variante, acao, nomeSugerido } (string = só a
+// variante, formato do RL2).
+//   sem acao        → { ok: true, pdf (bytes), titulo }
+//   acao "salvar"   → diálogo "Salvar como"; { ok: true, caminho } ou
+//                     { ok: true, cancelado: true }
+ipcMain.handle('relatorio:gerar-pdf', async (event, codigo, id, opcoes) => {
+  const { variante = null, acao = null, nomeSugerido = null } =
+    opcoes && typeof opcoes === 'object' ? opcoes : { variante: opcoes };
+
+  const res = await gerarPdfRelatorio(codigo, id, variante);
+  if (!res.ok || acao !== 'salvar') return res;
+
+  const nome = String(nomeSugerido || `${res.titulo || codigo}.pdf`).replace(/[\/:*?"<>|]/g, '_');
+  const janelaPai = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog(janelaPai, {
+      title: 'Salvar PDF',
+      defaultPath: path.join(app.getPath('documents'), nome),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (canceled || !filePath) return { ok: true, cancelado: true };
+    fs.writeFileSync(filePath, res.pdf);
+    return { ok: true, caminho: filePath };
+  } catch (e) {
+    log(`relatório ${codigo}: erro ao salvar PDF: ${e.message}`);
+    return { ok: false, status: 0, erro: 'Não foi possível salvar o PDF.' };
   }
 });
 

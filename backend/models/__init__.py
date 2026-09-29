@@ -4,6 +4,7 @@ from .grupo_molde import GrupoMolde
 from .molde import Molde
 from .pedido import PedidoVenda, ItemPedido
 from .encaixe import Encaixe, Defeito
+from .ordem_corte import OrdemCorte, ItemOrdemCorte, OrdemCorteTecido
 from .precificacao import ConfiguracaoEmpresa, ConfiguracaoCustosFixos, Precificacao
 from .financeiro import (
     ContaBancaria,
@@ -37,6 +38,9 @@ __all__ = [
     "ItemPedido",
     "Encaixe",
     "Defeito",
+    "OrdemCorte",
+    "ItemOrdemCorte",
+    "OrdemCorteTecido",
     "ConfiguracaoEmpresa",
     "ConfiguracaoCustosFixos",
     "Precificacao",

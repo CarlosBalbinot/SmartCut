@@ -12,6 +12,9 @@ const CSP_DEV = [
   "img-src 'self' data: blob:",
   "connect-src 'self' ws: http://127.0.0.1:8000",
   "font-src 'self' data:",
+  // RL5: PDF do relatório (blob:) no iframe do RelatorioViewer.
+  "frame-src 'self' blob:",
+  "object-src 'self' blob:",
 ].join("; ");
 
 export default defineConfig({

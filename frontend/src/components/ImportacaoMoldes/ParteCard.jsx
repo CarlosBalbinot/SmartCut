@@ -93,9 +93,9 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
       <div className={styles.header}>
         <span className={styles.parteNum}>Parte {index + 1}</span>
         <input
-          className={styles.nomeInput}
+          className={`${styles.nomeInput} sc-upper`}
           value={parte.nome}
-          onChange={(e) => set("nome", e.target.value)}
+          onChange={(e) => set("nome", e.target.value.toUpperCase())}
           placeholder="Frente, Costa, Manga..."
         />
         <button

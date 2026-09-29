@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -58,16 +58,37 @@ class LoteTecido(Base):
 
 
 class ConsumoLote(Base):
+    """Movimentação de peso de um lote. CONSUMO baixa o estoque na conclusão
+    da OC; ESTORNO devolve o peso (reabertura). `peso_consumido_kg` é a
+    quantidade que mexeu no estoque — é o que o estorno devolve, então
+    guarda o valor real e não o planejado."""
+
     __tablename__ = "consumos_lote"
+    __table_args__ = (Index("ix_consumos_lote_ordem_corte", "ordem_corte_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     lote_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("lotes_tecido.id"), nullable=False)
+    # Ordem de Corte que gerou a movimentação (null p/ movimentos antigos,
+    # que vinham só do pedido/encaixe).
+    ordem_corte_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ordens_corte.id", ondelete="SET NULL"), nullable=True
+    )
     encaixe_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("encaixes.id", ondelete="SET NULL"), nullable=True
     )
     pedido_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
     )
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False, default="CONSUMO")
+    # CONSUMO que este ESTORNO desfaz (null em CONSUMO). Sem isso, concluir
+    # e reabrir em ciclo não dá para saber qual baixa foi devolvida: cada
+    # reabertura precisa inverter exatamente a última conclusão.
+    estorno_de_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("consumos_lote.id", ondelete="SET NULL"), nullable=True
+    )
+    # kg que saiu (CONSUMO) ou que voltou (ESTORNO) do estoque.
+    peso_consumido_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
+    # Planejado pela OC no momento da conclusão (referência do conferência).
     peso_planejado_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     peso_retalho_kg: Mapped[float | None] = mapped_column(Numeric(10, 3))
     data_consumo: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

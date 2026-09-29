@@ -69,6 +69,9 @@ Database: smartcut
 - Usar neutros: preto, branco, cinzas
 - Cor principal do sistema: a definir (será aplicada em botões, badges, destaques)
 - Não criar novas variáveis CSS sem verificar as existentes em `global.css`
+- Maiúsculo real: campos em maiúsculo usam .sc-upper +
+  onChange .toUpperCase() (nunca só CSS). Exceções sem
+  maiúsculo: login, senhas, e-mail, URLs, buscas
 
 ### PDFs:
 - Sempre A4

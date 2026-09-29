@@ -1,4 +1,4 @@
-/* ── Campo: [código/CNPJ] [razão social] [lupa]  Ver cadastro ── */
+/* ── Campo: [código] [razão social] [lupa] ── */
 .linha {
   display: flex;
   align-items: center;
@@ -42,7 +42,6 @@
   padding: 6px 10px;
   font-size: 0.82rem;
   font-family: inherit;
-  text-transform: uppercase;
   color: var(--sc-text-primary);
 }
 .codigo::placeholder,
@@ -51,24 +50,29 @@
   font-size: 0.75rem;
 }
 
+/* ~80px: cabe "000127"; CNPJ digitado rola dentro do campo. */
 .codigo {
-  flex: 0 0 170px;
+  flex: 0 0 80px;
   border-right: 1px solid var(--sc-border);
 }
 .codigo:read-only {
   cursor: default;
 }
 
+/* Razão social: todo o resto, em negrito; reticências só se não couber
+   (o nome completo + CNPJ + cidade/UF ficam no tooltip). */
 .razao {
   flex: 1;
   padding-right: 34px;
   text-overflow: ellipsis;
   background: var(--sc-bg-secondary);
-  color: var(--sc-text-secondary);
+  font-weight: 600;
+  color: var(--sc-text-primary);
   cursor: default;
 }
+/* Só leitura mantém a lupa (abre o cadastro) — mesmo recuo. */
 .campoLeitura .razao {
-  padding-right: 10px;
+  padding-right: 34px;
 }
 
 /* Erro: campo levemente vermelho; mensagem só no tooltip (title). */
@@ -98,23 +102,6 @@
 .lupa:hover {
   color: var(--color-primary);
   background: var(--sc-surface-hover);
-}
-
-.verCadastro {
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 0.78rem;
-  text-transform: none;
-  letter-spacing: normal;
-  color: var(--sc-text-muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.verCadastro:hover {
-  color: var(--color-primary);
 }
 
 /* ── Modal de busca (mesmo padrão do TesInput) ── */
@@ -174,6 +161,62 @@
   flex: 1;
 }
 
+/* ── Cliente atual (topo do modal) ── */
+.atual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--sc-border);
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-bg-secondary);
+}
+
+.atualInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.atualRotulo {
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+}
+
+.atualNome {
+  font-size: var(--sc-font-size-body);
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atualDetalhe {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-secondary);
+}
+
+.atual .btnSecondary {
+  flex-shrink: 0;
+}
+
+.trocarRotulo {
+  margin: 0 0 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+}
+
 .busca {
   width: 100%;
   box-sizing: border-box;
@@ -182,7 +225,6 @@
   border-radius: var(--sc-radius-sm);
   padding: 0.5rem 0.7rem;
   font-size: var(--sc-font-size-input);
-  text-transform: uppercase;
   color: var(--sc-text-primary);
   background: var(--sc-surface);
   outline: none;

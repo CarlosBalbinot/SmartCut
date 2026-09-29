@@ -20,6 +20,8 @@ import ImportarXMLModal from "./ImportarXMLModal";
 import DocumentosFiscaisCard from "./DocumentosFiscaisCard";
 import { useAuth } from "../../auth/useAuth";
 import styles from "./comprasVendas.module.css";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
+import { upperOnChange } from "../../utils/uppercase";
 
 const MODULO = "financeiro_compras";
 
@@ -118,6 +120,10 @@ const totalGrupo = (itens) =>
   itens.reduce((acc, item) => acc + (parseFloat(item.valor_total) || 0), 0);
 
 export default function ComprasFinanceiro() {
+  const modalOverlay = useOverlayDismiss(() => !saving && setModal(false));
+  const modalEditarOverlay = useOverlayDismiss(() => !savingEdit && setModalEditar(false));
+  const modalExcluirOverlay = useOverlayDismiss(() => !deleting && setModalExcluir(false));
+
   const { hasPermission } = useAuth();
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -737,7 +743,7 @@ export default function ComprasFinanceiro() {
 
       {/* ── Modal: Nova Compra ── */}
       {modal && (
-        <div className={styles.overlay} onClick={() => !saving && setModal(false)}>
+        <div className={styles.overlay} {...modalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <FormularioCompraVenda
               tipo="compra"
@@ -752,7 +758,7 @@ export default function ComprasFinanceiro() {
 
       {/* ── Modal: Editar Compra ── */}
       {modalEditar && editandoCompra && (
-        <div className={styles.overlay} onClick={() => !savingEdit && setModalEditar(false)}>
+        <div className={styles.overlay} {...modalEditarOverlay}>
           <div
             className={`${styles.modal} ${styles.modalLarge}`}
             onClick={(e) => e.stopPropagation()}
@@ -773,17 +779,17 @@ export default function ComprasFinanceiro() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Fornecedor *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={editForm.fornecedor}
-                    onChange={setEF("fornecedor")}
+                    onChange={upperOnChange(setEF("fornecedor"))}
                   />
                 </label>
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={editForm.descricao}
-                    onChange={setEF("descricao")}
+                    onChange={upperOnChange(setEF("descricao"))}
                     placeholder="Descrição opcional"
                   />
                 </label>
@@ -1049,7 +1055,7 @@ export default function ComprasFinanceiro() {
 
       {/* ── Modal: Confirmar Exclusão ── */}
       {modalExcluir && excluindoCompra && (
-        <div className={styles.overlay} onClick={() => !deleting && setModalExcluir(false)}>
+        <div className={styles.overlay} {...modalExcluirOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Excluir Compra</h2>

@@ -9,18 +9,13 @@ async function request(path, options = {}) {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.error || json.detail || `Erro ${res.status}`);
+    const err = new Error(json.error || json.detail || `Erro ${res.status}`);
+    err.status = res.status;
+    // Salvar em lote (422): [{ item_id | ref_temp, campo, mensagem }] por item.
+    err.erros = json.erros || null;
+    throw err;
   }
   return json.data;
-}
-
-async function requestBlob(path) {
-  const res = await apiFetch(`${BASE_URL}${path}`);
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(json.error || json.detail || `Erro ${res.status}`);
-  }
-  return res.blob();
 }
 
 export const getPedidosVenda = (tipo) => request(`/pedidos-venda/${tipo ? `?tipo=${tipo}` : ""}`);
@@ -32,6 +27,11 @@ export const getPedidoVenda = (id) => request(`/pedidos-venda/${id}`);
 
 export const updatePedidoVenda = (id, payload) =>
   request(`/pedidos-venda/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+
+// "Salvar Pedido": cabeçalho + itens pendentes ({ ...cabeçalho, itens: lote })
+// numa transação só — item inválido → 422 com err.erros e nada é gravado.
+export const salvarPedidoVenda = (id, payload) =>
+  request(`/pedidos-venda/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 
 export const updateStatusPedidoVenda = (id, status) =>
   request(`/pedidos-venda/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
@@ -50,6 +50,11 @@ export const updateItemPedidoVenda = (id, itemId, payload) =>
     body: JSON.stringify(payload),
   });
 
+// "Salvar Itens": lote { criar, atualizar, remover } — tudo ou nada.
+// Devolve o pedido completo (itens e totais recalculados).
+export const salvarItensPedidoVenda = (id, lote) =>
+  request(`/pedidos-venda/${id}/itens`, { method: "PUT", body: JSON.stringify(lote) });
+
 export const removeItemPedidoVenda = (id, itemId) =>
   request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "DELETE" });
 
@@ -59,10 +64,6 @@ export const getProximoNumeroPedidoVenda = (tipo = "venda") =>
 export const gerarEncaixePedidoVenda = (id) =>
   request(`/pedidos-venda/${id}/gerar-encaixe`, { method: "POST" });
 
-export const getPdfPedidoVenda = (id) => requestBlob(`/pedidos-venda/${id}/pdf-pedido`);
-
-export const getPdfCortePedidoVenda = (id) => requestBlob(`/pedidos-venda/${id}/pdf-corte`);
-
 // Reprecifica todos os itens pela tabela (inclusive preço manual).
 // Devolve { pedido, sem_preco: [referências que mantiveram o preço] }.
 export const aplicarTabelaPedidoVenda = (id, tabela_preco_id) =>
@@ -70,6 +71,22 @@ export const aplicarTabelaPedidoVenda = (id, tabela_preco_id) =>
     method: "POST",
     body: JSON.stringify({ tabela_preco_id }),
   });
+
+// Prévia das parcelas (cálculo só no backend). Todos opcionais — o que não
+// vier usa o gravado no pedido. primeiroVencimento "" = sem 1º vencimento;
+// total = total local quando há itens/cabeçalho pendentes.
+// Devolve [{ numero, total_parcelas, vencimento: "YYYY-MM-DD", valor }].
+export const getParcelasPreviewPedidoVenda = (
+  id,
+  { primeiroVencimento, total, condicaoPagamentoId } = {}
+) => {
+  const params = new URLSearchParams();
+  if (primeiroVencimento != null) params.set("primeiro_vencimento", primeiroVencimento);
+  if (total != null) params.set("total", Number(total).toFixed(2));
+  if (condicaoPagamentoId) params.set("condicao_pagamento_id", condicaoPagamentoId);
+  const qs = params.toString();
+  return request(`/pedidos-venda/${id}/parcelas-preview${qs ? `?${qs}` : ""}`);
+};
 
 // Métricas de vendas do dashboard executivo (PainelFinanceiro).
 export const getMetricasPedidosVenda = (dataInicio, dataFim) => {

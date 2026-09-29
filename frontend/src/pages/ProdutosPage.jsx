@@ -4,6 +4,8 @@ import * as tabelasGradeApi from "../api/tabelasGrade";
 import { atualizarSku, excluirSku } from "../api/gradeProdutos";
 import { useAuth } from "../auth/useAuth";
 import styles from "./ProdutosPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
+import { upperOnChange } from "../utils/uppercase";
 
 const MODULO = "cadastros_produtos";
 
@@ -172,6 +174,9 @@ function formParaPayload(f) {
 const money = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function ProdutosPage() {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+  const fecharModalSkuOverlay = useOverlayDismiss(() => fecharModalSku());
+
   const { hasPermission } = useAuth();
   const [produtos, setProdutos] = useState([]);
   const [grupos, setGrupos] = useState([]);
@@ -501,7 +506,7 @@ export default function ProdutosPage() {
       </div>
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modal.id ? "Editar Produto" : "Novo Produto"}</h2>
@@ -558,7 +563,7 @@ export default function ProdutosPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição *</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.descricao}
                       onChange={setFUpper("descricao")}
                     />
@@ -566,24 +571,28 @@ export default function ProdutosPage() {
 
                   <label className={styles.field}>
                     <span>Tipo</span>
-                    <input className={styles.input} value={modal.tipo} onChange={setF("tipo")} />
+                    <input
+                      className={`${styles.input} sc-upper`}
+                      value={modal.tipo}
+                      onChange={setFUpper("tipo")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Almoxarifado</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.almoxarifado}
-                      onChange={setF("almoxarifado")}
+                      onChange={setFUpper("almoxarifado")}
                     />
                   </label>
 
                   <label className={styles.field}>
                     <span>Unidade *</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.unidade}
-                      onChange={setF("unidade")}
+                      onChange={setFUpper("unidade")}
                       placeholder="PC, UN…"
                     />
                   </label>
@@ -591,18 +600,18 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Segunda Unidade</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.segunda_unidade}
-                      onChange={setF("segunda_unidade")}
+                      onChange={setFUpper("segunda_unidade")}
                     />
                   </label>
 
                   <label className={styles.field}>
                     <span>Tipo Conversão</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.tipo_conversao}
-                      onChange={setF("tipo_conversao")}
+                      onChange={setFUpper("tipo_conversao")}
                     />
                   </label>
 
@@ -620,7 +629,7 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Classe</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.classe}
                       onChange={setFUpper("classe")}
                     />
@@ -629,7 +638,7 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Marca</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.marca}
                       onChange={setFUpper("marca")}
                     />
@@ -693,9 +702,9 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Tipo Código de Barras</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.tipo_cod_barras}
-                      onChange={setF("tipo_cod_barras")}
+                      onChange={setFUpper("tipo_cod_barras")}
                     />
                   </label>
 
@@ -872,9 +881,9 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Cód. Tributário ISS</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.cod_trib_iss}
-                      onChange={setF("cod_trib_iss")}
+                      onChange={setFUpper("cod_trib_iss")}
                     />
                   </label>
 
@@ -977,18 +986,18 @@ export default function ProdutosPage() {
                   <label className={styles.field}>
                     <span>Conta Contábil</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.conta_contabil}
-                      onChange={setF("conta_contabil")}
+                      onChange={setFUpper("conta_contabil")}
                     />
                   </label>
 
                   <label className={styles.field}>
                     <span>Cód. FCI</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.cod_fci}
-                      onChange={setF("cod_fci")}
+                      onChange={setFUpper("cod_fci")}
                     />
                   </label>
 
@@ -1038,10 +1047,10 @@ export default function ProdutosPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Informações Adicionais</span>
                     <textarea
-                      className={`${styles.input} ${styles.textarea}`}
+                      className={`${styles.input} ${styles.textarea} sc-upper`}
                       rows={3}
                       value={modal.inf_adicionais}
-                      onChange={setF("inf_adicionais")}
+                      onChange={setFUpper("inf_adicionais")}
                     />
                   </label>
                 </div>
@@ -1063,7 +1072,7 @@ export default function ProdutosPage() {
       )}
 
       {modalSku && (
-        <div className={styles.overlay} onClick={fecharModalSku}>
+        <div className={styles.overlay} {...fecharModalSkuOverlay}>
           <div className={`${styles.modal} ${styles.modalSm}`} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Editar SKU</h2>
@@ -1077,9 +1086,11 @@ export default function ProdutosPage() {
                 <label className={styles.field}>
                   <span>Código</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modalSku.codigo}
-                    onChange={(e) => setModalSku((m) => ({ ...m, codigo: e.target.value }))}
+                    onChange={(e) =>
+                      setModalSku((m) => ({ ...m, codigo: e.target.value.toUpperCase() }))
+                    }
                   />
                 </label>
                 <label className={styles.field}>
@@ -1132,6 +1143,8 @@ export default function ProdutosPage() {
 }
 
 function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
+  const overlayProps = useOverlayDismiss(() => onFechar());
+
   const { hasPermission } = useAuth();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1194,7 +1207,7 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
   };
 
   return (
-    <div className={styles.overlay} onClick={onFechar}>
+    <div className={styles.overlay} {...overlayProps}>
       <div className={`${styles.modal} ${styles.modalSm}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>Grupos de Produto</h2>
@@ -1211,16 +1224,16 @@ function ModalGruposProduto({ grupos, onFechar, onAtualizado }) {
                 <label className={styles.field}>
                   <span>Nome</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={form.nome}
-                    onChange={setF("nome")}
+                    onChange={upperOnChange(setF("nome"))}
                     placeholder="Ex: Legging"
                   />
                 </label>
                 <label className={styles.field}>
                   <span>Prefixo</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={form.prefixo}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, prefixo: e.target.value.toUpperCase().slice(0, 4) }))

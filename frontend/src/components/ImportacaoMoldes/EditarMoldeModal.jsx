@@ -66,9 +66,9 @@ export default function EditarMoldeModal({
           <div className={styles.campo}>
             <label className={styles.label}>Nome *</label>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              onChange={(e) => setNome(e.target.value.toUpperCase())}
               required
             />
           </div>
@@ -76,9 +76,9 @@ export default function EditarMoldeModal({
           <div className={styles.campo}>
             <label className={styles.label}>Parte</label>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={peca}
-              onChange={(e) => setPeca(e.target.value)}
+              onChange={(e) => setPeca(e.target.value.toUpperCase())}
               placeholder="Frente, Costa, Manga..."
             />
           </div>

@@ -443,3 +443,71 @@
     bottom: 0;
   }
 }
+
+/* ---- Estilos extraidos do JSX (limpeza OC-L) ---- */
+.linkApoio {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.navDesabilitado {
+  opacity: 0.4;
+}
+
+/* Aproveitamento: a cor vem de data-nivel, nao de JS (limpeza OC-L). */
+.metricValor[data-nivel="bom"] {
+  color: var(--sc-success-text);
+}
+
+.metricValor[data-nivel="medio"] {
+  color: var(--color-primary);
+}
+
+.metricValor[data-nivel="ruim"] {
+  color: var(--sc-danger-text);
+}
+
+/* Paleta do canvas por peca - as mesmas cores do PALETTE (EncaixePage.jsx). */
+.pecaCor0 {
+  background-color: #3b82f6;
+}
+.pecaCor1 {
+  background-color: #ef4444;
+}
+.pecaCor2 {
+  background-color: #10b981;
+}
+.pecaCor3 {
+  background-color: #f59e0b;
+}
+.pecaCor4 {
+  background-color: #8b5cf6;
+}
+.pecaCor5 {
+  background-color: #ec4899;
+}
+.pecaCor6 {
+  background-color: #14b8a6;
+}
+.pecaCor7 {
+  background-color: #f97316;
+}
+.pecaCor8 {
+  background-color: #6366f1;
+}
+.pecaCor9 {
+  background-color: #84cc16;
+}
+.pecaCor10 {
+  background-color: #06b6d4;
+}
+.pecaCor11 {
+  background-color: #a855f7;
+}
+.pecaCor12 {
+  background-color: #f43f5e;
+}
+.pecaCor13 {
+  background-color: #22c55e;
+}

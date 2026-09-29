@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { getCompra, getVendaFinanceira, uploadAnexo } from "../../api/financeiro";
 import styles from "./comprasVendas.module.css";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
+import { upperOnChange } from "../../utils/uppercase";
 
 const hojeISO = () => new Date().toISOString().split("T")[0];
 
@@ -52,6 +54,8 @@ export default function ImportarXMLModal({
   onFechar,
   onConcluido,
 }) {
+  const onFecharOverlay = useOverlayDismiss(() => !importando && onFechar());
+
   const isCompra = tipo === "compra";
   const parceiroLabel = isCompra ? "Fornecedor" : "Cliente";
   const campoParceiro = isCompra ? "fornecedor" : "cliente";
@@ -177,7 +181,7 @@ export default function ImportarXMLModal({
   };
 
   return (
-    <div className={styles.overlay} onClick={() => !importando && onFechar()}>
+    <div className={styles.overlay} {...onFecharOverlay}>
       <div className={`${styles.modal} ${styles.modalLarge}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>
@@ -256,9 +260,9 @@ export default function ImportarXMLModal({
                             <label className={`${styles.field} ${styles.fieldFull}`}>
                               <span>{parceiroLabel}</span>
                               <input
-                                className={styles.input}
+                                className={`${styles.input} sc-upper`}
                                 value={it.fornecedor}
-                                onChange={updateCampo(it.key, "fornecedor")}
+                                onChange={upperOnChange(updateCampo(it.key, "fornecedor"))}
                               />
                             </label>
                             <label className={styles.field}>

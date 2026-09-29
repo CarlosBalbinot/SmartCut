@@ -1,5 +1,6 @@
 import { FileText, FileX, Download } from "lucide-react";
 import styles from "./comprasVendas.module.css";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 
 /*
  * Props:
@@ -30,11 +31,13 @@ export default function DocumentosFiscaisCard({
   onAnexarDocumento,
   onFechar,
 }) {
+  const overlayProps = useOverlayDismiss(() => onFechar());
+
   const temDocumento = !!anexoXml || !!anexoNf;
 
   return (
     <>
-      <div className={styles.docCardBackdrop} onClick={onFechar} />
+      <div className={styles.docCardBackdrop} {...overlayProps} />
       <div
         className={styles.docCard}
         style={{ left: anchor.x, top: anchor.y }}

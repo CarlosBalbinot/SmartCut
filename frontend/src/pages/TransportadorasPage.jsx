@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { transportadorasApi } from "../api/transportadoras";
 import { useAuth } from "../auth/useAuth";
 import styles from "./TransportadorasPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "cadastros_transportadoras";
 
@@ -61,6 +62,8 @@ const VAZIO = {
 };
 
 export default function TransportadorasPage() {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+
   const { hasPermission } = useAuth();
   const [transportadoras, setTransportadoras] = useState([]);
   const [busca, setBusca] = useState("");
@@ -372,7 +375,7 @@ export default function TransportadorasPage() {
       </div>
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>
@@ -423,7 +426,7 @@ export default function TransportadorasPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome *</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.nome}
                       onChange={setFUpper("nome")}
                       placeholder="Razão social ou nome"
@@ -433,7 +436,7 @@ export default function TransportadorasPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.nome_fantasia}
                       onChange={setFUpper("nome_fantasia")}
                     />
@@ -442,7 +445,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Placa</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.placa}
                       onChange={(e) =>
                         setModal((m) => ({ ...m, placa: e.target.value.toUpperCase() }))
@@ -504,9 +507,9 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Estado (UF)</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.estado}
-                      onChange={setF("estado")}
+                      onChange={setFUpper("estado")}
                       placeholder="SP"
                       maxLength={2}
                     />
@@ -537,13 +540,13 @@ export default function TransportadorasPage() {
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
                       <input
-                        className={styles.input}
+                        className={`${styles.input} sc-upper`}
                         value={modal.endereco}
                         onChange={setFUpper("endereco")}
                         placeholder="Rua, Av…"
                       />
                       <input
-                        className={`${styles.input} ${styles.inputNumero}`}
+                        className={`${styles.input} ${styles.inputNumero} sc-upper`}
                         value={modal.numero}
                         onChange={setFUpper("numero")}
                         placeholder="Nº"
@@ -554,7 +557,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Complemento</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.complemento}
                       onChange={setFUpper("complemento")}
                     />
@@ -563,7 +566,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Bairro</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.bairro}
                       onChange={setFUpper("bairro")}
                     />
@@ -572,7 +575,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Município</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.municipio}
                       onChange={setFUpper("municipio")}
                     />
@@ -631,7 +634,11 @@ export default function TransportadorasPage() {
 
                   <label className={styles.field}>
                     <span>RG/IE</span>
-                    <input className={styles.input} value={modal.rg_ie} onChange={setF("rg_ie")} />
+                    <input
+                      className={`${styles.input} sc-upper`}
+                      value={modal.rg_ie}
+                      onChange={setFUpper("rg_ie")}
+                    />
                   </label>
 
                   <label className={styles.field}>
@@ -673,7 +680,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Home-Page</span>
                     <input
-                      className={`${styles.input} no-uppercase`}
+                      className={styles.input}
                       value={modal.homepage}
                       onChange={setF("homepage")}
                       placeholder="https://…"
@@ -683,7 +690,7 @@ export default function TransportadorasPage() {
                   <label className={styles.field}>
                     <span>Contato</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.contato}
                       onChange={setFUpper("contato")}
                       placeholder="Nome do contato"

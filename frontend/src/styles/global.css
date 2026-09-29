@@ -93,27 +93,11 @@ textarea {
   font-family: inherit;
 }
 
-/* ── Maiúsculo automático em campos de texto livre ──────────────────
-   Efeito visual imediato; o valor salvo no state é uppercased à parte,
-   no onChange de cada campo (ver src/utils/uppercase.js). */
-input[type="text"],
-input[type="search"],
-input:not([type]),
-input[type="tel"],
-input[type="number"],
-textarea {
+/* ── Maiúsculo ──────────────────────────────────────────────────────
+   Nunca maiúsculo só visual: campo com .sc-upper TAMBÉM converte o valor
+   no onChange (.toUpperCase()). Os demais ficam exatamente como digitados. */
+.sc-upper {
   text-transform: uppercase;
-}
-
-input[type="email"],
-input[type="password"],
-input[type="url"],
-input[type="date"],
-input[type="time"],
-input[type="datetime-local"],
-.no-uppercase,
-.no-uppercase input {
-  text-transform: none;
 }
 
 /* ── Scrollbar minimalista ── */
@@ -169,6 +153,22 @@ input[type="datetime-local"],
   border-radius: var(--sc-card-radius);
   box-shadow: var(--sc-card-shadow);
   padding: 1.25rem 1.5rem;
+}
+
+/* Campo só leitura (calculado/informativo): sem caixa, só a linha de
+   baixo — diferencia de editável sem parecer desabilitado. Altura e
+   padding vêm da classe do input (mesma altura dos editáveis). Nos
+   módulos, a regra de borda/fundo do input deve excluir .sc-readonly. */
+.sc-readonly,
+.sc-readonly:focus {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--sc-border);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--sc-text-primary);
+  outline: none;
+  cursor: default;
 }
 
 /* Sem padding próprio: o wrapper .content (App.module.css) já aplica

@@ -4,6 +4,7 @@ import { createCliente, getCliente, getClienteByCnpj, updateCliente } from "../.
 import { buscarEnderecoPorCep } from "../../utils/cepIbge";
 // Mesmo visual da tela de Clientes: o CSS é o da página, reaproveitado.
 import styles from "../../pages/ClientesPage.module.css";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 
 const formatCnpj = (v) => {
   const d = v.replace(/\D/g, "").slice(0, 14);
@@ -123,13 +124,18 @@ function formDoCliente(c) {
  *   valoresIniciais  — campos pré-preenchidos no novo (ex.: { cnpj })
  *   onClose          — fechar sem salvar
  *   onSaved(cliente) — cliente salvo (resposta da API); o pai fecha o modal
+ *   somenteLeitura   — só consulta (ex.: pedido fora de Aberto): campos
+ *                      desabilitados e sem "Salvar"
  */
 export default function ClienteFormModal({
   clienteId = null,
   valoresIniciais = null,
   onClose,
   onSaved,
+  somenteLeitura = false,
 }) {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+
   const [modal, setModal] = useState(null);
   const [aba, setAba] = useState("dados");
   const [abaErro, setAbaErro] = useState(null);
@@ -336,7 +342,7 @@ export default function ClienteFormModal({
   // herda fonte/uppercase do label do formulário do pedido.
   if (!modal) {
     return ReactDOM.createPortal(
-      <div className={styles.overlay} onClick={fecharModal}>
+      <div className={styles.overlay} {...fecharModalOverlay}>
         <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
           <div className={styles.modalHead}>
             <h2 className={styles.modalTitle}>Editar Cadastro</h2>
@@ -356,10 +362,16 @@ export default function ClienteFormModal({
   }
 
   return ReactDOM.createPortal(
-    <div className={styles.overlay} onClick={fecharModal}>
+    <div className={styles.overlay} {...fecharModalOverlay}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <h2 className={styles.modalTitle}>{modal.id ? "Editar Cadastro" : "Novo Cadastro"}</h2>
+          <h2 className={styles.modalTitle}>
+            {somenteLeitura
+              ? "Cadastro do Cliente"
+              : modal.id
+                ? "Editar Cadastro"
+                : "Novo Cadastro"}
+          </h2>
           <button className={styles.btnClose} onClick={fecharModal}>
             ×
           </button>
@@ -379,473 +391,498 @@ export default function ClienteFormModal({
         </div>
 
         <div className={styles.modalBody}>
-          {aba === "dados" && (
-            <div className={styles.fieldGrid}>
-              <label className={styles.field}>
-                <span>Tipo Registro</span>
-                <select
-                  className={styles.input}
-                  value={modal.tipo_registro}
-                  onChange={setF("tipo_registro")}
-                >
-                  <option value="cliente">Cliente</option>
-                  <option value="fornecedor">Fornecedor</option>
-                  <option value="ambos">Ambos</option>
-                </select>
-              </label>
+          {/* fieldset disabled: modo leitura desabilita todos os campos e
+              botões do corpo de uma vez (as abas ficam fora, navegáveis). */}
+          <fieldset
+            disabled={somenteLeitura}
+            style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+          >
+            {aba === "dados" && (
+              <div className={styles.fieldGrid}>
+                <label className={styles.field}>
+                  <span>Tipo Registro</span>
+                  <select
+                    className={styles.input}
+                    value={modal.tipo_registro}
+                    onChange={setF("tipo_registro")}
+                  >
+                    <option value="cliente">Cliente</option>
+                    <option value="fornecedor">Fornecedor</option>
+                    <option value="ambos">Ambos</option>
+                  </select>
+                </label>
 
-              <label className={styles.field}>
-                <span>Tipo Pessoa</span>
-                <select
-                  className={styles.input}
-                  value={modal.tipo_pessoa}
-                  onChange={setF("tipo_pessoa")}
-                >
-                  <option value="juridica">Jurídica</option>
-                  <option value="fisica">Física</option>
-                </select>
-              </label>
+                <label className={styles.field}>
+                  <span>Tipo Pessoa</span>
+                  <select
+                    className={styles.input}
+                    value={modal.tipo_pessoa}
+                    onChange={setF("tipo_pessoa")}
+                  >
+                    <option value="juridica">Jurídica</option>
+                    <option value="fisica">Física</option>
+                  </select>
+                </label>
 
-              <label className={styles.field}>
-                <span>Código</span>
-                <input
-                  className={styles.input}
-                  value={modal.codigo || "Gerado automaticamente"}
-                  readOnly
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Situação</span>
-                <select className={styles.input} value={modal.situacao} onChange={setF("situacao")}>
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo</option>
-                </select>
-              </label>
-
-              <label className={styles.field}>
-                <span>Grupo</span>
-                <input
-                  className={styles.input}
-                  value={modal.grupo}
-                  onChange={setF("grupo")}
-                  placeholder="Opcional"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Data Cadastro</span>
-                <input
-                  className={styles.input}
-                  value={
-                    modal.data_cadastro
-                      ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR")
-                      : "Hoje"
-                  }
-                  readOnly
-                />
-              </label>
-
-              <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Razão Social *</span>
-                <input
-                  className={styles.input}
-                  value={modal.razao_social}
-                  onChange={setFUpper("razao_social")}
-                  placeholder="Nome ou razão social"
-                />
-              </label>
-
-              <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Nome Fantasia</span>
-                <input
-                  className={styles.input}
-                  value={modal.nome_fantasia}
-                  onChange={setFUpper("nome_fantasia")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Tipo Fiscal</span>
-                <select
-                  className={styles.input}
-                  value={modal.tipo_fiscal}
-                  onChange={setF("tipo_fiscal")}
-                >
-                  <option value="consumidor_final">Consumidor Final</option>
-                  <option value="contribuinte">Contribuinte</option>
-                  <option value="nao_contribuinte">Não Contribuinte</option>
-                </select>
-              </label>
-            </div>
-          )}
-
-          {aba === "fiscal" && (
-            <div className={styles.fieldGrid}>
-              {/* CNPJ + Consultar */}
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <span>CNPJ</span>
-                <div className={styles.cnpjRow}>
+                <label className={styles.field}>
+                  <span>Código</span>
                   <input
                     className={styles.input}
-                    value={modal.cnpj}
-                    onChange={(e) => {
-                      setModal((m) => ({ ...m, cnpj: formatCnpj(e.target.value) }));
-                      setCnpjStatus(null);
-                      setClienteExistente(null);
-                    }}
-                    placeholder="00.000.000/0000-00"
-                    maxLength={18}
+                    value={modal.codigo || "Gerado automaticamente"}
+                    readOnly
                   />
-                  <button
-                    className={styles.btnConsultar}
-                    onClick={() => consultarCnpj(false)}
-                    disabled={cnpjStatus === "consultando"}
-                  >
-                    {cnpjStatus === "consultando" ? "Consultando…" : "Consultar Receita Federal"}
-                  </button>
-                </div>
-              </div>
+                </label>
 
-              {/* Banners de status CNPJ */}
-              {cnpjStatus === "invalido" && (
-                <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
-                  CNPJ inválido — informe 14 dígitos numéricos.
-                </div>
-              )}
-              {cnpjStatus === "preenchido" && (
-                <div className={`${styles.banner} ${styles.bannerSucesso} ${styles.fieldFull}`}>
-                  Dados preenchidos pela Receita Federal. Revise antes de salvar.
-                </div>
-              )}
-              {cnpjStatus === "nao_encontrado" && (
-                <div className={`${styles.banner} ${styles.bannerAviso} ${styles.fieldFull}`}>
-                  CNPJ não encontrado na Receita Federal. Preencha manualmente.
-                </div>
-              )}
-              {cnpjStatus === "erro" && (
-                <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
-                  Erro ao consultar. Verifique sua conexão ou preencha manualmente.
-                </div>
-              )}
-              {cnpjStatus === "ja_cadastrado" && clienteExistente && (
-                <div className={`${styles.banner} ${styles.bannerInfo} ${styles.fieldFull}`}>
-                  <span>
-                    <strong>Cadastro já existente:</strong> {clienteExistente.razao_social}
-                  </span>
-                  <div className={styles.bannerBtns}>
-                    <button className={styles.btnBannerPrimary} onClick={carregarExistente}>
-                      Carregar dados cadastrados
-                    </button>
+                <label className={styles.field}>
+                  <span>Situação</span>
+                  <select
+                    className={styles.input}
+                    value={modal.situacao}
+                    onChange={setF("situacao")}
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo</option>
+                  </select>
+                </label>
+
+                <label className={styles.field}>
+                  <span>Grupo</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.grupo}
+                    onChange={setFUpper("grupo")}
+                    placeholder="Opcional"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Data Cadastro</span>
+                  <input
+                    className={styles.input}
+                    value={
+                      modal.data_cadastro
+                        ? new Date(modal.data_cadastro).toLocaleDateString("pt-BR")
+                        : "Hoje"
+                    }
+                    readOnly
+                  />
+                </label>
+
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>Razão Social *</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.razao_social}
+                    onChange={setFUpper("razao_social")}
+                    placeholder="Nome ou razão social"
+                  />
+                </label>
+
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>Nome Fantasia</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.nome_fantasia}
+                    onChange={setFUpper("nome_fantasia")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Tipo Fiscal</span>
+                  <select
+                    className={styles.input}
+                    value={modal.tipo_fiscal}
+                    onChange={setF("tipo_fiscal")}
+                  >
+                    <option value="consumidor_final">Consumidor Final</option>
+                    <option value="contribuinte">Contribuinte</option>
+                    <option value="nao_contribuinte">Não Contribuinte</option>
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {aba === "fiscal" && (
+              <div className={styles.fieldGrid}>
+                {/* CNPJ + Consultar */}
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>CNPJ</span>
+                  <div className={styles.cnpjRow}>
+                    <input
+                      className={styles.input}
+                      value={modal.cnpj}
+                      onChange={(e) => {
+                        setModal((m) => ({ ...m, cnpj: formatCnpj(e.target.value) }));
+                        setCnpjStatus(null);
+                        setClienteExistente(null);
+                      }}
+                      placeholder="00.000.000/0000-00"
+                      maxLength={18}
+                    />
                     <button
-                      className={styles.btnBannerSecondary}
-                      onClick={() => consultarCnpj(true)}
+                      className={styles.btnConsultar}
+                      onClick={() => consultarCnpj(false)}
+                      disabled={cnpjStatus === "consultando"}
                     >
-                      Continuar consultando
+                      {cnpjStatus === "consultando" ? "Consultando…" : "Consultar Receita Federal"}
                     </button>
                   </div>
                 </div>
-              )}
 
-              <label className={styles.field}>
-                <span>CPF</span>
-                <input
-                  className={styles.input}
-                  value={modal.cpf}
-                  onChange={setF("cpf")}
-                  placeholder="000.000.000-00"
-                />
-              </label>
+                {/* Banners de status CNPJ */}
+                {cnpjStatus === "invalido" && (
+                  <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
+                    CNPJ inválido — informe 14 dígitos numéricos.
+                  </div>
+                )}
+                {cnpjStatus === "preenchido" && (
+                  <div className={`${styles.banner} ${styles.bannerSucesso} ${styles.fieldFull}`}>
+                    Dados preenchidos pela Receita Federal. Revise antes de salvar.
+                  </div>
+                )}
+                {cnpjStatus === "nao_encontrado" && (
+                  <div className={`${styles.banner} ${styles.bannerAviso} ${styles.fieldFull}`}>
+                    CNPJ não encontrado na Receita Federal. Preencha manualmente.
+                  </div>
+                )}
+                {cnpjStatus === "erro" && (
+                  <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
+                    Erro ao consultar. Verifique sua conexão ou preencha manualmente.
+                  </div>
+                )}
+                {cnpjStatus === "ja_cadastrado" && clienteExistente && (
+                  <div className={`${styles.banner} ${styles.bannerInfo} ${styles.fieldFull}`}>
+                    <span>
+                      <strong>Cadastro já existente:</strong> {clienteExistente.razao_social}
+                    </span>
+                    <div className={styles.bannerBtns}>
+                      <button className={styles.btnBannerPrimary} onClick={carregarExistente}>
+                        Carregar dados cadastrados
+                      </button>
+                      <button
+                        className={styles.btnBannerSecondary}
+                        onClick={() => consultarCnpj(true)}
+                      >
+                        Continuar consultando
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-              <label className={styles.field}>
-                <span>Inscrição Estadual (IE)</span>
-                <input className={styles.input} value={modal.ie} onChange={setFUpper("ie")} />
-              </label>
-
-              <label className={styles.field}>
-                <span>Inscrição Municipal</span>
-                <input
-                  className={styles.input}
-                  value={modal.inscricao_municipal}
-                  onChange={setFUpper("inscricao_municipal")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>RG</span>
-                <input className={styles.input} value={modal.rg} onChange={setFUpper("rg")} />
-              </label>
-
-              <label className={styles.field}>
-                <span>ID Estrangeiro</span>
-                <input
-                  className={styles.input}
-                  value={modal.id_estrangeiro}
-                  onChange={setF("id_estrangeiro")}
-                />
-              </label>
-            </div>
-          )}
-
-          {aba === "endereco" && (
-            <div className={styles.fieldGrid}>
-              <div className={styles.field}>
-                <span>CEP</span>
-                <div className={styles.cnpjRow}>
+                <label className={styles.field}>
+                  <span>CPF</span>
                   <input
                     className={styles.input}
-                    value={modal.cep}
-                    onChange={(e) => {
-                      setModal((m) => ({ ...m, cep: formatCep(e.target.value) }));
-                      setCepStatus(null);
-                    }}
-                    placeholder="00000-000"
-                    maxLength={9}
+                    value={modal.cpf}
+                    onChange={setF("cpf")}
+                    placeholder="000.000.000-00"
                   />
-                  <button
-                    className={styles.btnConsultar}
-                    onClick={consultarCep}
-                    disabled={cepStatus === "consultando"}
-                  >
-                    {cepStatus === "consultando" ? "Consultando…" : "Buscar CEP"}
-                  </button>
-                </div>
+                </label>
+
+                <label className={styles.field}>
+                  <span>Inscrição Estadual (IE)</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.ie}
+                    onChange={setFUpper("ie")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Inscrição Municipal</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.inscricao_municipal}
+                    onChange={setFUpper("inscricao_municipal")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>RG</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.rg}
+                    onChange={setFUpper("rg")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>ID Estrangeiro</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.id_estrangeiro}
+                    onChange={setFUpper("id_estrangeiro")}
+                  />
+                </label>
               </div>
+            )}
 
-              <label className={styles.field}>
-                <span>Estado (UF)</span>
-                <input
-                  className={styles.input}
-                  value={modal.estado}
-                  onChange={setF("estado")}
-                  placeholder="SP"
-                  maxLength={2}
-                />
-              </label>
+            {aba === "endereco" && (
+              <div className={styles.fieldGrid}>
+                <div className={styles.field}>
+                  <span>CEP</span>
+                  <div className={styles.cnpjRow}>
+                    <input
+                      className={styles.input}
+                      value={modal.cep}
+                      onChange={(e) => {
+                        setModal((m) => ({ ...m, cep: formatCep(e.target.value) }));
+                        setCepStatus(null);
+                      }}
+                      placeholder="00000-000"
+                      maxLength={9}
+                    />
+                    <button
+                      className={styles.btnConsultar}
+                      onClick={consultarCep}
+                      disabled={cepStatus === "consultando"}
+                    >
+                      {cepStatus === "consultando" ? "Consultando…" : "Buscar CEP"}
+                    </button>
+                  </div>
+                </div>
 
-              {cepStatus === "invalido" && (
-                <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
-                  CEP inválido — informe 8 dígitos numéricos.
-                </div>
-              )}
-              {cepStatus === "nao_encontrado" && (
-                <div className={`${styles.banner} ${styles.bannerAviso} ${styles.fieldFull}`}>
-                  CEP não encontrado. Preencha o endereço manualmente.
-                </div>
-              )}
-              {cepStatus === "erro" && (
-                <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
-                  Erro ao consultar o CEP. Verifique sua conexão.
-                </div>
-              )}
-              {cepStatus === "preenchido" && (
-                <div className={`${styles.banner} ${styles.bannerSucesso} ${styles.fieldFull}`}>
-                  Endereço preenchido pelo ViaCEP. Revise antes de salvar.
-                </div>
-              )}
+                <label className={styles.field}>
+                  <span>Estado (UF)</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.estado}
+                    onChange={setFUpper("estado")}
+                    placeholder="SP"
+                    maxLength={2}
+                  />
+                </label>
 
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Endereço / Número</span>
-                <div className={styles.endRow}>
+                {cepStatus === "invalido" && (
+                  <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
+                    CEP inválido — informe 8 dígitos numéricos.
+                  </div>
+                )}
+                {cepStatus === "nao_encontrado" && (
+                  <div className={`${styles.banner} ${styles.bannerAviso} ${styles.fieldFull}`}>
+                    CEP não encontrado. Preencha o endereço manualmente.
+                  </div>
+                )}
+                {cepStatus === "erro" && (
+                  <div className={`${styles.banner} ${styles.bannerErro} ${styles.fieldFull}`}>
+                    Erro ao consultar o CEP. Verifique sua conexão.
+                  </div>
+                )}
+                {cepStatus === "preenchido" && (
+                  <div className={`${styles.banner} ${styles.bannerSucesso} ${styles.fieldFull}`}>
+                    Endereço preenchido pelo ViaCEP. Revise antes de salvar.
+                  </div>
+                )}
+
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>Endereço / Número</span>
+                  <div className={styles.endRow}>
+                    <input
+                      className={`${styles.input} sc-upper`}
+                      value={modal.endereco}
+                      onChange={setFUpper("endereco")}
+                      placeholder="Rua, Av…"
+                    />
+                    <input
+                      className={`${styles.input} ${styles.inputNumero} sc-upper`}
+                      value={modal.numero}
+                      onChange={setFUpper("numero")}
+                      placeholder="Nº"
+                    />
+                  </div>
+                </div>
+
+                <label className={styles.field}>
+                  <span>Complemento</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.complemento}
+                    onChange={setFUpper("complemento")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Bairro</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.bairro}
+                    onChange={setFUpper("bairro")}
+                    placeholder="Bairro"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Município</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.cidade}
+                    onChange={setFUpper("cidade")}
+                    placeholder="Cidade"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>País</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.pais}
+                    onChange={setFUpper("pais")}
+                  />
+                </label>
+              </div>
+            )}
+
+            {aba === "contato" && (
+              <div className={styles.fieldGrid}>
+                <label className={styles.field}>
+                  <span>Telefone 1</span>
                   <input
                     className={styles.input}
-                    value={modal.endereco}
-                    onChange={setFUpper("endereco")}
-                    placeholder="Rua, Av…"
+                    value={modal.telefone}
+                    onChange={setF("telefone")}
+                    placeholder="(00) 0000-0000"
                   />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Telefone 2</span>
                   <input
-                    className={`${styles.input} ${styles.inputNumero}`}
-                    value={modal.numero}
-                    onChange={setFUpper("numero")}
-                    placeholder="Nº"
+                    className={styles.input}
+                    value={modal.telefone2}
+                    onChange={setF("telefone2")}
                   />
-                </div>
+                </label>
+
+                <label className={styles.field}>
+                  <span>Celular</span>
+                  <input
+                    className={styles.input}
+                    value={modal.celular}
+                    onChange={setF("celular")}
+                    placeholder="(00) 00000-0000"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>WhatsApp</span>
+                  <input
+                    className={styles.input}
+                    value={modal.whatsapp}
+                    onChange={setF("whatsapp")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Fax</span>
+                  <input className={styles.input} value={modal.fax} onChange={setF("fax")} />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Contato</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.contato}
+                    onChange={setFUpper("contato")}
+                    placeholder="Nome do contato"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>E-mail</span>
+                  <input
+                    type="email"
+                    className={styles.input}
+                    value={modal.email}
+                    onChange={setF("email")}
+                    placeholder="email@empresa.com"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>E-mail NF-e</span>
+                  <input
+                    type="email"
+                    className={styles.input}
+                    value={modal.email_nfe}
+                    onChange={setF("email_nfe")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Home-Page</span>
+                  <input
+                    className={styles.input}
+                    value={modal.homepage}
+                    onChange={setF("homepage")}
+                    placeholder="https://…"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Instagram</span>
+                  <input
+                    className={styles.input}
+                    value={modal.instagram}
+                    onChange={setF("instagram")}
+                    placeholder="@usuario"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Atividade</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.atividade}
+                    onChange={setFUpper("atividade")}
+                    placeholder="Ramo de atividade"
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Caixa Postal</span>
+                  <input
+                    className={`${styles.input} sc-upper`}
+                    value={modal.caixa_postal}
+                    onChange={setFUpper("caixa_postal")}
+                  />
+                </label>
+
+                <label className={styles.field}>
+                  <span>Nascimento</span>
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={modal.nascimento || ""}
+                    onChange={setF("nascimento")}
+                  />
+                </label>
+
+                <label className={`${styles.field} ${styles.fieldFull}`}>
+                  <span>Observações</span>
+                  <textarea
+                    className={`${styles.input} ${styles.textarea} sc-upper`}
+                    value={modal.observacoes}
+                    onChange={setFUpper("observacoes")}
+                    rows={2}
+                    placeholder="Observações opcionais"
+                  />
+                </label>
               </div>
-
-              <label className={styles.field}>
-                <span>Complemento</span>
-                <input
-                  className={styles.input}
-                  value={modal.complemento}
-                  onChange={setFUpper("complemento")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Bairro</span>
-                <input
-                  className={styles.input}
-                  value={modal.bairro}
-                  onChange={setFUpper("bairro")}
-                  placeholder="Bairro"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Município</span>
-                <input
-                  className={styles.input}
-                  value={modal.cidade}
-                  onChange={setFUpper("cidade")}
-                  placeholder="Cidade"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>País</span>
-                <input className={styles.input} value={modal.pais} onChange={setF("pais")} />
-              </label>
-            </div>
-          )}
-
-          {aba === "contato" && (
-            <div className={styles.fieldGrid}>
-              <label className={styles.field}>
-                <span>Telefone 1</span>
-                <input
-                  className={styles.input}
-                  value={modal.telefone}
-                  onChange={setF("telefone")}
-                  placeholder="(00) 0000-0000"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Telefone 2</span>
-                <input
-                  className={styles.input}
-                  value={modal.telefone2}
-                  onChange={setF("telefone2")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Celular</span>
-                <input
-                  className={styles.input}
-                  value={modal.celular}
-                  onChange={setF("celular")}
-                  placeholder="(00) 00000-0000"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>WhatsApp</span>
-                <input
-                  className={styles.input}
-                  value={modal.whatsapp}
-                  onChange={setF("whatsapp")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Fax</span>
-                <input className={styles.input} value={modal.fax} onChange={setF("fax")} />
-              </label>
-
-              <label className={styles.field}>
-                <span>Contato</span>
-                <input
-                  className={styles.input}
-                  value={modal.contato}
-                  onChange={setFUpper("contato")}
-                  placeholder="Nome do contato"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>E-mail</span>
-                <input
-                  type="email"
-                  className={styles.input}
-                  value={modal.email}
-                  onChange={setF("email")}
-                  placeholder="email@empresa.com"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>E-mail NF-e</span>
-                <input
-                  type="email"
-                  className={styles.input}
-                  value={modal.email_nfe}
-                  onChange={setF("email_nfe")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Home-Page</span>
-                <input
-                  className={`${styles.input} no-uppercase`}
-                  value={modal.homepage}
-                  onChange={setF("homepage")}
-                  placeholder="https://…"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Instagram</span>
-                <input
-                  className={styles.input}
-                  value={modal.instagram}
-                  onChange={setF("instagram")}
-                  placeholder="@usuario"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Atividade</span>
-                <input
-                  className={styles.input}
-                  value={modal.atividade}
-                  onChange={setF("atividade")}
-                  placeholder="Ramo de atividade"
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Caixa Postal</span>
-                <input
-                  className={styles.input}
-                  value={modal.caixa_postal}
-                  onChange={setF("caixa_postal")}
-                />
-              </label>
-
-              <label className={styles.field}>
-                <span>Nascimento</span>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={modal.nascimento || ""}
-                  onChange={setF("nascimento")}
-                />
-              </label>
-
-              <label className={`${styles.field} ${styles.fieldFull}`}>
-                <span>Observações</span>
-                <textarea
-                  className={`${styles.input} ${styles.textarea}`}
-                  value={modal.observacoes}
-                  onChange={setFUpper("observacoes")}
-                  rows={2}
-                  placeholder="Observações opcionais"
-                />
-              </label>
-            </div>
-          )}
+            )}
+          </fieldset>
 
           {erro && <p className={styles.erro}>{erro}</p>}
         </div>
 
         <div className={styles.modalActions}>
           <button className={styles.btnSecondary} onClick={fecharModal} disabled={saving}>
-            Cancelar
+            {somenteLeitura ? "Fechar" : "Cancelar"}
           </button>
-          <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
-            {saving ? "Salvando…" : "Salvar"}
-          </button>
+          {!somenteLeitura && (
+            <button className={styles.btnPrimary} onClick={handleSalvar} disabled={saving}>
+              {saving ? "Salvando…" : "Salvar"}
+            </button>
+          )}
         </div>
       </div>
     </div>,

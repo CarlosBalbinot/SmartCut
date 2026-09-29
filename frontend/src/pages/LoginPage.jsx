@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
 
@@ -30,6 +31,18 @@ export default function LoginPage() {
       .catch(() => setPrimeiroAcesso(false))
       .finally(() => setChecking(false));
   }, []);
+
+  // Aviso de Caps Lock nos campos de senha (a senha diferencia maiúsculas).
+  const detectarCapsLock = (e) => {
+    if (e.getModifierState) setCapsLock(e.getModifierState("CapsLock"));
+  };
+  const capsLockProps = {
+    onKeyDown: detectarCapsLock,
+    onKeyUp: detectarCapsLock,
+    onMouseDown: detectarCapsLock,
+    onBlur: () => setCapsLock(false),
+  };
+  const avisoCapsLock = capsLock && <div className={styles.capsLock}>Caps Lock ativado</div>;
 
   const handleUsernameChange = (e) => {
     setUsername(e.target.value.toLowerCase().replace(/\s/g, ""));
@@ -132,9 +145,9 @@ export default function LoginPage() {
                 </label>
                 <input
                   id="setup-nome"
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   value={nomeCompleto}
-                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  onChange={(e) => setNomeCompleto(e.target.value.toUpperCase())}
                   autoComplete="name"
                 />
               </div>
@@ -150,6 +163,7 @@ export default function LoginPage() {
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     autoComplete="new-password"
+                    {...capsLockProps}
                   />
                   <button
                     type="button"
@@ -161,6 +175,7 @@ export default function LoginPage() {
                     {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {avisoCapsLock}
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="setup-confirmar">
@@ -173,6 +188,7 @@ export default function LoginPage() {
                   value={confirmarSenha}
                   onChange={(e) => setConfirmarSenha(e.target.value)}
                   autoComplete="new-password"
+                  {...capsLockProps}
                 />
               </div>
               {erro && <div className={styles.error}>{erro}</div>}
@@ -207,6 +223,7 @@ export default function LoginPage() {
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
                     autoComplete="current-password"
+                    {...capsLockProps}
                   />
                   <button
                     type="button"
@@ -218,6 +235,7 @@ export default function LoginPage() {
                     {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {avisoCapsLock}
               </div>
               {erro && <div className={styles.error}>{erro}</div>}
               <button type="submit" className={styles.submitBtn} disabled={enviando}>

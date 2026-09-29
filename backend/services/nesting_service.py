@@ -1,45 +1,55 @@
 """nesting_service.py — Lógica de negócio para geração automática de encaixes.
 
-Fluxo principal (gerar_encaixe):
-  1. Carrega o pedido com todos os ItemPedido e seus grupo/lote vinculados.
-  2. Agrupa os moldes de cada item (grupo_id + tamanho com qtd > 0) por
-     lote_id (_agrupar_por_lote) — um pedido pode ter vários tecidos.
+Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
+  1. Recebe a lista neutra de entradas (lote, molde, quantidade), montada
+     por montar_pares_legado (Encaixe Rápido) ou
+     ordem_corte_service.montar_pares_oc (OC).
+  2. Agrupa por lote de tecido (_agrupar_por_lote).
   3. Para cada lote:
-       a. Calcula num_camadas = min(modelo.max_camadas, max_qty_do_grupo).
-       b. Monta a lista de moldes/polígonos para o worker (qty corrigida por
-          camadas e pelo multiplicador de tipo_corte).
-       c. Chama nesting_bridge.executar() → placements + comprimento usado.
-       d. Se o comprimento excede MAX_ENFESTO_CM, divide as peças em lotes e
-          cria um Encaixe por lote.
-       e. Calcula comp_metros, peso_kg, custo_total e desperdicio_pct com
-          aplicação do encolhimento.
-       f. Salva um ou mais registros Encaixe no banco.
-  4. Retorna lista de dicts resumindo os encaixes criados.
+       a. Planeja os enfestos (services/plano_enfesto.py): camadas e
+          conjuntos de cada tamanho, no modo SEM_SOBRA ou MENOS_ENFESTOS.
+       b. Para cada enfesto, monta os polígonos para o worker (conjuntos ×
+          multiplicador de tipo_corte) e chama nesting_bridge.executar().
+       c. Se o risco passa do comprimento máximo (mesa de corte), divide
+          as peças em partes <= limite, cada uma um encaixe com as mesmas
+          camadas (_partes_do_enfesto).
+       d. Calcula comp_metros, peso_kg, custo_total e desperdicio_pct com
+          aplicação do encolhimento e monta o Encaixe na sessão (sem gravar).
+  4. Numera (MAX+1) e grava todos os encaixes num único commit — erro em
+     qualquer lote descarta tudo.
+  5. Retorna os resumos dos encaixes, avisos e o plano de cada lote.
 """
 
 from __future__ import annotations
 
+import logging
 import math
 import uuid
 from dataclasses import dataclass
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe
 from models.grupo_molde import GrupoMolde
 from models.molde import Molde
+from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM
 from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from nesting.nesting_bridge import build_polygon, executar
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
+from services.plano_enfesto import linhas_enfesto, planejar
 
-# Comprimento máximo (cm) de um único enfesto antes de criar um segundo lote.
-# 2 000 cm = 20 m (tamanho típico de mesa de corte).
-MAX_ENFESTO_CM: float = 2000.0
+logger = logging.getLogger(__name__)
 
 # Multiplicador de corte por tipo_corte (mesmo mapeamento usado no pedido de venda)
 _MULT: dict[str, int] = {"simples": 1, "par": 2, "par_sem_espelho": 2}
+
+# Folga (cm) nas comparações com o limite: o topo da peça é recalculado aqui
+# com a mesma conta do worker, mas cos/sin do V8 e do CPython podem diferir
+# no último bit.
+_EPS_CM = 1e-3
 
 
 # ── DTO normalizado ──────────────────────────────────────────────────────────
@@ -130,7 +140,15 @@ def _poligono_rotacionado(molde: Molde) -> list[list[float]]:
     return _rotate_polygon(pts, molde.rotacao_base or 0)
 
 
-# ── Agrupamento por lote a partir dos itens do pedido ────────────────────────
+# ── Entrada neutra ───────────────────────────────────────────────────────────
+#
+# Toda geração parte de uma lista neutra de entradas (lote, molde, quantidade)
+# — uma entrada por PARTE do molde (frente, costas…) com a quantidade de
+# peças inteiras daquele tamanho. Quem monta a lista:
+#   montar_pares_legado(pedido)          → Encaixe Rápido (grupo_id/lote_id/qtd_*)
+#   ordem_corte_service.montar_pares_oc  → Ordem de Corte (SKU → molde + lote da OC)
+
+Entrada = tuple[LoteTecido, Molde, int]
 
 # (campo de quantidade no ItemPedido, tamanho correspondente do Molde)
 TAMANHOS: list[tuple[str, str]] = [
@@ -144,153 +162,322 @@ TAMANHOS: list[tuple[str, str]] = [
 ]
 
 
-def _agrupar_por_lote(
-    pedido: Pedido,
-) -> tuple[dict[uuid.UUID, tuple[TecidoNesting, list[tuple[Molde, int]]]], list[str]]:
-    """Retorna (grupos, avisos).
+def _norm(texto: str | None) -> str:
+    return (texto or "").strip().casefold()
 
-    grupos: {lote_id: (TecidoNesting, [(molde, quantidade), ...])}
-    avisos: mensagens legíveis sobre itens/tamanhos ignorados. Não são
-    fatais por si só — cabe a gerar_encaixe decidir se viram erro (quando
-    nada sobra) ou só acompanham o resultado (quando é parcial).
 
-    Para cada ItemPedido: para cada tamanho com quantidade > 0, busca todos
-    os moldes do grupo com aquele tamanho (uma peça pode ter várias partes —
-    frente, costas, manga — cada uma um Molde distinto) e os agrupa pelo
-    lote de tecido do item.
-    """
-    grupos: dict[uuid.UUID, tuple[TecidoNesting, list[tuple[Molde, int]]]] = {}
+def montar_pares_legado(pedido: Pedido) -> tuple[list[Entrada], list[str]]:
+    """Formato do Encaixe Rápido: ItemPedido com grupo_id, lote_id e
+    qtd_p..qtd_g3. Itens/tamanhos ignorados viram aviso."""
+    entradas: list[Entrada] = []
     avisos: list[str] = []
 
     for item in pedido.itens:
         nome_grupo = item.grupo.nome if item.grupo else str(item.grupo_id)
-
         if not item.lote_id or not item.lote:
-            aviso = f"Peça '{nome_grupo}' sem tecido vinculado — ignorada"
-            print(f"[NESTING] {aviso}")
-            avisos.append(aviso)
+            avisos.append(f"Peça '{nome_grupo}' sem tecido vinculado — ignorada")
             continue
         if not item.grupo:
-            aviso = f"Item {item.id} sem grupo de moldes — ignorado"
-            print(f"[NESTING] {aviso}")
-            avisos.append(aviso)
+            avisos.append(f"Item {item.numero_item:03d} sem grupo de moldes — ignorado")
             continue
-
-        chave = item.lote_id
-        if chave not in grupos:
-            grupos[chave] = (TecidoNesting.de_lote(item.lote), [])
-        _, pares = grupos[chave]
-
         for campo, tamanho in TAMANHOS:
             qtd = getattr(item, campo, 0) or 0
             if qtd <= 0:
                 continue
-            moldes_tamanho = [m for m in item.grupo.moldes if m.tamanho == tamanho]
-            if not moldes_tamanho:
-                aviso = f"Grupo '{item.grupo.nome}': sem molde tamanho={tamanho} — tamanho ignorado"
-                print(f"[NESTING] {aviso}")
-                avisos.append(aviso)
+            moldes = [m for m in item.grupo.moldes if _norm(m.tamanho) == _norm(tamanho)]
+            if not moldes:
+                avisos.append(f"Grupo '{item.grupo.nome}': sem molde tamanho={tamanho} — tamanho ignorado")
                 continue
-            for molde in moldes_tamanho:
-                pares.append((molde, qtd))
+            entradas.extend((item.lote, molde, qtd) for molde in moldes)
 
-    return grupos, avisos
+    return entradas, avisos
 
 
-# ── Geração de encaixes para um tecido ──────────────────────────────────────
+def _agrupar_por_lote(
+    entradas: list[Entrada],
+) -> dict[uuid.UUID, tuple[TecidoNesting, dict[uuid.UUID, list]]]:
+    """{lote_id: (TecidoNesting, {molde_id: [molde, quantidade]})} — a mesma
+    parte vinda de itens diferentes (ex.: duas cores no mesmo lote) soma."""
+    grupos: dict[uuid.UUID, tuple[TecidoNesting, dict[uuid.UUID, list]]] = {}
+    for lote, molde, qtd in entradas:
+        if qtd <= 0:
+            continue
+        if lote.id not in grupos:
+            grupos[lote.id] = (TecidoNesting.de_lote(lote), {})
+        moldes = grupos[lote.id][1]
+        if molde.id in moldes:
+            moldes[molde.id][1] += qtd
+        else:
+            moldes[molde.id] = [molde, qtd]
+    return grupos
+
+
+# ── Geração de encaixes para um lote ─────────────────────────────────────────
+
+
+def _chave(molde: Molde) -> tuple:
+    """Identifica a peça inteira: grupo de moldes + tamanho."""
+    return (molde.grupo_id, _norm(molde.tamanho))
+
+
+def _rotulo(moldes_da_chave: list[Molde]) -> dict:
+    m = moldes_da_chave[0]
+    return {"grupo_nome": m.grupo.nome if m.grupo else None, "tamanho": (m.tamanho or "").strip()}
 
 
 def _gerar_para_tecido(
     db: Session,
     pedido: Pedido,
     tecido: TecidoNesting,
-    pares: list[tuple[Molde, int]],
-) -> tuple[list[dict], list[str]]:
-    """Roda nesting para um lote de tecido e salva um ou mais Encaixes.
+    moldes_qtd: dict[uuid.UUID, list],
+    modo: str,
+    ordem_corte_id: uuid.UUID | None,
+    descricao: str | None,
+    limite_cm: int,
+) -> tuple[list[Encaixe], list[str], dict]:
+    """Planeja os enfestos do lote (plano_enfesto) e roda o nesting de cada
+    um — cada enfesto vira um Encaixe, ou várias partes (todas <= limite_cm,
+    mesmas camadas) quando o risco não cabe na mesa. Tudo adicionado à
+    sessão sem número e sem commit.
 
-    Retorna (encaixes_criados, avisos).
+    Retorna (encaixes_montados, avisos, plano).
     """
     avisos: list[str] = []
 
-    max_qty = max(qtd for _, qtd in pares) if pares else 1
-    num_camadas = max(1, min(tecido.max_camadas, max_qty))
+    por_chave: dict[tuple, list[Molde]] = {}
+    qtd_chave: dict[tuple, int] = {}
+    for molde, qtd in moldes_qtd.values():
+        k = _chave(molde)
+        por_chave.setdefault(k, []).append(molde)
+        qtd_chave[k] = max(qtd_chave.get(k, 0), qtd)
 
-    parts: list[dict] = []
-    for molde, qtd in pares:
-        mult = _MULT.get(molde.tipo_corte or "simples", 1)
-        qty_plano = math.ceil(qtd * mult / num_camadas)
-        if qty_plano <= 0:
+    plano = planejar(qtd_chave, tecido.max_camadas, modo)
+    rotulos = {k: _rotulo(ms) for k, ms in por_chave.items()}
+    todos_moldes = [m for m, _ in moldes_qtd.values()]
+    moldes_por_id = {str(m.id): m for m in todos_moldes}
+    pares = {i for i, m in moldes_por_id.items() if _MULT.get(m.tipo_corte or "simples", 1) > 1}
+    encaixes: list[Encaixe] = []
+
+    for n, enfesto in enumerate(plano["enfestos"], start=1):
+        camadas = enfesto["camadas"]
+        parts: list[dict] = []
+        for k, conjuntos in enfesto["conjuntos_por_tamanho"].items():
+            for molde in por_chave[k]:
+                parts.append(
+                    {
+                        "id": str(molde.id),
+                        "polygon": _poligono_rotacionado(molde),
+                        "quantity": conjuntos * _MULT.get(molde.tipo_corte or "simples", 1),
+                        "rotations": _rotacoes(molde.sentido_fio),
+                    }
+                )
+        if not parts:
             continue
-        parts.append(
-            {
-                "id": str(molde.id),
-                "polygon": _poligono_rotacionado(molde),
-                "quantity": qty_plano,
-                "rotations": _rotacoes(molde.sentido_fio),
+
+        extras = {
+            "modo_camadas": modo,
+            "enfesto": n,
+            "total_enfestos": len(plano["enfestos"]),
+            "pecas_por_tamanho": linhas_enfesto(enfesto, rotulos),
+            "sobra_total": sum(enfesto["sobra_por_tamanho"].values()),
+        }
+        largura = tecido.largura_util_cm
+        partes, avisos_partes = _partes_do_enfesto(parts, largura, limite_cm, pares, moldes_por_id)
+        avisos.extend(avisos_partes)
+
+        if not partes[0][0]["placements"]:
+            # nest_worker descarta peças mais largas que o bin em silêncio
+            # (ver nest_worker.js: findBest retorna null e o item é pulado) —
+            # sem este aviso o usuário só vê 0% de aproveitamento sem saber por quê.
+            avisos.append(
+                f"Nenhuma peça foi posicionada no tecido '{tecido.nome}'. "
+                f"Verifique se a largura útil do tecido "
+                f"({tecido.largura_util_cm} cm) está correta e é maior que as "
+                f"peças a encaixar."
+            )
+
+        total = len(partes)
+        for i, (result_parte, parts_parte) in enumerate(partes, start=1):
+            if result_parte["width_used"] > limite_cm + _EPS_CM and not avisos_partes:
+                # Sem peça maior que o limite: passou por causa de um par
+                # que só cabe junto acima da mesa.
+                avisos.append(
+                    f"Enfesto {n}, parte {i}: {result_parte['width_used']:.1f} cm, acima do limite de {limite_cm} cm."
+                )
+            # "parte" (texto 2/3) só quando dividido — é o que a tela e o
+            # formulário exibem; parte_numero/total_partes sempre.
+            extras_parte = {
+                **extras,
+                "comprimento_max_cm": limite_cm,
+                "parte_numero": i,
+                "total_partes": total,
+                "pecas_parte": _pecas_parte(parts_parte, moldes_por_id, camadas),
             }
-        )
+            if total > 1:
+                extras_parte["parte"] = f"{i}/{total}"
+            encaixes.append(
+                _montar_encaixe(
+                    db,
+                    pedido,
+                    tecido,
+                    result_parte,
+                    camadas,
+                    largura,
+                    parts_parte,
+                    pecas=todos_moldes,
+                    extras=extras_parte,
+                    ordem_corte_id=ordem_corte_id,
+                    descricao=descricao,
+                )
+            )
 
-    if not parts:
-        return [], avisos
-
-    largura = tecido.largura_util_cm
-
-    result = executar(
-        bin_width_cm=largura,
-        bin_height_cm=MAX_ENFESTO_CM,
-        parts=parts,
-    )
-
-    if not result["placements"]:
-        # nest_worker descarta peças mais largas que o bin em silêncio
-        # (ver nest_worker.js: findBest retorna null e o item é pulado) —
-        # sem este aviso o usuário só vê 0% de aproveitamento sem saber por quê.
-        avisos.append(
-            f"Nenhuma peça foi posicionada no tecido '{tecido.nome}'. "
-            f"Verifique se a largura útil do tecido "
-            f"({tecido.largura_util_cm} cm) está correta e é maior que as "
-            f"peças a encaixar."
-        )
-
-    encaixes_criados: list[dict] = []
-
-    if result["width_used"] > MAX_ENFESTO_CM:
-        encaixes_criados.extend(_dividir_em_lotes(db, pedido, tecido, parts, largura, num_camadas, pecas=pares))
-    else:
-        enc = _salvar_encaixe(db, pedido, tecido, result, num_camadas, largura, parts, pecas=pares)
-        encaixes_criados.append(enc)
-
-    return encaixes_criados, avisos
+    # A mesma peça grande em vários enfestos gera o mesmo aviso — uma vez só.
+    return encaixes, list(dict.fromkeys(avisos)), plano
 
 
-def _dividir_em_lotes(
-    db: Session,
-    pedido: Pedido,
-    tecido: TecidoNesting,
+# ── Divisão do enfesto em partes (comprimento máximo) ────────────────────────
+#
+# O nest_worker ignora bin.height: empilha tudo num risco só e não devolve
+# as peças que "não couberam". A divisão é feita aqui, sem mexer no worker:
+#   1. encaixa as peças restantes;
+#   2. a parte fica com as peças cujo topo (y + altura na rotação escolhida)
+#      está dentro do limite — posições válidas, o worker só as empilha;
+#   3. as demais voltam para o passo 1 como a próxima parte.
+# Cada peça sai em exatamente uma parte (nada repetido, nada faltando).
+
+
+def _dimensoes(poligono: list[list[float]], graus: float) -> tuple[float, float]:
+    """(largura, comprimento) do bounding box após a rotação — mesma conta
+    do rotatedBBox do nest_worker (rotação em torno da origem)."""
+    rad = graus * math.pi / 180
+    c, s = math.cos(rad), math.sin(rad)
+    xs = [x * c - y * s for x, y in poligono]
+    ys = [x * s + y * c for x, y in poligono]
+    return max(xs) - min(xs), max(ys) - min(ys)
+
+
+def _area(poligono: list[list[float]]) -> float:
+    n = len(poligono)
+    dobro = sum(poligono[i][0] * poligono[(i + 1) % n][1] - poligono[(i + 1) % n][0] * poligono[i][1] for i in range(n))
+    return abs(dobro) / 2
+
+
+def _nome_molde(molde: Molde | None) -> str:
+    if molde is None:
+        return "?"
+    return (molde.nome or f"{molde.peca or ''} {molde.tamanho or ''}").strip()
+
+
+def _fechar_pares(manter: list[int], placements: list[dict], topos: list[float], pares: set[str]) -> list[int]:
+    """Peça em par (tipo_corte par) fica inteira na mesma parte: com número
+    ímpar de cópias na parte, a mais alta volta para a próxima. Se a parte
+    ficar vazia (só havia meio par), puxa o par dela — a parte passa do
+    limite e o chamador avisa."""
+    manter = sorted(manter, key=lambda i: topos[i])
+    for pid in pares:
+        do_id = [i for i in manter if placements[i]["id"] == pid]
+        if len(do_id) % 2:
+            manter.remove(do_id[-1])
+    if manter:
+        return manter
+    primeiro = min(range(len(placements)), key=lambda i: topos[i])
+    manter = [primeiro]
+    pid = placements[primeiro]["id"]
+    if pid in pares:
+        outros = [i for i in range(len(placements)) if placements[i]["id"] == pid and i != primeiro]
+        manter += sorted(outros, key=lambda i: topos[i])[:1]
+    return manter
+
+
+def _partes_do_enfesto(
     parts: list[dict],
     largura: float,
-    num_camadas: int,
-    pecas: list | None = None,
-) -> list[dict]:
-    """Divide as partes em dois lotes e cria um Encaixe para cada um."""
-    mid = max(1, len(parts) // 2)
-    encaixes: list[dict] = []
+    limite_cm: float,
+    pares: set[str],
+    moldes_por_id: dict[str, Molde],
+) -> tuple[list[tuple[dict, list[dict]]], list[str]]:
+    """Divide o enfesto em partes de comprimento <= limite_cm.
 
-    for lote in (parts[:mid], parts[mid:]):
-        if not lote:
+    Retorna ([(result, parts_da_parte)], avisos) — result no formato do
+    worker (placements, efficiency, width_used). Risco que cabe no limite
+    sai numa parte só, com o resultado do worker intacto (mesmo resultado
+    de antes do limite); a última parte tem o comprimento real usado.
+    """
+    por_id = {p["id"]: p for p in parts}
+    avisos: list[str] = []
+    for p in parts:
+        dims = [_dimensoes(p["polygon"], r) for r in p["rotations"] or [0]]
+        cabem = [comp for larg, comp in dims if larg <= largura + _EPS_CM]
+        if cabem and min(cabem) > limite_cm + _EPS_CM:
+            avisos.append(
+                f"Peça {_nome_molde(moldes_por_id.get(p['id']))} ({min(cabem):.1f} cm) "
+                f"maior que o limite de {limite_cm:g} cm"
+            )
+
+    restante = {p["id"]: p["quantity"] for p in parts}
+    partes: list[tuple[dict, list[dict]]] = []
+    while any(restante.values()):
+        lote = [{**por_id[i], "quantity": q} for i, q in restante.items() if q > 0]
+        result = executar(bin_width_cm=largura, bin_height_cm=limite_cm, parts=lote)
+        pls = result["placements"]
+        if not pls:
+            if not partes:
+                partes.append((result, lote))  # nada coube na largura — o chamador avisa
+            else:
+                avisos.append(
+                    f"{sum(restante.values())} peça(s) mais largas que o tecido ({largura:g} cm) não foram encaixadas."
+                )
+            break
+
+        topos = [pl["y"] + _dimensoes(por_id[pl["id"]]["polygon"], pl["rotation"])[1] for pl in pls]
+        if max(topos) <= limite_cm + _EPS_CM:
+            manter = list(range(len(pls)))
+        else:
+            dentro = [i for i, t in enumerate(topos) if t <= limite_cm + _EPS_CM]
+            manter = _fechar_pares(dentro, pls, topos, pares)
+
+        contagem: dict[str, int] = {}
+        for i in manter:
+            contagem[pls[i]["id"]] = contagem.get(pls[i]["id"], 0) + 1
+        for pid, qtd in contagem.items():
+            restante[pid] -= qtd
+        parts_parte = [{**por_id[pid], "quantity": qtd} for pid, qtd in contagem.items()]
+
+        if len(manter) == len(pls):
+            partes.append((result, parts_parte))
             continue
-        result = executar(
-            bin_width_cm=largura,
-            bin_height_cm=MAX_ENFESTO_CM,
-            parts=lote,
+        comprimento = max(topos[i] for i in manter)
+        area = sum(_area(por_id[pls[i]["id"]]["polygon"]) for i in manter)
+        eficiencia = min(area / (largura * comprimento), 1.0) if comprimento > 0 else 0.0
+        parcial = {
+            "placements": [pls[i] for i in sorted(manter)],
+            "efficiency": round(eficiencia, 4),
+            "width_used": round(comprimento, 3),
+        }
+        partes.append((parcial, parts_parte))
+    return partes, avisos
+
+
+def _pecas_parte(parts_parte: list[dict], moldes_por_id: dict[str, Molde], camadas: int) -> list[dict]:
+    """Peças (moldes) desta parte: pecas_por_tamanho continua sendo do
+    enfesto inteiro; aqui está o que cada parte corta de fato."""
+    saida = []
+    for p in parts_parte:
+        m = moldes_por_id.get(p["id"])
+        saida.append(
+            {
+                "molde_id": p["id"],
+                "peca": m.peca if m else None,
+                "grupo_nome": m.grupo.nome if m and m.grupo else None,
+                "tamanho": (m.tamanho or "").strip() if m else None,
+                "por_camada": p["quantity"],
+                "total": p["quantity"] * camadas,
+            }
         )
-        enc = _salvar_encaixe(db, pedido, tecido, result, num_camadas, largura, lote, pecas=pecas)
-        encaixes.append(enc)
-
-    return encaixes
+    return saida
 
 
-def _salvar_encaixe(
+def _montar_encaixe(
     db: Session,
     pedido: Pedido,
     tecido: TecidoNesting,
@@ -298,9 +485,16 @@ def _salvar_encaixe(
     num_camadas: int,
     largura_cm: float,
     parts: list[dict],
-    pecas: list | None = None,
-) -> dict:
-    """Calcula métricas, salva Encaixe no banco e retorna dict resumo."""
+    pecas: list[Molde] | None = None,
+    extras: dict | None = None,
+    ordem_corte_id: uuid.UUID | None = None,
+    descricao: str | None = None,
+) -> Encaixe:
+    """Calcula métricas e adiciona o Encaixe à sessão — sem flush/commit e
+    sem número: gerar_de_entradas numera e grava todos juntos numa transação.
+
+    peso_kg/custo_total são de UMA camada (comprimento do encaixe);
+    mapa_json.peso_total_kg = peso_kg × camadas (consumo real do lote)."""
 
     width_used_cm: float = result["width_used"]
     efficiency: float = result["efficiency"]
@@ -310,20 +504,17 @@ def _salvar_encaixe(
     peso_kg = metros_para_peso(comp_metros, tecido.gramatura_g_m2, largura_cm)
     custo_total = calcular_custo(peso_kg, tecido.valor_por_kg)
 
-    bin_area_cm2 = largura_cm * width_used_cm
-    area_pecas_cm2 = bin_area_cm2 * efficiency  # noqa: F841
     desperdicio_pct = max(0.0, (1.0 - efficiency) * 100.0)
 
     # Enriquecer placements com polígono e metadados do molde
     parts_map: dict[str, list] = {p["id"]: p["polygon"] for p in parts}
     pecas_map: dict[str, dict] = {}
-    if pecas:
-        for molde, _qtd in pecas:
-            pecas_map[str(molde.id)] = {
-                "peca": molde.peca,
-                "tamanho": molde.tamanho,
-                "grupo_nome": molde.grupo.nome if molde.grupo else None,
-            }
+    for molde in pecas or []:
+        pecas_map[str(molde.id)] = {
+            "peca": molde.peca,
+            "tamanho": molde.tamanho,
+            "grupo_nome": molde.grupo.nome if molde.grupo else None,
+        }
 
     enriched_placements: list[dict] = []
     for pl in result["placements"]:
@@ -345,18 +536,17 @@ def _salvar_encaixe(
         "efficiency": round(efficiency, 4),
         "placements": enriched_placements,
         "parts_count": sum(p["quantity"] for p in parts),
+        "peso_total_kg": round(peso_kg * num_camadas, 3),
+        **(extras or {}),
     }
 
-    # Numeração sequencial própria do encaixe (ENC-001, ENC-002...) —
-    # recalculada a cada chamada, então cada Encaixe criado dentro do mesmo
-    # gerar_encaixe() (um por lote/tecido) recebe o próximo número, já que
-    # o commit logo abaixo torna este encaixe visível ao COUNT(*) seguinte.
-    proximo_numero = db.query(func.count(Encaixe.id)).scalar() + 1
-
+    # id explícito: o resumo devolvido ao frontend precisa dele antes do
+    # flush (o default do model só é aplicado na gravação).
     encaixe = Encaixe(
+        id=uuid.uuid4(),
         pedido_id=pedido.id,
+        ordem_corte_id=ordem_corte_id,
         lote_id=tecido.lote_id,
-        tecido_id=tecido.tecido_id,
         mapa_json=mapa_json,
         comp_metros=round(comp_metros, 3),
         peso_kg=round(peso_kg, 3),
@@ -364,34 +554,130 @@ def _salvar_encaixe(
         desperdicio_pct=round(desperdicio_pct, 2),
         num_camadas=num_camadas,
         status="ativo",
-        numero=proximo_numero,
-        descricao=pedido.observacoes_internas,
+        descricao=descricao,
     )
     db.add(encaixe)
-    db.commit()
-    db.refresh(encaixe)
+    return encaixe
 
+
+# ── Numeração e gravação ─────────────────────────────────────────────────────
+
+# Tentativas de gravação quando outra geração simultânea pega o mesmo número
+# (a UNIQUE uq_encaixes_numero rejeita o segundo commit).
+_TENTATIVAS_NUMERACAO = 3
+
+
+def _numerar(db: Session, encaixes: list[Encaixe]) -> None:
+    """ENC-XXX = MAX(numero)+1 sobre TODOS os encaixes, inclusive os
+    deletados (soft-delete), para nunca reaproveitar um número. A sessão
+    roda com autoflush=False, então os encaixes pendentes desta chamada
+    não entram no MAX."""
+    ultimo = db.query(func.max(Encaixe.numero)).scalar() or 0
+    for i, encaixe in enumerate(encaixes, start=1):
+        encaixe.numero = ultimo + i
+
+
+def _gravar(db: Session, encaixes: list[Encaixe]) -> None:
+    """Numera e grava todos os encaixes da chamada num único commit — junto
+    com o que mais estiver pendente na sessão (ex.: encaixes anteriores da
+    OC marcados como deletados)."""
+    for tentativa in range(1, _TENTATIVAS_NUMERACAO + 1):
+        _numerar(db, encaixes)
+        try:
+            db.commit()
+            return
+        except IntegrityError:
+            db.rollback()
+            if tentativa == _TENTATIVAS_NUMERACAO:
+                raise
+            # O rollback expulsa os objetos pendentes da sessão — readiciona
+            # e tenta de novo com o MAX atualizado.
+            db.add_all(encaixes)
+
+
+def _resumo(encaixe: Encaixe) -> dict:
+    mapa = encaixe.mapa_json or {}
     return {
         "id": str(encaixe.id),
-        "lote_id": str(tecido.lote_id) if tecido.lote_id else None,
-        "tecido_id": str(tecido.tecido_id) if tecido.tecido_id else None,
-        "tecido_nome": tecido.nome,
-        "num_camadas": num_camadas,
+        "lote_id": mapa.get("lote_id"),
+        "tecido_id": mapa.get("tecido_id"),
+        "tecido_nome": mapa.get("tecido_nome"),
+        "num_camadas": encaixe.num_camadas,
         "comp_metros": float(encaixe.comp_metros),
         "peso_kg": float(encaixe.peso_kg),
+        "peso_total_kg": mapa.get("peso_total_kg") or round(float(encaixe.peso_kg) * (encaixe.num_camadas or 1), 3),
         "custo_total": float(encaixe.custo_total),
+        "custo_total_camadas": round(float(encaixe.custo_total) * (encaixe.num_camadas or 1), 2),
         "desperdicio_pct": float(encaixe.desperdicio_pct),
-        "total_pecas_plano": mapa_json["parts_count"],
+        "aproveitamento_pct": round(100.0 - float(encaixe.desperdicio_pct), 2),
+        "total_pecas_plano": mapa.get("parts_count"),
+        "enfesto": mapa.get("enfesto"),
+        "parte": mapa.get("parte"),
+        "parte_numero": mapa.get("parte_numero"),
+        "total_partes": mapa.get("total_partes"),
+        "comprimento_max_cm": mapa.get("comprimento_max_cm"),
+        "pecas_parte": mapa.get("pecas_parte"),
+        "pecas_por_tamanho": mapa.get("pecas_por_tamanho"),
+        "sobra_total": mapa.get("sobra_total"),
         "numero_enc": encaixe.numero,
         "descricao": encaixe.descricao,
     }
 
 
-# ── Ponto de entrada público ─────────────────────────────────────────────────
+# ── Pontos de entrada públicos ───────────────────────────────────────────────
 
 
-def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
-    """Gera encaixes automáticos para todos os lotes de tecido do pedido.
+def gerar_de_entradas(
+    db: Session,
+    pedido: Pedido,
+    entradas: list[Entrada],
+    *,
+    modo: str,
+    ordem_corte_id: uuid.UUID | None = None,
+    descricao: str | None = None,
+    comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM,
+) -> dict:
+    """Núcleo comum: agrupa as entradas por lote, planeja os enfestos, roda o
+    nesting e grava tudo numa transação — erro em qualquer lote desfaz tudo
+    (inclusive o que o chamador deixou pendente na sessão).
+
+    comprimento_max_cm: limite de cada encaixe (mesa de corte) — risco maior
+    é dividido em partes (_partes_do_enfesto).
+
+    Returns: {"encaixes": [...resumos], "avisos": [...], "planos": {lote_id: plano}}
+    Raises: ValueError se nenhuma entrada tiver quantidade; RuntimeError
+        se o motor de nesting falhar.
+    """
+    grupos = _agrupar_por_lote(entradas)
+    if not grupos:
+        db.rollback()
+        raise ValueError("Nenhuma peça para encaixar: verifique tecidos, moldes e quantidades.")
+
+    encaixes: list[Encaixe] = []
+    avisos: list[str] = []
+    planos: dict[str, dict] = {}
+    try:
+        for lote_id, (tecido, moldes_qtd) in grupos.items():
+            montados, avisos_lote, plano = _gerar_para_tecido(
+                db, pedido, tecido, moldes_qtd, modo, ordem_corte_id, descricao, comprimento_max_cm
+            )
+            encaixes.extend(montados)
+            avisos.extend(avisos_lote)
+            planos[str(lote_id)] = plano
+        if encaixes:
+            _gravar(db, encaixes)
+    except Exception:
+        db.rollback()
+        raise
+
+    return {"encaixes": [_resumo(e) for e in encaixes], "avisos": avisos, "planos": planos}
+
+
+def gerar_encaixe(db: Session, pedido_id: uuid.UUID, comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM) -> dict:
+    """Encaixe Rápido: gera encaixes para todos os lotes do pedido interno
+    (formato legado). Mantém a regra antiga de camadas (MENOS_ENFESTOS: um
+    enfesto por lote, camadas = min(max_camadas, maior quantidade)) e divide
+    em partes o risco que passar de comprimento_max_cm.
 
     Returns:
         {"encaixes": [...resumo de cada Encaixe criado...], "avisos": [...]}
@@ -421,32 +707,21 @@ def gerar_encaixe(db: Session, pedido_id: uuid.UUID) -> dict:
     if not pedido.itens:
         raise ValueError("O pedido não possui itens cadastrados.")
 
-    grupos, avisos = _agrupar_por_lote(pedido)
+    entradas, avisos = montar_pares_legado(pedido)
+    for aviso in avisos:
+        logger.info("[NESTING] %s", aviso)
 
-    if not grupos:
+    if not entradas:
         raise ValueError(
             "Nenhuma peça foi vinculada a um tecido. Selecione um tecido para cada peça antes de gerar o encaixe."
         )
 
-    resultado: list[dict] = []
-    for tecido, pares in grupos.values():
-        encaixes, avisos_tecido = _gerar_para_tecido(db, pedido, tecido, pares)
-        resultado.extend(encaixes)
-        avisos.extend(avisos_tecido)
-
-    return {"encaixes": resultado, "avisos": avisos}
-
-
-# ── Legado: mantido para compatibilidade com chamadas existentes ─────────────
-
-
-def validar_sentido_fio(rotacao_graus: float, sentido_fio: str) -> bool:
-    """Valida se a rotação aplicada respeita o sentido do fio do molde."""
-    tolerancia = 1.0
-    angulos_permitidos: dict[str, list[float]] = {
-        "vertical": [0.0, 180.0],
-        "horizontal": [90.0, 270.0],
-        "45graus": [45.0, 135.0, 225.0, 315.0],
-    }
-    permitidos = angulos_permitidos.get(sentido_fio, [0.0, 90.0, 180.0, 270.0])
-    return any(abs(rotacao_graus - a) <= tolerancia for a in permitidos)
+    resultado = gerar_de_entradas(
+        db,
+        pedido,
+        entradas,
+        modo="MENOS_ENFESTOS",
+        descricao=pedido.observacoes_internas,
+        comprimento_max_cm=comprimento_max_cm,
+    )
+    return {"encaixes": resultado["encaixes"], "avisos": avisos + resultado["avisos"]}

@@ -29,9 +29,11 @@ from routers import (
     modelos_tecido,
     moldes,
     nfe,
+    ordens_corte,
     pedidos_venda,
     precificacoes,
     produtos,
+    relatorios,
     tabelas_grade,
     tabelas_preco,
     tes,
@@ -90,6 +92,16 @@ async def lifespan(app: FastAPI):
     from services.backup_service import iniciar_backup_automatico, parar_backup_automatico
 
     iniciar_backup_automatico()
+
+    # RL1: pasta de modelos de relatório (<raiz do SmartCut>/relatorios) —
+    # só cria o que faltar (pastas e config.json); os modelos são do usuário.
+    from services.relatorios.engine import garantir_pasta
+
+    try:
+        logger.info("[relatorios] pasta de modelos: %s", garantir_pasta())
+    except Exception as err:  # noqa: BLE001 — nunca impede o boot
+        logger.warning("[relatorios] aviso no boot: %s", err)
+
     try:
         yield
     finally:
@@ -179,6 +191,8 @@ REGISTRO_DE_ROUTERS: list[tuple[str, bool, list[APIRouter]]] = [
     ("Condições de Pagamento", False, [condicoes_pagamento.router]),
     ("Tabelas de Grade", False, [tabelas_grade.router, configuracao_grade.router]),
     ("Uploads autenticados (item 2.1)", False, [uploads.router]),
+    ("Relatórios configuráveis (RL1)", False, [relatorios.router]),
+    ("Produção — Ordem de Corte", False, [ordens_corte.router]),
 ]
 
 for grupo, eh_legado, routers_do_grupo in REGISTRO_DE_ROUTERS:

@@ -384,9 +384,11 @@ export default function TecidosPage() {
             <div className={ts.campo}>
               <label className={ts.label}>Nome do modelo *</label>
               <input
-                className={ts.input}
+                className={`${ts.input} sc-upper`}
                 value={formModelo.nome}
-                onChange={(e) => setFormModelo((p) => ({ ...p, nome: e.target.value }))}
+                onChange={(e) =>
+                  setFormModelo((p) => ({ ...p, nome: e.target.value.toUpperCase() }))
+                }
                 required
                 autoFocus
                 placeholder="ex: Maxxi, Wish, Suplex"
@@ -396,9 +398,11 @@ export default function TecidosPage() {
               <div className={ts.campo}>
                 <label className={ts.label}>Tipo</label>
                 <input
-                  className={ts.input}
+                  className={`${ts.input} sc-upper`}
                   value={formModelo.tipo}
-                  onChange={(e) => setFormModelo((p) => ({ ...p, tipo: e.target.value }))}
+                  onChange={(e) =>
+                    setFormModelo((p) => ({ ...p, tipo: e.target.value.toUpperCase() }))
+                  }
                   placeholder="ex: Compressão, Canelado"
                 />
               </div>
@@ -449,9 +453,11 @@ export default function TecidosPage() {
             <div className={ts.campo}>
               <label className={ts.label}>Nome da cor *</label>
               <input
-                className={ts.input}
+                className={`${ts.input} sc-upper`}
                 value={formCor.nome_cor}
-                onChange={(e) => setFormCor((p) => ({ ...p, nome_cor: e.target.value }))}
+                onChange={(e) =>
+                  setFormCor((p) => ({ ...p, nome_cor: e.target.value.toUpperCase() }))
+                }
                 required
                 autoFocus
                 placeholder="ex: Preto, Marrom, Azul Royal"
@@ -534,9 +540,11 @@ export default function TecidosPage() {
             <div className={ts.campo}>
               <label className={ts.label}>Código do lote *</label>
               <input
-                className={ts.input}
+                className={`${ts.input} sc-upper`}
                 value={formLote.codigo_lote}
-                onChange={(e) => setFormLote((p) => ({ ...p, codigo_lote: e.target.value }))}
+                onChange={(e) =>
+                  setFormLote((p) => ({ ...p, codigo_lote: e.target.value.toUpperCase() }))
+                }
                 required
                 autoFocus
                 placeholder="ex: LT001"

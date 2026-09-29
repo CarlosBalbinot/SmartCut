@@ -5,6 +5,7 @@ import { buscarGrupos } from "../api/moldes";
 import { gerarEncaixeAutomatico, getPdfEncaixe } from "../api/encaixes";
 import { getProximoNumeroPedidoVenda, createPedidoVenda, addItemPedidoVenda } from "../api/pedidos";
 import styles from "./EncaixeRapidoPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const TAMANHOS_BASE = ["P", "M", "G", "GG"];
 const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
@@ -19,8 +20,22 @@ const TAM_KEY = {
 };
 const QTD_KEYS = ["qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_g3"];
 
+// Comprimento máximo do enfesto (limite da mesa de corte), em cm.
+const COMP_MIN = 50;
+const COMP_MAX = 2000;
+const COMP_PADRAO = 150;
+
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
+
+// Nível semântico do aproveitamento — a cor fica no CSS, via data-nivel
+// (ver .resultMetricValue[data-nivel]). Limiares 85/70, como antes.
+const nivelAproveitamento = (v) => {
+  if (v == null) return "neutro";
+  if (v >= 85) return "bom";
+  if (v >= 70) return "medio";
+  return "ruim";
+};
 
 const ITEM_VAZIO = {
   searchQuery: "",
@@ -46,9 +61,17 @@ const TM_VAZIO = {
 };
 
 export default function EncaixeRapidoPage() {
+  const tecidoModalOverlay = useOverlayDismiss(() => setTecidoModal(null));
+  const itemModalOverlay = useOverlayDismiss(() => {
+    setItemModal(null);
+    setErroModal(null);
+  });
+
   const navigate = useNavigate();
 
   const [nome, setNome] = useState("");
+  // Limite da mesa de corte (cm): risco maior sai dividido em partes.
+  const [comprimentoMax, setComprimentoMax] = useState(String(COMP_PADRAO));
   const [modelos, setModelos] = useState([]);
   const [tecidos, setTecidos] = useState([]);
   const [tecidoModal, setTecidoModal] = useState(null);
@@ -208,13 +231,6 @@ export default function EncaixeRapidoPage() {
       .map((t) => ({ tam: t, qtd: peca[TAM_KEY[t]] }));
   };
 
-  const corAproveitamento = (v) => {
-    if (v == null) return undefined;
-    if (v >= 85) return "var(--sc-success-text)";
-    if (v >= 70) return "var(--color-primary)";
-    return "var(--sc-danger-text)";
-  };
-
   // ── Gerar encaixe ─────────────────────────────────────────────────────────
   const handleGerar = async () => {
     if (tecidos.length === 0) {
@@ -227,6 +243,13 @@ export default function EncaixeRapidoPage() {
     }
     if (pecas.some((p) => !p.tecido_id)) {
       setErroGeral("Todas as peças precisam ter um tecido.");
+      return;
+    }
+    const cm = Number(comprimentoMax.trim());
+    if (!Number.isInteger(cm) || cm < COMP_MIN || cm > COMP_MAX) {
+      setErroGeral(
+        `O comprimento máximo deve ser um número inteiro entre ${COMP_MIN} e ${COMP_MAX} cm.`
+      );
       return;
     }
     setGerando(true);
@@ -265,7 +288,7 @@ export default function EncaixeRapidoPage() {
       // gerarAutomatico retorna {encaixes, avisos} — sem .catch: falhas
       // agora sobem para o catch abaixo, que já exibe erroGeral na tela em
       // vez de redirecionar silenciosamente.
-      const resposta = await gerarEncaixeAutomatico(pedido.id);
+      const resposta = await gerarEncaixeAutomatico(pedido.id, cm);
       const encaixe = resposta?.encaixes?.[0] ?? null;
 
       if (encaixe?.id) {
@@ -273,9 +296,15 @@ export default function EncaixeRapidoPage() {
           encaixe_id: encaixe.id,
           pedido_id: pedido.id,
           aproveitamento: encaixe.desperdicio_pct != null ? 100 - encaixe.desperdicio_pct : null,
+          // Comprimento é de UMA camada (o risco do corte); peso e custo são
+          // de TODAS as camadas — mesmo critério das telas de encaixe.
           metros: encaixe.comp_metros != null ? encaixe.comp_metros.toFixed(2) : null,
-          peso: encaixe.peso_kg,
-          custo: encaixe.custo_total,
+          num_camadas: encaixe.num_camadas || 1,
+          peso: encaixe.peso_total_kg ?? encaixe.peso_kg,
+          custo: encaixe.custo_total_camadas ?? encaixe.custo_total,
+          // Enfesto dividido: as métricas acima são da primeira parte.
+          partes: encaixe.total_partes || 1,
+          comprimento_max_cm: cm,
         });
         setAvisos(resposta?.avisos ?? []);
       } else {
@@ -305,10 +334,24 @@ export default function EncaixeRapidoPage() {
             <label className={styles.field}>
               <span>Nome / identificação (opcional)</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 placeholder="Ex: Legging / Pedido 001"
                 value={nome}
-                onChange={(e) => setNome(e.target.value)}
+                onChange={(e) => setNome(e.target.value.toUpperCase())}
+              />
+            </label>
+            <label className={styles.field}>
+              <span>Comprimento máximo (cm)</span>
+              <input
+                className={styles.input}
+                type="number"
+                inputMode="numeric"
+                min={COMP_MIN}
+                max={COMP_MAX}
+                step={1}
+                value={comprimentoMax}
+                onChange={(e) => setComprimentoMax(e.target.value)}
+                title="Limite da mesa. Riscos menores saem com o tamanho real; maiores são divididos em partes."
               />
             </label>
           </div>
@@ -345,9 +388,8 @@ export default function EncaixeRapidoPage() {
             )}
 
             <button
-              className={styles.btnAddPeca}
+              className={`${styles.btnAddPeca} ${tecidos.length ? styles.btnAddComEspaco : styles.btnAddSemEspaco}`}
               onClick={abrirTecidoModal}
-              style={{ marginTop: tecidos.length ? "0.75rem" : "0.5rem" }}
             >
               + Adicionar Tecido
             </button>
@@ -450,6 +492,12 @@ export default function EncaixeRapidoPage() {
               <div className={styles.resultHeader}>
                 <p className={styles.resultTitle}>Encaixe gerado com sucesso</p>
                 <p className={styles.resultSub}>{nome || "Encaixe rápido"}</p>
+                {resultado.partes > 1 && (
+                  <p className={styles.resultSub}>
+                    Dividido em {resultado.partes} partes de até {resultado.comprimento_max_cm} cm —
+                    os valores abaixo são da parte 1.
+                  </p>
+                )}
               </div>
 
               <div className={styles.resultGrid}>
@@ -457,7 +505,7 @@ export default function EncaixeRapidoPage() {
                   <span className={styles.resultMetricLabel}>Aproveitamento</span>
                   <span
                     className={styles.resultMetricValue}
-                    style={{ color: corAproveitamento(resultado.aproveitamento) }}
+                    data-nivel={nivelAproveitamento(resultado.aproveitamento)}
                   >
                     {resultado.aproveitamento != null
                       ? `${Number(resultado.aproveitamento).toFixed(1)}%`
@@ -465,19 +513,27 @@ export default function EncaixeRapidoPage() {
                   </span>
                 </div>
                 <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>Comprimento</span>
+                  <span
+                    className={styles.resultMetricLabel}
+                    title="Comprimento de uma camada (risco)"
+                  >
+                    Comprimento do risco
+                  </span>
                   <span className={styles.resultMetricValue}>
                     {resultado.metros != null ? `${resultado.metros} m` : "—"}
                   </span>
                 </div>
                 <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>Peso estimado</span>
+                  <span className={styles.resultMetricLabel}>
+                    Peso total ({resultado.num_camadas} camada
+                    {resultado.num_camadas !== 1 ? "s" : ""})
+                  </span>
                   <span className={styles.resultMetricValue}>
-                    {resultado.peso != null ? `${Number(resultado.peso).toFixed(2)} kg` : "—"}
+                    {resultado.peso != null ? `${Number(resultado.peso).toFixed(3)} kg` : "—"}
                   </span>
                 </div>
                 <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>Custo estimado</span>
+                  <span className={styles.resultMetricLabel}>Custo total</span>
                   <span className={styles.resultMetricValue}>
                     {resultado.custo != null ? moeda(resultado.custo) : "—"}
                   </span>
@@ -487,7 +543,7 @@ export default function EncaixeRapidoPage() {
               <div className={styles.resultActions}>
                 <button
                   className={styles.btnPrimary}
-                  onClick={() => navigate(`/producao/encaixes/${resultado.pedido_id}`)}
+                  onClick={() => navigate(`/producao/encaixes/${resultado.encaixe_id}`)}
                 >
                   Ver encaixe completo →
                 </button>
@@ -525,7 +581,7 @@ export default function EncaixeRapidoPage() {
 
       {/* ══ MODAL — Adicionar Tecido ══ */}
       {tecidoModal && (
-        <div className={styles.overlay} onClick={() => setTecidoModal(null)}>
+        <div className={styles.overlay} {...tecidoModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Adicionar Tecido</h2>
@@ -607,13 +663,7 @@ export default function EncaixeRapidoPage() {
 
       {/* ══ MODAL — Adicionar peça ══ */}
       {itemModal && (
-        <div
-          className={styles.overlay}
-          onClick={() => {
-            setItemModal(null);
-            setErroModal(null);
-          }}
-        >
+        <div className={styles.overlay} {...itemModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Adicionar peça</h2>

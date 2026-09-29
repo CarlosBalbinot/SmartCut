@@ -1,0 +1,236 @@
+/* Modal de conclusão do corte. O padding do corpo vem do Modal compartilhado
+   (.body) — aqui só o empilhamento e o respiro entre os blocos. */
+
+.corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Campos ── */
+.campos {
+  display: flex;
+  gap: 12px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.campoLargo {
+  flex: 1;
+}
+
+.rotulo {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+}
+
+.rotulo em {
+  font-style: normal;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 52px;
+  font-family: inherit;
+}
+
+.vazio {
+  margin: 0;
+  padding: 1rem;
+  background: var(--sc-bg-secondary);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+  font-size: 0.875rem;
+  color: var(--sc-text-secondary);
+  text-align: center;
+}
+
+/* ── Tabela de consumo por lote ── */
+.tabelaWrap {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.tabela th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  border-bottom: 1px solid var(--sc-border);
+  white-space: nowrap;
+}
+
+.tabela td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--sc-border);
+  color: var(--sc-text-primary);
+  vertical-align: middle;
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.tabela tfoot td {
+  padding: 9px 10px;
+  border-top: 1px solid var(--sc-border-strong, var(--sc-border));
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  background: var(--sc-bg-secondary);
+}
+
+.tabela .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lote {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tecido {
+  display: block;
+}
+
+.produtos {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+/* Input de kg + o delta do desvio, lado a lado. */
+.celulaKg {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.celulaKg input {
+  width: 108px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Input de kg avulso (a sobra) — mais estreito, é opcional. */
+.inputKg {
+  width: 92px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Desvio do real contra o planejado acima da tolerância. */
+.desvio {
+  border-color: var(--sc-border-warning) !important;
+}
+
+.desvio:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc-border-warning) 30%, transparent);
+}
+
+.delta {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.deltaAcima {
+  background: var(--sc-bg-warning);
+  color: var(--sc-text-warning);
+  border-color: var(--sc-border-warning);
+}
+
+.deltaAbaixo {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-secondary);
+  border-color: var(--sc-border);
+}
+
+.nota {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: var(--sc-text-muted);
+}
+
+/* ── Ações ── */
+.acoes {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid var(--sc-border);
+}
+
+.btnCancelar {
+  padding: 9px 18px;
+  background-color: #f5f5f7;
+  color: #1d1d1f;
+  border: none;
+  border-radius: 980px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.btnCancelar:hover:not(:disabled) {
+  background-color: #e5e5ea;
+}
+
+.btnConfirmar {
+  padding: 9px 18px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 980px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.btnConfirmar:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+}
+
+.btnCancelar:disabled,
+.btnConfirmar:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Padrão .sc-campo-erro (campo inválido + motivo no title). O global está
+   definido em ItensPedidoCard.module.css; repetido aqui porque este modal
+   pode ser aberto sem aquele componente na tela. */
+:global(.sc-campo-erro),
+:global(.sc-campo-erro):hover,
+:global(.sc-campo-erro):focus {
+  border-color: var(--sc-danger-text) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc-danger-text) 15%, transparent);
+}

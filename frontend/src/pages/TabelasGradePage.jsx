@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import * as tabelasGradeApi from "../api/tabelasGrade";
 import { useAuth } from "../auth/useAuth";
 import styles from "./TabelasGradePage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "configuracoes_editar";
 
@@ -9,6 +10,9 @@ const TABELA_VAZIA = { codigo: "", descricao: "", situacao: "Ativa" };
 const ITEM_VAZIO = { codigo_curto: "", descricao: "", ordem: 0, situacao: "Ativa" };
 
 export default function TabelasGradePage() {
+  const fecharModalTabelaOverlay = useOverlayDismiss(() => fecharModalTabela());
+  const fecharModalItemOverlay = useOverlayDismiss(() => fecharModalItem());
+
   const { hasPermission } = useAuth();
   const podeEditar = hasPermission(MODULO, "ver");
 
@@ -354,7 +358,7 @@ export default function TabelasGradePage() {
 
       {/* ── Modal Nova/Editar Tabela ── */}
       {modalTabela && (
-        <div className={styles.modalOverlay} onClick={fecharModalTabela}>
+        <div className={styles.modalOverlay} {...fecharModalTabelaOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>
               {modalTabela.id ? "Editar Tabela" : "Nova Tabela"}
@@ -363,9 +367,11 @@ export default function TabelasGradePage() {
             <label className={styles.field}>
               <span>Código *</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 value={modalTabela.codigo}
-                onChange={(e) => setModalTabela((m) => ({ ...m, codigo: e.target.value }))}
+                onChange={(e) =>
+                  setModalTabela((m) => ({ ...m, codigo: e.target.value.toUpperCase() }))
+                }
                 placeholder="Ex.: 001"
                 autoFocus
               />
@@ -374,7 +380,7 @@ export default function TabelasGradePage() {
             <label className={styles.field}>
               <span>Descrição *</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 value={modalTabela.descricao}
                 onChange={(e) =>
                   setModalTabela((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))
@@ -415,14 +421,14 @@ export default function TabelasGradePage() {
 
       {/* ── Modal Novo/Editar Item ── */}
       {modalItem && (
-        <div className={styles.modalOverlay} onClick={fecharModalItem}>
+        <div className={styles.modalOverlay} {...fecharModalItemOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.modalTitle}>{modalItem.id ? "Editar Item" : "Novo Item"}</h3>
 
             <label className={styles.field}>
               <span>Código Curto *</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 value={modalItem.codigo_curto}
                 maxLength={4}
                 onChange={(e) =>
@@ -439,7 +445,7 @@ export default function TabelasGradePage() {
             <label className={styles.field}>
               <span>Descrição *</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 value={modalItem.descricao}
                 onChange={(e) =>
                   setModalItem((m) => ({ ...m, descricao: e.target.value.toUpperCase() }))

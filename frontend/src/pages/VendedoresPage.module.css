@@ -657,10 +657,6 @@
   box-shadow: 0 0 0 2px var(--sc-danger-text);
 }
 
-.inputUpper {
-  text-transform: uppercase;
-}
-
 .fieldHint {
   font-size: 0.72rem;
   font-weight: 400;

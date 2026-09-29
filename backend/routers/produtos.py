@@ -27,6 +27,7 @@ from schemas.produto_schema import (
     SkuUpdate,
 )
 from services import grade_service, grupo_produto_service, produto_service, sku_service
+from services.venda_service import resolver_preco_item
 
 router = APIRouter(prefix="/api/v1/produtos", tags=["produtos"])
 grupos_router = APIRouter(prefix="/api/v1/grupos-produto", tags=["grupos-produto"])
@@ -126,16 +127,35 @@ def _sku_out(sku: ProdutoSKU) -> dict:
     }
 
 
+def _sku_out_com_preco(db: Session, sku: ProdutoSKU, tabela_preco_id: uuid.UUID | None, tipo_preco: str | None) -> dict:
+    """_sku_out + preço que o item do pedido receberia (mesma regra da troca
+    de SKU no PATCH/lote: tabela > SKU > produto pai). Só com a tabela ou o
+    tipo de preço informados — sem eles a resposta fica como sempre foi."""
+    out = _sku_out(sku)
+    if tabela_preco_id is not None or tipo_preco is not None:
+        preco, origem = resolver_preco_item(db, sku, tabela_preco_id, tipo_preco or "")
+        out["preco_resolvido"] = preco
+        out["origem_preco"] = origem
+    return out
+
+
 @router.get(
     "/skus/validar",
     response_model=dict,
     dependencies=[Depends(require_permission(_MOD, "ver"))],
 )
-def validar_sku(codigo: str, db: Session = Depends(get_db)):
+def validar_sku(
+    codigo: str,
+    tabela_preco_id: uuid.UUID | None = None,
+    tipo_preco: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """tabela_preco_id / tipo_preco (condicoes do pedido: "avista" |
+    "aprazo") opcionais: com eles vêm também preco_resolvido e origem_preco."""
     sku = buscar_sku_ativo_por_codigo(db, codigo)
     if not sku:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Código de produto inválido")
-    return {"data": _sku_out(sku), "error": None}
+    return {"data": _sku_out_com_preco(db, sku, tabela_preco_id, tipo_preco), "error": None}
 
 
 @router.get(
@@ -147,10 +167,13 @@ def buscar_skus(
     busca: str = "",
     limit: int = Query(50, ge=1, le=50),
     offset: int = Query(0, ge=0),
+    tabela_preco_id: uuid.UUID | None = None,
+    tipo_preco: str | None = None,
     db: Session = Depends(get_db),
 ):
     """Busca de SKUs filhos ativos por código ou descrição (pai + linha +
-    coluna). Cada palavra digitada precisa aparecer em algum dos dois."""
+    coluna). Cada palavra digitada precisa aparecer em algum dos dois.
+    tabela_preco_id / tipo_preco: como em /skus/validar (só na página)."""
     skus = db.execute(select(ProdutoSKU).where(ProdutoSKU.situacao == "Ativo").options(*_sku_opts())).scalars().all()
     termos = busca.lower().split()
     itens = []
@@ -160,9 +183,13 @@ def buscar_skus(
         if all(t in alvo for t in termos):
             itens.append(out)
     itens.sort(key=lambda i: i["codigo"])
+    pagina = itens[offset : offset + limit]
+    if tabela_preco_id is not None or tipo_preco is not None:
+        por_id = {s.id: s for s in skus}
+        pagina = [_sku_out_com_preco(db, por_id[i["id"]], tabela_preco_id, tipo_preco) for i in pagina]
     return {
         "data": {
-            "itens": itens[offset : offset + limit],
+            "itens": pagina,
             "total": len(itens),
             "limit": limit,
             "offset": offset,

@@ -1,0 +1,54 @@
+/* ── MenuDropdown: menu de ações abaixo do botão, alinhado à direita ── */
+.raiz {
+  position: relative;
+  display: inline-flex;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-md);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  font-size: var(--sc-compact-font-size);
+  color: var(--sc-text-primary);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+}
+.item:hover,
+.item:focus-visible,
+.item:focus {
+  background: var(--sc-surface-hover);
+}
+.item[aria-disabled="true"] {
+  color: var(--sc-text-muted);
+  cursor: not-allowed;
+}
+.item[aria-disabled="true"]:hover {
+  background: none;
+}
+
+.itemDanger {
+  color: var(--sc-danger-text);
+}
+.itemDanger:hover,
+.itemDanger:focus {
+  background: var(--sc-danger-bg);
+}

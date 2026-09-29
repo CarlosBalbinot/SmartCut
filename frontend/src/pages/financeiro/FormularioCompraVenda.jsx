@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styles from "./comprasVendas.module.css";
+import { upperOnChange } from "../../utils/uppercase";
 
 const hojeISO = () => new Date().toISOString().split("T")[0];
 
@@ -77,9 +78,9 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
           <label className={`${styles.field} ${styles.fieldFull}`}>
             <span>{parceiroLabel} *</span>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={form.parceiro}
-              onChange={setF("parceiro")}
+              onChange={upperOnChange(setF("parceiro"))}
               placeholder={isCompra ? "Nome do fornecedor" : "Nome do cliente"}
             />
           </label>
@@ -87,9 +88,9 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
           <label className={`${styles.field} ${styles.fieldFull}`}>
             <span>Descrição</span>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={form.descricao}
-              onChange={setF("descricao")}
+              onChange={upperOnChange(setF("descricao"))}
               placeholder="Descrição opcional"
             />
           </label>
@@ -120,9 +121,9 @@ export default function FormularioCompraVenda({ tipo, saving, erro, onSalvar, on
           <label className={styles.field}>
             <span>Categoria</span>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={form.categoria}
-              onChange={setF("categoria")}
+              onChange={upperOnChange(setF("categoria"))}
               placeholder="Ex: Matéria-prima"
             />
           </label>

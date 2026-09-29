@@ -5,6 +5,8 @@ import * as tabelasGradeApi from "../api/tabelasGrade";
 import * as configuracaoGradeApi from "../api/configuracaoGrade";
 import { useAuth } from "../auth/useAuth";
 import styles from "./GradeProdutosPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
+import { upperOnChange } from "../utils/uppercase";
 
 const MODULO = "cadastros_produtos";
 
@@ -502,6 +504,8 @@ function WizardModal({
   onConfirmar,
   onVoltar,
 }) {
+  const overlayProps = useOverlayDismiss(() => onClose());
+
   const grupoSelecionado = grupos.find((g) => g.id === wizard.form.grupo_id);
   const isCellSelected = (l, c) => wizard.selectedCombos.has(comboKey(l, c));
   const isCellExisting = (l, c) => existingComboKeys.has(comboKey(l, c));
@@ -510,7 +514,7 @@ function WizardModal({
     wizard.step === 3 && wizard.diff.novos.length === 0 && wizard.diff.removidos.length === 0;
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
+    <div className={styles.modalOverlay} {...overlayProps}>
       <div className={styles.modalWide} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <h2 className={styles.modalTitle}>
@@ -563,7 +567,7 @@ function WizardModal({
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Descrição *</span>
                 <input
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   value={wizard.form.descricao}
                   onChange={(e) =>
                     onSetWizard((w) => ({
@@ -577,9 +581,9 @@ function WizardModal({
               <label className={styles.field}>
                 <span>Unidade *</span>
                 <input
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   value={wizard.form.unidade}
-                  onChange={onFieldChange("unidade")}
+                  onChange={upperOnChange(onFieldChange("unidade"))}
                   placeholder="PC, UN…"
                 />
               </label>

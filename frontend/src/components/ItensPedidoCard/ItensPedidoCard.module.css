@@ -1,0 +1,759 @@
+/* ── Card "Itens do pedido" — sc-card sem padding, tabela edge-to-edge ──
+   Coluna: topo, lista (altura escolhida pela alça), rodapé de ações e a
+   alça. A altura da lista vem do componente (useResizableHeight); o card
+   cresce com ela e a página rola. Totais ficam no cabeçalho do pedido. */
+.card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+.card > * {
+  flex-shrink: 0;
+}
+/* section.card: vence o padding do .sc-card global (carrega depois). */
+section.card {
+  padding: 0;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-compact-gap-x);
+  padding: 4px 12px 4px 16px;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--sc-compact-font-size);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+}
+
+/* ── Estado vazio ── */
+.vazio {
+  flex: 1 1 auto;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sc-compact-gap-y);
+  padding: var(--sc-space-lg) var(--sc-space-md);
+}
+
+.vazioMsg {
+  margin: 0;
+  font-size: var(--sc-compact-font-size);
+  color: var(--sc-text-muted);
+}
+
+/* ── Tabela — height inline (alça); com mais itens que a altura, só esta
+   área rola. Larguras padrão cabem em 1366px sem rolagem lateral (ver
+   ITENS_COLUNAS_PADRAO). ── */
+.tableWrap {
+  overflow: auto;
+}
+
+/* ── Alça de altura: faixa de 10px na borda inferior, largura total ── */
+.alca {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+  border-top: 1px solid var(--sc-border);
+  border-radius: 0 0 var(--sc-card-radius) var(--sc-card-radius);
+  color: var(--sc-text-muted);
+  cursor: row-resize;
+  touch-action: none;
+  outline: none;
+}
+.alca:hover,
+.alca:focus-visible,
+.alca[data-arrastando] {
+  color: var(--color-primary);
+}
+.alca:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* Larguras vêm do <colgroup> (useResizableColumns). Sempre 100% do card:
+   a Descrição (sem largura) absorve a sobra e o componente limita o
+   arraste — nunca há rolagem lateral. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Header 28px, sticky. sticky também serve de referência para o
+   .resizeHandle (absolute). A borda inferior vira box-shadow: com
+   border-collapse a borda do th não acompanha o sticky. */
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 28px;
+  padding: 0 6px;
+  text-align: left;
+  font-size: var(--sc-compact-label-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sc-text-muted);
+  background: var(--sc-bg-secondary);
+  box-shadow: inset 0 -1px 0 var(--sc-border);
+  user-select: none;
+}
+
+.thNum {
+  text-align: right !important;
+}
+
+/* Handle de 6px na borda direita do th. Parado: fio de 1px (mostra que a
+   borda arrasta); hover e arraste: faixa var(--color-primary). */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  box-shadow: inset -1px 0 0 var(--sc-border);
+  transition: background 0.1s;
+}
+.resizeHandle:hover,
+.resizeHandleAtivo {
+  background: var(--color-primary);
+  box-shadow: none;
+}
+
+/* Linha de 30px. */
+.table tbody tr {
+  height: 30px;
+}
+
+.table td {
+  padding: 0 6px;
+  font-size: var(--sc-compact-font-size);
+  color: var(--sc-text-primary);
+  border-bottom: 1px solid var(--sc-border);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr:hover td {
+  background: var(--sc-bg-secondary);
+}
+
+/* Nº do item (001) — só leitura, mono, discreto. */
+.tdItem {
+  font-family: monospace;
+  font-size: var(--sc-compact-label-size);
+  color: var(--sc-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* REF: texto mono simples (sem pílula). */
+.tdRef {
+  font-family: monospace;
+}
+.tdRef code {
+  font-family: inherit;
+  font-size: var(--sc-compact-font-size);
+}
+
+.tdTotal {
+  text-align: right;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tdAcao {
+  text-align: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* ── Células editáveis — visual de planilha: sem borda até hover/foco ── */
+.tdEdit {
+  padding: 0 2px !important;
+}
+
+.celulaEdit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Vale para CelulaNumero e para o input do TesInput. .sc-campo-erro
+   (global, !important) continua marcando a borda de vermelho. */
+.table td input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 26px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--sc-compact-font-size);
+}
+.table td input:not(:hover):not(:focus) {
+  border-color: transparent;
+  background: transparent;
+}
+/* Hover na linha: borda sutil em todas as células editáveis (REF,
+   Descrição, números, TES) — Item e Total são td simples e não ganham
+   nada. read-only (linha removida / pedido fora de Aberto) fica sem borda.
+   Hover no próprio campo e foco usam as regras de cada input. */
+.table tbody tr:hover td input:not(:read-only):not(:hover):not(:focus) {
+  border-color: var(--sc-border);
+  background: var(--sc-input-bg);
+}
+
+/* REF (ProdutoSkuInput): código mono; lupa só no hover da linha e no foco. */
+.refInput input {
+  font-family: monospace;
+}
+.refInput button {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.table tbody tr:hover .refInput button,
+.refInput:focus-within button {
+  opacity: 1;
+}
+
+/* Descrição: texto à esquerda; espaço para a marca "personalizada".
+   Composto com .inputCelula: ela vem depois no arquivo e, com a mesma
+   especificidade, o text-align: right / padding dela venceriam. */
+.inputCelula.inputTexto {
+  text-align: left;
+  font-variant-numeric: normal;
+}
+.inputCelula.inputComMarca {
+  padding-right: 20px;
+}
+.marcaPersonalizada {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  transform: translateY(-50%);
+  color: var(--sc-text-muted);
+  cursor: help;
+  z-index: 1;
+}
+.marcaPersonalizada:hover {
+  color: var(--color-primary);
+}
+
+.inputCelula {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  color: var(--sc-text-primary);
+  outline: none;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
+}
+.inputCelula:hover:not(:read-only) {
+  border-color: var(--sc-border-strong);
+  background: var(--sc-input-bg);
+}
+.inputCelula:focus:not(:read-only) {
+  border-color: var(--color-primary);
+  background: var(--sc-input-bg);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.inputCelula:read-only {
+  cursor: default;
+}
+
+.celulaErro {
+  margin-top: 1px;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-danger-text);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preço digitado à mão (preco_manual) — ponto discreto à esquerda. */
+.marcadorManual {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  z-index: 1;
+}
+.celulaEdit:has(.celulaErro) .marcadorManual {
+  top: 13px;
+}
+
+/* ── Pendências (edições ainda não salvas) ── */
+/* Linha alterada ou nova: marca sutil na borda esquerda. */
+.linhaAlterada td:first-child {
+  box-shadow: inset 3px 0 0 var(--color-primary);
+}
+
+/* Linha marcada para remoção: riscada e esmaecida; "Desfazer" fica normal. */
+.linhaRemovida td:first-child {
+  box-shadow: inset 3px 0 0 var(--sc-text-muted);
+}
+.linhaRemovida td:not(.tdAcao),
+.linhaRemovida input {
+  text-decoration: line-through;
+  color: var(--sc-text-muted);
+}
+.linhaRemovida td:not(.tdAcao) {
+  opacity: 0.55;
+}
+
+.btnDesfazer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.btnDesfazer:hover {
+  color: var(--color-primary-hover);
+  background: var(--sc-surface-hover);
+}
+
+/* Erro de campo devolvido pelo 422 do lote — padrão .sc-campo-erro, motivo
+   no tooltip (title). Global porque o padrão é compartilhado entre telas;
+   definido aqui enquanto não existe na folha global. */
+:global(.sc-campo-erro),
+:global(.sc-campo-erro):hover,
+:global(.sc-campo-erro):focus {
+  border-color: var(--sc-danger-text) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sc-danger-text) 15%, transparent);
+}
+.table td:global(.sc-campo-erro) {
+  background: var(--sc-danger-bg);
+  box-shadow: inset 0 0 0 1px var(--sc-danger-text);
+}
+
+.btnExcluir {
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+.btnExcluir:hover {
+  background: var(--sc-danger-bg);
+  color: var(--sc-danger-text);
+}
+
+/* ── Rodapé mínimo — só aparece com pendência ── */
+.acoes {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sc-space-xs);
+  padding: 4px 12px 4px 16px;
+  border-top: 1px solid var(--sc-border);
+  background: var(--sc-bg-tertiary);
+}
+
+.acoesMsg,
+.acoesErro {
+  margin-right: auto;
+  font-size: var(--sc-compact-font-size);
+}
+.acoesMsg {
+  color: var(--sc-text-warning);
+}
+.acoesErro {
+  color: var(--sc-danger-text);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Botões ── */
+.btnPrimary {
+  background: var(--color-primary);
+  color: var(--sc-action-text);
+  border: none;
+  height: var(--sc-compact-control-height);
+  padding: 0 12px;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-compact-font-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btnPrimary:hover {
+  background: var(--color-primary-hover);
+}
+.btnPrimary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btnSecondary {
+  background: var(--sc-surface);
+  color: var(--sc-text-primary);
+  border: 1px solid var(--sc-border-strong);
+  height: var(--sc-compact-control-height);
+  padding: 0 12px;
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-compact-font-size);
+  font-weight: 500;
+  cursor: pointer;
+}
+.btnSecondary:hover {
+  background: var(--sc-surface-hover);
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+}
+.btnClose:hover {
+  background: var(--sc-surface-hover);
+  color: var(--sc-text-primary);
+}
+
+/* ── Modal "Adicionar Item" ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modalMd {
+  background: var(--sc-surface);
+  border-radius: var(--sc-radius-lg);
+  width: 520px;
+  max-width: 95vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+}
+
+/* Largura por passo */
+.modalBusca {
+  width: 560px;
+}
+.modalGrade {
+  width: 820px;
+}
+.modalAvulso {
+  width: 480px;
+}
+
+.modalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.75rem 0;
+  flex-shrink: 0;
+}
+
+.modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  margin: 0;
+}
+
+.modalBody {
+  overflow-y: auto;
+  padding: 1.25rem 1.75rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.25rem 1.75rem 1.5rem;
+  border-top: 1px solid var(--sc-border);
+  flex-shrink: 0;
+}
+
+.btnVoltarModal {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+  padding: 0 0.3rem 0 0;
+  margin-right: 0.4rem;
+}
+.btnVoltarModal:hover {
+  color: var(--color-primary);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.875rem 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-label);
+  color: var(--sc-text-secondary);
+}
+
+.input {
+  border: var(--sc-input-border);
+  border-radius: var(--sc-input-radius);
+  padding: var(--sc-input-padding);
+  font-size: var(--sc-font-size-input);
+  color: var(--sc-text-primary);
+  background: var(--sc-input-bg);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+.input:focus {
+  border-color: var(--color-primary);
+}
+.input:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
+
+.erro {
+  margin: 0 1.75rem 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--sc-danger-bg);
+  border: 1px solid var(--sc-danger-border);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+}
+
+.avisoWarn {
+  padding: 0.6rem 0.875rem;
+  background: var(--sc-bg-warning);
+  border: 1px solid var(--sc-border-warning);
+  border-radius: var(--sc-radius-sm);
+  font-size: 0.82rem;
+  color: var(--sc-text-warning);
+}
+
+/* ── Passo 1 — busca ── */
+.searchWrap {
+  position: relative;
+}
+
+.autocomplete {
+  position: fixed;
+  background: var(--sc-surface);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 1050;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 300px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.acItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.875rem;
+  cursor: pointer;
+  font-size: var(--sc-font-size-body);
+}
+.acItem:hover {
+  background: var(--sc-surface-hover);
+}
+
+.acIcone {
+  flex-shrink: 0;
+  width: 1.1rem;
+  text-align: center;
+  color: var(--sc-text-muted);
+}
+
+.acCod {
+  font-family: monospace;
+  font-size: 0.78rem;
+  background: var(--sc-bg-secondary);
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  color: var(--sc-text-secondary);
+  flex-shrink: 0;
+}
+
+.acNome {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.acNomeCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.acGrupo {
+  font-size: 0.72rem;
+  color: var(--sc-text-muted);
+}
+
+.precoHint {
+  display: block;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-muted);
+  margin-top: 0.2rem;
+}
+
+.itemTotal {
+  font-size: 0.9rem;
+  color: var(--sc-text-secondary);
+  padding: 0.625rem 0.875rem;
+  background: var(--sc-bg-secondary);
+  border-radius: var(--sc-radius-sm);
+  border: 1px solid var(--sc-border);
+}
+.itemTotal strong {
+  color: var(--sc-text-primary);
+  font-size: 1rem;
+}
+
+/* ── Passo 2 — grade do produto pai ── */
+.gradeWrap {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.gradeTable {
+  border-collapse: collapse;
+}
+.gradeTable th,
+.gradeTable td {
+  padding: 4px 6px;
+  text-align: center;
+}
+.gradeTable thead th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+}
+.gradeTable tbody th {
+  font-size: var(--sc-font-size-small);
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+  text-align: left;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+}
+
+.gradeCell {
+  width: 60px;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 0.82rem;
+  border: 1px solid var(--sc-border);
+  border-radius: 4px;
+  color: var(--sc-text-primary);
+  background: var(--sc-surface);
+  outline: none;
+}
+.gradeCell:focus {
+  border-color: var(--color-primary);
+}
+.gradeCell:disabled {
+  background: var(--sc-bg-secondary);
+  color: var(--sc-text-muted);
+}
+
+.gradePrecoTable {
+  border-collapse: collapse;
+  flex-shrink: 0;
+}
+.gradePrecoTable th,
+.gradePrecoTable td {
+  padding: 4px 6px;
+  text-align: right;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.gradePrecoTable thead th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--sc-text-muted);
+}
+.gradePrecoTable tbody td {
+  color: var(--color-primary);
+}
+.gradePrecoSemPreco {
+  color: var(--sc-danger-text) !important;
+}

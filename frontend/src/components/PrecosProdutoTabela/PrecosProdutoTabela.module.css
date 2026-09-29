@@ -169,7 +169,6 @@
   font-size: var(--sc-font-size-input);
   font-variant-numeric: tabular-nums;
   text-align: right;
-  text-transform: uppercase;
   color: var(--sc-text-primary);
   outline: none;
   transition:
@@ -332,7 +331,6 @@
   border-radius: var(--sc-radius-sm);
   padding: 0.5rem 0.7rem;
   font-size: var(--sc-font-size-input);
-  text-transform: uppercase;
   color: var(--sc-text-primary);
   background: var(--sc-surface);
   outline: none;

@@ -11,9 +11,16 @@ pydantic-settings==2.15.0
 python-dotenv==1.2.3
 ezdxf==1.3.4
 shapely==2.0.4
+# Motor de encaixe v2 (backend puro): spyrrow resolve o strip packing de cada
+# mesa e OR-Tools CP-SAT divide as peças entre as mesas. Versões fixadas —
+# essas libs mudam de API entre versões.
+spyrrow==0.9.0
+ortools==9.15.6755
 reportlab==4.2.0
 python-multipart==0.0.32
 qrcode[pil]==8.2
+# Relatórios configuráveis (RL1): modelos HTML editáveis (sandbox Jinja2).
+jinja2==3.1.6
 
 PyJWT>=2.15.0
 # bcrypt fixado <4.1: passlib 1.7.4 quebra com bcrypt>=4.1 (removeram

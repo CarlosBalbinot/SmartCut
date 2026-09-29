@@ -228,10 +228,10 @@ export default function PecaCard({ peca, index, onChange, tituloExtra }) {
         <div className={styles.campo}>
           <label className={styles.label}>Nome *</label>
           <input
-            className={styles.input}
+            className={`${styles.input} sc-upper`}
             name="nome"
             value={peca.nome}
-            onChange={(e) => onChange(index, "nome", e.target.value)}
+            onChange={(e) => onChange(index, "nome", e.target.value.toUpperCase())}
             required
           />
         </div>

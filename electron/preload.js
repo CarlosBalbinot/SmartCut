@@ -17,3 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getToken: (escopo) => ipcRenderer.invoke('token-get', escopo),
   clearToken: (escopo) => ipcRenderer.invoke('token-clear', escopo),
 });
+
+// RL2: relatórios configuráveis (modelos da pasta relatorios/). gerarPdf
+// busca o HTML no backend, gera o PDF e abre no visualizador do sistema;
+// resolve { ok, caminho } ou { ok: false, status, erro, modelo }.
+contextBridge.exposeInMainWorld('smartcut', {
+  relatorios: {
+    gerarPdf: (codigo, id, variante) => ipcRenderer.invoke('relatorio:gerar-pdf', codigo, id, variante),
+  },
+});

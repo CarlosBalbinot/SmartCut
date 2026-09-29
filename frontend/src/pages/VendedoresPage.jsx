@@ -22,6 +22,7 @@ import { createLead, deleteLead, getLeads } from "../api/leads";
 import { getTabelasPreco } from "../api/tabelasPreco";
 import { useAuth } from "../auth/useAuth";
 import styles from "./VendedoresPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "cadastros_vendedores";
 
@@ -116,6 +117,8 @@ const VAZIO = {
 const money2 = (v) => Number(v || 0).toFixed(2);
 
 export default function VendedoresPage() {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+
   const { hasPermission } = useAuth();
   const [vendedores, setVendedores] = useState([]);
   const [busca, setBusca] = useState("");
@@ -369,7 +372,7 @@ export default function VendedoresPage() {
       </div>
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>
@@ -431,7 +434,7 @@ export default function VendedoresPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome *</span>
                     <input
-                      className={`${styles.input} ${errosCampo.nome ? styles.campoErro : ""}`}
+                      className={`${styles.input} ${errosCampo.nome ? styles.campoErro : ""} sc-upper`}
                       value={modal.nome}
                       title={errosCampo.nome || ""}
                       onChange={setFUpper("nome")}
@@ -441,7 +444,7 @@ export default function VendedoresPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Nome Fantasia</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.nome_fantasia}
                       onChange={setFUpper("nome_fantasia")}
                     />
@@ -450,7 +453,7 @@ export default function VendedoresPage() {
                   <label className={`${styles.field} ${styles.fieldFull}`}>
                     <span>Descrição</span>
                     <textarea
-                      className={`${styles.input} ${styles.textarea}`}
+                      className={`${styles.input} ${styles.textarea} sc-upper`}
                       rows={2}
                       value={modal.descricao}
                       onChange={setFUpper("descricao")}
@@ -460,7 +463,7 @@ export default function VendedoresPage() {
                   <label className={styles.field}>
                     <span>Comissão padrão (%)</span>
                     <input
-                      className={`${styles.input} ${styles.inputUpper} ${errosCampo.comissao_padrao_pct ? styles.campoErro : ""}`}
+                      className={`${styles.input} ${errosCampo.comissao_padrao_pct ? styles.campoErro : ""}`}
                       value={modal.comissao_padrao_pct}
                       inputMode="decimal"
                       placeholder="Opcional"
@@ -553,9 +556,9 @@ export default function VendedoresPage() {
                   <label className={styles.field}>
                     <span>Estado (UF)</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.estado}
-                      onChange={setF("estado")}
+                      onChange={setFUpper("estado")}
                       placeholder="SP"
                       maxLength={2}
                     />
@@ -565,13 +568,13 @@ export default function VendedoresPage() {
                     <span>Endereço / Número</span>
                     <div className={styles.endRow}>
                       <input
-                        className={styles.input}
+                        className={`${styles.input} sc-upper`}
                         value={modal.endereco}
                         onChange={setFUpper("endereco")}
                         placeholder="Rua, Av…"
                       />
                       <input
-                        className={`${styles.input} ${styles.inputNumero}`}
+                        className={`${styles.input} ${styles.inputNumero} sc-upper`}
                         value={modal.numero}
                         onChange={setFUpper("numero")}
                         placeholder="Nº"
@@ -582,7 +585,7 @@ export default function VendedoresPage() {
                   <label className={styles.field}>
                     <span>Complemento</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.complemento}
                       onChange={setFUpper("complemento")}
                     />
@@ -591,7 +594,7 @@ export default function VendedoresPage() {
                   <label className={styles.field}>
                     <span>Bairro</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.bairro}
                       onChange={setFUpper("bairro")}
                     />
@@ -600,7 +603,7 @@ export default function VendedoresPage() {
                   <label className={styles.field}>
                     <span>Município</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.municipio}
                       onChange={setFUpper("municipio")}
                     />
@@ -626,15 +629,19 @@ export default function VendedoresPage() {
 
                   <label className={styles.field}>
                     <span>RG/IE</span>
-                    <input className={styles.input} value={modal.rg_ie} onChange={setF("rg_ie")} />
+                    <input
+                      className={`${styles.input} sc-upper`}
+                      value={modal.rg_ie}
+                      onChange={setFUpper("rg_ie")}
+                    />
                   </label>
 
                   <label className={styles.field}>
                     <span>Inscrição Municipal</span>
                     <input
-                      className={styles.input}
+                      className={`${styles.input} sc-upper`}
                       value={modal.inscricao_municipal}
-                      onChange={setF("inscricao_municipal")}
+                      onChange={setFUpper("inscricao_municipal")}
                     />
                   </label>
 
@@ -788,7 +795,7 @@ function CampoPct({ valor, readOnly, autoFocus, permitirVazio, onSalvar }) {
 
   return (
     <input
-      className={`${styles.input} ${styles.inputUpper} ${styles.inputPct} ${erro ? styles.campoErro : ""}`}
+      className={`${styles.input} ${styles.inputPct} ${erro ? styles.campoErro : ""}`}
       value={exibido}
       placeholder="0,00"
       title={erro || ""}
@@ -942,7 +949,7 @@ function TabComissoes({ vendedorId }) {
               <tr>
                 <td>
                   <select
-                    className={`${styles.input} ${styles.inputUpper}`}
+                    className={styles.input}
                     value={novo.tabela_preco_id}
                     autoFocus
                     onChange={(e) => setNovo({ tabela_preco_id: e.target.value })}
@@ -1288,10 +1295,10 @@ function TabCatalogos({ vendedorId }) {
             <label className={styles.field}>
               <span>Nome *</span>
               <input
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 value={upForm.nome}
                 autoFocus
-                onChange={(e) => setUpForm((f) => ({ ...f, nome: e.target.value }))}
+                onChange={(e) => setUpForm((f) => ({ ...f, nome: e.target.value.toUpperCase() }))}
               />
             </label>
             <label className={styles.field} style={{ marginTop: 10 }}>
@@ -1468,20 +1475,22 @@ function TabLeads({ vendedorId }) {
               <label key={key} className={styles.field} style={{ marginTop: i > 0 ? 10 : 0 }}>
                 <span>{label}</span>
                 <input
-                  className={styles.input}
+                  className={`${styles.input} sc-upper`}
                   value={form[key]}
                   autoFocus={i === 0}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value.toUpperCase() }))}
                 />
               </label>
             ))}
             <label className={styles.field} style={{ marginTop: 10 }}>
               <span>Observação</span>
               <textarea
-                className={styles.input}
+                className={`${styles.input} sc-upper`}
                 rows={3}
                 value={form.observacao}
-                onChange={(e) => setForm((f) => ({ ...f, observacao: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, observacao: e.target.value.toUpperCase() }))
+                }
                 style={{ resize: "vertical" }}
               />
             </label>

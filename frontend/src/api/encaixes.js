@@ -34,8 +34,13 @@ export const getEncaixe = (id) => request(`/encaixes/${id}`);
 export const gerarEncaixe = (payload) =>
   request("/encaixes/", { method: "POST", body: JSON.stringify(payload) });
 
-export const gerarEncaixeAutomatico = (pedidoId) =>
-  request(`/encaixes/gerar/${pedidoId}`, { method: "POST" });
+// comprimentoMaxCm: limite da mesa — risco maior é dividido em partes
+// (sem ele, o backend usa 150 cm).
+export const gerarEncaixeAutomatico = (pedidoId, comprimentoMaxCm) =>
+  request(
+    `/encaixes/gerar/${pedidoId}${comprimentoMaxCm ? `?comprimento_max_cm=${comprimentoMaxCm}` : ""}`,
+    { method: "POST" }
+  );
 
 export const deleteEncaixe = (id) => request(`/encaixes/${id}`, { method: "DELETE" });
 

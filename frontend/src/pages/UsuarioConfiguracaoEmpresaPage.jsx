@@ -15,7 +15,7 @@ const MODULO = "configuracoes_editar";
 const CAMPOS_EMPRESA = [
   { name: "razao_social", label: "Razão Social", full: true, upper: true },
   { name: "cnpj", label: "CNPJ" },
-  { name: "ie", label: "Inscrição Estadual" },
+  { name: "ie", label: "Inscrição Estadual", upper: true },
 ];
 
 const CAMPOS_CONTATO = [
@@ -142,7 +142,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
     <label key={name} className={styles.field}>
       <span>{label}</span>
       <input
-        className={styles.input}
+        className={upper ? `${styles.input} sc-upper` : styles.input}
         type={type}
         name={name}
         value={form[name]}
@@ -212,7 +212,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
 
         {renderCampo({ name: "endereco", label: "Endereço", upper: true })}
         <div className={styles.grid2}>
-          {renderCampo({ name: "endereco_numero", label: "Número" })}
+          {renderCampo({ name: "endereco_numero", label: "Número", upper: true })}
           {renderCampo({ name: "endereco_bairro", label: "Bairro", upper: true })}
         </div>
         <div className={styles.grid2}>

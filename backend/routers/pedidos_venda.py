@@ -2,10 +2,10 @@ import calendar
 import uuid
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, computed_field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -14,10 +14,11 @@ from database import get_db
 from middleware.permissions import require_permission
 from models.cliente import Cliente
 from models.condicao_pagamento import CondicaoPagamento
+from models.ordem_corte import OrdemCorte
 from models.pedido import ItemPedido, PedidoVenda, STATUS_VALIDOS
 from models.produto import Produto
 from models.produto_sku import ProdutoSKU
-from models.venda import PrecoReferencia, TabelaPreco, Vendedor
+from models.venda import TabelaPreco, Vendedor
 from routers.produtos import buscar_sku_ativo_por_codigo
 from routers.tes import buscar_tes_por_codigo
 from schemas.venda_schema import (
@@ -29,22 +30,19 @@ from schemas.venda_schema import (
     PedidoVendaUpdate,
     PedidoStatusUpdate,
 )
-from services.pdf_venda_service import (
-    gerar_pdf_corte,
-    gerar_pdf_pedido,
-    nome_arquivo_corte,
-    nome_arquivo_pedido,
-)
+from services.condicao_service import gerar_parcelas
+from services.ordem_corte_service import numero_fmt, oc_ativa_do_pedido
 from services.venda_service import (
     SNAPSHOT_CLIENTE,
     aplicar_snapshot_cliente,
     pedido_sincronizavel,
     aplicar_comissao,
     calcular_subtotal_itens,
-    get_ou_criar_empresa,
     proximo_numero,
     recalcular_pedido,
+    reservar_numeros_item,
     resolver_preco_item,
+    resumo_totais,
 )
 
 router = APIRouter(prefix="/api/v1/pedidos-venda", tags=["pedidos_venda"])
@@ -63,10 +61,6 @@ class _PedidoCreate(PedidoVendaCreate):
     cliente_id: Optional[int] = None
 
 
-class _PedidoUpdate(PedidoVendaUpdate):
-    cliente_id: Optional[int] = None
-
-
 class _PedidoVendaOut(PedidoVendaOut):
     tipo: str = "venda"
     cliente_id: Optional[int] = None
@@ -77,6 +71,8 @@ class _PedidoVendaOut(PedidoVendaOut):
 
 
 class _ItemOut(ItemPedidoVendaOut):
+    # Número fixo do item no pedido (1, 2, 3…) — ver ItemPedido.numero_item.
+    numero_item: int
     preco_manual: bool = False
     sku_codigo: Optional[str] = None
     descricao: Optional[str] = None
@@ -106,7 +102,14 @@ class _ItemOut(ItemPedidoVendaOut):
 
 
 class _PedidoVendaComItensOut(_PedidoVendaOut):
+    # Ordenados por numero_item (order_by do relacionamento PedidoVenda.itens).
     itens: List[_ItemOut] = []
+
+    # Totais do cabeçalho calculados no backend — ver venda_service.resumo_totais.
+    @computed_field
+    @property
+    def totais(self) -> dict:
+        return resumo_totais(self, self.itens)
 
 
 class _ItemUpdate(BaseModel):
@@ -134,6 +137,37 @@ class _ItemUpdate(BaseModel):
     tes_codigo: Optional[str] = None
     sku_codigo: Optional[str] = None
     descricao: Optional[str] = None
+
+
+# Salvar itens em lote (grid de itens): ref_temp é o id temporário do front
+# para devolver o erro do item novo na linha certa. quantidade opcional só
+# para o erro sair no formato {"erros": [...]} em vez do 422 do pydantic.
+class _ItemLoteCriar(BaseModel):
+    ref_temp: Union[int, str]
+    sku_id: Optional[int] = None
+    sku_codigo: Optional[str] = None
+    quantidade: Optional[int] = None
+    preco_unitario: Optional[Decimal] = None
+    desconto: Optional[Decimal] = None
+    desconto_percentual: Optional[Decimal] = None
+    tes_codigo: Optional[str] = None
+    descricao: Optional[str] = None
+
+
+class _ItemLoteAtualizar(_ItemUpdate):
+    item_id: uuid.UUID
+
+
+class _ItensLote(BaseModel):
+    criar: List[_ItemLoteCriar] = []
+    atualizar: List[_ItemLoteAtualizar] = []
+    remover: List[uuid.UUID] = []
+
+
+class _PedidoUpdate(PedidoVendaUpdate):
+    cliente_id: Optional[int] = None
+    # Itens pendentes do grid, salvos na mesma transação do cabeçalho.
+    itens: Optional[_ItensLote] = None
 
 
 class _AplicarTabelaRequest(BaseModel):
@@ -190,6 +224,17 @@ def _exigir_aberto(pedido: PedidoVenda) -> None:
         )
 
 
+class _ErroCampo(HTTPException):
+    """422 de validação de item que sabe qual campo falhou. Fora do lote
+    (PATCH/POST de item) vira o 422 {"detail": mensagem} de sempre; no lote
+    é capturado e vira uma entrada de {"erros": [...]}."""
+
+    def __init__(self, campo: str, mensagem: str):
+        super().__init__(status_code=422, detail=mensagem)
+        self.campo = campo
+        self.mensagem = mensagem
+
+
 _ORIGENS_TABELA = ("TABELA_SKU", "TABELA_PRODUTO", "TABELA_GRUPO")
 
 
@@ -211,7 +256,7 @@ def _aplicar_desconto(item: ItemPedido, limitar: bool = False) -> None:
         valor = Decimal(str(item.desconto_valor or 0))
         if valor > bruto:
             if not limitar:
-                raise HTTPException(status_code=422, detail="Desconto maior que o valor do item")
+                raise _ErroCampo("desconto", "Desconto maior que o valor do item")
             valor = bruto
         pct = (valor / bruto * 100) if bruto else Decimal("0")
         pct = pct.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
@@ -226,7 +271,7 @@ def _itens_com_grupo(db: Session, pedido_id: uuid.UUID):
             select(ItemPedido)
             .where(ItemPedido.pedido_id == pedido_id)
             .options(*_ITEM_DIRETO_OPTS)
-            .order_by(ItemPedido.id)
+            .order_by(ItemPedido.numero_item)
         )
         .scalars()
         .all()
@@ -385,8 +430,10 @@ def listar(tipo: str | None = None, db: Session = Depends(get_db)):
     )
     if tipo:
         q = q.where(PedidoVenda.tipo == tipo)
+    linhas = db.execute(q).all()
+    producoes = _producao_out(_ocs_ativas(db, [p.id for p, *_ in linhas]))
     data = []
-    for pedido, vendedor_nome, tabela_nome, condicao_desc in db.execute(q).all():
+    for pedido, vendedor_nome, tabela_nome, condicao_desc in linhas:
         d = _PedidoVendaOut.model_validate(pedido).model_dump()
         d.update(
             {
@@ -395,6 +442,7 @@ def listar(tipo: str | None = None, db: Session = Depends(get_db)):
                 "condicao_pagamento_descricao": condicao_desc,
                 "tipo_preco": pedido.condicoes,
                 "total": d["total_pedido"],
+                "producao": producoes.get(pedido.id),
             }
         )
         data.append(d)
@@ -430,21 +478,54 @@ def criar(payload: _PedidoCreate, db: Session = Depends(get_db)):
     return {"data": _PedidoVendaComItensOut.model_validate(pedido), "error": None}
 
 
+def _producao_out(ocs) -> dict[uuid.UUID, dict]:
+    """OC ativa de cada pedido → {pedido_id: producao}. Uma consulta.
+
+    Cancelada não conta: sem OC ativa, o pedido volta a `producao: null`.
+    """
+    return {oc.pedido_id: {"oc_id": str(oc.id), "oc_numero": numero_fmt(oc.numero), "status": oc.status} for oc in ocs}
+
+
+def _ocs_ativas(db: Session, pedido_ids: list[uuid.UUID]) -> list:
+    if not pedido_ids:
+        return []
+    return (
+        db.execute(
+            select(OrdemCorte).where(
+                OrdemCorte.pedido_id.in_(pedido_ids),
+                OrdemCorte.status != "CANCELADA",
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+
 @router.get("/{pedido_id}", dependencies=[Depends(_VER)])
 def get_one(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     pedido = _load_com_itens(db, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    return {"data": _PedidoVendaComItensOut.model_validate(pedido), "error": None}
+    saida = _PedidoVendaComItensOut.model_validate(pedido)
+    saida.producao = _producao_out(_ocs_ativas(db, [pedido_id])).get(pedido_id)
+    return {"data": saida, "error": None}
 
 
+# PUT = "Salvar Pedido" (cabeçalho + itens pendentes do grid, campo "itens"
+# no formato de PUT /{id}/itens). Mesma transação: item inválido → 422
+# {"erros": [...]} e nem o cabeçalho é gravado. PATCH segue igual.
 @router.patch("/{pedido_id}", dependencies=[Depends(_EDITAR)])
+@router.put("/{pedido_id}", dependencies=[Depends(_EDITAR)])
 def atualizar(pedido_id: uuid.UUID, payload: _PedidoUpdate, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     antes = (pedido.vendedor_id, pedido.tabela_preco_id)
     dados = payload.model_dump(exclude_unset=True)
+    dados.pop("itens", None)
+    lote = payload.itens if payload.itens is not None and not _lote_vazio(payload.itens) else None
+    if lote is not None:
+        _exigir_aberto(pedido)
 
     # Troca de cliente: só com pedido Aberto; não mexe em itens, preços,
     # vendedor nem tabela. null não desvincula (o pedido precisa de cliente).
@@ -483,8 +564,16 @@ def atualizar(pedido_id: uuid.UUID, payload: _PedidoUpdate, db: Session = Depend
     # Aberto — mudar o cadastro do vendedor não mexe em pedidos existentes.
     if pedido.status == "Aberto" and (pedido.vendedor_id, pedido.tabela_preco_id) != antes:
         aplicar_comissao(db, pedido)
+    # Itens depois do cabeçalho: item novo já pega a tabela/condição salvas agora.
+    if lote is not None:
+        erros = _aplicar_lote_itens(db, pedido, lote)
+        if erros:
+            db.rollback()
+            return _resposta_erros_itens(erros)
+        db.flush()
     recalcular_pedido(db, pedido_id)
     db.commit()
+    db.expire_all()
     pedido = _load_com_itens(db, pedido_id)
     return {"data": _PedidoVendaComItensOut.model_validate(pedido), "error": None}
 
@@ -509,12 +598,21 @@ def _validar_transicao_status(atual: str, novo: str, nfe_id: int | None) -> None
     raise HTTPException(status_code=400, detail=f"Transição de {atual} para {novo} não permitida.")
 
 
+# Excluir (soft delete) e cancelar pelo status dão no mesmo — pedido
+# "Cancelado". Com Ordem de Corte ativa, a OC tem de ser cancelada antes.
+def _bloquear_se_oc_ativa(db: Session, pedido_id: uuid.UUID) -> None:
+    if oc_ativa_do_pedido(db, pedido_id):
+        raise HTTPException(status_code=409, detail="Pedido possui Ordem de Corte ativa")
+
+
 @router.patch("/{pedido_id}/status", dependencies=[Depends(_EDITAR)])
 def alterar_status(pedido_id: uuid.UUID, payload: PedidoStatusUpdate, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
     _validar_transicao_status(pedido.status, payload.status, pedido.nfe_id)
+    if payload.status == "Cancelado":
+        _bloquear_se_oc_ativa(db, pedido_id)
     pedido.status = payload.status
     db.commit()
     pedido = _load_com_itens(db, pedido_id)
@@ -529,6 +627,7 @@ def deletar(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
     pedido = db.get(PedidoVenda, pedido_id)
     if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    _bloquear_se_oc_ativa(db, pedido_id)
     pedido.status = "Cancelado"
     db.commit()
     return {"data": None, "error": None}
@@ -577,6 +676,7 @@ def adicionar_item(
 
     item = ItemPedido(
         pedido_id=pedido_id,
+        numero_item=reservar_numeros_item(db, pedido_id),
         grupo_id=payload.grupo_id,
         produto_id=payload.produto_id,
         lote_id=payload.lote_id,
@@ -637,7 +737,32 @@ def editar_item(
         raise HTTPException(status_code=404, detail="Item não encontrado")
     _exigir_aberto(pedido)
 
-    dados = payload.model_dump(exclude_unset=True)
+    preco_origem = _editar_item_campos(db, pedido, item, payload.model_dump(exclude_unset=True))
+
+    db.flush()
+    recalcular_pedido(db, pedido_id)
+    db.commit()
+    db.refresh(item)
+    db.refresh(pedido)
+    item.preco_origem = preco_origem
+    itens = db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)).scalars().all()
+    return {
+        "data": {
+            "item": _ItemOut.model_validate(item),
+            "totais": {
+                "subtotal": calcular_subtotal_itens(itens),
+                "total": pedido.total_pedido,
+            },
+        },
+        "error": None,
+    }
+
+
+def _editar_item_campos(db: Session, pedido: PedidoVenda, item: ItemPedido, dados: dict) -> str | None:
+    """Aplica no item os campos do PATCH (dados = model_dump(exclude_unset)
+    de _ItemUpdate) — usado pelo PATCH individual e pelo salvar em lote.
+    Erro de validação → _ErroCampo (422) com o campo que falhou. Não faz
+    flush/commit. Devolve a origem do preço quando trocou o SKU."""
     preco_origem: str | None = None
 
     # Nomes antigos do body → nomes novos (desconto em R$ / em %).
@@ -646,13 +771,13 @@ def editar_item(
     if "desconto_pct" in dados:
         dados.setdefault("desconto_percentual", dados.pop("desconto_pct"))
     if "desconto" in dados and "desconto_percentual" in dados:
-        raise HTTPException(status_code=422, detail="Informe desconto (R$) ou desconto_percentual, não os dois.")
+        raise _ErroCampo("desconto", "Informe desconto (R$) ou desconto_percentual, não os dois.")
 
     if "tes_codigo" in dados:
         codigo = (dados.pop("tes_codigo") or "").strip()
         tes = buscar_tes_por_codigo(db, codigo)
         if not tes:
-            raise HTTPException(status_code=422, detail=f"Código de TES inválido: {codigo}")
+            raise _ErroCampo("tes_codigo", f"Código de TES inválido: {codigo}")
         dados["tes_id"] = tes.id
 
     # Troca de SKU: descrição e preço vêm do novo SKU; quantidade, TES e o
@@ -660,10 +785,10 @@ def editar_item(
     if "sku_codigo" in dados:
         codigo = (dados.pop("sku_codigo") or "").strip()
         if item.grupo_id is not None:
-            raise HTTPException(status_code=422, detail="Item de corte não permite troca de produto.")
+            raise _ErroCampo("sku_codigo", "Item de corte não permite troca de produto.")
         sku = buscar_sku_ativo_por_codigo(db, codigo)
         if not sku:
-            raise HTTPException(status_code=422, detail=f"Código de produto inválido: {codigo}")
+            raise _ErroCampo("sku_codigo", f"Código de produto inválido: {codigo}")
         # FK e relationship juntos: com autoflush=False o FK só mudaria no
         # flush, e descricao_completa/quantidade_total leem sku_id/produto_id.
         item.sku_id, item.sku = sku.id, sku
@@ -686,35 +811,32 @@ def editar_item(
     if "descricao" in dados:
         descricao = (dados.pop("descricao") or "").strip().upper()
         if len(descricao) > 120:
-            raise HTTPException(status_code=422, detail="Descrição deve ter no máximo 120 caracteres.")
+            raise _ErroCampo("descricao", "Descrição deve ter no máximo 120 caracteres.")
         item.descricao = descricao or _descricao_padrao(item)
 
     if "quantidade" in dados:
         if dados["quantidade"] is None or dados["quantidade"] <= 0:
-            raise HTTPException(status_code=422, detail="Quantidade deve ser maior que zero.")
+            raise _ErroCampo("quantidade", "Quantidade deve ser maior que zero.")
         if item.grupo_id is not None:
             # Item legado de corte: quantidade vem da grade qtd_p..qtd_g3
             # (ver ItemPedido.quantidade_total) — "quantidade" seria ignorado.
-            raise HTTPException(
-                status_code=422,
-                detail="Item de corte usa quantidades por tamanho (qtd_p..qtd_g3).",
-            )
+            raise _ErroCampo("quantidade", "Item de corte usa quantidades por tamanho (qtd_p..qtd_g3).")
     if "preco_unitario" in dados:
         if dados["preco_unitario"] is None or dados["preco_unitario"] < 0:
-            raise HTTPException(status_code=422, detail="Preço unitário não pode ser negativo.")
+            raise _ErroCampo("preco_unitario", "Preço unitário não pode ser negativo.")
         item.preco_manual = True
 
     if "desconto_percentual" in dados:
         pct = dados.pop("desconto_percentual")
         if pct is None or pct < 0 or pct > 100:
-            raise HTTPException(status_code=422, detail="Desconto percentual deve estar entre 0 e 100.")
+            raise _ErroCampo("desconto_percentual", "Desconto percentual deve estar entre 0 e 100.")
         item.desconto_tipo = "PERCENTUAL"
         item.desconto_percentual = pct
         dados["_desconto"] = True
     if "desconto" in dados:
         valor = dados.pop("desconto")
         if valor is None or valor < 0:
-            raise HTTPException(status_code=422, detail="Desconto não pode ser negativo.")
+            raise _ErroCampo("desconto", "Desconto não pode ser negativo.")
         item.desconto_tipo = "VALOR"
         item.desconto_valor = float(valor)
         dados["_desconto"] = True
@@ -742,24 +864,116 @@ def editar_item(
     }
     if campos_valor & dados.keys():
         _aplicar_desconto(item)
+    return preco_origem
+
+
+def _lote_vazio(lote: _ItensLote) -> bool:
+    return not (lote.criar or lote.atualizar or lote.remover)
+
+
+def _aplicar_lote_itens(db: Session, pedido: PedidoVenda, lote: _ItensLote) -> list[dict]:
+    """Remove, atualiza e cria os itens do lote na sessão (sem commit).
+    Valida todos os itens e devolve a lista de erros
+    [{"item_id" | "ref_temp", "campo", "mensagem"}] — com erro, quem chama
+    faz rollback (tudo ou nada). Pedido Aberto é checado por quem chama."""
+    erros: list[dict] = []
+    itens = {i.id: i for i in _itens_com_grupo(db, pedido.id)}
+
+    removidos: set[uuid.UUID] = set()
+    for item_id in lote.remover:
+        item = itens.get(item_id)
+        if item is None:
+            erros.append({"item_id": str(item_id), "campo": "item_id", "mensagem": "Item não encontrado"})
+            continue
+        if item_id not in removidos:
+            db.delete(item)
+            removidos.add(item_id)
+
+    for it in lote.atualizar:
+        item = itens.get(it.item_id)
+        if item is None or it.item_id in removidos:
+            mensagem = "Item não encontrado" if item is None else "Item marcado para remoção"
+            erros.append({"item_id": str(it.item_id), "campo": "item_id", "mensagem": mensagem})
+            continue
+        dados = it.model_dump(exclude_unset=True)
+        dados.pop("item_id", None)
+        try:
+            _editar_item_campos(db, pedido, item, dados)
+        except _ErroCampo as exc:
+            erros.append({"item_id": str(it.item_id), "campo": exc.campo, "mensagem": exc.mensagem})
+
+    for it in lote.criar:
+        dados = it.model_dump(exclude_unset=True)
+        ref = dados.pop("ref_temp")
+        sku_id = dados.pop("sku_id", None)
+        try:
+            if dados.get("quantidade") is None:
+                raise _ErroCampo("quantidade", "Quantidade é obrigatória.")
+            # sku_id vira sku_codigo: a "troca de SKU" do PATCH já resolve
+            # preço (tabela > SKU > produto pai) e descrição do item novo.
+            if sku_id is not None and not dados.get("sku_codigo"):
+                sku = db.get(ProdutoSKU, sku_id)
+                if not sku or sku.situacao != "Ativo":
+                    raise _ErroCampo("sku_id", f"SKU inválido: {sku_id}")
+                dados["sku_codigo"] = sku.codigo
+            if not (dados.get("sku_codigo") or "").strip():
+                raise _ErroCampo("sku_codigo", "Informe o produto (sku_id ou sku_codigo).")
+            item = ItemPedido(
+                pedido_id=pedido.id,
+                # Só item válido até aqui reserva número; com erro no lote o
+                # rollback devolve o contador (nada é gravado).
+                numero_item=reservar_numeros_item(db, pedido.id),
+                grupo_id=None,
+                quantidade=0,
+                preco_unitario=Decimal("0"),
+                preco_manual=False,
+                tes_id=pedido.tes_id,
+                desconto_tipo="VALOR",
+                desconto_percentual=Decimal("0"),
+                desconto_valor=0.0,
+                desconto_pct=0.0,
+                acrescimo_pct=0.0,
+                acrescimo_valor=0.0,
+            )
+            _editar_item_campos(db, pedido, item, dados)
+            db.add(item)
+        except _ErroCampo as exc:
+            erros.append({"ref_temp": ref, "campo": exc.campo, "mensagem": exc.mensagem})
+
+    return erros
+
+
+def _resposta_erros_itens(erros: list[dict]) -> JSONResponse:
+    return JSONResponse(
+        status_code=422,
+        content={"data": None, "error": "Há itens inválidos — nada foi salvo.", "erros": erros},
+    )
+
+
+@router.put("/{pedido_id}/itens", dependencies=[Depends(_EDITAR)])
+def salvar_itens_lote(
+    pedido_id: uuid.UUID,
+    payload: _ItensLote,
+    db: Session = Depends(get_db),
+):
+    """Salva criar/atualizar/remover do grid numa transação só: qualquer
+    item inválido → 422 {"erros": [...]} e nada é gravado."""
+    pedido = db.get(PedidoVenda, pedido_id)
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+    _exigir_aberto(pedido)
+
+    erros = _aplicar_lote_itens(db, pedido, payload)
+    if erros:
+        db.rollback()
+        return _resposta_erros_itens(erros)
 
     db.flush()
     recalcular_pedido(db, pedido_id)
     db.commit()
-    db.refresh(item)
-    db.refresh(pedido)
-    item.preco_origem = preco_origem
-    itens = db.execute(select(ItemPedido).where(ItemPedido.pedido_id == pedido_id)).scalars().all()
-    return {
-        "data": {
-            "item": _ItemOut.model_validate(item),
-            "totais": {
-                "subtotal": calcular_subtotal_itens(itens),
-                "total": pedido.total_pedido,
-            },
-        },
-        "error": None,
-    }
+    db.expire_all()
+    pedido = _load_com_itens(db, pedido_id)
+    return {"data": _PedidoVendaComItensOut.model_validate(pedido), "error": None}
 
 
 @router.post("/{pedido_id}/aplicar-tabela", dependencies=[Depends(_EDITAR)])
@@ -850,6 +1064,7 @@ def adicionar_itens_bulk(
         raise HTTPException(status_code=400, detail="Nenhum item informado.")
 
     criados: list[ItemPedido] = []
+    proximo_numero_item = reservar_numeros_item(db, pedido_id, len(payload.itens))
     try:
         for it in payload.itens:
             sku = None
@@ -877,6 +1092,7 @@ def adicionar_itens_bulk(
             desconto_pct = Decimal(str(it.desconto_pct or 0))
             item = ItemPedido(
                 pedido_id=pedido_id,
+                numero_item=proximo_numero_item + len(criados),
                 grupo_id=None,
                 produto_id=it.produto_id,
                 sku_id=it.sku_id,
@@ -905,56 +1121,90 @@ def adicionar_itens_bulk(
     return {"data": [_ItemOut.model_validate(i) for i in criados], "error": None}
 
 
+# ── Parcelas ──────────────────────────────────────────────────────────────────
+
+
+def _data_query(valor: str | None, campo: str) -> date | None:
+    """ "YYYY-MM-DD" da query → date; vazio = não informado."""
+    if not (valor or "").strip():
+        return None
+    try:
+        return date.fromisoformat(valor.strip())
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{campo} inválido: use AAAA-MM-DD.")
+
+
+@router.get("/{pedido_id}/parcelas-preview", dependencies=[Depends(_VER)])
+def parcelas_preview(
+    pedido_id: uuid.UUID,
+    primeiro_vencimento: str | None = None,
+    total: Decimal | None = None,
+    condicao_pagamento_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """Prévia das parcelas do pedido (condicao_service.gerar_parcelas — o
+    mesmo cálculo de qualquer geração de parcelas).
+
+    Sem parâmetros usa o que está gravado: condição, total_pedido, emissão e
+    1º vencimento. A tela manda o que ainda não foi salvo:
+      primeiro_vencimento — do formulário ("" = sem 1º vencimento)
+      total               — total local com itens/cabeçalho pendentes
+      condicao_pagamento_id — condição escolhida e ainda não salva
+    """
+    pedido = db.get(PedidoVenda, pedido_id)
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido não encontrado")
+
+    condicao_id = condicao_pagamento_id if condicao_pagamento_id is not None else pedido.condicao_pagamento_id
+    if condicao_id is None:
+        return {"data": [], "error": None}
+    condicao = db.get(CondicaoPagamento, condicao_id)
+    if not condicao:
+        raise HTTPException(status_code=404, detail="Condição de pagamento não encontrada")
+
+    valor = total if total is not None else Decimal(str(pedido.total_pedido or 0))
+    if valor <= 0:
+        return {"data": [], "error": None}
+    vencimento = (
+        _data_query(primeiro_vencimento, "primeiro_vencimento")
+        if primeiro_vencimento is not None
+        else pedido.primeiro_vencimento
+    )
+
+    try:
+        parcelas = gerar_parcelas(condicao, valor, pedido.data_emissao, vencimento)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "data": [
+            {
+                "numero": p["parcela"],
+                "total_parcelas": p["total"],
+                "vencimento": p["vencimento"].isoformat(),
+                "valor": p["valor"],
+            }
+            for p in parcelas
+        ],
+        "error": None,
+    }
+
+
 # ── PDFs ──────────────────────────────────────────────────────────────────────
 
 
 @router.get("/{pedido_id}/pdf-pedido", dependencies=[Depends(_VER)])
-def pdf_pedido(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
-    pedido = db.get(PedidoVenda, pedido_id)
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    itens = _itens_com_grupo(db, pedido_id)
-    empresa = get_ou_criar_empresa(db)
-
-    precos_ref = {}
-    grupo_ids = {item.grupo_id for item in itens if item.grupo_id is not None}
-    if pedido.tabela_preco_id and grupo_ids:
-        refs = (
-            db.execute(
-                select(PrecoReferencia).where(
-                    PrecoReferencia.tabela_id == pedido.tabela_preco_id,
-                    PrecoReferencia.grupo_id.in_(grupo_ids),
-                )
-            )
-            .scalars()
-            .all()
-        )
-        precos_ref = {str(r.grupo_id): r for r in refs}
-
-    pdf_bytes = gerar_pdf_pedido(pedido, itens, empresa, precos_ref)
-    filename = nome_arquivo_pedido(pedido)
-    return StreamingResponse(
-        iter([pdf_bytes]),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename={filename}"},
-    )
+def pdf_pedido(pedido_id: uuid.UUID):
+    """Desativado: o pedido é impresso pelo relatório configurável relVen001
+    (GET /api/v1/relatorios/relVen001/html). O layout antigo em ReportLab
+    (pdf_venda_service.gerar_pdf_pedido, obsoleta) não é mais gerado."""
+    raise HTTPException(status_code=410, detail="Relatório antigo desativado. Use o relVen001.")
 
 
 @router.get("/{pedido_id}/pdf-corte", dependencies=[Depends(_VER)])
-def pdf_corte(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
-    pedido = db.get(PedidoVenda, pedido_id)
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    # Formulário de corte é específico do catálogo de GrupoMolde — itens do
-    # catálogo fiscal novo (produto/sku, sem grupo_id) não entram aqui.
-    itens = [i for i in _itens_com_grupo(db, pedido_id) if i.grupo_id is not None]
-    pdf_bytes = gerar_pdf_corte(pedido, itens)
-    filename = nome_arquivo_corte(pedido)
-    return StreamingResponse(
-        iter([pdf_bytes]),
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename={filename}"},
-    )
+def pdf_corte(pedido_id: uuid.UUID):
+    """Desativado: o formulário de corte sai da Ordem de Corte pelo relatório
+    configurável relPro001 (GET /api/v1/relatorios/relPro001/html?id=<oc>)."""
+    raise HTTPException(status_code=410, detail="Relatório antigo desativado. Use o relPro001.")
 
 
 # ── Encaixe (placeholder) ─────────────────────────────────────────────────────

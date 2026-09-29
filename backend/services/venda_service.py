@@ -6,7 +6,7 @@ from typing import Optional
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 from fastapi import HTTPException
-from sqlalchemy import exists, select, func
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import Session
 
 from models.cliente import Cliente
@@ -385,3 +385,47 @@ def recalcular_pedido(db: Session, pedido_id: uuid.UUID) -> None:
 
     pedido.total_pedido = total
     pedido.comissao_valor = comissao
+
+
+def reservar_numeros_item(db: Session, pedido_id: uuid.UUID, quantidade: int = 1) -> int:
+    """Reserva `quantidade` números de item seguidos para o pedido e devolve
+    o primeiro. UPDATE atômico no contador PedidoVenda.ultimo_numero_item
+    (trava a linha no Postgres; no SQLite a escrita já é serializada) — dois
+    requests simultâneos nunca pegam o mesmo número. O contador só cresce:
+    número de item removido não volta.
+
+    O objeto PedidoVenda em memória é sincronizado (synchronize_session)."""
+    db.execute(
+        update(PedidoVenda)
+        .where(PedidoVenda.id == pedido_id)
+        .values(ultimo_numero_item=PedidoVenda.ultimo_numero_item + quantidade)
+        .execution_options(synchronize_session="fetch")
+    )
+    ultimo = db.execute(select(PedidoVenda.ultimo_numero_item).where(PedidoVenda.id == pedido_id)).scalar_one()
+    return ultimo - quantidade + 1
+
+
+def _dec(v) -> Decimal:
+    return Decimal(str(v or 0))
+
+
+def resumo_totais(pedido, itens) -> dict:
+    """Totais do pedido para o cabeçalho da tela (resposta do detalhe/PUT).
+
+    qtd_total           soma das quantidades (grade qtd_p..g3 no item de corte)
+    valor_mercadoria    soma de qtd × preço, sem desconto (preco_total bruto)
+    desconto_itens_total soma dos descontos em R$ dos itens
+    valor_total         total do pedido gravado (ver recalcular_pedido)
+
+    Aceita models ou schemas de saída — só lê atributos."""
+    centavos = Decimal("0.01")
+    return {
+        "qtd_total": sum(int(i.quantidade_total or 0) for i in itens),
+        "valor_mercadoria": sum((_dec(i.preco_total) for i in itens), Decimal("0")).quantize(centavos),
+        "desconto_itens_total": sum((_dec(i.desconto_valor) for i in itens), Decimal("0")).quantize(centavos),
+        "desconto_geral_valor": _dec(pedido.desconto_geral_valor).quantize(centavos),
+        "desconto_geral_pct": _dec(pedido.desconto_geral_pct),
+        "valor_total": _dec(pedido.total_pedido).quantize(centavos),
+        "comissao_pct": _dec(pedido.comissao_pct),
+        "comissao_valor": _dec(pedido.comissao_valor).quantize(centavos),
+    }

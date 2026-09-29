@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<!--
+  relPro001 - Formulário de corte da Ordem de Corte (mesmo layout do relVen001:
+  A4 retrato, Tahoma, preto, linhas finas). Modelo HTML/CSS + Jinja2, sem JavaScript.
+  Lido a cada impressão: salve e imprima de novo. Variantes: relPro001_<nome>.html
+  nesta pasta; o padrão fica em ../config.json. Cabeçalho da empresa em
+  ../_comum/cabecalho_empresa.html. Largura útil: 190 mm (A4 - margens de 10 mm).
+{% raw %}
+  CAMPOS
+    empresa   (igual ao relVen001) nome, endereco, ..., logo, faltando
+    oc        numero (OC-0001), data, status, modo_camadas (Sem sobra/Menos enfestos),
+              comprimento_max_cm (limite da mesa), observacoes
+    pedido    numero, emissao, cliente, cliente_codigo, vendedor
+    grades[]  produto_codigo, produto_descricao, tamanhos[], total, totais_tamanho[],
+              linhas[] { cor, quantidades[] (na ordem de tamanhos), total }
+    enfestos[] numero, numero_formatado (ENC-012), enfesto, parte (1/2 quando dividido),
+              parte_numero, total_partes (vazios no enfesto inteiro), comprimento_max_cm,
+              avisos[] (peça mais comprida que o limite),
+              tecido { nome, modelo, cor, lote }, largura_util_cm, comprimento_m
+              (uma camada), camadas, peso_total_kg (todas as camadas), aproveitamento,
+              pecas_por_camada, pecas_total, sobra_total,
+              pecas_por_tamanho[] { produto, tamanhos[] { tamanho, por_camada, total, sobra } },
+              miniatura_svg (desenho do encaixe gerado pelo SmartCut)
+    totais    pecas, enfestos, metros (todas as camadas), peso_total_kg
+    impressao data, hora, nome_relatorio, codigo, modelo
+
+  FILTROS: moeda, numero(casas), data, cnpj_cpf, cep, telefone (ver relVen001)
+{% endraw %}
+-->
+{% set logo = empresa.logo or asset("logo.png") %}
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>FORMULÁRIO DE CORTE {{ oc.numero }}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: Tahoma, Verdana, sans-serif;
+    font-size: 7.5pt;
+    line-height: 1.3;
+    color: #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 0; vertical-align: top; text-align: left; font-weight: normal; }
+  .linha-baixo { border-bottom: 0.5pt solid #000; }
+
+  @media screen {
+    body { background: #e6e6e6; padding: 8mm 0; }
+    .folha { width: 210mm; margin: 0 auto; padding: 10mm; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
+    .aviso { width: 210mm; margin: 0 auto 4mm; padding: 2mm 3mm; background: #fff8dc; border: 0.5pt solid #d4b94a; }
+  }
+  @media print {
+    body { background: #fff; }
+    .folha { width: auto; margin: 0; padding: 0; box-shadow: none; }
+    .aviso { display: none; }
+  }
+
+  .faixa-titulo { text-align: center; font-size: 9pt; font-weight: bold; padding: 1mm 0; }
+
+  /* Grade dos dados (igual ao relVen001): [label 22mm][valor][label 22mm][valor 55mm] */
+  .dados { table-layout: fixed; margin-top: 1mm; }
+  .dados td { padding: 0.5mm 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dados td.rot { font-weight: bold; }
+  .dados td.valor-esq { padding-right: 3mm; }
+
+  /* Seções */
+  .secao { margin-top: 3mm; }
+  .secao-titulo { font-size: 9pt; font-weight: bold; padding-bottom: 0.6mm; border-bottom: 0.5pt solid #000; }
+
+  /* Grade cor × tamanho: títulos e números centralizados, cor à esquerda */
+  .grade { margin-top: 1.5mm; break-inside: avoid; page-break-inside: avoid; }
+  .grade-produto { font-weight: bold; margin-bottom: 0.6mm; }
+  .grade table { width: auto; table-layout: fixed; }
+  .grade th, .grade td { padding: 0.5mm 1.5mm; text-align: center; white-space: nowrap; min-width: 12mm; }
+  .grade th { font-weight: bold; background: #f2f2f2; border-top: 0.5pt solid #000; border-bottom: 0.5pt solid #000; }
+  .grade .esq { text-align: left; min-width: 40mm; }
+  .grade .tot { font-weight: bold; }
+  .grade tfoot td { font-weight: bold; border-top: 0.5pt solid #000; }
+
+  /* Enfesto: um bloco por encaixe, nunca quebrado no meio */
+  .enfesto { margin-top: 2.5mm; padding: 1.5mm 2mm 2mm; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
+  .enfesto-titulo { font-size: 8.5pt; font-weight: bold; }
+  .enfesto-nota { margin-top: 0.8mm; font-style: italic; }
+
+  /* Linha de dados em grade: colunas iguais, rótulo sobre o valor */
+  .grade-dados { table-layout: fixed; margin-top: 1mm; }
+  .grade-dados td { padding: 0.4mm 2mm 0.4mm 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .grade-dados .rot { display: block; font-weight: bold; }
+
+  /* Tabela de tamanhos compacta, à esquerda: tamanho à esquerda, números centralizados */
+  .tamanhos { width: 90mm; table-layout: fixed; margin-top: 1.5mm; }
+  .tamanhos th, .tamanhos td { padding: 0.4mm 1.5mm; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tamanhos th { font-weight: bold; border-bottom: 0.5pt solid #000; }
+  .tamanhos .esq { text-align: left; padding-left: 0; }
+  .tamanhos .produto td { font-weight: bold; text-align: left; padding: 1mm 0 0.3mm; }
+  .tamanhos tfoot td { font-weight: bold; border-top: 0.5pt solid #000; }
+
+  /* Miniatura: largura total do bloco, abaixo da tabela */
+  .miniatura { margin-top: 1.5mm; }
+  .miniatura svg { display: block; width: 100%; height: auto; max-height: 100mm; }
+  .sem-miniatura { margin-top: 1.5mm; font-style: italic; }
+
+  /* Resumo e observações */
+  .obs-texto { white-space: pre-line; margin-top: 0.8mm; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+
+{% set faltando = empresa.faltando | reject("equalto", "Logo" if logo else "") | list %}
+{% if faltando %}
+<div class="aviso">
+  <b>Cadastro da empresa incompleto</b> — preencha em Configurações &gt; Empresa:
+  {{ faltando | join(", ") }}. (Este aviso não sai na impressão.)
+</div>
+{% endif %}
+
+<div class="folha">
+
+{% include "_comum/cabecalho_empresa.html" %}
+<div class="faixa-titulo linha-baixo">FORMULÁRIO DE CORTE</div>
+
+<!-- ═══ Dados da OC ═══ -->
+<table class="dados">
+  <colgroup><col style="width: 22mm"><col><col style="width: 27mm"><col style="width: 50mm"></colgroup>
+  <tr>
+    <td class="rot">OC:</td><td class="valor-esq">{{ oc.numero }} ({{ oc.status }})</td>
+    <td class="rot">Data:</td><td>{{ oc.data | data }}</td>
+  </tr>
+  <tr>
+    <td class="rot">Cliente:</td><td class="valor-esq">{% if pedido.cliente_codigo %}{{ pedido.cliente_codigo }} - {% endif %}{{ pedido.cliente }}</td>
+    <td class="rot">Pedido:</td><td>{{ pedido.numero }}{% if pedido.emissao %} de {{ pedido.emissao | data }}{% endif %}</td>
+  </tr>
+  <tr>
+    <td class="rot">Vendedor:</td><td class="valor-esq">{{ pedido.vendedor }}</td>
+    <td class="rot">Modo:</td><td>{{ oc.modo_camadas }}</td>
+  </tr>
+  <tr>
+    <td></td><td class="valor-esq"></td>
+    <td class="rot">Comprimento máx.:</td><td>{{ oc.comprimento_max_cm }} cm</td>
+  </tr>
+</table>
+
+<!-- ═══ Grade do pedido (cor × tamanho) ═══ -->
+<div class="secao">
+  <div class="secao-titulo">GRADE DO PEDIDO</div>
+  {% for g in grades %}
+  <div class="grade">
+    <div class="grade-produto">{% if g.produto_codigo %}{{ g.produto_codigo }} - {% endif %}{{ g.produto_descricao }}</div>
+    <table>
+      <thead>
+        <tr>
+          <th class="esq">Cor</th>
+          {% for t in g.tamanhos %}<th>{{ t }}</th>{% endfor %}
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ln in g.linhas %}
+        <tr>
+          <td class="esq">{{ ln.cor }}</td>
+          {% for q in ln.quantidades %}<td>{{ q if q else "" }}</td>{% endfor %}
+          <td class="tot">{{ ln.total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td class="esq">Total</td>
+          {% for q in g.totais_tamanho %}<td>{{ q }}</td>{% endfor %}
+          <td>{{ g.total }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="grade">Nenhum item.</div>
+  {% endfor %}
+</div>
+
+<!-- ═══ Enfestos (um bloco por encaixe) ═══ -->
+<div class="secao">
+  <div class="secao-titulo">ENFESTOS</div>
+  {% for e in enfestos %}
+  {% set tecido = [e.tecido.modelo, e.tecido.cor] | select | join(" ") or e.tecido.nome %}
+  <div class="enfesto">
+    <div class="enfesto-titulo">
+      {{ e.numero_formatado }}
+      {%- if e.total_partes %} · parte {{ e.parte_numero }} de {{ e.total_partes }}{% endif %}
+      {%- if tecido %} · {{ tecido }}{% endif %}
+      {%- if e.tecido.lote %} · Lote {{ e.tecido.lote }}{% endif %}
+    </div>
+    <table class="grade-dados">
+      <tr>
+        <td><span class="rot">Largura</span>{{ e.largura_util_cm | numero(1) }} cm</td>
+        <td><span class="rot">Comprimento</span>{{ e.comprimento_m | numero(2) }} m</td>
+        <td><span class="rot">Camadas</span>{{ e.camadas }}</td>
+        <td><span class="rot">Peso total</span>{{ e.peso_total_kg | numero(3) }} kg</td>
+        <td><span class="rot">Aproveitamento</span>{% if e.aproveitamento is not none %}{{ e.aproveitamento | numero(1) }}%{% else %}—{% endif %}</td>
+      </tr>
+    </table>
+    {% for aviso in e.avisos %}
+    <div class="enfesto-nota">Atenção: {{ aviso }}.</div>
+    {% endfor %}
+
+    {% set tem_sobra = e.sobra_total > 0 %}
+    <table class="tamanhos">
+      {% if tem_sobra %}
+      <colgroup><col><col style="width: 20mm"><col style="width: 16mm"><col style="width: 16mm"></colgroup>
+      {% else %}
+      <colgroup><col><col style="width: 24mm"><col style="width: 20mm"></colgroup>
+      {% endif %}
+      <thead>
+        <tr>
+          <th class="esq">Tamanho</th><th>Por camada</th><th>Total</th>
+          {% if tem_sobra %}<th>Sobra</th>{% endif %}
+        </tr>
+      </thead>
+      {% for g in e.pecas_por_tamanho %}
+      <tbody>
+        {% if g.produto %}
+        <tr class="produto"><td colspan="{{ 4 if tem_sobra else 3 }}">{{ g.produto }}</td></tr>
+        {% endif %}
+        {% for p in g.tamanhos %}
+        <tr>
+          <td class="esq">{{ p.tamanho }}</td>
+          <td>{{ p.por_camada }}</td>
+          <td>{{ p.total }}</td>
+          {% if tem_sobra %}<td>{{ p.sobra if p.sobra else "" }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endfor %}
+      <tfoot>
+        <tr>
+          <td class="esq">Total</td><td>{{ e.pecas_por_camada }}</td><td>{{ e.pecas_total }}</td>
+          {% if tem_sobra %}<td>{{ e.sobra_total }}</td>{% endif %}
+        </tr>
+      </tfoot>
+    </table>
+
+    {% if e.miniatura_svg %}
+    <div class="miniatura">{{ e.miniatura_svg }}</div>
+    {% else %}
+    <div class="sem-miniatura">Desenho do encaixe não disponível.</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="enfesto">Nenhum encaixe gerado para esta Ordem de Corte.</div>
+  {% endfor %}
+</div>
+
+<!-- ═══ Resumo ═══ -->
+<div class="secao" style="break-inside: avoid; page-break-inside: avoid;">
+  <div class="secao-titulo">RESUMO</div>
+  <table class="grade-dados">
+    <tr>
+      <td><span class="rot">Total de peças</span>{{ totais.pecas | numero(0) }}</td>
+      <td><span class="rot">Enfestos</span>{{ totais.enfestos }}</td>
+      <td><span class="rot">Metros</span>{{ totais.metros | numero(2) }} m</td>
+      <td><span class="rot">Peso total</span>{{ totais.peso_total_kg | numero(3) }} kg</td>
+    </tr>
+  </table>
+</div>
+
+{% if oc.observacoes %}
+<div class="secao" style="break-inside: avoid; page-break-inside: avoid;">
+  <div class="secao-titulo">OBSERVAÇÕES</div>
+  <div class="obs-texto">{{ oc.observacoes }}</div>
+</div>
+{% endif %}
+
+</div>
+</body>
+</html>

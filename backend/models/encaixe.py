@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, Uuid, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, Numeric, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -9,19 +9,21 @@ from database import Base
 
 class Encaixe(Base):
     __tablename__ = "encaixes"
+    __table_args__ = (UniqueConstraint("numero", name="uq_encaixes_numero"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Rastreio do pedido de origem; a geração pela OC preenche os dois.
     pedido_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("pedidos_venda.id", ondelete="SET NULL"), nullable=True
     )
+    ordem_corte_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("ordens_corte.id", ondelete="SET NULL"), nullable=True
+    )
 
-    # Nova FK — lote consumido neste encaixe
+    # Lote consumido neste encaixe (a FK legada tecido_id → tecidos foi
+    # removida na migração e1c7a4b90d2f).
     lote_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("lotes_tecido.id", ondelete="SET NULL"), nullable=True
-    )
-    # FK legada
-    tecido_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("tecidos.id", ondelete="SET NULL"), nullable=True
     )
 
     mapa_json: Mapped[dict | None] = mapped_column(JSON)
@@ -32,7 +34,8 @@ class Encaixe(Base):
     num_camadas: Mapped[int] = mapped_column(Integer, default=1)
     # Numeração sequencial própria do encaixe (ENC-001, ENC-002...),
     # independente do número do PedidoVenda — gerada em
-    # nesting_service._salvar_encaixe via COUNT(*)+1.
+    # nesting_service._numerar via MAX(numero)+1 contando também os
+    # deletados (soft-delete), para nunca reaproveitar um número.
     numero: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Identificação textual — herda o "Nome / identificação" que o usuário
     # digitou no Encaixe Rápido (PedidoVenda.observacoes_internas).

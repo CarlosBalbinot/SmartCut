@@ -13,34 +13,12 @@ from decimal import Decimal
 
 import pytest
 
-from models.cliente import Cliente
 from models.grupo_molde import GrupoMolde
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto import GrupoProduto, Produto
 from models.produto_sku import ProdutoSKU
 from models.venda import PrecoReferencia, PrecoTabelaProduto, TabelaPreco
 from services import venda_service
-
-
-@pytest.fixture()
-def cliente(db_session):
-    c = Cliente(
-        codigo="0001",
-        tipo_registro="cliente",
-        tipo_pessoa="juridica",
-        razao_social="CLIENTE LTDA",
-        cnpj="12345678000190",
-        endereco="RUA A",
-        numero="10",
-        bairro="CENTRO",
-        cidade="CAXIAS DO SUL",
-        estado="RS",
-        cep="95000000",
-        codigo_ibge_municipio="4305108",
-    )
-    db_session.add(c)
-    db_session.commit()
-    return c
 
 
 def _criar_pedido(client, headers_admin, cliente, **extra):

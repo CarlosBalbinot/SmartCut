@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getPedidosVenda } from "../api/pedidos";
+import { Link, useNavigate } from "react-router-dom";
 import { deleteEncaixe, getEncaixes } from "../api/encaixes";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
 import { useAuth } from "../auth/useAuth";
@@ -19,6 +18,9 @@ function formatarNumeroEnc(numero_enc) {
   return numero_enc != null ? `ENC-${String(numero_enc).padStart(3, "0")}` : "ENC-—";
 }
 
+// Títulos de grupo (OC / sem OC) e links usam classes do módulo da página
+// (ver .grupoTitulo / .grupoLink em EncaixesPage.module.css).
+
 function classeAproveitamento(aprov) {
   if (aprov == null) return null;
   if (aprov >= 80) return "bom";
@@ -29,7 +31,6 @@ function classeAproveitamento(aprov) {
 export default function EncaixesPage() {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
-  const [pedidos, setPedidos] = useState([]);
   const [encaixes, setEncaixes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
@@ -40,11 +41,9 @@ export default function EncaixesPage() {
   const [dataAte, setDataAte] = useState("");
 
   useEffect(() => {
-    Promise.all([getPedidosVenda(), getEncaixes()])
-      .then(([peds, encs]) => {
-        setPedidos(peds);
-        setEncaixes(encs);
-      })
+    // A listagem já traz ordem_corte e pedido de cada encaixe.
+    getEncaixes()
+      .then(setEncaixes)
       .catch((e) => setErro(e.message))
       .finally(() => setCarregando(false));
   }, []);
@@ -60,21 +59,22 @@ export default function EncaixesPage() {
     }
   }
 
-  // pedido.numero/cliente_razao_social/data_emissao/tipo são os campos
-  // reais de PedidoVendaOut — não num_pedido/cliente/data_pedido.
-  const pedidoMap = Object.fromEntries(pedidos.map((p) => [p.id, p]));
-
   const termoBusca = busca.trim().toLowerCase();
   const filtroAtivo = !!(termoBusca || dataDe || dataAte);
 
   const encaixesFiltrados = encaixes
     .filter((enc) => {
       if (termoBusca) {
-        const descricao = (enc.descricao ?? "").toLowerCase();
-        const numeroFmt = formatarNumeroEnc(enc.numero_enc).toLowerCase();
-        if (!descricao.includes(termoBusca) && !numeroFmt.includes(termoBusca)) {
-          return false;
-        }
+        const alvo = [
+          enc.descricao,
+          formatarNumeroEnc(enc.numero_enc),
+          enc.ordem_corte?.numero_fmt,
+          enc.pedido?.numero,
+          enc.pedido?.cliente,
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!alvo.includes(termoBusca)) return false;
       }
       const dataEnc = (enc.criado_em ?? "").slice(0, 10);
       if (dataDe && dataEnc < dataDe) return false;
@@ -84,6 +84,28 @@ export default function EncaixesPage() {
     .sort((a, b) => (b.criado_em ?? "").localeCompare(a.criado_em ?? ""));
 
   const totalEncaixes = encaixes.length;
+
+  // Um grupo por OC (mais recente primeiro, encaixes em ordem de número);
+  // Encaixe Rápido e encaixes antigos (sem OC) num grupo próprio no fim.
+  const grupos = [];
+  const porOc = new Map();
+  const semOc = [];
+  for (const enc of encaixesFiltrados) {
+    const oc = enc.ordem_corte;
+    if (!oc) {
+      semOc.push(enc);
+      continue;
+    }
+    if (!porOc.has(oc.id)) {
+      const g = { chave: oc.id, oc, pedido: enc.pedido, encaixes: [] };
+      porOc.set(oc.id, g);
+      grupos.push(g);
+    }
+    porOc.get(oc.id).encaixes.push(enc);
+  }
+  grupos.sort((a, b) => b.oc.numero - a.oc.numero);
+  for (const g of grupos) g.encaixes.sort((a, b) => (a.numero_enc ?? 0) - (b.numero_enc ?? 0));
+  if (semOc.length) grupos.push({ chave: "sem-oc", oc: null, encaixes: semOc });
 
   return (
     <div className="sc-page">
@@ -138,80 +160,143 @@ export default function EncaixesPage() {
           {filtroAtivo && <p>Tente ajustar os filtros.</p>}
         </div>
       ) : (
-        encaixesFiltrados.map((enc) => {
-          const ped = pedidoMap[enc.pedido_id];
-          const ehRapido = ped?.tipo === "encaixe_rapido";
-          const mapa = enc.mapa_json ?? {};
-          const aprov = enc.desperdicio_pct != null ? 100 - enc.desperdicio_pct : null;
-          const classeAprov = classeAproveitamento(aprov);
-
-          const metricas = [
-            enc.comp_metros != null ? `${Number(enc.comp_metros).toFixed(2)} m` : null,
-            enc.peso_kg != null ? `${Number(enc.peso_kg).toFixed(3)} kg` : null,
-            enc.custo_total != null
-              ? `R$ ${Number(enc.custo_total).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-              : null,
-            enc.num_camadas != null
-              ? `${enc.num_camadas} camada${enc.num_camadas !== 1 ? "s" : ""}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" · ");
-
-          return (
-            <div key={enc.id} className={es.encaixeCard}>
-              <div className={es.cardHeader}>
-                <div className={es.cardHeaderLeft}>
-                  <span className={es.numeroEnc}>{formatarNumeroEnc(enc.numero_enc)}</span>
-                  {enc.descricao && <span className={es.descricaoEnc}>{enc.descricao}</span>}
-                  <span className={es.dataEnc}>{formatarData(enc.criado_em)}</span>
-                </div>
-                {ehRapido && <span className={es.pillEncaixeRapido}>Encaixe Rápido</span>}
-              </div>
-
-              <div className={es.cardBody}>
-                <div className={es.cardBodyLeft}>
-                  {mapa.tecido_nome && <span className={es.tecidoBadge}>{mapa.tecido_nome}</span>}
-                  {metricas && <div className={es.metricas}>{metricas}</div>}
-                </div>
-
-                <div className={es.cardBodyRight}>
-                  {classeAprov && (
-                    <span className={`${es.aprovBadge} ${es[`aprovBadge_${classeAprov}`]}`}>
-                      {aprov.toFixed(1)}%
+        grupos.map((g) => (
+          <section key={g.chave}>
+            <h2 className={es.grupoTitulo}>
+              {g.oc ? (
+                <>
+                  <Link to={`/producao/ordens-corte/${g.oc.id}`} className={es.grupoLink}>
+                    {g.oc.numero_fmt}
+                  </Link>
+                  {g.pedido && (
+                    <span className={es.grupoSuave}>
+                      Pedido {g.pedido.numero}
+                      {g.pedido.cliente ? ` · ${g.pedido.cliente}` : ""}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    className={es.btnPrimCompacto}
-                    onClick={() => navigate(`/producao/encaixes/${enc.pedido_id}`)}
-                  >
-                    Ver encaixe
-                  </button>
-                  {!ehRapido && (
-                    <button
-                      type="button"
-                      className={es.btnSecCompacto}
-                      onClick={() => navigate(`/vendas/pedidos/${enc.pedido_id}`)}
-                    >
-                      Ver pedido
-                    </button>
-                  )}
-                  {hasPermission(MODULO, "excluir") && (
-                    <button
-                      type="button"
-                      className={es.btnDeletarIcon}
-                      onClick={() => setExcluindo(enc)}
-                      title="Excluir encaixe"
-                    >
-                      ×
-                    </button>
-                  )}
+                </>
+              ) : (
+                "Sem ordem de corte — Encaixe Rápido e anteriores"
+              )}
+              <span className={`${es.grupoSuave} ${es.grupoContagem}`}>
+                {g.encaixes.length} encaixe{g.encaixes.length !== 1 ? "s" : ""}
+              </span>
+            </h2>
+            {g.encaixes.map((enc) => {
+              const ped = enc.pedido;
+              const ehRapido = ped?.tipo === "encaixe_rapido";
+              const mapa = enc.mapa_json ?? {};
+              const aprov = enc.desperdicio_pct != null ? 100 - enc.desperdicio_pct : null;
+              const classeAprov = classeAproveitamento(aprov);
+
+              // Peso e custo são de TODAS as camadas (peso_total_kg /
+              // custo_total_camadas vêm da API, já multiplicados por
+              // num_camadas); o comprimento é de UMA camada = comprimento
+              // do risco. Mesmo critério da tela do encaixe.
+              const numCamadas = enc.num_camadas || 1;
+              const pesoTotal = enc.peso_total_kg ?? enc.peso_kg;
+              const custoTotal = enc.custo_total_camadas ?? enc.custo_total;
+              const metricas = [
+                enc.comp_metros != null
+                  ? {
+                      rotulo: "Comprimento do risco",
+                      valor: `${Number(enc.comp_metros).toFixed(2)} m`,
+                    }
+                  : null,
+                pesoTotal != null
+                  ? {
+                      rotulo: `Peso (${numCamadas} camada${numCamadas !== 1 ? "s" : ""})`,
+                      valor: `${Number(pesoTotal).toFixed(3)} kg`,
+                    }
+                  : null,
+                custoTotal != null
+                  ? {
+                      rotulo: "Custo total",
+                      valor: `R$ ${Number(custoTotal).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                    }
+                  : null,
+              ].filter(Boolean);
+
+              return (
+                <div key={enc.id} className={es.encaixeCard}>
+                  <div className={es.cardHeader}>
+                    <div className={es.cardHeaderLeft}>
+                      <span className={es.numeroEnc}>{formatarNumeroEnc(enc.numero_enc)}</span>
+                      {enc.descricao && <span className={es.descricaoEnc}>{enc.descricao}</span>}
+                      <span className={es.dataEnc}>{formatarData(enc.criado_em)}</span>
+                    </div>
+                    {/* Coluna OC: pílula com link; sem OC, Encaixe Rápido ou "Sem OC". */}
+                    {enc.ordem_corte ? (
+                      <Link
+                        to={`/producao/ordens-corte/${enc.ordem_corte.id}`}
+                        className={`${es.pillEncaixeRapido} ${es.pillSemSublinhado}`}
+                        title="Abrir a Ordem de Corte"
+                      >
+                        {enc.ordem_corte.numero_fmt}
+                      </Link>
+                    ) : ehRapido ? (
+                      <span className={es.pillEncaixeRapido}>Encaixe Rápido</span>
+                    ) : (
+                      <span className={es.tecidoBadge}>Sem OC</span>
+                    )}
+                  </div>
+
+                  <div className={es.cardBody}>
+                    <div className={es.cardBodyLeft}>
+                      {mapa.tecido_nome && (
+                        <span className={es.tecidoBadge}>{mapa.tecido_nome}</span>
+                      )}
+                      {metricas.length > 0 && (
+                        <div className={es.metricas}>
+                          {metricas.map((m) => (
+                            <span key={m.rotulo} className={es.metricaItem}>
+                              <span className={es.metricaRotulo}>{m.rotulo}</span>
+                              <span className={es.metricaValor}>{m.valor}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={es.cardBodyRight}>
+                      {classeAprov && (
+                        <span className={`${es.aprovBadge} ${es[`aprovBadge_${classeAprov}`]}`}>
+                          {aprov.toFixed(1)}%
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        className={es.btnPrimCompacto}
+                        onClick={() => navigate(`/producao/encaixes/${enc.id}`)}
+                      >
+                        Ver encaixe
+                      </button>
+                      {ped && !ehRapido && (
+                        <button
+                          type="button"
+                          className={es.btnSecCompacto}
+                          onClick={() => navigate(`/vendas/pedidos/${ped.id}?modo=visualizar`)}
+                        >
+                          Ver pedido
+                        </button>
+                      )}
+                      {hasPermission(MODULO, "excluir") && (
+                        <button
+                          type="button"
+                          className={es.btnDeletarIcon}
+                          onClick={() => setExcluindo(enc)}
+                          title="Excluir encaixe"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })
+              );
+            })}
+          </section>
+        ))
       )}
 
       <ConfirmModal

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { listar, criar, atualizar, excluir, simular } from "../api/condicoesPagamento";
 import { useAuth } from "../auth/useAuth";
 import styles from "./CondicoesPagamentoPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "configuracoes_editar";
 
@@ -81,6 +82,8 @@ const dataLocal = (iso) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString
 const hojeISO = () => new Date().toISOString().split("T")[0];
 
 export default function CondicoesPagamentoPage() {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+
   const { hasPermission } = useAuth();
   const podeEditar = hasPermission(MODULO, "ver");
 
@@ -326,7 +329,7 @@ export default function CondicoesPagamentoPage() {
       </div>
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>
@@ -342,9 +345,9 @@ export default function CondicoesPagamentoPage() {
                 <label className={styles.field}>
                   <span>Código *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.codigo}
-                    onChange={setF("codigo")}
+                    onChange={setFUpper("codigo")}
                     maxLength={10}
                   />
                 </label>
@@ -363,7 +366,7 @@ export default function CondicoesPagamentoPage() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.descricao}
                     onChange={setFUpper("descricao")}
                     maxLength={100}

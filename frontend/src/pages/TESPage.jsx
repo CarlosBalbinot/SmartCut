@@ -3,6 +3,7 @@ import { listar, criar, atualizar, excluir } from "../api/tes";
 import { getFiscal } from "../api/configuracaoFiscal";
 import { useAuth } from "../auth/useAuth";
 import styles from "./TESPage.module.css";
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const MODULO = "fiscal_nfe";
 
@@ -77,6 +78,8 @@ const VAZIO = {
 const num2 = (v) => Number(parseFloat(v || 0).toFixed(2));
 
 export default function TESPage() {
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+
   const { hasPermission } = useAuth();
   const [lista, setLista] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -304,7 +307,7 @@ export default function TESPage() {
       </div>
 
       {modal && (
-        <div className={styles.overlay} onClick={fecharModal}>
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>{modal.id ? "Editar TES" : "Novo TES"}</h2>
@@ -319,9 +322,9 @@ export default function TESPage() {
                 <label className={styles.field}>
                   <span>Código *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.codigo}
-                    onChange={setF("codigo")}
+                    onChange={setFUpper("codigo")}
                     placeholder="Ex: 5102"
                   />
                 </label>
@@ -337,7 +340,7 @@ export default function TESPage() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Descrição *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.descricao}
                     onChange={setFUpper("descricao")}
                     placeholder="Ex: Venda de mercadoria"
@@ -347,7 +350,7 @@ export default function TESPage() {
                 <label className={`${styles.field} ${styles.fieldFull}`}>
                   <span>Natureza da Operação *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.natureza_operacao}
                     onChange={setFUpper("natureza_operacao")}
                     placeholder="Texto que vai para o XML da NF-e"
@@ -357,7 +360,7 @@ export default function TESPage() {
                 <label className={styles.field}>
                   <span>CFOP *</span>
                   <input
-                    className={styles.input}
+                    className={`${styles.input} sc-upper`}
                     value={modal.cfop}
                     onChange={setFUpper("cfop")}
                     placeholder="Ex: 5102"

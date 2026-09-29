@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { validarCliente, buscarClientes } from "../../api/clientes";
 import { useAuth } from "../../auth/useAuth";
 import ClienteFormModal from "../ClienteFormModal/ClienteFormModal";
+import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import styles from "./ClienteInput.module.css";
 
 // "05522680000127" → "05.522.680/0001-27"; CPF idem; outro formato fica como veio.
@@ -23,15 +24,20 @@ function resumoCliente(c) {
 }
 
 /**
- * Campo Cliente do pedido: [código/CNPJ] [razão social] [lupa] + "Ver cadastro".
- * Código ou CNPJ/CPF valida no blur/Enter (GET /clientes/validar); lupa ou
- * F2 abre o modal de busca. Erro: campo vermelho claro + tooltip.
+ * Campo Cliente do pedido: [código] [razão social] [lupa].
+ * Código ou CNPJ/CPF valida no blur/Enter (GET /clientes/validar). Lupa ou
+ * F2 abre o modal: cliente atual no topo (com "Editar cadastro") e, abaixo,
+ * busca para trocar. Só leitura: a lupa abre direto o cadastro do cliente.
+ * Erro: campo vermelho claro + tooltip.
  *
  * Props:
  *   cliente       — { id, codigo, razao_social, cnpj, cidade, uf } ou null
- *   readOnly      — pedido fora de Aberto / sem permissão: sem lupa
+ *   readOnly      — pedido fora de Aberto / sem permissão: não troca cliente
  *   onChange      — (cliente) => void | Promise; rejeitar mostra o erro no campo
- *   onVerCadastro — (cliente) => void; sem ele (ou sem cliente.id) o link some
+ *   onVerCadastro — (cliente, { somenteLeitura }) => void: quem abre o cadastro
+ *                   é a página (ex.: pedido ressincroniza a cópia ao salvar).
+ *                   null = sem acesso ao cadastro. Omitido = o próprio campo
+ *                   abre o ClienteFormModal (se o usuário pode ver cadastros).
  *
  * "+ Novo cliente" no rodapé da busca abre o cadastro vazio (com o CNPJ/CPF
  * buscado já preenchido); salvar seleciona o cliente criado.
@@ -45,8 +51,13 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
   const [modalAberto, setModalAberto] = useState(false);
   // Cadastro de cliente novo aberto pela busca: { cnpj?, cpf? } pré-preenchidos.
   const [novoCadastro, setNovoCadastro] = useState(null);
+  // Cadastro do cliente atual aberto pelo próprio campo (sem onVerCadastro):
+  // { id, somenteLeitura }.
+  const [cadastroAtual, setCadastroAtual] = useState(null);
   const { hasPermission } = useAuth();
   const podeCriarCliente = hasPermission("cadastros_clientes", "criar");
+  const podeVerCadastro =
+    onVerCadastro !== undefined ? !!onVerCadastro : hasPermission("cadastros_clientes", "ver");
   const inputRef = useRef(null);
 
   // Cliente trocado por fora (seleção confirmada, recarga) — descarta edição.
@@ -147,19 +158,43 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
     inputRef.current?.focus();
   };
 
+  // "Editar cadastro" (modal) ou lupa em modo leitura.
+  const abrirCadastro = (somenteLeitura) => {
+    if (!cliente?.id || !podeVerCadastro) return;
+    setModalAberto(false);
+    if (onVerCadastro) onVerCadastro(cliente, { somenteLeitura });
+    else setCadastroAtual({ id: cliente.id, somenteLeitura });
+  };
+
+  // Cadastro editado pelo próprio campo: atualiza a cópia exibida.
+  const cadastroAtualSalvo = async (salvo) => {
+    setCadastroAtual(null);
+    await aplicar({
+      id: salvo.id,
+      codigo: salvo.codigo,
+      razao_social: salvo.razao_social,
+      cnpj: salvo.cnpj || salvo.cpf,
+      cidade: salvo.cidade,
+      uf: salvo.estado,
+    });
+  };
+
   const resumo = resumoCliente(cliente);
+  // Tooltip da razão social: nome completo + CNPJ + cidade/UF.
+  const tituloRazao = [cliente?.razao_social, resumo].filter(Boolean).join(" — ");
+  const lupaVisivel = !readOnly || (cliente?.id && podeVerCadastro);
 
   return (
     <div className={styles.linha}>
       <div className={`${styles.campo} ${readOnly ? styles.campoLeitura : ""}`}>
         <input
           ref={inputRef}
-          className={`${styles.codigo} ${erro ? styles.campoErro : ""}`}
+          className={`${styles.codigo} ${erro ? styles.campoErro : ""} sc-upper`}
           value={texto ?? codigoAtual}
           readOnly={readOnly || validando}
           tabIndex={readOnly ? -1 : 0}
           title={erro || (readOnly ? "" : "Código ou CNPJ/CPF do cliente — F2 para buscar")}
-          placeholder={readOnly ? "" : "CÓDIGO / CNPJ"}
+          placeholder={readOnly ? "" : "CÓDIGO"}
           onChange={(e) => {
             setTexto(e.target.value.toUpperCase());
             setErro(null);
@@ -175,19 +210,19 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
           className={styles.razao}
           value={cliente?.razao_social || ""}
           placeholder={readOnly ? "—" : "Nenhum cliente selecionado"}
-          title={resumo}
+          title={tituloRazao}
           readOnly
           tabIndex={-1}
         />
-        {!readOnly && (
+        {lupaVisivel && (
           <button
             type="button"
             className={styles.lupa}
             tabIndex={-1}
-            title="Buscar cliente (F2)"
-            aria-label="Buscar cliente"
+            title={readOnly ? "Ver cadastro do cliente" : "Cliente atual e busca (F2)"}
+            aria-label={readOnly ? "Ver cadastro do cliente" : "Buscar cliente"}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setModalAberto(true)}
+            onClick={() => (readOnly ? abrirCadastro(true) : setModalAberto(true))}
           >
             <svg
               width="14"
@@ -206,14 +241,10 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
         )}
       </div>
 
-      {onVerCadastro && cliente?.id && (
-        <button type="button" className={styles.verCadastro} onClick={() => onVerCadastro(cliente)}>
-          Ver cadastro
-        </button>
-      )}
-
       {modalAberto && (
         <ClienteModal
+          clienteAtual={cliente?.id ? cliente : null}
+          onEditar={cliente?.id && podeVerCadastro ? () => abrirCadastro(false) : null}
           selecionadoId={cliente?.id}
           onSelecionar={selecionarNoModal}
           onNovo={podeCriarCliente ? abrirNovoCadastro : null}
@@ -235,30 +266,41 @@ export default function ClienteInput({ cliente, readOnly = false, onChange, onVe
           onSaved={novoCadastroSalvo}
         />
       )}
+
+      {cadastroAtual && (
+        <ClienteFormModal
+          clienteId={cadastroAtual.id}
+          somenteLeitura={cadastroAtual.somenteLeitura}
+          onClose={() => setCadastroAtual(null)}
+          onSaved={cadastroAtualSalvo}
+        />
+      )}
     </div>
   );
 }
 
 const POR_PAGINA = 50;
 
-function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
+function ClienteModal({ clienteAtual, onEditar, selecionadoId, onSelecionar, onNovo, onFechar }) {
   const [busca, setBusca] = useState("");
   const [lista, setLista] = useState([]);
   const [temMais, setTemMais] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [ativo, setAtivo] = useState(0);
-  const overlayMouseDown = useRef(null);
+  const overlayProps = useOverlayDismiss(() => onFechar());
   const listaRef = useRef(null);
   const buscaAtual = useRef("");
 
   // Busca no backend (tipo cliente/ambos), 300ms após parar de digitar.
+  // O campo mostra o que foi digitado; o termo vai em maiúsculo porque o
+  // ilike do SQLite só ignora caixa em ASCII (acentos: "ç" ≠ "Ç").
   useEffect(() => {
     let cancelado = false;
     buscaAtual.current = busca;
     setCarregando(true);
     const t = setTimeout(() => {
-      buscarClientes(busca.trim(), 0, POR_PAGINA)
+      buscarClientes(busca.trim().toUpperCase(), 0, POR_PAGINA)
         .then((d) => {
           if (cancelado) return;
           const itens = d || [];
@@ -293,7 +335,7 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
     const termo = buscaAtual.current;
     setCarregando(true);
     try {
-      const d = (await buscarClientes(termo.trim(), lista.length, POR_PAGINA)) || [];
+      const d = (await buscarClientes(termo.trim().toUpperCase(), lista.length, POR_PAGINA)) || [];
       if (termo !== buscaAtual.current) return;
       setLista((l) => [...l, ...d]);
       setTemMais(d.length === POR_PAGINA);
@@ -322,31 +364,42 @@ function ClienteModal({ selecionadoId, onSelecionar, onNovo, onFechar }) {
   };
 
   return ReactDOM.createPortal(
-    <div
-      className={styles.overlay}
-      onMouseDown={(e) => {
-        overlayMouseDown.current = e.target;
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && overlayMouseDown.current === e.currentTarget)
-          onFechar();
-      }}
-      onKeyDown={handleKeyDown}
-    >
+    <div className={styles.overlay} {...overlayProps} onKeyDown={handleKeyDown}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
-          <h2 className={styles.modalTitle}>Selecionar cliente</h2>
+          <h2 className={styles.modalTitle}>{clienteAtual ? "Cliente" : "Selecionar cliente"}</h2>
           <button className={styles.btnClose} onClick={onFechar} aria-label="Fechar">
             ×
           </button>
         </div>
 
         <div className={styles.modalScroll}>
+          {/* Cliente atual no topo; a busca abaixo é para trocar de cliente. */}
+          {clienteAtual && (
+            <div className={styles.atual}>
+              <div className={styles.atualInfo}>
+                <span className={styles.atualRotulo}>Cliente atual</span>
+                <span className={styles.atualNome} title={clienteAtual.razao_social}>
+                  {clienteAtual.razao_social}
+                </span>
+                <span className={styles.atualDetalhe}>
+                  {[clienteAtual.codigo, resumoCliente(clienteAtual)].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              {onEditar && (
+                <button type="button" className={styles.btnSecondary} onClick={onEditar}>
+                  Editar cadastro
+                </button>
+              )}
+            </div>
+          )}
+
+          {clienteAtual && <p className={styles.trocarRotulo}>Trocar cliente</p>}
           <input
             className={styles.busca}
             placeholder="BUSCAR POR RAZÃO SOCIAL, FANTASIA, CÓDIGO, CNPJ OU CIDADE..."
             value={busca}
-            onChange={(e) => setBusca(e.target.value.toUpperCase())}
+            onChange={(e) => setBusca(e.target.value)}
             autoFocus
           />
 

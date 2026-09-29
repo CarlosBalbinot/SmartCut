@@ -5,41 +5,17 @@ import { getTabelasPreco } from "../api/tabelasPreco";
 import {
   getPedidosVenda,
   createPedidoVenda,
-  getPedidoVenda,
   updateStatusPedidoVenda,
   getProximoNumeroPedidoVenda,
-  getPdfPedidoVenda,
 } from "../api/pedidos";
+import { RELATORIO_PEDIDO_VENDA, imprimirRelatorio } from "../api/relatorios";
 import { getVendedores } from "../api/vendedores";
 import { listar as listarCondicoesPagamento } from "../api/condicoesPagamento";
 import { listar as listarTes } from "../api/tes";
 import ClienteInput from "../components/ClienteInput/ClienteInput";
 import { useAuth } from "../auth/useAuth";
 import styles from "./PedidosVendaPage.module.css";
-
-const TAMANHOS_BASE = ["P", "M", "G", "GG"];
-const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
-const TAM_KEY = {
-  P: "qtd_p",
-  M: "qtd_m",
-  G: "qtd_g",
-  GG: "qtd_gg",
-  G1: "qtd_g1",
-  G2: "qtd_g2",
-  G3: "qtd_g3",
-};
-
-async function downloadBlob(promiseFn, filename) {
-  const blob = await promiseFn();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+import useOverlayDismiss from "../hooks/useOverlayDismiss";
 
 const STATUS_LABELS = {
   Aberto: "Aberto",
@@ -60,7 +36,24 @@ const STATUS_FILTRO_OPCOES = [
   { value: "Cancelado", label: "Cancelado" },
 ];
 
-const CONDICOES_LABEL = { avista: "À Vista", aprazo: "A Prazo" };
+// Status da OC ativa do pedido — mesmos rótulos e cores da lista de Ordens
+// de Corte (a pílula é o atalho para abrir a OC).
+const STATUS_OC_LABELS = {
+  RASCUNHO: "Rascunho",
+  ENVIADA: "Enviada",
+  EM_CORTE: "Em corte",
+  CONCLUIDA: "Concluída",
+  CANCELADA: "Cancelada",
+};
+
+const STATUS_OC_CLS = {
+  RASCUNHO: "ocRascunho",
+  ENVIADA: "ocEnviada",
+  EM_CORTE: "ocEmCorte",
+  CONCLUIDA: "ocConcluida",
+  CANCELADA: "ocCancelada",
+};
+
 const TIPO_LABEL = { intervalo: "Intervalo de Dias", fixo: "Dias Específicos" };
 
 const moeda = (v) =>
@@ -74,6 +67,13 @@ const nomeCurto = (nome, limite = 16) => {
   if (!nome) return "";
   const n = nome.trim();
   return n.length > limite ? n.split(/\s+/)[0] : n;
+};
+
+// "000001" → "1" (só exibição; o título do detalhe mantém o número gravado).
+// Número sem dígitos (ou só zeros) volta como veio.
+const formatarNumeroPedido = (numero) => {
+  const s = String(numero ?? "").trim();
+  return /^\d+$/.test(s) ? String(Number(s)) : s;
 };
 
 const dataBR = (iso) => (iso ? new Date(iso).toLocaleDateString("pt-BR") : "");
@@ -105,6 +105,10 @@ const INDICADOR_PRESENCA_OPCOES = [
 ];
 
 export default function PedidosVendaPage() {
+  const fecharCancelarOverlay = useOverlayDismiss(() => !cancelando && fecharCancelar());
+  const fecharModalOverlay = useOverlayDismiss(() => fecharModal());
+  const fecharBuscaCondicaoOverlay = useOverlayDismiss(() => fecharBuscaCondicao());
+
   const { hasPermission } = useAuth();
   const [pedidos, setPedidos] = useState([]);
   const [vendedores, setVendedores] = useState([]);
@@ -115,8 +119,8 @@ export default function PedidosVendaPage() {
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState(null);
   const [menuAberto, setMenuAberto] = useState(null);
+  const menuRef = useRef(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
-  const [modalView, setModalView] = useState(null);
   const [cancelandoPedido, setCancelandoPedido] = useState(null);
   const [cancelando, setCancelando] = useState(false);
   const [erroCancelar, setErroCancelar] = useState(null);
@@ -125,8 +129,6 @@ export default function PedidosVendaPage() {
   const [modalCondicao, setModalCondicao] = useState(false);
   const [buscaCondicao, setBuscaCondicao] = useState("");
   const navigate = useNavigate();
-  const overlayMouseDownNode = useRef(null);
-  const condicaoOverlayMouseDownNode = useRef(null);
 
   // Lista sempre buscada do backend ao montar a tela (inclusive ao voltar do
   // detalhe) — sem cache entre navegações. Nomes de vendedor/tabela/condição
@@ -161,9 +163,22 @@ export default function PedidosVendaPage() {
 
   useEffect(() => {
     if (!menuAberto) return;
-    const close = () => setMenuAberto(null);
+    // Só fecha se o clique também começou fora do menu (arrastar de dentro
+    // para fora dispara click no ancestral comum).
+    let downDentro = false;
+    const down = (e) => {
+      downDentro = !!menuRef.current?.contains(e.target);
+    };
+    const close = () => {
+      if (!downDentro) setMenuAberto(null);
+      downDentro = false;
+    };
+    document.addEventListener("mousedown", down);
     document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    return () => {
+      document.removeEventListener("mousedown", down);
+      document.removeEventListener("click", close);
+    };
   }, [menuAberto]);
 
   const abrirModal = async () => {
@@ -208,32 +223,17 @@ export default function PedidosVendaPage() {
   });
 
   // ── Menu de ações da linha (···) ──────────────────────────────────────────────
-  const handleImprimirResumo = async (p) => {
+  // Mesmo relVen001 do "Formulário de Pedido" do detalhe (api/relatorios).
+  const handleImprimirPedido = async (p) => {
     try {
-      await downloadBlob(() => getPdfPedidoVenda(p.id), `pedido-${p.numero}.pdf`);
+      await imprimirRelatorio(RELATORIO_PEDIDO_VENDA, p.id);
     } catch (e) {
-      alert(e.message || "Erro ao gerar PDF.");
+      alert(e.message);
     }
   };
 
-  // ── Modal de visualização (somente leitura) ───────────────────────────────────
-  const abrirVisualizacao = async (p) => {
-    setModalView({ numero: p.numero, loading: true });
-    try {
-      const full = await getPedidoVenda(p.id);
-      // Nomes resolvidos vêm só na listagem — reaproveita os da linha.
-      setModalView({
-        ...full,
-        vendedor_nome: p.vendedor_nome,
-        tabela_preco_nome: p.tabela_preco_nome,
-        condicao_pagamento_descricao: p.condicao_pagamento_descricao,
-      });
-    } catch {
-      setModalView(null);
-    }
-  };
-
-  const fecharVisualizacao = () => setModalView(null);
+  // Detalhe em modo visualização (tudo só leitura até o "Editar" de lá).
+  const abrirVisualizacao = (p) => navigate(`/vendas/pedidos/${p.id}?modo=visualizar`);
 
   // ── Cancelar pedido (soft-delete: muda status para Cancelado, não remove) ────
   const fecharCancelar = () => {
@@ -261,7 +261,7 @@ export default function PedidosVendaPage() {
     if (busca.trim()) {
       const q = busca.trim().toLowerCase();
       const alvo =
-        `${p.numero || ""} ${p.cliente_razao_social || ""} ${p.vendedor_nome || ""}`.toLowerCase();
+        `${p.numero || ""} ${formatarNumeroPedido(p.numero)} ${p.cliente_razao_social || ""} ${p.vendedor_nome || ""}`.toLowerCase();
       if (!alvo.includes(q)) return false;
     }
     return true;
@@ -349,14 +349,19 @@ export default function PedidosVendaPage() {
                 <th>Total</th>
                 <th>Comissão</th>
                 <th>Status</th>
+                <th>Produção</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {pedidosFiltrados.map((p) => (
-                <tr key={p.id} onDoubleClick={() => abrirVisualizacao(p)}>
-                  <td title={p.numero}>
-                    <code className={styles.num}>{p.numero}</code>
+                <tr
+                  key={p.id}
+                  className={styles.linhaPedido}
+                  onDoubleClick={() => abrirVisualizacao(p)}
+                >
+                  <td className={styles.num} title={p.numero}>
+                    {formatarNumeroPedido(p.numero)}
                   </td>
                   <td title={dataBR(p.data_emissao)}>{dataBR(p.data_emissao) || "—"}</td>
                   <td title={p.cliente_razao_social || ""}>{p.cliente_razao_social || "—"}</td>
@@ -373,6 +378,23 @@ export default function PedidosVendaPage() {
                     >
                       {STATUS_LABELS[p.status] || p.status || "—"}
                     </span>
+                  </td>
+                  <td>
+                    {p.producao ? (
+                      <button
+                        type="button"
+                        className={`${styles.pill} ${styles[STATUS_OC_CLS[p.producao.status]] || ""}`}
+                        title={`${p.producao.oc_numero} — abrir a Ordem de Corte`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/producao/ordens-corte/${p.producao.oc_id}`);
+                        }}
+                      >
+                        {STATUS_OC_LABELS[p.producao.status] || p.producao.status}
+                      </button>
+                    ) : (
+                      <span className={styles.semProducao}>—</span>
+                    )}
                   </td>
                   <td onDoubleClick={(e) => e.stopPropagation()}>
                     <div className={styles.menuWrap}>
@@ -392,11 +414,21 @@ export default function PedidosVendaPage() {
                       </button>
                       {menuAberto === p.id && (
                         <div
+                          ref={menuRef}
                           className={styles.dropdown}
                           style={{ top: menuPos.top, left: menuPos.left }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {hasPermission("pedidos_editar", "ver") && (
+                          <button
+                            className={styles.dropItem}
+                            onClick={() => {
+                              setMenuAberto(null);
+                              abrirVisualizacao(p);
+                            }}
+                          >
+                            Visualizar
+                          </button>
+                          {hasPermission("pedidos_editar", "ver") && p.status === "Aberto" && (
                             <button
                               className={styles.dropItem}
                               onClick={() => {
@@ -411,10 +443,10 @@ export default function PedidosVendaPage() {
                             className={styles.dropItem}
                             onClick={() => {
                               setMenuAberto(null);
-                              handleImprimirResumo(p);
+                              handleImprimirPedido(p);
                             }}
                           >
-                            Imprimir Resumo
+                            Imprimir Pedido
                           </button>
                           {hasPermission("pedidos_excluir", "ver") && p.status === "Aberto" && (
                             <button
@@ -435,7 +467,7 @@ export default function PedidosVendaPage() {
               ))}
               {pedidosFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={10} className={styles.empty}>
+                  <td colSpan={11} className={styles.empty}>
                     {pedidos.length === 0
                       ? "Nenhum pedido de venda cadastrado."
                       : "Nenhum pedido encontrado para o filtro atual."}
@@ -447,176 +479,9 @@ export default function PedidosVendaPage() {
         </div>
       </div>
 
-      {/* ══ MODAL — Visualização (somente leitura) ══ */}
-      {modalView && (
-        <div className={styles.overlay} onClick={fecharVisualizacao}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHead}>
-              <h2 className={styles.modalTitle}>Pedido Nº {modalView.numero}</h2>
-              <button className={styles.btnClose} onClick={fecharVisualizacao}>
-                ×
-              </button>
-            </div>
-
-            {modalView.loading ? (
-              <div className={styles.modalScroll}>
-                <p className={styles.empty}>Carregando…</p>
-              </div>
-            ) : (
-              <>
-                <div className={styles.modalScroll}>
-                  <p className={styles.secLabel}>Dados do pedido</p>
-                  <div className={styles.viewGrid}>
-                    <span>
-                      <strong>Cliente:</strong> {modalView.cliente_razao_social || "—"}
-                    </span>
-                    <span>
-                      <strong>Data:</strong>{" "}
-                      {modalView.data_emissao
-                        ? new Date(modalView.data_emissao).toLocaleDateString("pt-BR")
-                        : "—"}
-                    </span>
-                    <span>
-                      <strong>Vendedor:</strong> {modalView.vendedor_nome || "—"}
-                    </span>
-                    <span>
-                      <strong>Tabela de Preço:</strong> {modalView.tabela_preco_nome || "—"}
-                      {modalView.condicoes &&
-                        ` (${CONDICOES_LABEL[modalView.condicoes] || modalView.condicoes})`}
-                    </span>
-                    <span>
-                      <strong>Condição:</strong> {modalView.condicao_pagamento_descricao || "—"}
-                    </span>
-                  </div>
-
-                  <p className={styles.secLabel} style={{ marginTop: "1.25rem" }}>
-                    Itens
-                  </p>
-                  {(() => {
-                    const itensView = modalView.itens || [];
-                    if (itensView.length === 0) {
-                      return <p className={styles.empty}>Nenhum item.</p>;
-                    }
-                    const temPlusView = itensView.some(
-                      (i) => (i.qtd_g1 || 0) + (i.qtd_g2 || 0) + (i.qtd_g3 || 0) > 0
-                    );
-                    const tamColsView = temPlusView ? TAMANHOS_PLUS : TAMANHOS_BASE;
-                    const gruposOrdemView = [];
-                    const grupoMapView = {};
-                    itensView.forEach((item) => {
-                      if (!grupoMapView[item.grupo_id]) {
-                        grupoMapView[item.grupo_id] = [];
-                        gruposOrdemView.push(item.grupo_id);
-                      }
-                      grupoMapView[item.grupo_id].push(item);
-                    });
-                    const th = {
-                      textAlign: "left",
-                      padding: "0.5rem 0.6rem",
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                      color: "var(--sc-text-secondary)",
-                      borderBottom: "1px solid var(--sc-border)",
-                    };
-                    const td = { padding: "0.5rem 0.6rem", color: "var(--sc-text-primary)" };
-                    return (
-                      <table
-                        style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={th}>REF</th>
-                            <th style={th}>Nome</th>
-                            <th style={th}>Cor</th>
-                            {tamColsView.map((t) => (
-                              <th key={t} style={{ ...th, textAlign: "center" }}>
-                                {t}
-                              </th>
-                            ))}
-                            <th style={{ ...th, textAlign: "right" }}>P. Unit.</th>
-                            <th style={{ ...th, textAlign: "right" }}>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {gruposOrdemView.map((gid) => {
-                            const grupo_itens = grupoMapView[gid];
-                            return grupo_itens.map((item, idx) => (
-                              <tr
-                                key={item.id}
-                                style={{ borderBottom: "1px solid var(--sc-border)" }}
-                              >
-                                {idx === 0 && (
-                                  <>
-                                    <td rowSpan={grupo_itens.length} style={td}>
-                                      <code>{item.grupo_codigo || "—"}</code>
-                                    </td>
-                                    <td rowSpan={grupo_itens.length} style={td}>
-                                      {item.grupo_nome || "—"}
-                                    </td>
-                                  </>
-                                )}
-                                <td style={td}>{item.cor || "—"}</td>
-                                {tamColsView.map((t) => (
-                                  <td key={t} style={{ ...td, textAlign: "center" }}>
-                                    {(item[TAM_KEY[t]] || 0) > 0 ? item[TAM_KEY[t]] : ""}
-                                  </td>
-                                ))}
-                                <td style={{ ...td, textAlign: "right" }}>
-                                  {moeda(item.preco_unitario)}
-                                </td>
-                                <td style={{ ...td, textAlign: "right" }}>
-                                  {moeda(item.preco_total)}
-                                </td>
-                              </tr>
-                            ));
-                          })}
-                        </tbody>
-                      </table>
-                    );
-                  })()}
-
-                  <div className={styles.viewFooter}>
-                    <div className={styles.totaisLinha}>
-                      <span>Comissão</span>
-                      <span>{moeda(modalView.comissao_valor)}</span>
-                    </div>
-                    <div className={`${styles.totaisLinha} ${styles.totaisTotal}`}>
-                      <span>Total Geral</span>
-                      <strong>{moeda(modalView.total_pedido)}</strong>
-                    </div>
-                    <div className={styles.totaisLinha}>
-                      <span>Status</span>
-                      <span
-                        className={`${styles.badge} ${styles[STATUS_CLS[modalView.status] || "stAberto"]}`}
-                      >
-                        {STATUS_LABELS[modalView.status] || modalView.status || "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={styles.modalActions}>
-                  <button className={styles.btnSecondary} onClick={fecharVisualizacao}>
-                    Fechar
-                  </button>
-                  <button
-                    className={styles.btnPrimary}
-                    onClick={() => handleImprimirResumo(modalView)}
-                  >
-                    Imprimir PDF
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ══ MODAL — Confirmar cancelamento ══ */}
       {cancelandoPedido && (
-        <div className={styles.overlay} onClick={() => !cancelando && fecharCancelar()}>
+        <div className={styles.overlay} {...fecharCancelarOverlay}>
           <div className={styles.modalSm} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle} style={{ marginBottom: "0.75rem" }}>
               Cancelar Pedido
@@ -648,17 +513,7 @@ export default function PedidosVendaPage() {
       )}
 
       {modal && (
-        <div
-          className={styles.overlay}
-          onMouseDown={(e) => {
-            overlayMouseDownNode.current = e.target;
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget && overlayMouseDownNode.current === e.currentTarget) {
-              fecharModal();
-            }
-          }}
-        >
+        <div className={styles.overlay} {...fecharModalOverlay}>
           <div
             className={`${styles.modal} ${styles.modalNovoPedido}`}
             onClick={(e) => e.stopPropagation()}
@@ -838,20 +693,7 @@ export default function PedidosVendaPage() {
       )}
 
       {modalCondicao && (
-        <div
-          className={styles.overlay}
-          onMouseDown={(e) => {
-            condicaoOverlayMouseDownNode.current = e.target;
-          }}
-          onClick={(e) => {
-            if (
-              e.target === e.currentTarget &&
-              condicaoOverlayMouseDownNode.current === e.currentTarget
-            ) {
-              fecharBuscaCondicao();
-            }
-          }}
-        >
+        <div className={styles.overlay} {...fecharBuscaCondicaoOverlay}>
           <div className={styles.modalCondicao} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h2 className={styles.modalTitle}>Selecionar Condição de Pagamento</h2>

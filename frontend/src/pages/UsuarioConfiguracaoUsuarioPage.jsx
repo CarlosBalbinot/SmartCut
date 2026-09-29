@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 import styles from "./UsuarioConfiguracaoUsuarioPage.module.css";
+import { upperOnChange } from "../utils/uppercase";
 
 export default function UsuarioConfiguracaoUsuarioPage() {
   const navigate = useNavigate();
@@ -79,9 +80,9 @@ export default function UsuarioConfiguracaoUsuarioPage() {
           <label className={styles.field}>
             <span>Nome completo</span>
             <input
-              className={styles.input}
+              className={`${styles.input} sc-upper`}
               value={form.nome_completo}
-              onChange={set("nome_completo")}
+              onChange={upperOnChange(set("nome_completo"))}
             />
           </label>
           <label className={styles.field}>

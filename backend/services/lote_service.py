@@ -61,16 +61,34 @@ def arquivar(db: Session, lote_id: uuid.UUID) -> LoteOut | None:
     return LoteOut.model_validate(lt)
 
 
+def debitar(lote: LoteTecido, peso_kg: float) -> None:
+    """Baixa `peso_kg` do lote e ajusta o status — SEM commit.
+
+    O commit é de quem chama: a conclusão da OC grava todos os consumos e a
+    troca de status numa transação só, então o service do lote não pode
+    commitar por conta própria.
+    """
+    lote.peso_disponivel_kg = max(0.0, float(lote.peso_disponivel_kg) - peso_kg)
+    if lote.status == "intacto":
+        lote.status = "aberto"
+    if float(lote.peso_disponivel_kg) <= 0:
+        lote.status = "esgotado"
+
+
+def creditar(lote: LoteTecido, peso_kg: float) -> None:
+    """Devolve `peso_kg` ao lote (estorno) e reativa um lote esgotado — SEM commit."""
+    lote.peso_disponivel_kg = round(float(lote.peso_disponivel_kg) + peso_kg, 3)
+    # Nunca passa do inicial: um lote arquivado continua arquivado.
+    if lote.status == "esgotado" and float(lote.peso_disponivel_kg) > 0:
+        lote.status = "aberto"
+
+
 def consumir(db: Session, lote_id: uuid.UUID, peso_kg: float) -> LoteOut | None:
     """Debita peso do lote e atualiza status para 'aberto' se estava intacto."""
     lt = db.get(LoteTecido, lote_id)
     if not lt:
         return None
-    lt.peso_disponivel_kg = max(0.0, float(lt.peso_disponivel_kg) - peso_kg)
-    if lt.status == "intacto":
-        lt.status = "aberto"
-    if lt.peso_disponivel_kg <= 0:
-        lt.status = "esgotado"
+    debitar(lt, peso_kg)
     db.commit()
     db.refresh(lt)
     return LoteOut.model_validate(lt)

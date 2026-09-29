@@ -154,6 +154,11 @@
   color: var(--sc-text-primary);
 }
 
+.capsLock {
+  font-size: 11.5px;
+  color: var(--sc-text-warning, #854d0e);
+}
+
 .error {
   font-size: 12.5px;
   color: var(--sc-danger-text, #d33);

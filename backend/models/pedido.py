@@ -2,8 +2,25 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, Numeric, String, Text, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    event,
+    func,
+    select,
+    update,
+)
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
+from sqlalchemy.orm.attributes import set_committed_value
 
 from database import Base
 
@@ -133,7 +150,17 @@ class PedidoVenda(Base):
 
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    itens: Mapped[list["ItemPedido"]] = relationship(back_populates="pedido", cascade="all, delete-orphan")
+    # Último ItemPedido.numero_item já usado no pedido. Itens são removidos
+    # fisicamente, então max(numero_item) dos itens atuais reaproveitaria o
+    # número do último removido — este contador só cresce (ver
+    # venda_service.reservar_numeros_item).
+    ultimo_numero_item: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+    itens: Mapped[list["ItemPedido"]] = relationship(
+        back_populates="pedido",
+        cascade="all, delete-orphan",
+        order_by="ItemPedido.numero_item",
+    )
     encaixes: Mapped[list["Encaixe"]] = relationship(back_populates="pedido")  # noqa: F821
     vendedor: Mapped["Vendedor | None"] = relationship(back_populates="pedidos")  # noqa: F821
     tabela_preco: Mapped["TabelaPreco | None"] = relationship()  # noqa: F821
@@ -148,9 +175,15 @@ class PedidoVenda(Base):
 
 class ItemPedido(Base):
     __tablename__ = "itens_pedido"
+    __table_args__ = (UniqueConstraint("pedido_id", "numero_item", name="uq_itens_pedido_pedido_numero_item"),)
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pedido_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False)
+    # Número sequencial fixo do item dentro do pedido (1, 2, 3… — exibido
+    # 001, 002…) para rastreio ("pedido 000001, item 003"). Nunca é
+    # reaproveitado nem muda na troca de SKU; vem de
+    # PedidoVenda.ultimo_numero_item.
+    numero_item: Mapped[int] = mapped_column(Integer, nullable=False)
     # Nullable: itens do catálogo fiscal novo (produto_id/sku_id, ver abaixo)
     # não pertencem a um GrupoMolde — só itens legados de corte preenchem
     # este campo (ver models/pedido.py — Item pai vs. avulso no fluxo novo).
@@ -243,3 +276,34 @@ class ItemPedido(Base):
             + (self.qtd_g2 or 0)
             + (self.qtd_g3 or 0)
         )
+
+
+@event.listens_for(Session, "before_flush")
+def _numerar_itens_sem_numero(session, flush_context, instances):
+    """Rede de segurança: item novo sem numero_item (criado fora dos
+    endpoints, que numeram via venda_service.reservar_numeros_item) recebe o
+    próximo número do pedido, na ordem em que entrou na sessão. Mesmo
+    contador do caminho normal, então nunca reaproveita número."""
+    novos = [o for o in session.new if isinstance(o, ItemPedido) and o.numero_item is None]
+    for item in novos:
+        pedido = item.pedido
+        if pedido is None and item.pedido_id is not None:
+            pedido = session.get(PedidoVenda, item.pedido_id)
+        if pedido is None:
+            continue
+        if pedido in session.new:
+            # Pedido ainda não gravado: o contador vai junto no mesmo INSERT.
+            pedido.ultimo_numero_item = (pedido.ultimo_numero_item or 0) + 1
+            item.numero_item = pedido.ultimo_numero_item
+            continue
+        conn = session.connection()
+        conn.execute(
+            update(PedidoVenda.__table__)
+            .where(PedidoVenda.__table__.c.id == pedido.id)
+            .values(ultimo_numero_item=PedidoVenda.__table__.c.ultimo_numero_item + 1)
+        )
+        item.numero_item = conn.execute(
+            select(PedidoVenda.__table__.c.ultimo_numero_item).where(PedidoVenda.__table__.c.id == pedido.id)
+        ).scalar_one()
+        # Mantém o objeto em memória igual ao banco sem marcá-lo como sujo.
+        set_committed_value(pedido, "ultimo_numero_item", item.numero_item)
