@@ -9,6 +9,7 @@ const { app, safeStorage } = require('electron');
 // item 9.2: mesmo logger do main.js (rotação em userData/smartcut.log). O
 // build-backend (PyInstaller) é rotulado com [backend.js] para contexto.
 const logger = require('./logger.js');
+const { sincronizarRelatorios } = require('./relatorios-sync.js');
 
 let backendProcess = null;
 
@@ -191,6 +192,11 @@ async function spawnBackend() {
     const dbPath    = path.join(userData, 'smartcut.db');
     const uploadDir = path.join(userData, 'uploads');
     const certificadosDir = path.join(userData, 'Certificados');
+    // Modelos de relatório editáveis pelo usuário em userData/relatorios,
+    // atualizados a partir de resources/relatorios-padrao sem sobrescrever
+    // edições (electron/relatorios-sync.js). Em desenvolvimento o backend
+    // continua lendo a pasta relatorios/ da raiz do projeto.
+    const relatoriosDir = path.join(userData, 'relatorios');
 
     log(`userData: ${userData}`);
     log(`dbPath: ${dbPath}`);
@@ -200,6 +206,17 @@ async function spawnBackend() {
       fs.mkdirSync(certificadosDir, { recursive: true });
     } catch (e) {
       log(`erro ao criar pasta de certificados: ${e.message}`);
+    }
+    log(`relatoriosDir: ${relatoriosDir}`);
+    try {
+      sincronizarRelatorios(
+        path.join(process.resourcesPath, 'relatorios-padrao'),
+        relatoriosDir,
+        path.join(__dirname, 'relatorios-hashes.json'),
+        log,
+      );
+    } catch (e) {
+      log(`erro ao sincronizar modelos de relatório: ${e.message}`);
     }
     log(`spawning exe...`);
 
@@ -234,6 +251,7 @@ async function spawnBackend() {
         SMARTCUT_DB_PATH: dbPath,
         UPLOAD_DIR: uploadDir,
         CERTIFICADO_DIR: certificadosDir,
+        SMARTCUT_RELATORIOS_DIR: relatoriosDir,
         SMARTCUT_CERT_KEY: certKey,
         SECRET_KEY: jwtSecret,
       },

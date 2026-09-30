@@ -38,6 +38,12 @@ release/
 # política compartilhada do projeto e continua versionado)
 .claude/
 
+# Saída do build-backend (PyInstaller): só o .gitkeep é versionado. Pastas
+# criadas ao rodar o exe direto de electron/bin (relatorios/, uploads/) são
+# sobras locais — os modelos vão no pacote a partir de relatorios/.
+electron/bin/relatorios/
+electron/bin/uploads/
+
 # Uploads e arquivos gerados localmente
 backend/uploads/
 uploads/

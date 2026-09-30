@@ -9,9 +9,11 @@
     "build-frontend": "npm run build --prefix frontend",
     "build-backend": "cd backend && py -3.12 -m PyInstaller smartcut.spec --clean --distpath ../electron/bin",
     "predist": "npm run build-frontend && npm run build-backend",
-    "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
-    "dist-quick": "npm run build-frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
-    "dist:assinado": "node electron/release-build.js"
+    "dist": "npm run registrar-relatorios && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist-quick": "npm run build-frontend && npm run registrar-relatorios && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist:assinado": "node electron/release-build.js",
+    "registrar-relatorios": "node electron/relatorios-sync.js registrar",
+    "test:electron": "node --test \"electron/tests/*.test.js\""
   },
   "build": {
     "appId": "com.vaidosafitness.smartcut",
@@ -24,13 +26,20 @@
       "electron/**/*",
       "!electron/bin/**/*",
       "!electron/release-build.js",
+      "!electron/tests/**/*",
       "frontend/dist/**/*",
       "package.json"
     ],
     "extraResources": [
       {
         "from": "electron/bin",
-        "to": "bin"
+        "to": "bin",
+        "filter": ["smartcut-backend.exe"]
+      },
+      {
+        "from": "relatorios",
+        "to": "relatorios-padrao",
+        "filter": ["**/*", "!**/*.novo.*"]
       },
       {
         "from": "assets",

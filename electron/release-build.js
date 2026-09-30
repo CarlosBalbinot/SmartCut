@@ -54,6 +54,11 @@ if (!process.env.CSC_LINK) {
   process.exit(1);
 }
 
+// Modelos de relatório empacotados entram no manifesto de versões originais
+// (electron/relatorios-sync.js) — mesmo passo dos scripts dist/dist-quick.
+const { registrarVersoes } = require('./relatorios-sync.js');
+registrarVersoes(path.join(__dirname, '..', 'relatorios'), path.join(__dirname, 'relatorios-hashes.json'));
+
 build({
   // Mesma forma que o CLI monta os alvos (--win): Map<Platform, Map<Arch, string[]>>
   // com target NSIS para a arquitetura atual.
