@@ -7,8 +7,13 @@ enfestos[].miniatura_svg, que aponta para o mesmo desenho), gerado aqui a
 partir do mapa_json e marcado como seguro (Markup): o modelo não escreve
 JavaScript nem SVG.
 
-Chaves: empresa, oc, pedido, grades, enfestos, grupos, mesas, totais (a
-engine acrescenta "impressao"). mesas[] alimenta o formulário do cortador
+Chaves: empresa, oc, pedido, grades, enfestos, grupos, mesas, produtos,
+totais (a engine acrescenta "impressao").
+
+produtos[] (OC organizada por PRODUTO, encaixes do plano de corte): a ficha
+por produto — uma seção por produto, e dentro dela uma por tecido, com a
+grade cor × tamanho do pedido e as mesas daquele produto na ordem de corte.
+Vazio quando a OC é por COR (a ficha continua pela lista mesas[]). mesas[] alimenta o formulário do cortador
 (relPro001.html) e o formulário básico (relPro001_basico.html);
 enfestos/grupos/grades ficam para variantes personalizadas.
 
@@ -32,7 +37,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe
-from models.ordem_corte import ItemOrdemCorte, OrdemCorte
+from models.ordem_corte import ItemOrdemCorte, OrdemCorte, OrdemCorteTecido
 from models.pedido import PedidoVenda
 from models.produto_sku import ProdutoSKU
 from models.tecido import CorTecido, LoteTecido
@@ -84,9 +89,14 @@ def _txt(valor) -> str:
 # ── Grade cor × tamanho ───────────────────────────────────────────────────────
 
 
+# Ordem usual dos tamanhos — só quando o item não tem SKU (sem tabela de grade).
+_ORDEM_TAMANHOS = ("PP", "P", "M", "G", "GG", "XG", "XGG", "EG", "EGG", "G1", "G2", "G3", "G4")
+
+
 def _grades(itens: list[ItemOrdemCorte]) -> list[dict]:
     """Uma grade por produto pai. Cores e tamanhos na ordem da tabela de
-    grade (ItemTabelaGrade.ordem); sem SKU/ordem, na ordem do pedido."""
+    grade (ItemTabelaGrade.ordem); sem SKU/ordem, tamanhos na ordem usual
+    (_ORDEM_TAMANHOS) e cores na ordem do pedido."""
     produtos: dict[uuid.UUID, dict] = {}
     for pos, i in enumerate(itens):
         g = produtos.setdefault(
@@ -103,13 +113,18 @@ def _grades(itens: list[ItemOrdemCorte]) -> list[dict]:
         cor = _txt(i.cor) or "—"
         tam = _txt(i.tamanho) or "—"
         ordem_cor = sku.linha_item.ordem if sku and sku.linha_item else 10_000 + pos
-        ordem_tam = sku.coluna_item.ordem if sku and sku.coluna_item else 10_000 + pos
+        if sku and sku.coluna_item:
+            ordem_tam = sku.coluna_item.ordem
+        elif tam.upper() in _ORDEM_TAMANHOS:
+            ordem_tam = 5_000 + _ORDEM_TAMANHOS.index(tam.upper())
+        else:
+            ordem_tam = 10_000 + pos
         g["cores"].setdefault(cor, (ordem_cor, pos))
         g["tamanhos"].setdefault(tam, (ordem_tam, pos))
         g["qtd"][(cor, tam)] = g["qtd"].get((cor, tam), 0) + (i.quantidade or 0)
 
     saida = []
-    for g in produtos.values():
+    for produto_id, g in produtos.items():
         cores = sorted(g["cores"], key=g["cores"].get)
         tamanhos = sorted(g["tamanhos"], key=g["tamanhos"].get)
         linhas = [
@@ -122,6 +137,7 @@ def _grades(itens: list[ItemOrdemCorte]) -> list[dict]:
         ]
         saida.append(
             {
+                "produto_id": str(produto_id),
                 "produto_codigo": g["codigo"],
                 "produto_descricao": g["descricao"],
                 "tamanhos": tamanhos,
@@ -568,6 +584,90 @@ def _mesa(e: Encaixe, enf: dict, numero: int, total: int) -> dict:
     }
 
 
+# ── Ficha por produto (OC organizada por PRODUTO) ─────────────────────────────
+
+
+def _camadas_texto(e: Encaixe) -> str:
+    """ "PRETO 7 · MARROM 7" — as cores do enfesto, de baixo para cima."""
+    if e.camadas_cor:
+        return " · ".join(f"{_txt(c.cor)} {c.camadas}" for c in e.camadas_cor)
+    cor = e.lote.cor.nome_cor if e.lote and e.lote.cor else ""
+    return f"{_txt(cor)} {e.num_camadas or 1}".strip()
+
+
+def _produtos(oc: OrdemCorte, encaixes: list[Encaixe], mesas: list[dict], grades: list[dict]) -> list[dict]:
+    """Seções da ficha por produto: produto → tecido → grade do pedido e mesas.
+
+    As mesas seguem a ordem de corte (a dos encaixes) e mantêm o número da
+    OC. O tecido de cada cor do pedido é o do lote escolhido para ela
+    (OrdemCorteTecido) — é assim que a grade se divide entre os tecidos
+    quando um produto usa mais de um (ex.: MAXXI e CANELADO)."""
+    if not encaixes or any(not (e.mapa_json or {}).get("produto_id") for e in encaixes):
+        return []
+    modelo_da_cor: dict[tuple[str, str], str] = {}
+    for t in oc.tecidos:
+        if t.lote and t.lote.cor and t.lote.cor.modelo:
+            modelo_da_cor[(str(t.produto_pai_id), _txt(t.cor).casefold())] = t.lote.cor.modelo.nome
+    grade_por_produto = {g["produto_id"]: g for g in grades}
+
+    # O desenho de um risco dividido em mesas: os tamanhos saem da 1ª mesa de
+    # cada enfesto (pecas_por_tamanho só vai nela).
+    tamanhos_risco: dict[tuple, str] = {}
+    for e in encaixes:
+        mapa = e.mapa_json or {}
+        linhas = mapa.get("pecas_por_tamanho") or []
+        if linhas:
+            chave = (mapa.get("grupo_corte"), mapa.get("risco"))
+            tamanhos_risco.setdefault(chave, " ".join(f"{ln['tamanho']}{ln['conjuntos']}" for ln in linhas))
+
+    secoes: dict[str, dict] = {}
+    for e, m in zip(encaixes, mesas):
+        mapa = e.mapa_json or {}
+        produto_id = str(mapa["produto_id"])
+        modelo = (
+            e.lote.cor.modelo.nome if e.lote and e.lote.cor and e.lote.cor.modelo else _txt(mapa.get("tecido_nome"))
+        )
+        prod = secoes.setdefault(
+            produto_id,
+            {"produto": _txt(mapa.get("produto_nome")), "codigo": "", "tecidos": {}},
+        )
+        g = grade_por_produto.get(produto_id)
+        if g:
+            prod["produto"], prod["codigo"] = g["produto_descricao"] or prod["produto"], g["produto_codigo"]
+        sec = prod["tecidos"].setdefault(modelo, {"tecido": modelo, "grade": None, "mesas": [], "_blocos": {}})
+        partes = int(mapa.get("total_partes") or 1)
+        # Enfestos do MESMO risco (mesma parte) têm o mesmo desenho: um bloco
+        # só, com as camadas de cada mesa — o desenho não se repete na folha.
+        chave = (mapa.get("grupo_corte"), mapa.get("risco"), mapa.get("parte_numero"))
+        bloco = sec["_blocos"].get(chave)
+        if bloco is None:
+            bloco = sec["_blocos"][chave] = {
+                **m,
+                "tamanhos_texto": tamanhos_risco.get((mapa.get("grupo_corte"), mapa.get("risco")), ""),
+                "parte_texto": f"parte {mapa.get('parte_numero')} de {partes}" if partes > 1 else "",
+                "largura_texto": _cm(float(mapa.get("largura_cm") or m["largura_cm"] or 0)),
+                "enfestos": [],
+            }
+            sec["mesas"].append(bloco)
+        bloco["enfestos"].append({"numero_mesa": m["numero_mesa"], "camadas_texto": _camadas_texto(e)})
+        bloco["camadas_texto"] = bloco["enfestos"][0]["camadas_texto"]
+
+    saida = []
+    for produto_id, prod in secoes.items():
+        g = grade_por_produto.get(produto_id)
+        tecidos = []
+        for modelo, sec in prod["tecidos"].items():
+            sec.pop("_blocos", None)
+            if g:
+                linhas = [
+                    ln for ln in g["linhas"] if modelo_da_cor.get((produto_id, ln["cor"].casefold()), modelo) == modelo
+                ]
+                sec["grade"] = {"tamanhos": g["tamanhos"], "linhas": linhas}
+            tecidos.append(sec)
+        saida.append({"produto": prod["produto"], "codigo": prod["codigo"], "tecidos": tecidos})
+    return saida
+
+
 # ── Contexto ──────────────────────────────────────────────────────────────────
 
 
@@ -590,6 +690,11 @@ def montar(db: Session, id_registro: str) -> dict:
                 .selectinload(Encaixe.lote)
                 .selectinload(LoteTecido.cor)
                 .selectinload(CorTecido.modelo),
+                selectinload(OrdemCorte.encaixes).selectinload(Encaixe.camadas_cor),
+                selectinload(OrdemCorte.tecidos)
+                .selectinload(OrdemCorteTecido.lote)
+                .selectinload(LoteTecido.cor)
+                .selectinload(CorTecido.modelo),
             )
         )
         .scalars()
@@ -604,6 +709,9 @@ def montar(db: Session, id_registro: str) -> dict:
     # Um enfesto dividido em várias mesas (parte 1/2 e 2/2) conta uma vez:
     # peças cortadas e sobra saem da grade de cada ENFESTO, não de cada parte.
     grupos = _grupos(enfestos)
+    grades = _grades(list(oc.itens))
+    # Mesas na ordem de corte (a dos encaixes), numeradas 1..N na OC.
+    mesas = [_mesa(e, enf, i, len(encaixes)) for i, (e, enf) in enumerate(zip(encaixes, enfestos), 1)]
 
     return {
         "empresa": _empresa(db),
@@ -614,6 +722,7 @@ def montar(db: Session, id_registro: str) -> dict:
             "modo_camadas": _MODO.get(oc.modo_camadas, oc.modo_camadas),
             "comprimento_max_cm": oc.comprimento_max_cm,
             "observacoes": _txt(oc.observacoes),
+            "organizar_por": oc.organizar_por,
         },
         "pedido": {
             "numero": _txt(pedido.numero if pedido else ""),
@@ -622,11 +731,11 @@ def montar(db: Session, id_registro: str) -> dict:
             "cliente_codigo": _txt(pedido.cliente_codigo if pedido else ""),
             "vendedor": _txt((pedido.vendedor.nome if pedido.vendedor else pedido.representante) if pedido else ""),
         },
-        "grades": _grades(list(oc.itens)),
+        "grades": grades,
         "enfestos": enfestos,
         "grupos": grupos,
-        # Mesas na ordem de corte (a dos encaixes), numeradas 1..N na OC.
-        "mesas": [_mesa(e, enf, i, len(encaixes)) for i, (e, enf) in enumerate(zip(encaixes, enfestos), 1)],
+        "mesas": mesas,
+        "produtos": _produtos(oc, encaixes, mesas, grades) if oc.organizar_por == "PRODUTO" else [],
         "totais": {
             "pecas": sum(i.quantidade or 0 for i in oc.itens),
             "pecas_cortadas": sum(g["pecas_total"] for g in grupos),

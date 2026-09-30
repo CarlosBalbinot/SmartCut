@@ -261,3 +261,53 @@ def test_oc_nova_e_por_produto_e_troca_para_cor(client, headers_admin, db_sessio
 
     res = client.put(f"/api/v1/ordens-corte/{oc['id']}", headers=headers_admin, json={"organizar_por": "TAMANHO"})
     assert res.status_code == 422
+
+
+# ── Ficha de corte por produto (relPro001 e relPro001_basico) ───────────────
+
+
+def test_ficha_por_produto_e_por_cor(client, headers_admin, db_session, cliente):
+    from services.relatorios import engine
+
+    lote_a = _novo_lote(db_session, "LOTE-A")
+    produto, sku = _novo_produto(db_session)
+    oc = _criar_oc(client, headers_admin, db_session, cliente, produto, sku, lote_a)
+    oc_id = uuid.UUID(oc["id"])
+    # OC por COR: a ficha de sempre (lista de mesas), sem seção de produto
+    ocm = db_session.get(OrdemCorte, oc_id)
+    ocm.organizar_por = "COR"
+    db_session.commit()
+    html_cor = engine.renderizar(db_session, "relPro001", str(oc_id))
+    assert "MESA 1 DE 1" in html_cor and "produto-titulo" not in html_cor.rsplit("</style>", 1)[1]
+
+    # OC por PRODUTO com o encaixe multicor do plano de corte
+    for e in ocm.encaixes:
+        db_session.delete(e)
+    db_session.commit()
+    lote_b = _novo_lote(db_session, "LOTE-B")
+    e = _encaixe_multicor(db_session, oc_id, uuid.UUID(oc["pedido_id"]), [(lote_a, 7, 0.5), (lote_b, 7, 0.5)])
+    e.mapa_json = {
+        "produto_id": str(produto.id),
+        "produto_nome": produto.descricao,
+        "grupo_corte": "g1",
+        "risco": 1,
+        "enfesto": 1,
+        "tipo_enfesto": "MESMA_FACE",
+        "comprimento_cm": 120.0,
+        "largura_cm": 150.0,
+        "placements": [],
+        "pecas_por_tamanho": [{"grupo_nome": "CAMISETA", "tamanho": "M", "conjuntos": 2, "pecas": 28, "sobra": 0}],
+    }
+    ocm.organizar_por = "PRODUTO"
+    db_session.commit()
+    db_session.expire_all()
+    completo = engine.renderizar(db_session, "relPro001", str(oc_id))
+    corpo = completo.rsplit("</style>", 1)[1]
+    assert "CAMISETA" in corpo and "Tecido: JACARANDA" in corpo
+    assert "Mesa 1 · 120 cm · Enfesto simples · Camadas: Azul 7 · Azul 7" in corpo
+    assert "Tamanhos no desenho: M2" in corpo
+    assert "grade-pedido" in corpo  # a grade cor × tamanho do pedido
+    assert "MESA 1 DE" not in corpo  # nada da lista antiga
+    basico = engine.renderizar(db_session, "relPro001", str(oc_id), "basico").rsplit("</style>", 1)[1]
+    assert "Enfesto simples · Azul 7 · Azul 7" in basico and "150 cm" in basico and "120 cm" in basico
+    assert "Tamanhos no desenho" not in basico

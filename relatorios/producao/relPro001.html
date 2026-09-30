@@ -19,6 +19,12 @@
               desenho_svg (desenho deitado, visto do cortador: largura embaixo com
               "INÍCIO DA MESA", comprimento à esquerda)
 
+    produtos[] (OC organizada por PRODUTO) produto, tecidos[] {tecido, grade {tamanhos, linhas[]
+              {cor, quantidades}}, mesas[] (as de cima + camadas_texto "PRETO 7 · MARROM 7",
+              tamanhos_texto "P1 M2 G2 GG1", parte_texto)}. Com produtos, a ficha sai por
+              produto → tecido: grade do pedido, e por mesa: comprimento, enfesto, camadas por cor,
+              tamanhos no desenho e o desenho. Sem produtos (OC por COR), a lista mesas[].
+
   FILTROS: moeda, numero(casas), data, cnpj_cpf, cep, telefone (ver relVen001)
 {% raw %}
 {% endraw %}
@@ -95,6 +101,21 @@
   .miniatura svg { display: block; max-width: 100%; height: auto; }
   .sem-miniatura { font-style: italic; }
 
+  /* Ficha por produto (OC organizada por PRODUTO): produto → tecido → grade
+     do pedido e as mesas. Cada produto abre uma seção própria. */
+  .produto { margin-top: 4mm; }
+  .produto-titulo { font-size: 10pt; font-weight: bold; padding: 0.8mm 0; border-bottom: 1pt solid #000; break-after: avoid; page-break-after: avoid; }
+  .tecido-bloco { margin-top: 2mm; }
+  .tecido-titulo { font-size: 8.5pt; font-weight: bold; break-after: avoid; page-break-after: avoid; }
+  .grade-pedido { width: auto; margin-top: 1mm; break-inside: avoid; page-break-inside: avoid; }
+  .grade-pedido th, .grade-pedido td { padding: 0.4mm 2.5mm; border: 0.5pt solid #000; text-align: center; white-space: nowrap; }
+  .grade-pedido th { font-weight: bold; }
+  .grade-pedido td.cor { text-align: left; }
+  .mesa-p { margin-top: 2mm; padding: 1.2mm 2mm 1.5mm; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
+  .mesa-p-titulo { font-size: 8.5pt; font-weight: bold; }
+  .mesa-p-linha { margin-top: 0.4mm; }
+  .mesa-p .miniatura { margin-top: 1.2mm; }
+
   /* Observações */
   .secao { margin-top: 3mm; }
   .secao-titulo { font-size: 9pt; font-weight: bold; padding-bottom: 0.6mm; border-bottom: 0.5pt solid #000; }
@@ -133,6 +154,42 @@
   </tr>
 </table>
 
+<!-- ═══ Ficha por produto (OC organizada por PRODUTO) ═══ -->
+{% if produtos %}
+{% for p in produtos %}
+<div class="produto">
+  <div class="produto-titulo">{{ p.produto }}</div>
+  {% for t in p.tecidos %}
+  <div class="tecido-bloco">
+  <div class="tecido-titulo">Tecido: {{ t.tecido }}</div>
+  {% if t.grade and t.grade.linhas %}
+  <table class="grade-pedido">
+    <thead><tr><th>Cor</th>{% for tam in t.grade.tamanhos %}<th>{{ tam }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for ln in t.grade.linhas %}
+      <tr><td class="cor">{{ ln.cor }}</td>{% for q in ln.quantidades %}<td>{{ q if q else "" }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% for m in t.mesas %}
+  <div class="mesa-p">
+    {% if m.enfestos | length == 1 %}
+    <div class="mesa-p-titulo">Mesa {{ m.numero_mesa }} · {{ m.comprimento_cm }} cm · {{ m.tipo_enfesto_nome }} · Camadas: {{ m.camadas_texto }}</div>
+    {% else %}
+    <div class="mesa-p-titulo">Mesas {{ m.enfestos | map(attribute="numero_mesa") | join(", ") }} · {{ m.comprimento_cm }} cm · {{ m.tipo_enfesto_nome }} · mesmo desenho</div>
+    {% for x in m.enfestos %}<div class="mesa-p-linha"><b>Mesa {{ x.numero_mesa }}</b> · Camadas: {{ x.camadas_texto }}</div>{% endfor %}
+    {% endif %}
+    {% if m.tamanhos_texto %}<div class="mesa-p-linha">Tamanhos no desenho: {{ m.tamanhos_texto }}{% if m.parte_texto %} ({{ m.parte_texto }}){% endif %}</div>{% endif %}
+    {% for aviso in m.avisos %}<div class="mesa-atencao">ATENÇÃO: {{ aviso }}</div>{% endfor %}
+    {% if m.desenho_svg %}<div class="miniatura">{{ m.desenho_svg }}</div>{% else %}<div class="sem-miniatura">Desenho da mesa não disponível.</div>{% endif %}
+  </div>
+  {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% else %}
 <!-- ═══ Mesas de corte: um bloco por mesa ═══ -->
 {% for m in mesas %}
 <div class="mesa">
@@ -189,6 +246,7 @@
 {% else %}
 <div class="mesa">Nenhuma mesa gerada para esta Ordem de Corte.</div>
 {% endfor %}
+{% endif %}
 
 {% if oc.observacoes %}
 <div class="secao" style="break-inside: avoid; page-break-inside: avoid;">

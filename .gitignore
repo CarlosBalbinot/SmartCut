@@ -87,3 +87,6 @@ Thumbs.db
 backend/.coverage
 backend/htmlcov/
 .htmlcov/
+
+# Fichas de corte geradas em teste (PDFs locais, não versionar)
+fichas-teste/

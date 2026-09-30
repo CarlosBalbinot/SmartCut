@@ -624,3 +624,16 @@ def test_endpoint_simetria(client, headers_admin):
         url, headers=headers_admin, json={"geometrias": [{"type": "Polygon", "coordinates": [[[0, 0], [1, 0]]]}]}
     )
     assert r.json()["data"]["simetrica"] is None  # geometria inválida: sem aviso
+
+
+def test_mesas_vem_antes_das_preferencias_da_producao():
+    # OC-0004 PRETO + MARROM: duplo e simples empatam em metros (< 1%), mas o
+    # duplo tem uma mesa a mais — "4+ camadas → duplo" não pode passar por cima.
+    lista = [_c(MESMA_FACE, "PLANO_CORTE", 216.09, mesas=15), _c(FACE_A_FACE, "PLANO_CORTE", 216.34, mesas=16)]
+    vencedor, motivo, regra = decisor.escolher(lista, _analise(camadas=15))
+    assert vencedor.tipo == MESMA_FACE and regra == "MENOS_MESAS"
+    assert "menos mesas (15)" in motivo
+    # mesmas mesas: aí sim a regra da produção desempata
+    lista = [_c(MESMA_FACE, "PLANO_CORTE", 216.09, mesas=15), _c(FACE_A_FACE, "PLANO_CORTE", 216.34, mesas=15)]
+    vencedor, _, regra = decisor.escolher(lista, _analise(camadas=15))
+    assert vencedor.tipo == FACE_A_FACE and regra == "MAIS_RAPIDO"

@@ -36,10 +36,11 @@ Critério (escolher)
 -------------------
   1. menor consumo de tecido: metros × camadas, todas as mesas;
   2. empate técnico (diferença < EMPATE_PCT): candidato sem sobra antes de
-     um com sobra; depois o tipo preferido pelas regras da produção —
-     produto de dupla camada (forrado, pelo cadastro) → enfesto duplo;
-     2 ou 3 camadas → enfesto simples; senão enfesto duplo (mais rápido de
-     estender); depois menos mesas, menos camadas;
+     um com sobra; depois MENOS MESAS; só entre os que empatam também em
+     mesas vale o tipo preferido pelas regras da produção — produto de
+     dupla camada (forrado, pelo cadastro) → enfesto duplo; 2 ou 3 camadas
+     → enfesto simples; senão enfesto duplo (mais rápido de estender);
+     depois menos camadas;
   3. sobra de peças só vence se for o menor consumo fora do empate.
 
 "Dupla camada" é cadastro (produtos.dupla_camada), não inferência: peça em
@@ -353,6 +354,13 @@ def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, 
         notas.append("sem sobra de peças")
 
     regra = "MENOR_CONSUMO"
+    # Mesas antes das regras da produção: a preferência de tipo só desempata
+    # planos com o MESMO número de mesas.
+    menos_mesas = min(c.mesas for c in empate)
+    if any(c.mesas > menos_mesas for c in empate):
+        empate = [c for c in empate if c.mesas == menos_mesas]
+        regra = "MENOS_MESAS"
+        notas.append(f"menos mesas ({menos_mesas})")
     tipos = {c.tipo for c in empate}
     if len(tipos) > 1:
         preferido, regra, frase = _preferencia(analise)
