@@ -318,8 +318,17 @@ def test_validar_entradas_separa_bloqueio_de_aviso_e_deduplica(db_session):
 def test_config_producao_nao_tem_mais_motor_de_encaixe(db_session):
     cfg = svc.config_producao(db_session)
     assert "motor_encaixe" not in cfg
-    assert set(cfg) == {"comprimento_max_mesa_cm", "alerta_economia_pct", "tempo_maximo_oc_s"}
+    assert set(cfg) == {"comprimento_max_mesa_cm", "alerta_economia_pct", "tempo_maximo_oc_s", "tolerancia_tecido_pct"}
     assert cfg["tempo_maximo_oc_s"] == 300
+    assert cfg["tolerancia_tecido_pct"] == 2.0
+
+
+def test_api_configura_a_tolerancia_de_tecido(client, headers_admin):
+    url = "/api/v1/ordens-corte/configuracao-producao"
+    assert client.get(url, headers=headers_admin).json()["data"]["tolerancia_tecido_pct"] == 2.0
+    r = client.patch(url, headers=headers_admin, json={"tolerancia_tecido_pct": 3.5})
+    assert r.status_code == 200 and r.json()["data"]["tolerancia_tecido_pct"] == 3.5
+    assert client.patch(url, headers=headers_admin, json={"tolerancia_tecido_pct": 50}).status_code == 422
 
 
 def test_api_configura_o_tempo_limite_da_ordem_de_corte(client, headers_admin, db_session):

@@ -448,6 +448,11 @@ def _enfesto(e: Encaixe, limite_oc: int) -> dict:
         "cor": _txt(cor.nome_cor if cor else ""),
         "lote": _txt(lote.codigo_lote if lote else ""),
     }
+    if e.camadas_cor:
+        # Enfesto multicor (plano por produto): todas as cores e lotes, na
+        # ordem do enfesto. A ficha por produto (relPro001) é o Passo 4.
+        tecido["cor"] = " + ".join(f"{_txt(c.cor)} {c.camadas}" for c in e.camadas_cor)
+        tecido["lote"] = " + ".join(_txt(c.lote.codigo_lote) for c in e.camadas_cor if c.lote)
     tipo = tipo_enfesto(mapa)
     desenho = desenho_svg(mapa)
     return {

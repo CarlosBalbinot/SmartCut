@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from models.encaixe import Encaixe
+from models.encaixe import Encaixe, EncaixeCamada
 from models.grupo_molde import GrupoMolde
 from models.ordem_corte import (
     COMPRIMENTO_MAX_MAX_CM,
@@ -313,12 +313,14 @@ def conferir(db: Session, oc: OrdemCorte) -> list[dict]:
 
 
 def _consumo_por_lote(encaixes) -> dict[uuid.UUID, float]:
-    """kg planejados por lote = Σ peso de uma camada × camadas."""
+    """kg planejados por lote = Σ peso de uma camada × camadas. Encaixe
+    multicor soma cada lote pelas linhas dele (Encaixe.consumo_por_lote)."""
     consumo: dict[uuid.UUID, float] = {}
     for e in encaixes:
-        if e.status == "deletado" or e.lote_id is None or e.peso_kg is None:
+        if e.status == "deletado":
             continue
-        consumo[e.lote_id] = consumo.get(e.lote_id, 0.0) + float(e.peso_kg) * (e.num_camadas or 1)
+        for lote_id, kg in e.consumo_por_lote().items():
+            consumo[lote_id] = consumo.get(lote_id, 0.0) + kg
     return consumo
 
 
@@ -333,21 +335,38 @@ def reservas_kg(db: Session, excluir_oc_id: uuid.UUID | None = None) -> dict[uui
 
     `excluir_oc_id` tira a própria OC da conta — é o que permite comparar o
     plano da OC com o que sobra depois das outras.
+
+    Duas somas: encaixes de um lote só (Encaixe.lote_id × peso × camadas) e
+    encaixes multicor, que reservam cada lote pelas linhas de
+    encaixe_camadas — o Encaixe.lote_id deles é só a cor principal e não
+    pode entrar na primeira soma.
     """
-    q = (
+    filtros = [
+        Encaixe.status != "deletado",
+        Encaixe.ordem_corte_id.is_not(None),
+        OrdemCorte.status.in_(_RESERVANDO),
+    ]
+    if excluir_oc_id is not None:
+        filtros.append(Encaixe.ordem_corte_id != excluir_oc_id)
+    multicor = select(EncaixeCamada.encaixe_id)
+    simples = (
         select(Encaixe.lote_id, func.sum(Encaixe.peso_kg * func.coalesce(Encaixe.num_camadas, 1)))
         .join(OrdemCorte, OrdemCorte.id == Encaixe.ordem_corte_id)
-        .where(
-            Encaixe.status != "deletado",
-            Encaixe.lote_id.is_not(None),
-            Encaixe.ordem_corte_id.is_not(None),
-            OrdemCorte.status.in_(_RESERVANDO),
-        )
+        .where(*filtros, Encaixe.lote_id.is_not(None), Encaixe.id.not_in(multicor))
+        .group_by(Encaixe.lote_id)
     )
-    if excluir_oc_id is not None:
-        q = q.where(Encaixe.ordem_corte_id != excluir_oc_id)
-    q = q.group_by(Encaixe.lote_id)
-    return {lote_id: float(total or 0.0) for lote_id, total in db.execute(q).all()}
+    por_cor = (
+        select(EncaixeCamada.lote_id, func.sum(EncaixeCamada.peso_kg * EncaixeCamada.camadas))
+        .join(Encaixe, Encaixe.id == EncaixeCamada.encaixe_id)
+        .join(OrdemCorte, OrdemCorte.id == Encaixe.ordem_corte_id)
+        .where(*filtros, EncaixeCamada.lote_id.is_not(None))
+        .group_by(EncaixeCamada.lote_id)
+    )
+    reservas: dict[uuid.UUID, float] = {}
+    for q in (simples, por_cor):
+        for lote_id, total in db.execute(q).all():
+            reservas[lote_id] = reservas.get(lote_id, 0.0) + float(total or 0.0)
+    return reservas
 
 
 def livre_kg(lote: LoteTecido, reservado: float = 0.0) -> float:
@@ -517,6 +536,8 @@ def _encaixe_out(e) -> dict:
         "modo_camadas": mapa.get("modo_camadas"),
         "grupo_corte": mapa.get("grupo_corte"),
         "produto_nome": mapa.get("produto_nome"),
+        "risco": mapa.get("risco"),
+        "camadas_por_cor": mapa.get("camadas_por_cor"),
         "status": e.status,
     }
 
@@ -554,7 +575,9 @@ def _resumo_decisao(lotes: list[dict]) -> str:
 def _gravar_decisao(oc: OrdemCorte, decisoes: list[dict], lotes: dict) -> None:
     """Grava na OC o que a geração decidiu (tipo, modo e o porquê)."""
     for d in decisoes:
-        d["lote_codigo"] = lotes.get(d.get("lote_id"))
+        # Multicor (plano por produto): todos os lotes do enfesto.
+        codigos = [lotes.get(lid) for lid in d.get("lotes") or [d.get("lote_id")]]
+        d["lote_codigo"] = " + ".join(c for c in codigos if c) or None
     oc.tipo_enfesto = _unico([d["tipo_enfesto"] for d in decisoes], "MESMA_FACE")
     modo = _unico([d["modo_camadas"] for d in decisoes], oc.modo_camadas)
     oc.modo_camadas = modo[:20]
@@ -1029,6 +1052,7 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
             antes_de_gravar=_substituir_anteriores,
             tempo_maximo_s=cfg["tempo_maximo_oc_s"],
             organizar_por=oc.organizar_por,
+            tolerancia_pct=cfg["tolerancia_tecido_pct"],
         )
     except ValueError as exc:
         raise ErroOC(str(exc))
@@ -1116,6 +1140,7 @@ def _sugerir_mesa(
             qualidade="RAPIDO",
             progresso=_progresso,
             organizar_por=oc.organizar_por,
+            tolerancia_pct=cfg["tolerancia_tecido_pct"],
         )
     except Exception as exc:  # inclui GeracaoCancelada: o resultado já foi gravado
         logger.warning("[OC] %s: simulação da mesa de %s cm ignorada: %s", numero_fmt(oc.numero), mesa, exc)

@@ -43,7 +43,12 @@ const STATUS_OC = {
 };
 const FINAIS = ["CONCLUIDA", "CANCELADA"];
 
-const MODO_LABEL = { SEM_SOBRA: "sem sobra", MENOS_ENFESTOS: "menos enfestos", MISTO: "misto" };
+const MODO_LABEL = {
+  SEM_SOBRA: "sem sobra",
+  MENOS_ENFESTOS: "menos enfestos",
+  PLANO_CORTE: "plano por produto",
+  MISTO: "misto",
+};
 // Enfesto decidido na geração: "Enfesto duplo · sem sobra"; OC gerada antes
 // da decisão automática não tem tipo_enfesto (era sempre enfesto simples).
 const enfestoLabel = (oc) => {

@@ -385,6 +385,8 @@ export function agruparEnfestos(encaixes) {
         enfesto: e.enfesto,
         tecido_nome: e.produto_nome ? `${e.produto_nome} · ${e.tecido_nome}` : e.tecido_nome,
         lote_id: e.lote_id,
+        // Enfesto multicor: [{cor, camadas}] (plano por produto).
+        camadas_por_cor: e.camadas_por_cor || null,
         mesas: [],
       };
       grupos.set(chave, g);
@@ -410,8 +412,10 @@ export function ResumoEnfesto({ grupo, loteCodigo }) {
           .join(" · ") || "Encaixe"}
       </span>
       <span className={styles.enfestoInfo}>
-        {grupo.camadas} {grupo.camadas === 1 ? "camada" : "camadas"} · {mesas}{" "}
-        {mesas === 1 ? "mesa" : "mesas"}
+        {grupo.camadas_por_cor?.length > 1
+          ? `Camadas: ${grupo.camadas_por_cor.map((c) => `${c.cor} ${c.camadas}`).join(" · ")}`
+          : `${grupo.camadas} ${grupo.camadas === 1 ? "camada" : "camadas"}`}{" "}
+        · {mesas} {mesas === 1 ? "mesa" : "mesas"}
       </span>
       {grupo.grade && (
         <span className={styles.grade}>

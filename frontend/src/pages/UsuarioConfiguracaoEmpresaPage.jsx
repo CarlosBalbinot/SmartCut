@@ -48,6 +48,7 @@ const PRODUCAO_PADRAO = {
   comprimento_max_mesa_cm: "200",
   alerta_economia_pct: "5",
   tempo_maximo_oc_s: "300",
+  tolerancia_tecido_pct: "2",
 };
 const MESA_MIN = 50;
 const MESA_MAX = 2000;
@@ -104,6 +105,7 @@ export default function UsuarioConfiguracaoEmpresaPage() {
           comprimento_max_mesa_cm: String(c.comprimento_max_mesa_cm),
           alerta_economia_pct: String(c.alerta_economia_pct),
           tempo_maximo_oc_s: String(c.tempo_maximo_oc_s),
+          tolerancia_tecido_pct: String(c.tolerancia_tecido_pct),
         })
       )
       .catch((e) => setErroProd(e.message));
@@ -125,6 +127,11 @@ export default function UsuarioConfiguracaoEmpresaPage() {
       setErroProd(`O tempo limite deve ser um inteiro entre ${TEMPO_MIN} e ${TEMPO_MAX} segundos.`);
       return;
     }
+    const tolerancia = Number(String(producao.tolerancia_tecido_pct).replace(",", "."));
+    if (!Number.isFinite(tolerancia) || tolerancia < 0 || tolerancia > 20) {
+      setErroProd("A tolerância de tecido deve estar entre 0 e 20%.");
+      return;
+    }
     setSalvandoProd(true);
     setErroProd(null);
     setSucessoProd(false);
@@ -133,11 +140,13 @@ export default function UsuarioConfiguracaoEmpresaPage() {
         comprimento_max_mesa_cm: mesa,
         alerta_economia_pct: pct,
         tempo_maximo_oc_s: tempo,
+        tolerancia_tecido_pct: tolerancia,
       });
       setProducao({
         comprimento_max_mesa_cm: String(c.comprimento_max_mesa_cm),
         alerta_economia_pct: String(c.alerta_economia_pct),
         tempo_maximo_oc_s: String(c.tempo_maximo_oc_s),
+        tolerancia_tecido_pct: String(c.tolerancia_tecido_pct),
       });
       setSucessoProd(true);
     } catch (e) {
@@ -388,6 +397,25 @@ export default function UsuarioConfiguracaoEmpresaPage() {
               encaixe. O limite vale para a ordem inteira — a comparação de enfestos já consome
               parte dele. Se nem o perfil mais barato couber no que sobrar, a tela avisa que a
               geração vai passar do prazo.
+            </span>
+          </label>
+          <label className={styles.field}>
+            <span>Tolerância de tecido para simplificar o corte (%)</span>
+            <input
+              className={styles.input}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={20}
+              step={0.5}
+              value={producao.tolerancia_tecido_pct}
+              disabled={!podeEditar}
+              onChange={mudarProducao("tolerancia_tecido_pct")}
+            />
+            <span className={styles.hint}>
+              Na ordem de corte organizada por produto, o plano aceita até este percentual de
+              tecido a mais que o menor consumo para usar menos mesas e menos desenhos. Nunca
+              aceita peça a mais por isso: sobra só quando é inevitável.
             </span>
           </label>
         </div>

@@ -16,7 +16,11 @@ import styles from "./DecisaoEnfesto.module.css";
  */
 
 export const NOME_TIPO_ENFESTO = { MESMA_FACE: "Enfesto simples", FACE_A_FACE: "Enfesto duplo" };
-const NOME_MODO = { SEM_SOBRA: "sem sobra", MENOS_ENFESTOS: "menos enfestos" };
+const NOME_MODO = {
+  SEM_SOBRA: "sem sobra",
+  MENOS_ENFESTOS: "menos enfestos",
+  PLANO_CORTE: "plano por produto",
+};
 
 const fmtM = (v) =>
   v == null

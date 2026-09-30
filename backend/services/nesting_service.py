@@ -4,8 +4,9 @@ Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
   1. Recebe a lista neutra de entradas (lote, molde, quantidade), montada
      por montar_pares_legado (Encaixe Rápido) ou
      ordem_corte_service.montar_pares_oc (OC).
-  2. Agrupa em grupos de corte (_agrupar): por lote de tecido (COR) ou por
-     lote e produto (PRODUTO — a OC organizada por produto).
+  2. Agrupa por lote de tecido (_agrupar_por_lote) — organizar_por = COR.
+     Com organizar_por = PRODUTO o caminho é o plano de corte por produto
+     (_montar_plano_corte, enfesto multicor); ver a seção dele.
   3. Para cada lote:
        0. Decide o enfesto (_decidir_lote + nesting_v2/decisor.py): enfesto
           simples ou enfesto duplo × sem sobra ou menos enfestos. Cada
@@ -46,7 +47,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from models.encaixe import Encaixe
+from models.encaixe import Encaixe, EncaixeCamada
 from models.grupo_molde import GrupoMolde
 from models.molde import Molde
 from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, QUALIDADE_PADRAO
@@ -57,6 +58,8 @@ from services.nesting_v2 import decisor
 from services.nesting_v2.geometria import espelha_segunda_copia
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
 from services.plano_enfesto import linhas_enfesto, planejar
+from services.planejamento import estimador as planejamento_estimador
+from services.planejamento import plano_corte
 from services.planejamento.custo import Orcamento, estimar_segundos
 from services.precificacao_service import get_ou_criar_config
 
@@ -122,6 +125,7 @@ def config_producao(db: Session) -> dict:
         "comprimento_max_mesa_cm": int(cfg.comprimento_max_mesa_cm),
         "alerta_economia_pct": float(cfg.alerta_economia_pct),
         "tempo_maximo_oc_s": int(cfg.tempo_maximo_oc_s),
+        "tolerancia_tecido_pct": float(cfg.tolerancia_tecido_pct),
     }
 
 
@@ -380,38 +384,6 @@ def _produto_do_molde(molde: Molde) -> tuple[str, str | None]:
     return f"grupo:{grupo.id}", grupo.nome
 
 
-def _agrupar(entradas: list[Entrada], organizar_por: str = "COR") -> dict:
-    """Grupos de corte da geração — cada grupo tem os seus riscos.
-
-    COR: um grupo por lote (_agrupar_por_lote, o comportamento de sempre):
-    produtos diferentes no mesmo lote entram no mesmo risco.
-    PRODUTO: um grupo por (lote, produto) — um risco nunca mistura produtos.
-    A chave vira "lote:produto"; o lote de verdade continua em
-    TecidoNesting.lote_id (é ele que vai para o encaixe e para o estoque)."""
-    if organizar_por != "PRODUTO":
-        return _agrupar_por_lote(entradas)
-    por_produto: dict[str, list[Entrada]] = {}
-    for entrada in entradas:
-        lote, molde, _ = entrada
-        por_produto.setdefault(f"{lote.id}:{_produto_do_molde(molde)[0]}", []).append(entrada)
-    grupos: dict[str, tuple[TecidoNesting, dict[uuid.UUID, list]]] = {}
-    for chave, lista in por_produto.items():
-        for grupo in _agrupar_por_lote(lista).values():
-            grupos[chave] = grupo
-    return grupos
-
-
-def _info_grupo(chave: str, tecido: TecidoNesting, moldes_qtd: dict[uuid.UUID, list]) -> dict:
-    """O que vai no mapa_json e na decisão para identificar o grupo de corte.
-    Vazio quando o grupo é o próprio lote (COR) — nada muda no que já era
-    gravado."""
-    if chave == str(tecido.lote_id):
-        return {}
-    produtos = sorted({_produto_do_molde(molde) for molde, _ in moldes_qtd.values()}, key=lambda p: p[0])
-    produto_id, produto_nome = produtos[0] if produtos else ("", None)
-    return {"grupo_corte": chave, "produto_id": produto_id or None, "produto_nome": produto_nome}
-
-
 # ── Geração de encaixes para um lote ─────────────────────────────────────────
 
 
@@ -551,7 +523,6 @@ def _gerar_para_tecido(
     perfis: dict[int, str] | None = None,
     orcamento: Orcamento | None = None,
     chave_lote: str | None = None,
-    info_grupo: dict | None = None,
 ) -> tuple[list[Encaixe], list[str], dict]:
     """Planeja os enfestos do lote (plano_enfesto) e roda o nesting_v2 de
     cada um — cada mesa do nesting_v2 vira um Encaixe (_enfesto_v2), sempre
@@ -565,8 +536,6 @@ def _gerar_para_tecido(
     chave_lote: a chave com que este lote foi registrado no orçamento — é com
     ela que `Orcamento.detalhe` acha o risco. Sem ela (montagem de um risco
     avulso, sem orçamento) não há o que documentar.
-    info_grupo: identificação do grupo de corte (_info_grupo) — vai no
-    mapa_json de cada mesa; vazio quando o grupo é o lote.
     semente: troca entre tentativas (jogada do retry automático).
     tipo_enfesto: MESMA_FACE espelha a 2ª cópia dos pares; FACE_A_FACE não
     espelha e, havendo peça em par, usa camadas pares. cache: resultados do
@@ -597,7 +566,6 @@ def _gerar_para_tecido(
             "comprimento_max_cm": limite_cm,
             "motor_usado": "v2",
             "qualidade": qualidade,
-            **(info_grupo or {}),
         }
         montados = _enfesto_v2(
             pedido,
@@ -1187,6 +1155,8 @@ def _resumo(encaixe: Encaixe) -> dict:
         # Grupo de corte (OC organizada por produto); ausente = o lote.
         "grupo_corte": mapa.get("grupo_corte"),
         "produto_nome": mapa.get("produto_nome"),
+        "risco": mapa.get("risco"),
+        "camadas_por_cor": mapa.get("camadas_por_cor"),
         "numero_enc": encaixe.numero,
         "descricao": encaixe.descricao,
         # Por que este risco saiu neste perfil (só na qualidade Automático).
@@ -1203,6 +1173,421 @@ def totais(encaixes: list[Encaixe]) -> dict:
         "peso_kg": round(sum(float(e.peso_kg) * (e.num_camadas or 1) for e in encaixes), 3),
         "custo": round(sum(float(e.custo_total) * (e.num_camadas or 1) for e in encaixes), 2),
     }
+
+
+# ── Plano de corte por produto (enfesto multicor) ────────────────────────────
+#
+# organizar_por = PRODUTO: o corte de cada produto é planejado por
+# services/planejamento/plano_corte.py — quais riscos desenhar e quantas
+# camadas de CADA COR vão em cada risco. Cores do mesmo modelo de tecido com
+# larguras próximas dividem o enfesto; o motor roda UMA vez por risco (não por
+# cor) e cada mesa vira um Encaixe com as camadas por cor em encaixe_camadas.
+
+
+@dataclass
+class _GrupoProduto:
+    """Um produto num modelo de tecido, com as cores (lotes) que podem dividir
+    enfesto (larguras dentro de plano_corte.LARGURA_MAX_DIFERENCA_CM)."""
+
+    chave: str
+    produto_id: str
+    produto_nome: str | None
+    modelo_nome: str
+    tem_direcao: bool
+    # tamanho → moldes (as partes do produto naquele tamanho)
+    por_tamanho: dict[str, list[Molde]]
+    # str(lote_id) → tecido do lote
+    tecidos: dict[str, TecidoNesting]
+    cores: list[plano_corte.CorGrade]
+    area_por_tamanho: dict[str, float]
+
+    @property
+    def moldes(self) -> list[Molde]:
+        return [m for ms in self.por_tamanho.values() for m in ms]
+
+    def rotulo(self) -> str:
+        nomes = " + ".join(c.nome for c in self.cores)
+        return f"{self.modelo_nome} — {nomes}"
+
+
+def _agrupar_produto(entradas: list[Entrada]) -> dict[str, _GrupoProduto]:
+    """Grupos do plano de corte: (produto, modelo de tecido, faixa de largura).
+    A quantidade de uma cor num tamanho é a maior entre as partes do tamanho
+    (como _quantidades); a mesma parte vinda de itens diferentes soma."""
+    base: dict[tuple, dict] = {}
+    for lote, molde, qtd in entradas:
+        if qtd <= 0:
+            continue
+        produto_id, produto_nome = _produto_do_molde(molde)
+        modelo = lote.cor.modelo
+        g = base.setdefault(
+            (produto_id, str(modelo.id)),
+            {"produto_nome": produto_nome, "modelo": modelo, "moldes": {}, "lotes": {}, "qtd": {}},
+        )
+        tam = (molde.tamanho or "").strip()
+        g["moldes"].setdefault(tam, {})[molde.id] = molde
+        g["lotes"][str(lote.id)] = lote
+        chave = (str(lote.id), molde.id)
+        g["qtd"][chave] = g["qtd"].get(chave, 0) + qtd
+
+    grupos: dict[str, _GrupoProduto] = {}
+    for (produto_id, modelo_id), g in base.items():
+        por_tamanho = {t: list(ms.values()) for t, ms in g["moldes"].items()}
+        area = {
+            t: sum(_area(_poligono_rotacionado(m)) * _MULT.get(m.tipo_corte or "simples", 1) for m in ms)
+            for t, ms in por_tamanho.items()
+        }
+        cores = []
+        for lote_id, lote in g["lotes"].items():
+            grade = {t: max(g["qtd"].get((lote_id, m.id), 0) for m in ms) for t, ms in por_tamanho.items()}
+            cores.append(
+                plano_corte.CorGrade(
+                    cor=lote_id,
+                    grade={t: q for t, q in grade.items() if q > 0},
+                    modelo_tecido=modelo_id,
+                    largura_cm=float(lote.cor.largura_util_cm),
+                    max_camadas=int(g["modelo"].max_camadas),
+                    nome=lote.cor.nome_cor,
+                )
+            )
+        for cores_grupo in plano_corte.agrupar_cores(cores):
+            menor = min(c.largura_cm for c in cores_grupo)
+            chave = f"{produto_id}:{modelo_id}:{menor:g}"
+            grupos[chave] = _GrupoProduto(
+                chave=chave,
+                produto_id=produto_id,
+                produto_nome=g["produto_nome"],
+                modelo_nome=g["modelo"].nome,
+                tem_direcao=bool(g["modelo"].tem_direcao),
+                por_tamanho=por_tamanho,
+                tecidos={c.cor: TecidoNesting.de_lote(g["lotes"][c.cor]) for c in cores_grupo},
+                cores=cores_grupo,
+                area_por_tamanho=area,
+            )
+    return grupos
+
+
+def _decidir_plano(
+    grupo: _GrupoProduto,
+    limite_cm: int,
+    tolerancia_pct: float,
+    tipo_fixo: str | None,
+) -> tuple[decisor.Decisao, plano_corte.PlanoCorte]:
+    """Enfesto simples × enfesto duplo para o grupo, pelo PLANO (estimativa,
+    sem motor): cada tipo válido tem o seu plano de corte — o duplo com peça
+    `par` em camadas pares, e a sobra que isso obriga entra na comparação
+    (decisor.escolher: menor consumo, empate técnico, sem sobra antes de com
+    sobra, regras da produção)."""
+    moldes_qtd = {m.id: [m, 0] for m in grupo.moldes}
+    tem_par = _tem_par(moldes_qtd)
+    planos = {
+        decisor.MESMA_FACE: plano_corte.planejar_corte(
+            grupo.cores, grupo.area_por_tamanho, limite_mesa_cm=limite_cm, tolerancia_pct=tolerancia_pct
+        )
+    }
+    simples = planos[decisor.MESMA_FACE]
+    pecas = {
+        str(m.id): decisor.PecaAnalise(
+            nome=_nome_molde(m),
+            poligono=_poligono_rotacionado(m),
+            rotacoes=tuple(float(r) for r in _rotacoes(m.sentido_fio)),
+            tipo_corte=m.tipo_corte or "simples",
+        )
+        for m in grupo.moldes
+    }
+    analise = decisor.analisar(
+        pecas,
+        tem_direcao=grupo.tem_direcao,
+        camadas_naturais=[sum(e.values()) for r in simples.riscos for e in r.enfestos],
+        max_camadas=min(c.max_camadas for c in grupo.cores),
+        dupla_camada=_dupla_camada(moldes_qtd),
+    )
+    tipos = [decisor.MESMA_FACE] + ([decisor.FACE_A_FACE] if analise.face_a_face_valida else [])
+    manual = tipo_fixo in decisor.TIPOS
+    if manual:
+        tipos = [tipo_fixo] if tipo_fixo in tipos else [decisor.MESMA_FACE]
+    if decisor.FACE_A_FACE in tipos:
+        planos[decisor.FACE_A_FACE] = (
+            plano_corte.planejar_corte(
+                grupo.cores,
+                grupo.area_por_tamanho,
+                limite_mesa_cm=limite_cm,
+                camadas_pares=True,
+                tolerancia_pct=tolerancia_pct,
+            )
+            if tem_par
+            else simples
+        )
+    lista = []
+    for tipo in tipos:
+        p = planos[tipo]
+        lista.append(
+            decisor.Candidato(
+                tipo=tipo,
+                modo=decisor.PLANO_CORTE,
+                metros=round(p.metros, 3),
+                mesas=p.mesas,
+                enfestos=sum(len(r.enfestos) for r in p.riscos),
+                camadas=p.camadas,
+                sobra=p.sobra_total,
+            )
+        )
+    if manual:
+        escolhido = lista[0]
+        motivo = f"{escolhido.rotulo}: escolha manual (Avançado)."
+        if tipo_fixo == decisor.FACE_A_FACE and escolhido.tipo != decisor.FACE_A_FACE:
+            motivo = f"{escolhido.rotulo}: enfesto duplo pedido no Avançado, mas {analise.motivo_invalida}."
+        regra = "MANUAL"
+    else:
+        escolhido, motivo, regra = decisor.escolher(lista, analise)
+    plano = planos[escolhido.tipo]
+    decisao = decisor.Decisao(
+        tipo=escolhido.tipo,
+        modo=decisor.PLANO_CORTE,
+        motivo=f"{motivo} Plano de corte: {plano.motivo}",
+        regra=regra,
+        candidatos=lista,
+        face_a_face_valida=analise.face_a_face_valida,
+        motivo_face_a_face=analise.motivo_invalida,
+        classes=analise.classes,
+        dupla_camada=analise.dupla_camada,
+        manual=manual,
+    )
+    return decisao, plano
+
+
+def _pecas_fisicas(grupo: _GrupoProduto, conjuntos: dict[str, int]) -> tuple[int, float]:
+    """(peças físicas, área em cm²) de UMA camada do risco — para o orçamento."""
+    pecas = sum(n * _MULT.get(m.tipo_corte or "simples", 1) for t, n in conjuntos.items() for m in grupo.por_tamanho[t])
+    return pecas, planejamento_estimador.area_risco(conjuntos, grupo.area_por_tamanho)
+
+
+def _encaixe_multicor(
+    pedido: Pedido | None,
+    grupo: _GrupoProduto,
+    mesa: nesting_v2.Mesa,
+    camadas_por_cor: dict[str, int],
+    largura_cm: float,
+    extras: dict,
+    ordem_corte_id: uuid.UUID | None,
+    descricao: str | None,
+) -> Encaixe:
+    """Uma mesa de um enfesto multicor → Encaixe + uma EncaixeCamada por cor.
+
+    O consumo de cada lote sai do tecido DELE (encolhimento, gramatura, largura
+    e preço): o risco é o mesmo, o tecido não. O Encaixe fica com a cor
+    principal (mais camadas) em lote_id e com a média ponderada por camada em
+    comp_metros / peso_kg / custo_total — o total (× num_camadas) bate com a
+    soma das linhas."""
+    total = sum(camadas_por_cor.values())
+    principal = max(camadas_por_cor, key=lambda c: (camadas_por_cor[c], -list(camadas_por_cor).index(c)))
+    encaixe = _montar_encaixe(
+        pedido,
+        grupo.tecidos[principal],
+        {"placements": mesa.pecas, "efficiency": mesa.aproveitamento, "width_used": mesa.comprimento_cm},
+        total,
+        largura_cm,
+        parts=[],
+        extras=extras,
+        ordem_corte_id=ordem_corte_id,
+        descricao=descricao,
+    )
+    comp_min_m = mesa.comprimento_cm / 100.0
+    linhas = []
+    soma = {"comp": 0.0, "peso": 0.0, "custo": 0.0}
+    nomes = {c.cor: c.nome for c in grupo.cores}
+    for ordem, (cor, camadas) in enumerate(camadas_por_cor.items()):
+        t = grupo.tecidos[cor]
+        comp = aplicar_encolhimento(comp_min_m, t.encolhimento_pct)
+        peso = metros_para_peso(comp, t.gramatura_g_m2, t.largura_util_cm)
+        custo = calcular_custo(peso, t.valor_por_kg)
+        linhas.append(
+            EncaixeCamada(
+                lote_id=t.lote_id,
+                ordem=ordem,
+                cor=nomes.get(cor),
+                camadas=camadas,
+                comp_metros=round(comp, 3),
+                peso_kg=round(peso, 3),
+                custo=round(custo, 2),
+            )
+        )
+        soma["comp"] += comp * camadas
+        soma["peso"] += round(peso, 3) * camadas
+        soma["custo"] += round(custo, 2) * camadas
+    encaixe.camadas_cor = linhas
+    encaixe.comp_metros = round(soma["comp"] / total, 3)
+    encaixe.peso_kg = round(soma["peso"] / total, 3)
+    encaixe.custo_total = round(soma["custo"] / total, 2)
+    encaixe.mapa_json = {
+        **encaixe.mapa_json,
+        "tecido_nome": f"{grupo.modelo_nome} — {' + '.join(nomes[c] for c in camadas_por_cor)}",
+        "peso_total_kg": round(soma["peso"], 3),
+        "camadas_por_cor": [
+            {"lote_id": str(grupo.tecidos[c].lote_id), "cor": nomes.get(c), "camadas": n}
+            for c, n in camadas_por_cor.items()
+        ],
+    }
+    return encaixe
+
+
+def _montar_plano_corte(
+    pedido: Pedido | None,
+    grupos: dict[str, _GrupoProduto],
+    ordem_corte_id: uuid.UUID | None,
+    descricao: str | None,
+    limite_cm: int,
+    qualidade: str,
+    progresso: Progresso | None,
+    semente: int = 0,
+    *,
+    tipo_enfesto: str = decisor.AUTOMATICO,
+    escolhas: dict[str, tuple[str, str]] | None = None,
+    cache: dict | None = None,
+    tempo_maximo_s: float | None = None,
+    tolerancia_pct: float = plano_corte.TOLERANCIA_PADRAO_PCT,
+) -> tuple[list[Encaixe], list[str], dict[str, dict], dict[str, decisor.Decisao]]:
+    """organizar_por = PRODUTO: planeja cada grupo (_decidir_plano), distribui
+    o orçamento de tempo entre TODOS os riscos e roda o motor uma vez por
+    risco. Mesma assinatura de retorno de _montar_todos; nada vai para a
+    sessão. A decisão não roda o motor (é pela estimativa), então nenhum
+    tempo do orçamento vai para comparação."""
+    andamento = _Andamento(progresso)
+    cache = {} if cache is None else cache
+    tipo_fixo = None if tipo_enfesto == decisor.AUTOMATICO else tipo_enfesto
+    decisoes: dict[str, decisor.Decisao] = {}
+    planos_pc: dict[str, plano_corte.PlanoCorte] = {}
+    for chave, grupo in grupos.items():
+        if progresso is not None:
+            progresso(
+                fase=f"Planejando o corte… · {grupo.produto_nome} · {grupo.rotulo()}", mesa_atual=0, total_mesas=0
+            )
+        fixo = escolhas[chave][0] if escolhas and chave in escolhas else tipo_fixo
+        decisao, plano = _decidir_plano(grupo, limite_cm, tolerancia_pct, fixo)
+        lotes = [str(grupo.tecidos[c.cor].lote_id) for c in grupo.cores]
+        decisao.extra = {
+            "lote_id": lotes[0],
+            "lotes": lotes,
+            "tecido": grupo.rotulo(),
+            "produto_nome": grupo.produto_nome,
+            "plano_corte": {
+                **plano.json(),
+                "cores": {c.cor: c.nome for c in grupo.cores},
+            },
+        }
+        decisoes[chave], planos_pc[chave] = decisao, plano
+
+    avisos: list[str] = []
+    orcamento: Orcamento | None = None
+    perfis: dict[tuple[str, int], str] = {}
+    if qualidade == QUALIDADE_PADRAO:
+        orcamento = Orcamento(TEMPO_MAXIMO_OC_PADRAO_S if tempo_maximo_s is None else float(tempo_maximo_s))
+        for chave, plano in planos_pc.items():
+            for i, risco in enumerate(plano.riscos, start=1):
+                pecas, area = _pecas_fisicas(grupos[chave], risco.conjuntos)
+                orcamento.registrar(
+                    (chave, i), pecas=pecas, area_cm2=area, largura_cm=risco.largura_cm, limite_cm=limite_cm
+                )
+        perfis = orcamento.distribuir()
+        if orcamento.aviso:
+            avisos.append(orcamento.aviso)
+
+    encaixes: list[Encaixe] = []
+    planos: dict[str, dict] = {}
+    for chave, grupo in grupos.items():
+        decisao, plano = decisoes[chave], planos_pc[chave]
+        espelhar_par = decisao.tipo != decisor.FACE_A_FACE
+        total_enfestos = sum(len(r.enfestos) for r in plano.riscos)
+        n_enfesto = 0
+        primeiro_do_grupo = True
+        for i, risco in enumerate(plano.riscos, start=1):
+            perfil = perfis.get((chave, i), qualidade)
+            perfil = perfil if perfil in QUALIDADES else "EQUILIBRADO"
+            pecas = [
+                _peca_v2(m, n, espelhar_par) for t, n in risco.conjuntos.items() for m in grupo.por_tamanho[t] if n > 0
+            ]
+            fase = f"{grupo.produto_nome} · {grupo.modelo_nome} · risco {i}/{len(plano.riscos)} {risco.rotulo()}"
+            # Cache por PROPORÇÃO + LARGURA (e espelho/perfil/semente/limite):
+            # o encaixe não depende da cor nem das camadas.
+            chave_cache = (
+                "plano",
+                risco.largura_cm,
+                tuple(sorted((p.id, p.quantidade, espelha_segunda_copia(p.tipo_corte, p.espelhar_par)) for p in pecas)),
+                perfil,
+                semente,
+                limite_cm,
+            )
+            resultado = cache.get(chave_cache)
+            if resultado is None:
+                resultado = nesting_v2.gerar(
+                    pecas,
+                    risco.largura_cm,
+                    limite_cm,
+                    max(sum(e.values()) for e in risco.enfestos),
+                    ao_progresso=lambda f, mesa, total, aprov, fase=fase: andamento.avisar(
+                        f"{fase} · {f}", mesa, total, aprov
+                    ),
+                    seed=semente,
+                    **QUALIDADES[perfil],
+                )
+                cache[chave_cache] = resultado
+            resumo = {k: v for k, v in resultado.resumo_enfesto().items() if k != "pecas_por_tamanho"}
+            total_mesas = len(resultado.mesas)
+            for enfesto in risco.enfestos:
+                n_enfesto += 1
+                camadas = sum(enfesto.values())
+                for mesa in resultado.mesas:
+                    extras = {
+                        "modo_camadas": decisor.PLANO_CORTE,
+                        "tipo_enfesto": decisao.tipo,
+                        "grupo_corte": chave,
+                        "produto_id": grupo.produto_id,
+                        "produto_nome": grupo.produto_nome,
+                        "risco": i,
+                        "total_riscos": len(plano.riscos),
+                        "enfesto": n_enfesto,
+                        "total_enfestos": total_enfestos,
+                        # A sobra é do PLANO: vai uma vez só, no 1º encaixe do grupo.
+                        "sobra_total": plano.sobra_total if primeiro_do_grupo else 0,
+                        "comprimento_max_cm": limite_cm,
+                        "motor_usado": "v2",
+                        "qualidade": qualidade,
+                        "qualidade_perfil": perfil,
+                        "parte_numero": mesa.indice,
+                        "total_partes": total_mesas,
+                        "pecas_parte": _pecas_parte_v2(mesa, camadas),
+                        "parts_count": len(mesa.pecas),
+                    }
+                    if orcamento is not None:
+                        detalhe = orcamento.detalhe((chave, i))
+                        if detalhe:
+                            extras["qualidade_automatica"] = detalhe
+                    if total_mesas > 1:
+                        extras["parte"] = f"{mesa.indice}/{total_mesas}"
+                    if mesa.indice == 1:
+                        extras["pecas_por_tamanho"] = [
+                            {
+                                "grupo_nome": grupo.por_tamanho[t][0].grupo.nome
+                                if grupo.por_tamanho[t][0].grupo
+                                else None,
+                                "tamanho": t,
+                                "conjuntos": n,
+                                "pecas": n * camadas,
+                                "sobra": 0,
+                            }
+                            for t, n in risco.conjuntos.items()
+                        ]
+                        extras["resumo_enfesto"] = resumo
+                    enc = _encaixe_multicor(
+                        pedido, grupo, mesa, enfesto, risco.largura_cm, extras, ordem_corte_id, descricao
+                    )
+                    if primeiro_do_grupo:
+                        enc.mapa_json = {**enc.mapa_json, "decisao_enfesto": decisao.json()}
+                        primeiro_do_grupo = False
+                    encaixes.append(enc)
+                andamento.mesas_fechadas += total_mesas
+        planos[chave] = {"sobra_total": plano.sobra_total, "plano_corte": plano.json()}
+    return encaixes, avisos, planos, decisoes
 
 
 # ── Pontos de entrada públicos ───────────────────────────────────────────────
@@ -1409,7 +1794,6 @@ def _montar_todos(
             perfis=perfis.get(chave),
             orcamento=orcamento,
             chave_lote=chave if orcamento is not None else None,
-            info_grupo=_info_grupo(chave, tecido, moldes_qtd),
         )
         if decisao is not None and montados:
             # A decisão do lote vai uma vez só, na primeira mesa dele.
@@ -1435,6 +1819,7 @@ def gerar_de_entradas(
     antes_de_gravar: Callable[[list[dict]], None] | None = None,
     tempo_maximo_s: float | None = None,
     organizar_por: str = "COR",
+    tolerancia_pct: float | None = None,
 ) -> dict:
     """Núcleo comum: agrupa as entradas por lote, planeja os enfestos, roda o
     motor v2 e grava tudo numa transação — erro em qualquer lote desfaz tudo
@@ -1442,8 +1827,10 @@ def gerar_de_entradas(
 
     comprimento_max_cm: limite de cada encaixe (mesa de corte) — risco maior
     é dividido em mesas pelo v2.
-    organizar_por: COR (padrão, um grupo por lote) ou PRODUTO (um grupo por
-    lote e produto) — ver _agrupar.
+    organizar_por: COR (padrão, um grupo por lote, o fluxo de sempre) ou
+    PRODUTO (plano de corte por produto, enfesto multicor — ver
+    _montar_plano_corte); tolerancia_pct é a do plano (Configurações >
+    Produção).
     modo / tipo_enfesto: "AUTOMATICO" (padrão) — o sistema decide o enfesto
     de cada lote (ver _decidir_lote); valor fixo = escolha manual.
     qualidade: ver QUALIDADES — AUTOMATICO distribui o orçamento de tempo da
@@ -1465,7 +1852,8 @@ def gerar_de_entradas(
     Raises: ValueError se nenhuma entrada tiver quantidade; ErroNesting se o
         motor falhar nas duas tentativas; GeracaoCancelada.
     """
-    grupos = _agrupar(entradas, organizar_por)
+    por_produto = organizar_por == "PRODUTO"
+    grupos = _agrupar_produto(entradas) if por_produto else _agrupar_por_lote(entradas)
     if not grupos:
         db.rollback()
         raise ValueError("Nenhuma peça para encaixar: verifique tecidos, moldes e quantidades.")
@@ -1474,6 +1862,15 @@ def gerar_de_entradas(
         db.rollback()
         raise ErroNesting("Motor de encaixe não instalado corretamente. Reinstale o SmartCut.")
 
+    tolerancia = plano_corte.TOLERANCIA_PADRAO_PCT if tolerancia_pct is None else float(tolerancia_pct)
+    if por_produto:
+        # Mesma chamada de _montar_todos; o modo de camadas não se aplica (o
+        # plano de corte decide as camadas de cada cor).
+        def montar(pedido, grupos, _modo, *resto, **kw):
+            kw.pop("decisoes", None)
+            return _montar_plano_corte(pedido, grupos, *resto, tolerancia_pct=tolerancia, **kw)
+    else:
+        montar = _montar_todos
     args = (pedido, grupos, modo, ordem_corte_id, descricao, comprimento_max_cm)
     semente, tentativas = 0, 0
     perfil = qualidade
@@ -1482,7 +1879,7 @@ def gerar_de_entradas(
     try:
         while True:
             try:
-                encaixes, avisos, planos, decisoes = _montar_todos(
+                encaixes, avisos, planos, decisoes = montar(
                     *args,
                     perfil,
                     progresso,
@@ -1501,20 +1898,12 @@ def gerar_de_entradas(
                     raise ErroNesting(str(exc) or type(exc).__name__) from exc
                 logger.exception("[NESTING] motor v2 falhou (semente %d) — nova tentativa com perfil RAPIDO", semente)
                 perfil, semente = "RAPIDO", semente + 1
-        por_grupo = {str(chave): par for chave, par in grupos.items()}
-        decisoes_out = []
-        for k, d in decisoes.items():
-            tecido, moldes_qtd = por_grupo[k]
-            info = _info_grupo(k, tecido, moldes_qtd)
-            decisoes_out.append(
-                {
-                    "lote_id": str(tecido.lote_id) if tecido.lote_id else k,
-                    "grupo": k,
-                    "tecido": tecido.nome,
-                    **({"produto_nome": info["produto_nome"]} if info else {}),
-                    **d.json(),
-                }
-            )
+        if por_produto:
+            # lote_id, lotes, tecido, produto_nome e o plano vêm em Decisao.extra.
+            decisoes_out = [{"grupo": k, **d.json()} for k, d in decisoes.items()]
+        else:
+            nomes = {str(lote_id): tecido.nome for lote_id, (tecido, _) in grupos.items()}
+            decisoes_out = [{"lote_id": k, "grupo": k, "tecido": nomes.get(k), **d.json()} for k, d in decisoes.items()]
         if antes_de_gravar is not None:
             antes_de_gravar(decisoes_out)
         if encaixes:
@@ -1541,13 +1930,27 @@ def simular_totais(
     qualidade: str = "RAPIDO",
     progresso: Progresso | None = None,
     organizar_por: str = "COR",
+    tolerancia_pct: float | None = None,
 ) -> dict:
     """Roda o v2 SEM gravar nada e devolve só os totais (ver totais) — é a
     simulação do alerta de mesa maior. escolhas: {grupo: (tipo_enfesto,
     modo_camadas)} decididos na geração (grupo sem escolha decide de novo);
     organizar_por igual ao da geração, senão as chaves não batem.
     Erro do motor sobe sem nova tentativa."""
-    grupos = _agrupar(entradas, organizar_por)
+    if organizar_por == "PRODUTO":
+        encaixes, _, _, _ = _montar_plano_corte(
+            None,
+            _agrupar_produto(entradas),
+            None,
+            None,
+            comprimento_max_cm,
+            qualidade,
+            progresso,
+            escolhas=escolhas,
+            tolerancia_pct=plano_corte.TOLERANCIA_PADRAO_PCT if tolerancia_pct is None else float(tolerancia_pct),
+        )
+        return totais(encaixes)
+    grupos = _agrupar_por_lote(entradas)
     encaixes, _, _, _ = _montar_todos(
         None, grupos, decisor.AUTOMATICO, None, None, comprimento_max_cm, qualidade, progresso, escolhas=escolhas
     )

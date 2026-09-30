@@ -61,7 +61,10 @@ FACE_A_FACE = "FACE_A_FACE"
 TIPOS = (MESMA_FACE, FACE_A_FACE)
 AUTOMATICO = "AUTOMATICO"
 NOME_TIPO = {MESMA_FACE: "Enfesto simples", FACE_A_FACE: "Enfesto duplo"}
-NOME_MODO = {"SEM_SOBRA": "sem sobra", "MENOS_ENFESTOS": "menos enfestos"}
+# PLANO_CORTE: a OC organizada por produto — as camadas de cada cor saem do
+# plano de corte (services/planejamento/plano_corte.py), não de um modo.
+PLANO_CORTE = "PLANO_CORTE"
+NOME_MODO = {"SEM_SOBRA": "sem sobra", "MENOS_ENFESTOS": "menos enfestos", PLANO_CORTE: "plano por produto"}
 
 PAR = "PAR"
 UNICO_SIMETRICO = "UNICO_SIMETRICO"
@@ -287,6 +290,9 @@ class Decisao:
     tempo_esgotado: bool = False
     manual: bool = False
     segundos: float = 0.0
+    # O que o chamador acrescenta à decisão gravada (plano de corte: lotes,
+    # tecido, produto e o plano). Entra por último no json.
+    extra: dict = field(default_factory=dict)
 
     def json(self) -> dict:
         return {
@@ -303,6 +309,7 @@ class Decisao:
             "segundos": round(self.segundos, 1),
             "classes": self.classes,
             "candidatos": [c.json() for c in self.candidatos],
+            **self.extra,
         }
 
 

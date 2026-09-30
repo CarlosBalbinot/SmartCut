@@ -72,6 +72,8 @@ class _ConfigProducao(BaseModel):
     alerta_economia_pct: Optional[Decimal] = Field(None, ge=0, le=100)
     # Orçamento de tempo da qualidade "Automático" (ver planejamento/custo.py).
     tempo_maximo_oc_s: Optional[int] = Field(None, ge=30, le=7200)
+    # Plano de corte por produto: tecido a mais aceito para simplificar (%).
+    tolerancia_tecido_pct: Optional[Decimal] = Field(None, ge=0, le=20)
 
 
 class _IniciarCorte(BaseModel):
@@ -115,7 +117,13 @@ def _totais(db: Session, ocs: list[dict]) -> list[dict]:
     """
     ids = [uuid.UUID(oc["id"]) for oc in ocs]
     encaixes = (
-        db.execute(select(Encaixe).where(Encaixe.ordem_corte_id.in_(ids), Encaixe.status != "deletado")).scalars().all()
+        db.execute(
+            select(Encaixe)
+            .options(selectinload(Encaixe.camadas_cor))
+            .where(Encaixe.ordem_corte_id.in_(ids), Encaixe.status != "deletado")
+        )
+        .scalars()
+        .all()
         if ids
         else []
     )
@@ -130,13 +138,15 @@ def _totais(db: Session, ocs: list[dict]) -> list[dict]:
         a["metros"] += float(e.comp_metros or 0) * camadas
         a["peso"] += peso
         a["custo"] += float(e.custo_total or 0) * camadas
-        enfesto = (str(e.lote_id), mapa.get("enfesto") or str(e.id))
+        grupo = mapa.get("grupo_corte") or str(e.lote_id)
+        enfesto = (grupo, mapa.get("risco"), mapa.get("enfesto") or str(e.id))
         if enfesto not in a["enfestos"]:
             a["enfestos"].add(enfesto)
             a["sobra"] += mapa.get("sobra_total") or 0
-        if e.lote_id:
-            lote = str(e.lote_id)
-            a["lotes"][lote] = a["lotes"].get(lote, 0.0) + peso
+        # Multicor: cada lote pelas linhas dele (Encaixe.consumo_por_lote).
+        for lote_id, kg in e.consumo_por_lote().items():
+            lote = str(lote_id)
+            a["lotes"][lote] = a["lotes"].get(lote, 0.0) + kg
 
     for oc in ocs:
         a = acc[oc["id"]]

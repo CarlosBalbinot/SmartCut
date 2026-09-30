@@ -8,8 +8,10 @@ Módulos:
     (Rápido / Equilibrado / Máximo) cabe no orçamento da Ordem de Corte
     (Configurações > Produção > "Tempo limite da ordem de corte (s)").
 
-O resto do plano de corte (o grupo multicor e o CP-SAT dos riscos) entra aqui
-também; enquanto isso, este pacote é o que decide a qualidade.
+  * plano_corte — o plano de corte de um produto: quais riscos desenhar e
+    quantas camadas de cada cor vão em cada um (enfesto multicor, CP-SAT).
+    Ainda não está ligado ao fluxo de produção (Passo 3 do PC1).
+  * estimador — comprimento e mesas de um risco pela área, sem motor.
 """
 
 from services.planejamento.custo import (

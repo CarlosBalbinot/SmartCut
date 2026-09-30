@@ -25,6 +25,12 @@ class ConfiguracaoEmpresa(Base):
     # sobe (Equilibrado, Máximo) enquanto sobrar tempo dentro deste limite —
     # ver services/planejamento/custo.py.
     tempo_maximo_oc_s: Mapped[int] = mapped_column(Integer, nullable=False, default=300, server_default="300")
+    # "Tolerância de tecido para simplificar o corte" (%): o plano de corte por
+    # produto aceita até isto de tecido a mais que o menor consumo para usar
+    # menos mesas e menos desenhos — ver services/planejamento/plano_corte.py.
+    tolerancia_tecido_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), nullable=False, default=Decimal("2.00"), server_default="2.00"
+    )
 
 
 class ConfiguracaoCustosFixos(Base):
