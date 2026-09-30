@@ -2,8 +2,8 @@ import { useState } from "react";
 import styles from "./DecisaoEnfesto.module.css";
 
 /**
- * Quadro "Decisão do sistema": como cada lote vai ser estendido (face única
- * ou face a face, modo de camadas, camadas) e o porquê, em uma ou duas
+ * Quadro "Decisão do sistema": como cada lote vai ser estendido (enfesto
+ * simples ou enfesto duplo, modo de camadas, camadas) e o porquê, em uma ou duas
  * frases. "Ver alternativas" abre a tabela das formas avaliadas (metros,
  * mesas, camadas, sobra) e das que não couberam no tempo da ordem — é a
  * decisão do backend (nesting_v2/decisor.py).
@@ -15,7 +15,7 @@ import styles from "./DecisaoEnfesto.module.css";
  *                               sobra, avaliado, erro }] }]
  */
 
-export const NOME_TIPO_ENFESTO = { MESMA_FACE: "Face única", FACE_A_FACE: "Face a face" };
+export const NOME_TIPO_ENFESTO = { MESMA_FACE: "Enfesto simples", FACE_A_FACE: "Enfesto duplo" };
 const NOME_MODO = { SEM_SOBRA: "sem sobra", MENOS_ENFESTOS: "menos enfestos" };
 
 const fmtM = (v) =>

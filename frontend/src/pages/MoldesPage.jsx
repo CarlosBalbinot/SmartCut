@@ -71,7 +71,10 @@ function agruparEmPartes(pecas, tamanhosSelecionados) {
       bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
     partes.push({
       nome,
-      tipo_corte: "simples",
+      // Sem valor de fábrica: o tipo de corte diz quantas peças saem do molde
+      // (1 ou 2) e se a segunda vem espelhada. Começar marcado esconderia
+      // essa escolha do usuário — e errar para "par" dobra a produção de peça.
+      tipo_corte: "",
       // a seta arrastável sempre mostra uma pose (default vertical), então o
       // valor nunca deve começar nulo — evita bloquear a confirmação com um
       // campo que o usuário nunca foi explicitamente solicitado a definir
@@ -96,7 +99,7 @@ function agruparEmPartes(pecas, tamanhosSelecionados) {
       bloco.find((p) => p.sentido_fio_detectado)?.sentido_fio_detectado ?? null;
     partes.push({
       nome: `Parte ${partes.length + 1}`,
-      tipo_corte: "simples",
+      tipo_corte: "",
       sentido_fio: sentidoDetectado ?? "vertical",
       sentido_fio_auto: !!sentidoDetectado,
       rotacao_base: 0,
@@ -282,6 +285,10 @@ export default function MoldesPage() {
     }
     if (partes.some((p) => !p.sentido_fio)) {
       setErro("Selecione o sentido do fio de todas as partes.");
+      return;
+    }
+    if (partes.some((p) => !p.tipo_corte)) {
+      setErro("Selecione o tipo de corte de todas as partes.");
       return;
     }
     if (partes.some((p) => p.pecas.some((pc) => !pc.geometria_json))) {
@@ -625,7 +632,7 @@ export default function MoldesPage() {
               <button
                 className={ms.btnPrimary}
                 onClick={confirmarImportacao}
-                disabled={salvando || partes.length === 0}
+                disabled={salvando || partes.length === 0 || partes.some((p) => !p.tipo_corte)}
               >
                 {salvando
                   ? "Salvando..."

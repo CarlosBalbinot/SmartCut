@@ -1,15 +1,15 @@
 """decisao_automatica_enfesto
 
 Decisão automática do enfesto (F2): o sistema escolhe o tipo de enfesto
-(face única / face a face) e o modo de camadas de cada lote.
+(enfesto simples / enfesto duplo) e o modo de camadas de cada lote.
 
 modelos_tecido:
   - tem_direcao (bool, padrão false): tecido com estampa ou pelo não pode
-    ser virado — o enfesto é sempre de face única.
+    ser virado — o enfesto é sempre simples.
 
 ordens_corte:
   - tipo_enfesto: MESMA_FACE | FACE_A_FACE | MISTO (decidido na geração;
-    nulo nas OCs geradas antes — que foram todas de face única).
+    nulo nas OCs geradas antes — que foram todas de enfesto simples).
   - decisao_enfesto (JSON): alternativas avaliadas, métricas e motivo.
   - enfesto_avancado (JSON): escolha manual do "Avançado" (nulo = automático).
   - modo_camadas continua existindo e passa a guardar o modo DECIDIDO.

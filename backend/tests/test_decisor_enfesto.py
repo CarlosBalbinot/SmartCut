@@ -11,7 +11,9 @@ from datetime import date
 
 import pytest
 
+from models.grupo_molde import GrupoMolde
 from models.molde import Molde
+from models.produto import GrupoProduto, Produto
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from services import nesting_service as svc
 from services.nesting_v2 import decisor
@@ -41,7 +43,7 @@ def test_simetria_com_tolerancia():
     assert decisor.desvio_simetria_cm(L, (0, 180)) > 1.0
 
 
-# ── Validade do face a face ───────────────────────────────────────────────
+# ── Validade do enfesto duplo ───────────────────────────────────────────────
 
 
 def _pecas(**tipos):
@@ -59,7 +61,32 @@ def test_face_a_face_valida_com_par_em_tecido_liso():
         camadas_naturais=[4],
         max_camadas=15,
     )
-    assert a.face_a_face_valida and a.tem_par and a.dupla
+    # Peça em par é geometria: a face oposta da mesa cobre o outro lado. Isso
+    # TORNA o enfesto duplo possível — mas não diz que o produto é forrado.
+    assert a.face_a_face_valida and a.tem_par and not a.dupla
+
+
+def test_dupla_camada_so_vem_do_cadastro():
+    a = decisor.analisar(
+        _pecas(frente=("ret", "simples"), manga=("l", "par")),
+        tem_direcao=False,
+        camadas_naturais=[4],
+        max_camadas=15,
+        dupla_camada=True,
+    )
+    assert a.dupla
+
+
+def test_quantidades_pares_nao_tornam_o_produto_dupla():
+    # A regra antiga também deduzia "dupla" de as quantidades darem camadas
+    # pares. Isso também era chute: só o cadastro do produto diz.
+    a = decisor.analisar(
+        _pecas(frente=("ret", "simples")),
+        tem_direcao=False,
+        camadas_naturais=[4],
+        max_camadas=15,
+    )
+    assert not a.dupla
 
 
 def test_face_a_face_invalida_com_tecido_com_direcao():
@@ -87,7 +114,7 @@ def test_candidatos_padrao_seguro_primeiro_e_escolha_manual():
     assert [(c.tipo, c.modo) for c in lista][0] == (MESMA_FACE, "SEM_SOBRA")
     assert len(lista) == 4
     assert [(c.tipo, c.modo) for c in decisor.candidatos(a, FACE_A_FACE, "SEM_SOBRA")] == [(FACE_A_FACE, "SEM_SOBRA")]
-    # face a face pedida à mão num lote inválido volta para face única
+    # enfesto duplo pedido à mão num lote inválido volta para enfesto simples
     inval = decisor.analisar(_pecas(manga=("l", "par")), tem_direcao=True, camadas_naturais=[4], max_camadas=15)
     assert [c.tipo for c in decisor.candidatos(inval, FACE_A_FACE, "SEM_SOBRA")] == [MESMA_FACE]
 
@@ -95,16 +122,16 @@ def test_candidatos_padrao_seguro_primeiro_e_escolha_manual():
 # ── Escolha ───────────────────────────────────────────────────────────────
 
 
-def _analise(tem_par=False, camadas=4, valida=True, pares=None):
+def _analise(dupla_camada=False, camadas=4, valida=True):
     return Analise(
         classes={},
-        tem_par=tem_par,
+        tem_par=False,
         assimetricas=[],
         tem_direcao=False,
         camadas_naturais=camadas,
-        camadas_naturais_pares=(camadas % 2 == 0) if pares is None else pares,
         max_camadas=15,
         face_a_face_valida=valida,
+        dupla_camada=dupla_camada,
     )
 
 
@@ -114,28 +141,36 @@ def _c(tipo, modo, metros, mesas=2, camadas=4, sobra=0):
 
 def test_menor_consumo_vence():
     lista = [_c(MESMA_FACE, "SEM_SOBRA", 10.0), _c(FACE_A_FACE, "SEM_SOBRA", 10.5)]
-    vencedor, motivo, regra = decisor.escolher(lista, _analise(tem_par=True))
+    vencedor, motivo, regra = decisor.escolher(lista, _analise(dupla_camada=True))
     assert vencedor.tipo == MESMA_FACE and regra == "MENOR_CONSUMO"
     assert "menor consumo" in motivo
 
 
 def test_empate_produto_dupla_prefere_face_a_face():
     lista = [_c(MESMA_FACE, "SEM_SOBRA", 10.0), _c(FACE_A_FACE, "SEM_SOBRA", 10.05)]
-    vencedor, motivo, regra = decisor.escolher(lista, _analise(tem_par=True, camadas=2))
+    vencedor, motivo, regra = decisor.escolher(lista, _analise(dupla_camada=True, camadas=2))
     assert vencedor.tipo == FACE_A_FACE and regra == "PRODUTO_DUPLA"
-    assert "empate técnico" in motivo and "dupla" in motivo
+    assert "empate técnico" in motivo and "dupla camada" in motivo
 
 
 def test_empate_com_2_ou_3_camadas_prefere_face_unica():
     lista = [_c(MESMA_FACE, "SEM_SOBRA", 10.05), _c(FACE_A_FACE, "SEM_SOBRA", 10.0)]
-    vencedor, _, regra = decisor.escolher(lista, _analise(tem_par=False, camadas=3, pares=False))
+    vencedor, _, regra = decisor.escolher(lista, _analise(camadas=3))
     assert vencedor.tipo == MESMA_FACE and regra == "POUCAS_CAMADAS"
 
 
 def test_empate_sem_regra_especial_prefere_face_a_face():
     lista = [_c(MESMA_FACE, "SEM_SOBRA", 10.0), _c(FACE_A_FACE, "SEM_SOBRA", 10.02)]
-    vencedor, _, regra = decisor.escolher(lista, _analise(tem_par=False, camadas=5, pares=False))
+    vencedor, _, regra = decisor.escolher(lista, _analise(camadas=5))
     assert vencedor.tipo == FACE_A_FACE and regra == "MAIS_RAPIDO"
+
+
+def test_dupla_camada_vence_a_regra_de_poucas_camadas():
+    # 2 camadas normalmente puxam o enfesto simples, mas produto forrado tem
+    # palavra final: a produção quer as duas camadas cortadas de uma vez.
+    lista = [_c(MESMA_FACE, "SEM_SOBRA", 10.0), _c(FACE_A_FACE, "SEM_SOBRA", 10.05)]
+    vencedor, _, regra = decisor.escolher(lista, _analise(dupla_camada=True, camadas=2))
+    assert vencedor.tipo == FACE_A_FACE and regra == "PRODUTO_DUPLA"
 
 
 def test_sobra_so_vence_com_menor_consumo_fora_do_empate():
@@ -153,7 +188,7 @@ def test_empate_desfaz_por_menos_mesas_e_camadas():
     assert decisor.escolher(lista, _analise(valida=False))[0].modo == "MENOS_ENFESTOS"
 
 
-# ── Camadas pares (face a face com peça em par) ───────────────────────────
+# ── Camadas pares (enfesto duplo com peça em par) ───────────────────────────
 
 
 def test_camadas_par():
@@ -220,6 +255,47 @@ def _decidir(db, lote, moldes, qtd=4):
     return encaixes, planos, decisoes[str(lote.id)]
 
 
+def _vincular_produto(db, molde, dupla_camada):
+    """Coloca o molde dentro de um grupo de molde com produto pai — é por esse
+    caminho que o decisor descobre se o produto é forrado."""
+    grupo_produto = GrupoProduto(codigo=f"G{uuid.uuid4().hex[:5]}", nome="FEMININO", prefixo="FEM")
+    db.add(grupo_produto)
+    db.commit()
+    produto = Produto(
+        grupo_id=grupo_produto.id,
+        codigo=f"P{uuid.uuid4().hex[:6]}",
+        descricao="LEGGING",
+        unidade="UN",
+        dupla_camada=dupla_camada,
+    )
+    db.add(produto)
+    db.commit()
+    grupo = GrupoMolde(nome="LEGGING", produto_id=produto.id)
+    db.add(grupo)
+    db.commit()
+    molde.grupo_id = grupo.id
+    db.commit()
+    db.refresh(molde)
+    return produto
+
+
+def test_ponta_a_ponta_dupla_camada_so_vem_do_cadastro_do_produto(db_session):
+    # Peça em par nos dois casos — o que muda é o cadastro do produto pai, e é
+    # ele que decide se o empate técnico vai para o enfesto duplo.
+    lote = _lote(db_session)
+    simples = [_molde(db_session, "FRENTE", RETANGULO, "simples"), _molde(db_session, "MANGA", L, "par")]
+    _vincular_produto(db_session, simples[0], dupla_camada=False)
+    _, _, d_simples = _decidir(db_session, lote, simples)
+    assert not d_simples.dupla_camada
+
+    lote2 = _lote(db_session)
+    forrado = [_molde(db_session, "FRENTE", RETANGULO, "simples"), _molde(db_session, "MANGA", L, "par")]
+    _vincular_produto(db_session, forrado[0], dupla_camada=True)
+    _, _, d_forrado = _decidir(db_session, lote2, forrado)
+    assert d_forrado.dupla_camada
+    assert d_forrado.json()["dupla_camada"] is True
+
+
 def test_ponta_a_ponta_par_em_tecido_liso_avalia_face_a_face(db_session):
     lote = _lote(db_session)
     moldes = [_molde(db_session, "FRENTE", RETANGULO, "simples"), _molde(db_session, "MANGA", L, "par")]
@@ -227,7 +303,9 @@ def test_ponta_a_ponta_par_em_tecido_liso_avalia_face_a_face(db_session):
     assert d.face_a_face_valida
     avaliados = {(c.tipo, c.modo) for c in d.candidatos if c.avaliado and c.erro is None}
     assert (FACE_A_FACE, "SEM_SOBRA") in avaliados and (MESMA_FACE, "SEM_SOBRA") in avaliados
-    assert d.regra in ("MENOR_CONSUMO", "PRODUTO_DUPLA")
+    assert d.regra in ("MENOR_CONSUMO", "MAIS_RAPIDO")
+    # molde sem grupo de molde não tem produto pai: nada de forrado
+    assert not d.dupla_camada
     # a contagem de peças cortadas é a mesma nos dois tipos: 4 frentes, 8 mangas
     total = {}
     for e in encaixes:
@@ -269,7 +347,7 @@ def test_tempo_esgotado_usa_padrao_seguro(db_session):
     assert d.tempo_esgotado and d.regra == "PADRAO_SEGURO"
     assert "passou de" in d.motivo and not any(c.avaliado for c in d.candidatos)
 
-    # com face a face fixada no Avançado, o padrão seguro respeita a escolha
+    # com enfesto duplo fixado no Avançado, o padrão seguro respeita a escolha
     d = svc._decidir_lote(tecido, moldes_qtd, 150, tipo_fixo=FACE_A_FACE, modo_fixo=None, **kw)
     assert (d.tipo, d.modo) == (FACE_A_FACE, "SEM_SOBRA")
 
@@ -290,7 +368,7 @@ def _custos(db, lote, moldes, qtd=4):
 
 
 def test_candidato_que_nao_cabe_no_prazo_e_pulado_mas_a_decisao_usa_o_que_rodou(db_session):
-    # Face a face com peça em par duplica as alternativas; com o prazo cortado
+    # Enfesto duplo com peça em par duplica as alternativas; com o prazo cortado
     # no meio, só as mais baratas simulam — e a meia comparação ainda decide,
     # dizendo na tela o que ficou de fora.
     lote = _lote(db_session)

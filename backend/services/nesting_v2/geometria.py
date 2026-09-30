@@ -20,7 +20,7 @@ Decisões desta etapa (enunciado do M1):
      espelho da outra. `par_sem_espelho` também espelha em enfesto de face
      única (PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE) — com todas as camadas do
      lado direito para cima, duas cópias iguais dariam duas peças do MESMO
-     lado. No enfesto FACE A FACE nenhum par espelha (Peca.espelhar_par =
+     lado. No enfesto duplo nenhum par espelha (Peca.espelhar_par =
      False): as camadas alternam o lado e cada par de camadas já corta
      direita e esquerda. O v1 colocava as duas cópias como a mesma peça
      (items 2/3 do molde, _MULT);
@@ -36,9 +36,9 @@ from dataclasses import dataclass
 # tipo_corte que corta DUAS peças de um mesmo molde (a segunda completa o par)
 PARES = ("par", "par_sem_espelho")
 
-# Enfesto de face única (todas as camadas com o lado direito para cima): a
+# Enfesto simples (todas as camadas com o lado direito para cima): a
 # 2ª cópia de `par_sem_espelho` também sai espelhada (decisão da produção;
-# no face a face nenhum par espelha).
+# no enfesto duplo nenhum par espelha).
 PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE = True
 
 Ponto = tuple[float, float]
@@ -65,8 +65,8 @@ class Peca:
     tipo_corte    simples | par | par_sem_espelho
     rotacao_base  giro do cadastro, aplicado na origem (o spyrrow gira em
                   torno da origem do próprio item — ver encaixador)
-    espelhar_par  True no enfesto de face única (a 2ª cópia do par sai
-                  espelhada); False no face a face (duas cópias iguais — a
+    espelhar_par  True no enfesto simples (a 2ª cópia do par sai
+                  espelhada); False no enfesto duplo (duas cópias iguais — a
                   alternância das camadas faz direita e esquerda)
     """
 

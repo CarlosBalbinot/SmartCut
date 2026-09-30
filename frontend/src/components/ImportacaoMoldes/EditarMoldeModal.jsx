@@ -28,13 +28,21 @@ export default function EditarMoldeModal({
   const [nome, setNome] = useState(molde.nome ?? "");
   const [peca, setPeca] = useState(molde.peca ?? "");
   const [tamanho, setTamanho] = useState(molde.tamanho ?? "");
-  const [tipoCorte, setTipoCorte] = useState(molde.tipo_corte ?? "par");
+  const [tipoCorte, setTipoCorte] = useState(molde.tipo_corte ?? "");
+  const [erroLocal, setErroLocal] = useState(null);
   const [angulo, setAngulo] = useState(() => anguloInicial(molde.sentido_fio));
 
   const categoria = useMemo(() => anguloParaCategoria(angulo), [angulo]);
 
   function submeter(e) {
     e.preventDefault();
+    // O tipo de corte decide quantas peças saem deste molde (1 ou 2) e se a
+    // segunda sai espelhada. Sem ele escolhido, o cadastro ficaria no chute.
+    if (!tipoCorte) {
+      setErroLocal("Selecione o tipo de corte.");
+      return;
+    }
+    setErroLocal(null);
     onSalvar({
       nome: nome.trim(),
       peca: peca.trim() || null,
@@ -47,6 +55,7 @@ export default function EditarMoldeModal({
   return (
     <Modal titulo="Editar Molde" onClose={onClose} largura="780px">
       {erro && <p className={styles.erro}>{erro}</p>}
+      {erroLocal && <p className={styles.erro}>{erroLocal}</p>}
 
       <div className={styles.layout}>
         {/* ── Coluna esquerda: visualização + seta ── */}
@@ -110,12 +119,18 @@ export default function EditarMoldeModal({
           </div>
 
           <div className={styles.campo}>
-            <label className={styles.label}>Tipo de corte</label>
+            <label className={styles.label}>
+              Tipo de corte<span className={styles.obrigatorio}> *</span>
+            </label>
             <select
               className={styles.select}
               value={tipoCorte}
-              onChange={(e) => setTipoCorte(e.target.value)}
+              onChange={(e) => {
+                setTipoCorte(e.target.value);
+                setErroLocal(null);
+              }}
             >
+              <option value="">Selecione o tipo de corte</option>
               <option value="simples">Simples (1 peça, sem espelho)</option>
               <option value="par">Par (2 peças espelhadas)</option>
               <option value="par_sem_espelho">Par sem espelho (2 peças)</option>

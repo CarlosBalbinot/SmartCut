@@ -32,7 +32,7 @@ import styles from "./OrdemCorteAssistente.module.css";
  * camadas e qualidade) — fechar em qualquer passo deixa a OC em RASCUNHO com
  * as escolhas feitas, e reabrir continua de onde parou.
  *
- * O enfesto (face única ou face a face, sem sobra ou menos enfestos) é
+ * O enfesto (simples ou duplo, sem sobra ou menos enfestos) é
  * decidido pelo sistema na geração; o passo 3 mostra a "Decisão do sistema".
  * O "Avançado" (recolhido) só existe para exceções.
  *
@@ -79,8 +79,8 @@ const PENDENCIAS_MOLDE = {
 // "Avançado": escolha manual do enfesto (Automático = o sistema decide).
 const TIPOS_ENFESTO = [
   { valor: "AUTOMATICO", rotulo: "Automático" },
-  { valor: "MESMA_FACE", rotulo: "Face única" },
-  { valor: "FACE_A_FACE", rotulo: "Face a face" },
+  { valor: "MESMA_FACE", rotulo: "Enfesto simples" },
+  { valor: "FACE_A_FACE", rotulo: "Enfesto duplo" },
 ];
 const MODOS = [
   { valor: "AUTOMATICO", rotulo: "Automático" },
@@ -773,7 +773,7 @@ function PassoTecidos({
       </div>
 
       <p className={styles.nota}>
-        O sistema escolhe como estender cada tecido (face única ou face a face, sem sobra ou menos
+        O sistema escolhe como estender cada tecido (enfesto simples ou enfesto duplo, sem sobra ou menos
         enfestos) e explica o porquê no passo Encaixes.
       </p>
 
@@ -799,7 +799,9 @@ function PassoTecidos({
               ))}
             </select>
             <span className={styles.nota}>
-              Face a face só vale para tecido sem direção e sem peça única assimétrica.
+              Enfesto simples: todas as camadas com o lado direito para cima. Enfesto
+              duplo: vai e volta, virando o tecido a cada camada; só vale para
+              tecido sem direção e sem peça única assimétrica.
             </span>
           </fieldset>
 

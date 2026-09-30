@@ -70,7 +70,10 @@ class ParteCreate(BaseModel):
     """Uma 'parte' do molde (Frente, Costa...) com todos os tamanhos."""
 
     nome: str = Field(..., max_length=100)
-    tipo_corte: TipoCorte = "par"
+    # SEM default, de propósito: o tipo de corte decide quantas peças saem de
+    # um molde (1 ou 2) e se a segunda sai espelhada. Chutar aqui dobrava a
+    # produção de peça sem ninguém pedir — o default antigo era "par".
+    tipo_corte: TipoCorte
     sentido_fio: str = Field("vertical", max_length=20)
     rotacao_base: int = 0
     pecas: list[PecaTamanhoCreate]
@@ -119,7 +122,7 @@ class PecaBulkCreate(BaseModel):
     peca: str | None = Field(None, max_length=100)
     tamanho: str | None = Field(None, max_length=10)
     sentido_fio: str | None = Field(None, max_length=20)
-    tipo_corte: TipoCorte = "simples"
+    tipo_corte: TipoCorte
     rotacao_base: int = 0
     geometria_json: dict[str, Any]
     area_cm2: float

@@ -206,6 +206,27 @@
   gap: 4px;
 }
 
+/* Placeholder do campo obrigatório: enquanto ninguém escolheu, ocupa a linha
+   toda acima das opções e avisa o que falta. */
+.btnCorteVazio {
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 5px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  background-color: transparent;
+  border: 1px dashed var(--sc-border-strong, #c7c7cc);
+  border-radius: var(--sc-radius-sm);
+  color: var(--sc-text-muted);
+  text-align: center;
+  cursor: not-allowed;
+}
+
+.obrigatorio {
+  color: var(--color-danger, #d32f2f);
+}
+
 .btnCorte {
   flex: 1;
   padding: 5px 6px;

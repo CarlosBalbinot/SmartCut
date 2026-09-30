@@ -226,3 +226,83 @@ class TestMoldesCRUD:
         assert res.status_code == 200
         assert res.json()["data"] == {"deleted": True}
         assert client.get(f"/api/v1/moldes/{molde_id}", headers=headers_admin).status_code == 404
+
+    def test_tipo_corte_e_obrigatorio(self, client, headers_admin, upload_dir):
+        # O tipo de corte diz quantas peças físicas saem de um molde (1 ou 2) e
+        # se a segunda sai espelhada. Sem default, a API não aceita omissão —
+        # o antigo default "par" do import em grupo dobrava a produção de peça
+        # sem ninguém pedir.
+        preview = self._preview(client, headers_admin, "peca.dxf", _dxf_minimo_bytes())
+        peca = preview["pecas"][0]
+        base = {
+            "nome": "FRENTE",
+            "peca": "Frente",
+            "tamanho": "M",
+            "rotacao_base": 0,
+            "geometria_json": peca["geometria_json"],
+            "area_cm2": peca["area_cm2"],
+        }
+
+        res = client.post(
+            "/api/v1/moldes/bulk",
+            headers=headers_admin,
+            json={
+                "arquivo_path": preview["arquivo_path"],
+                "formato": "DXF",
+                "pecas": [base],  # sem tipo_corte
+            },
+        )
+        assert res.status_code == 422, res.text
+
+        # e o mesmo na importação em grupo
+        res = client.post(
+            "/api/v1/grupos-molde/importar",
+            headers=headers_admin,
+            json={
+                "nome_grupo": "LEGGING",
+                "arquivo_path": preview["arquivo_path"],
+                "formato": "DXF",
+                "partes": [
+                    {
+                        "nome": "COSTAS",
+                        "sentido_fio": "vertical",
+                        "rotacao_base": 0,
+                        "pecas": [
+                            {
+                                "tamanho": "M",
+                                "geometria_json": peca["geometria_json"],
+                                "area_cm2": peca["area_cm2"],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        assert res.status_code == 422, res.text
+
+        # com o valor escolhido, passa
+        res = client.post(
+            "/api/v1/grupos-molde/importar",
+            headers=headers_admin,
+            json={
+                "nome_grupo": "LEGGING",
+                "arquivo_path": preview["arquivo_path"],
+                "formato": "DXF",
+                "partes": [
+                    {
+                        "nome": "COSTAS",
+                        "tipo_corte": "par",
+                        "sentido_fio": "vertical",
+                        "rotacao_base": 0,
+                        "pecas": [
+                            {
+                                "tamanho": "M",
+                                "geometria_json": peca["geometria_json"],
+                                "area_cm2": peca["area_cm2"],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        assert res.status_code == 201, res.text

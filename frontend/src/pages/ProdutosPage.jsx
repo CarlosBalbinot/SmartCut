@@ -35,6 +35,7 @@ const VAZIO_PRODUTO = {
   coluna_grade_id: "",
   status: "ativo",
   tamanhos_disponiveis: [],
+  dupla_camada: "nao",
   // Impostos
   ncm: "",
   cest: "",
@@ -95,6 +96,7 @@ function produtoParaForm(p) {
     coluna_grade_nome: p.coluna_grade_nome || "",
     status: p.status || "ativo",
     tamanhos_disponiveis: p.tamanhos_disponiveis || [],
+    dupla_camada: p.dupla_camada ? "sim" : "nao",
     ncm: p.ncm || "",
     cest: p.cest || "",
     origem: String(p.origem ?? 0),
@@ -146,6 +148,7 @@ function formParaPayload(f) {
     status: f.status,
     tamanhos_disponiveis:
       f.tamanhos_disponiveis && f.tamanhos_disponiveis.length > 0 ? f.tamanhos_disponiveis : null,
+    dupla_camada: f.dupla_camada === "sim",
     ncm: txtOuNull(f.ncm),
     cest: txtOuNull(f.cest),
     origem: parseInt(f.origem, 10) || 0,
@@ -792,6 +795,24 @@ export default function ProdutosPage() {
                       <option value="ativo">Ativo</option>
                       <option value="inativo">Inativo</option>
                     </select>
+                  </label>
+
+                  <label className={`${styles.field} ${styles.fieldFull}`}>
+                    <span>Produto de dupla camada (forrado)</span>
+                    <select
+                      className={styles.input}
+                      value={modal.dupla_camada}
+                      onChange={setF("dupla_camada")}
+                    >
+                      <option value="nao">Não</option>
+                      <option value="sim">Sim</option>
+                    </select>
+                    <span className={styles.hint}>
+                      No corte, quando duas formas de enfesto empatam no consumo de tecido, o produto
+                      de dupla camada vai em enfesto duplo (vai e volta, virando o tecido a cada
+                      camada). Não confunda com peça em par: quase toda legging tem par (costas
+                      direita e esquerda) e isso não a torna forrada.
+                    </span>
                   </label>
 
                   <div className={`${styles.field} ${styles.fieldFull}`}>

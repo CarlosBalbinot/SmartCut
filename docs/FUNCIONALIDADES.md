@@ -80,7 +80,7 @@ de Configurações > Produção > "Tempo limite da ordem de corte (s)" (padrão
 cabe no limite, a geração avisa que vai passar do prazo.
 
 O limite vale para a **ordem inteira**: a comparação de enfesto (que roda os
-candidatos no perfil Rápido para escolher face única ou face a face) acontece
+candidatos no perfil Rápido para escolher enfesto simples ou duplo) acontece
 antes e sai da mesma conta. Antes ela tinha um relógio à parte (teto fixo de
 180 s, `decisor.TEMPO_COMPARACAO_S`) e o gasto não era do limite de ninguém:
 na OC-0004 ela consumiu 180 s dos 300 s, gastados deciding um único lote e
@@ -124,6 +124,35 @@ O aviso de "vai passar do prazo" aparece mesmo nesta OC, porque o estimador é
 deliberadamente pessimista (306 s estimados para 279 s medidos: ele erra para o
 lado caro para não estourar o prazo). O texto avisa que a estimativa é o teto,
 não a média.
+
+### Enfesto simples ou duplo: o que decide o empate
+
+Quando as duas formas de enfesto empatam no consumo de tecido (diferença menor
+que 1%), a preferência é destas regras, na ordem:
+
+1. **Produto de dupla camada** — produto **forrado**. Vem do cadastro
+   (`produtos.dupla_camada`, aba Dados do cadastro de produtos, rótulo
+   "Produto de dupla camada (forrado)"). A produção quer as duas camadas
+   cortadas de uma vez, então o empate vai para o enfesto duplo. Vence mesmo
+   com poucas camadas.
+2. **2 ou 3 camadas** — o empate vai para o enfesto simples.
+3. **Caso contrário** — enfesto duplo, porque é mais rápido de estender.
+
+Fora do empate ganha sempre o **menor consumo de tecido**, e o enfesto duplo é
+descartado por completo quando o tecido tem direção (estampa/pelo) ou quando há
+peça única assimétrica (sairia espelhada em metade das camadas).
+
+"Dupla camada" é **cadastro, nunca inferência**. A regra anterior deduzia
+"produto dupla" de ter peças em par (ou de as quantidades darem camadas pares) e
+estava errada: quase toda legging tem par (costas direita e esquerda) e isso não a
+torna forrada. Na OC-0002 a MAXXI VERDE MILITAR era LEGGING FLARE — peça em par,
+não forrada — e por isso saía em enfesto duplo; com o cadastro corrigido ela sai
+em enfesto simples, pela regra das 2 camadas.
+
+O que continua vindo do "par" é só **geometria**, e está certo: peça em par nunca
+é tratada como peça única assimétrica (ela vem com a cópia espelhada), e no
+enfesto duplo o número de camadas é arredondado para par, porque as camadas se
+alternam de lado e a peça precisa sair com um de cada.
 
 **Histórico:**
 - Node.js skyline packer (~58% de aproveitamento típico) — removido em 2026-09-29.

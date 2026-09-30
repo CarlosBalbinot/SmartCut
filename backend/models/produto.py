@@ -12,6 +12,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Uuid,
+    false,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -82,6 +83,11 @@ class Produto(Base):
     data_cadastro: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="ativo")
     tamanhos_disponiveis: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
+    # Produto de DUPLA CAMADA (forrado). Só isso define a preferência por
+    # enfesto duplo no decisor (services/nesting_v2/decisor.py). NÃO confundir
+    # com "peça em par" — quase toda legging tem par (costas direita e
+    # esquerda) e isso não a torna forrada.
+    dupla_camada: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
 
     # ── Impostos / Faturamento ──────────────────────────────────────
     ncm: Mapped[str | None] = mapped_column(String(8), nullable=True)

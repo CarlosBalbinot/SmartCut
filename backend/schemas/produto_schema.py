@@ -84,6 +84,7 @@ class ProdutoBase(BaseModel):
     coluna_grade_id: int | None = None
     status: Situacao = "ativo"
     tamanhos_disponiveis: list[str] | None = None
+    dupla_camada: bool = False
 
     # Impostos / Faturamento
     ncm: str | None = Field(None, min_length=8, max_length=8)
@@ -141,6 +142,7 @@ class ProdutoUpdate(BaseModel):
     coluna_grade_id: int | None = None
     status: Situacao | None = None
     tamanhos_disponiveis: list[str] | None = None
+    dupla_camada: bool | None = None
 
     ncm: str | None = Field(None, min_length=8, max_length=8)
     cest: str | None = Field(None, max_length=10)

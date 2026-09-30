@@ -60,18 +60,25 @@ const TIPOS_CORTE = [
 
 function BotoesTipoCorte({ valor, onChange }) {
   return (
-    <div className={styles.btnGroupCorte}>
-      {TIPOS_CORTE.map((t) => (
-        <button
-          key={t.valor}
-          type="button"
-          className={`${styles.btnCorte} ${valor === t.valor ? styles.btnAtivo : ""}`}
-          onClick={() => onChange(t.valor)}
-        >
-          {t.label}
+    <>
+      {!valor && (
+        <button type="button" className={styles.btnCorteVazio} disabled>
+          Selecione o tipo de corte
         </button>
-      ))}
-    </div>
+      )}
+      <div className={styles.btnGroupCorte}>
+        {TIPOS_CORTE.map((t) => (
+          <button
+            key={t.valor}
+            type="button"
+            className={`${styles.btnCorte} ${valor === t.valor ? styles.btnAtivo : ""}`}
+            onClick={() => onChange(t.valor)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -146,7 +153,9 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
           </div>
 
           <div className={styles.controleItem}>
-            <label className={styles.label}>Tipo de corte</label>
+            <label className={styles.label}>
+              Tipo de corte<span className={styles.obrigatorio}> *</span>
+            </label>
             <BotoesTipoCorte valor={parte.tipo_corte} onChange={(v) => set("tipo_corte", v)} />
           </div>
         </div>

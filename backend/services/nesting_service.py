@@ -6,14 +6,14 @@ Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
      ordem_corte_service.montar_pares_oc (OC).
   2. Agrupa por lote de tecido (_agrupar_por_lote).
   3. Para cada lote:
-       0. Decide o enfesto (_decidir_lote + nesting_v2/decisor.py): face
-          única ou face a face × sem sobra ou menos enfestos. Cada
+       0. Decide o enfesto (_decidir_lote + nesting_v2/decisor.py): enfesto
+          simples ou enfesto duplo × sem sobra ou menos enfestos. Cada
           alternativa válida é simulada no perfil RAPIDO (sem gravar, com
           cache por enfesto) e fica a de menor consumo, com as regras da
           produção no empate; a escolha manual do "Avançado" pula isso.
        a. Planeja os enfestos (services/plano_enfesto.py): camadas e
           conjuntos de cada tamanho, no modo SEM_SOBRA ou MENOS_ENFESTOS
-          (camadas pares no face a face com peça em par).
+          (camadas pares no enfesto duplo com peça em par).
        b. Para cada enfesto, monta os polígonos (conjuntos × multiplicador
           de tipo_corte) e roda o motor v2 (services/nesting_v2 — spyrrow +
           OR-Tools): uma mesa = um encaixe.
@@ -145,7 +145,7 @@ class TecidoNesting:
     max_camadas: int
     lote_id: uuid.UUID | None  # nova hierarquia
     tecido_id: uuid.UUID | None  # legado
-    # Estampa ou pelo: não pode ser virado → enfesto sempre face única.
+    # Estampa ou pelo: não pode ser virado → enfesto sempre simples.
     tem_direcao: bool = False
 
     @classmethod
@@ -404,6 +404,19 @@ def _tem_par(moldes_qtd: dict[uuid.UUID, list]) -> bool:
     return any((molde.tipo_corte or "simples") in PARES for molde, _ in moldes_qtd.values())
 
 
+def _dupla_camada(moldes_qtd: dict[uuid.UUID, list]) -> bool:
+    """Algum produto do lote é de DUPLA CAMADA (forrado)? Vem do cadastro do
+    produto pai (produtos.dupla_camada). Peça em par NÃO conta: quase toda
+    legging tem par (costas direita e esquerda) e isso não a torna forrada.
+    Um lote pode juntar vários produtos (mesmo lote de tecido em itens de
+    produtos diferentes): basta um deles ser forrado."""
+    for molde, _ in moldes_qtd.values():
+        produto = molde.grupo.produto if molde.grupo else None
+        if produto is not None and produto.dupla_camada:
+            return True
+    return False
+
+
 def _enfestos_do_lote(
     por_chave: dict[tuple, list[Molde]],
     qtd_chave: dict[tuple, int],
@@ -556,7 +569,7 @@ class _TempoEsgotado(Exception):
 
 
 def _analisar_lote(tecido: TecidoNesting, moldes_qtd: dict[uuid.UUID, list]) -> decisor.Analise:
-    """Classifica as peças do lote e diz se face a face vale para ele."""
+    """Classifica as peças do lote e diz se enfesto duplo vale para ele."""
     _, qtd_chave = _quantidades(moldes_qtd)
     natural = planejar(qtd_chave, tecido.max_camadas, "SEM_SOBRA")
     pecas = {
@@ -573,6 +586,7 @@ def _analisar_lote(tecido: TecidoNesting, moldes_qtd: dict[uuid.UUID, list]) -> 
         tem_direcao=tecido.tem_direcao,
         camadas_naturais=[e["camadas"] for e in natural["enfestos"]],
         max_camadas=tecido.max_camadas,
+        dupla_camada=_dupla_camada(moldes_qtd),
     )
 
 
@@ -604,9 +618,9 @@ def _decidir_lote(
     ficam sem comparação nenhuma — e, como o custo medido depende da máquina,
     a mesma OC saía diferente em execuções diferentes.
 
-    Nenhum candidato avaliado → face única + sem sobra, com o motivo registrado
-    (`motivo_prazo` diz por quê). Escolha manual (tipo e modo fixos) não
-    simula nada."""
+    Nenhum candidato avaliado → enfesto simples + sem sobra, com o motivo
+    registrado (`motivo_prazo` diz por quê). Escolha manual (tipo e modo fixos)
+    não simula nada."""
     inicio = time.monotonic()
     if progresso is not None:
         progresso(fase=f"Analisando as peças… · {tecido.nome}", mesa_atual=0, total_mesas=0)
@@ -617,7 +631,7 @@ def _decidir_lote(
         escolhido = lista[0]
         motivo = f"{escolhido.rotulo}: escolha manual (Avançado)."
         if tipo_fixo == decisor.FACE_A_FACE and escolhido.tipo != decisor.FACE_A_FACE:
-            motivo = f"{escolhido.rotulo}: face a face pedida no Avançado, mas {analise.motivo_invalida}."
+            motivo = f"{escolhido.rotulo}: enfesto duplo pedido no Avançado, mas {analise.motivo_invalida}."
         escolhido.avaliado = False
         return decisor.Decisao(
             tipo=escolhido.tipo,
@@ -628,6 +642,7 @@ def _decidir_lote(
             face_a_face_valida=analise.face_a_face_valida,
             motivo_face_a_face=analise.motivo_invalida,
             classes=analise.classes,
+            dupla_camada=analise.dupla_camada,
             manual=True,
         )
 
@@ -689,7 +704,7 @@ def _decidir_lote(
         cand.sobra = plano["sobra_total"]
         cand.segundos = round(time.monotonic() - t0, 1)
 
-    # Padrão seguro: face única + sem sobra no que não foi fixado à mão.
+    # Padrão seguro: enfesto simples + sem sobra no que não foi fixado à mão.
     seguro = (lista[0].tipo if tipo_fixo else decisor.MESMA_FACE, modo_fixo or "SEM_SOBRA")
     if not any(c.avaliado and c.erro is None for c in lista):
         porque = motivo_prazo or f"a comparação passou de {decisor.TEMPO_COMPARACAO_S:g} s"
@@ -714,6 +729,7 @@ def _decidir_lote(
             face_a_face_valida=analise.face_a_face_valida,
             motivo_face_a_face=analise.motivo_invalida,
             classes=analise.classes,
+            dupla_camada=analise.dupla_camada,
             tempo_esgotado=bool(pendentes),
         )
     decisao.segundos = time.monotonic() - inicio
@@ -729,7 +745,7 @@ def _peca_v2(molde: Molde, conjuntos: int, espelhar_par: bool = True) -> nesting
     (_poligono_rotacionado, rotacao_base já aplicada — por isso
     rotacao_base=0 aqui) e as mesmas rotações; a quantidade conta as cópias
     físicas (conjuntos × multiplicador do tipo_corte), como no benchmark.
-    espelhar_par: False no enfesto face a face (par sem cópia espelhada)."""
+    espelhar_par: False no enfesto duplo (par sem cópia espelhada)."""
     tipo = molde.tipo_corte or "simples"
     return nesting_v2.Peca(
         id=str(molde.id),
@@ -788,7 +804,7 @@ def _enfesto_v2(
     que ele ficou neste perfil.
     semente: usada na geração (o retry automático troca para variar o
     resultado e escapar da falha).
-    espelhar_par: False no face a face (ver geometria.espelha_segunda_copia).
+    espelhar_par: False no enfesto duplo (ver geometria.espelha_segunda_copia).
     cache: {chave: nesting_v2.Resultado} — o encaixe de um enfesto depende
     só das peças (não das camadas); a chave junta lote, peças, espelho,
     perfil, semente e limite. A simulação da decisão e a geração definitiva

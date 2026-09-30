@@ -89,7 +89,7 @@ const IconeInfo = () => (
 //        "Simulando mesa de 200 cm · MAXXI — PRETO · enfesto 1/1 · pequenas" ou
 //        (decisão do enfesto, antes de encaixar)
 //        "Analisando as peças… · MAXXI — PRETO" /
-//        "Comparando formas de enfesto… · MAXXI — PRETO · 2/4 Face a face, sem sobra"
+//        "Comparando formas de enfesto… · MAXXI — PRETO · 2/4 Enfesto duplo, sem sobra"
 function descrever(estado) {
   if (!estado || estado.status === "FILA") return { principal: "Na fila...", detalhe: "" };
   const partes = (estado.fase || "").split(" · ").filter(Boolean);

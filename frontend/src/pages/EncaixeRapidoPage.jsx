@@ -40,8 +40,8 @@ const COMP_MIN = 50;
 const COMP_MAX = 2000;
 const COMP_PADRAO = 150;
 
-// "Avançado" (recolhido): o enfesto é decidido pelo sistema (face única ou
-// face a face, sem sobra ou menos enfestos) e a qualidade é Automática; a
+// "Avançado" (recolhido): o enfesto é decidido pelo sistema (simples ou
+// duplo, sem sobra ou menos enfestos) e a qualidade é Automática; a
 // escolha manual fica aqui, para exceções.
 const QUALIDADES = [
   { valor: "AUTOMATICO", rotulo: "Automático" },
@@ -51,8 +51,8 @@ const QUALIDADES = [
 ];
 const TIPOS_ENFESTO = [
   { valor: "AUTOMATICO", rotulo: "Automático" },
-  { valor: "MESMA_FACE", rotulo: "Face única" },
-  { valor: "FACE_A_FACE", rotulo: "Face a face" },
+  { valor: "MESMA_FACE", rotulo: "Enfesto simples" },
+  { valor: "FACE_A_FACE", rotulo: "Enfesto duplo" },
 ];
 const MODOS_CAMADAS = [
   { valor: "AUTOMATICO", rotulo: "Automático" },
@@ -563,7 +563,7 @@ export default function EncaixeRapidoPage() {
                   className={styles.input}
                   value={tipoEnfesto}
                   onChange={(e) => setTipoEnfesto(e.target.value)}
-                  title="Face a face só vale para tecido sem direção e sem peça única assimétrica."
+                  title="Enfesto simples: todas as camadas com o lado direito para cima. Enfesto duplo: vai e volta, virando o tecido a cada camada; só vale para tecido sem direção e sem peça única assimétrica."
                 >
                   {TIPOS_ENFESTO.map((t) => (
                     <option key={t.valor} value={t.valor}>

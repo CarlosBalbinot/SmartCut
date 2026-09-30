@@ -18,7 +18,10 @@ class Molde(Base):
     peca: Mapped[str | None] = mapped_column(String(100))
     tamanho: Mapped[str | None] = mapped_column(String(10))  # PP P M G GG XGG
     sentido_fio: Mapped[str | None] = mapped_column(String(20))
-    # simples | par | par_sem_espelho
+    # simples | par | par_sem_espelho. Decide quantas peças físicas saem de um
+    # molde (1 ou 2) e se a segunda sai espelhada — por isso a API de importação
+    # exige o valor explícito (ver schemas/molde_schema.py). O default abaixo é
+    # só a rede de segurança do banco para linha escrita fora da API.
     tipo_corte: Mapped[str] = mapped_column(String(20), default="simples")
     rotacao_base: Mapped[int] = mapped_column(Integer, server_default="0", default=0)
     area_cm2: Mapped[float | None] = mapped_column(Numeric(10, 4))

@@ -7,18 +7,22 @@ simulações é services/nesting_service.py (_decidir_lote).
 
 Tipos de enfesto
 ----------------
-  MESMA_FACE ("Face única") — todas as camadas com o lado direito para
+  MESMA_FACE ("Enfesto simples") — todas as camadas com o lado direito para
       cima; corta no fim da mesa e volta ao início. Peça em par entra DUAS
       vezes no desenho, a 2ª espelhada (geometria.espelha_segunda_copia).
-  FACE_A_FACE ("Face a face") — estende indo e voltando, virando o tecido a
+  FACE_A_FACE ("Enfesto duplo") — estende indo e voltando, virando o tecido a
       cada camada. Peça em par entra duas vezes SEM espelho: a alternância
       das camadas faz a direita e a esquerda — por isso exige camadas pares
       quando há peça em par (plano_enfesto, camadas_pares=True).
 
-Face a face é inválido quando:
+Nomes: os códigos MESMA_FACE e FACE_A_FACE são internos e não mudam; quem vê
+a tela e o formulário de corte lê "enfesto simples" e "enfesto duplo", que é
+como a produção nomeia na sala de corte.
+
+Enfesto duplo é inválido quando:
   * o tecido tem direção (estampa ou pelo) — não pode ser virado;
   * há peça ÚNICA assimétrica — metade das camadas a cortaria espelhada;
-  * o lote tem 1 camada (regra da produção: 1 camada é sempre face única)
+  * o lote tem 1 camada (regra da produção: 1 camada é sempre enfesto simples)
     ou o tecido aceita no máximo 1 camada.
 
 Critério (escolher)
@@ -26,10 +30,14 @@ Critério (escolher)
   1. menor consumo de tecido: metros × camadas, todas as mesas;
   2. empate técnico (diferença < EMPATE_PCT): candidato sem sobra antes de
      um com sobra; depois o tipo preferido pelas regras da produção —
-     produto "dupla" (peças em par, ou camadas naturalmente pares) → face a
-     face; 2 ou 3 camadas → face única; senão face a face (mais rápido de
+     produto de dupla camada (forrado, pelo cadastro) → enfesto duplo;
+     2 ou 3 camadas → enfesto simples; senão enfesto duplo (mais rápido de
      estender); depois menos mesas, menos camadas;
   3. sobra de peças só vence se for o menor consumo fora do empate.
+
+"Dupla camada" é cadastro (produtos.dupla_camada), não inferência: peça em
+par (costas direita e esquerda) existe em quase toda legging e não diz nada
+sobre o tecido.
 """
 
 from __future__ import annotations
@@ -45,7 +53,7 @@ MESMA_FACE = "MESMA_FACE"
 FACE_A_FACE = "FACE_A_FACE"
 TIPOS = (MESMA_FACE, FACE_A_FACE)
 AUTOMATICO = "AUTOMATICO"
-NOME_TIPO = {MESMA_FACE: "Face única", FACE_A_FACE: "Face a face"}
+NOME_TIPO = {MESMA_FACE: "Enfesto simples", FACE_A_FACE: "Enfesto duplo"}
 NOME_MODO = {"SEM_SOBRA": "sem sobra", "MENOS_ENFESTOS": "menos enfestos"}
 
 PAR = "PAR"
@@ -114,16 +122,20 @@ class Analise:
     assimetricas: list[str]
     tem_direcao: bool
     camadas_naturais: int
-    camadas_naturais_pares: bool
     max_camadas: int
     face_a_face_valida: bool
+    # Cadastro do produto pai (produtos.dupla_camada): o produto é de dupla
+    # camada / forrado. É o ÚNICO jeito de o lote ser "dupla" — peças em par
+    # (costas direita e esquerda) existem em quase toda legging e não dizem
+    # nada sobre o tecido.
+    dupla_camada: bool = False
     motivo_invalida: str | None = None
 
     @property
     def dupla(self) -> bool:
-        """Produto "dupla": peças em par (2 por roupa) ou quantidades que
-        já geram camadas pares — a produção prefere face a face."""
-        return self.tem_par or (self.camadas_naturais_pares and self.camadas_naturais >= 2)
+        """Produto de dupla camada (forrado), pelo cadastro. A produção
+        prefere enfesto duplo para cortar as duas camadas de uma vez."""
+        return self.dupla_camada
 
 
 def analisar(
@@ -132,12 +144,15 @@ def analisar(
     tem_direcao: bool,
     camadas_naturais: list[int],
     max_camadas: int,
+    dupla_camada: bool = False,
 ) -> Analise:
-    """Classifica os moldes e diz se face a face vale para o lote.
+    """Classifica os moldes e diz se enfesto duplo vale para o lote.
 
-    camadas_naturais: camadas de cada enfesto do plano face única + sem
+    camadas_naturais: camadas de cada enfesto do plano enfesto simples + sem
     sobra (sem arredondar para par) — é o "quantas camadas este pedido tem"
-    das regras da produção."""
+    das regras da produção.
+
+    dupla_camada: vem do cadastro do produto pai (ver Analise.dupla_camada)."""
     classes = {mid: classificar(p.poligono, p.rotacoes, p.tipo_corte) for mid, p in pecas.items()}
     assimetricas = sorted({pecas[mid].nome for mid, c in classes.items() if c == UNICO_ASSIMETRICO})
     maior = max(camadas_naturais, default=0)
@@ -147,7 +162,7 @@ def analisar(
     elif assimetricas:
         motivo = f"peça única assimétrica ({', '.join(assimetricas)}): sairia espelhada em metade das camadas"
     elif maior <= 1:
-        motivo = "1 camada: regra da produção, sempre face única"
+        motivo = "1 camada: regra da produção, sempre enfesto simples"
     elif max_camadas < 2:
         motivo = "o tecido aceita no máximo 1 camada"
     return Analise(
@@ -156,9 +171,9 @@ def analisar(
         assimetricas=assimetricas,
         tem_direcao=tem_direcao,
         camadas_naturais=maior,
-        camadas_naturais_pares=bool(camadas_naturais) and all(c % 2 == 0 for c in camadas_naturais),
         max_camadas=max_camadas,
         face_a_face_valida=motivo is None,
+        dupla_camada=dupla_camada,
         motivo_invalida=motivo,
     )
 
@@ -190,10 +205,10 @@ class Candidato:
 
 
 def candidatos(analise: Analise, tipo_fixo: str | None = None, modo_fixo: str | None = None) -> list[Candidato]:
-    """{face única, face a face se válida} × {sem sobra, menos enfestos} —
-    face única + sem sobra primeiro (é o padrão seguro, avaliado antes para
-    estar pronto se o tempo acabar). Escolha manual do "Avançado" fixa uma
-    das dimensões (ou as duas)."""
+    """{enfesto simples, enfesto duplo se válido} × {sem sobra, menos
+    enfestos} — enfesto simples + sem sobra primeiro (é o padrão seguro,
+    avaliado antes para estar pronto se o tempo acabar). Escolha manual do
+    "Avançado" fixa uma das dimensões (ou as duas)."""
     tipos = [MESMA_FACE] + ([FACE_A_FACE] if analise.face_a_face_valida else [])
     if tipo_fixo in TIPOS:
         tipos = [tipo_fixo] if tipo_fixo in tipos else [MESMA_FACE]
@@ -215,6 +230,9 @@ class Decisao:
     face_a_face_valida: bool = True
     motivo_face_a_face: str | None = None
     classes: dict[str, str] = field(default_factory=dict)
+    # Produto de dupla camada (forrado) pelo cadastro — fica gravado para dar
+    # para conferir depois por que o enfesto duplo venceu um empate.
+    dupla_camada: bool = False
     tempo_esgotado: bool = False
     manual: bool = False
     segundos: float = 0.0
@@ -228,6 +246,7 @@ class Decisao:
             "regra": self.regra,
             "face_a_face_valida": self.face_a_face_valida,
             "motivo_face_a_face": self.motivo_face_a_face,
+            "dupla_camada": self.dupla_camada,
             "tempo_esgotado": self.tempo_esgotado,
             "manual": self.manual,
             "segundos": round(self.segundos, 1),
@@ -253,11 +272,10 @@ def _mesmo_plano(a: Candidato, b: Candidato) -> bool:
 def _preferencia(analise: Analise) -> tuple[str, str, str]:
     """(tipo preferido no empate, regra, frase) pelas regras da produção."""
     if analise.dupla:
-        por = "peças em par" if analise.tem_par else "camadas pares"
-        return FACE_A_FACE, "PRODUTO_DUPLA", f"produto dupla ({por}) prefere face a face"
+        return FACE_A_FACE, "PRODUTO_DUPLA", "produto de dupla camada (forrado) prefere enfesto duplo"
     if 2 <= analise.camadas_naturais <= 3:
-        return MESMA_FACE, "POUCAS_CAMADAS", f"{analise.camadas_naturais} camadas: prefere face única"
-    return FACE_A_FACE, "MAIS_RAPIDO", "face a face é mais rápido de estender"
+        return MESMA_FACE, "POUCAS_CAMADAS", f"{analise.camadas_naturais} camadas: prefere enfesto simples"
+    return FACE_A_FACE, "MAIS_RAPIDO", "enfesto duplo é mais rápido de estender"
 
 
 def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, str]:
@@ -306,7 +324,7 @@ def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, 
             + "."
         )
     if not analise.face_a_face_valida and analise.motivo_invalida:
-        texto += f" Face a face descartada: {analise.motivo_invalida}."
+        texto += f" Enfesto duplo descartado: {analise.motivo_invalida}."
         if regra == "MENOR_CONSUMO" and analise.camadas_naturais <= 1:
             regra = "UMA_CAMADA"
         elif regra == "MENOR_CONSUMO":
@@ -317,8 +335,8 @@ def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, 
 def decisao_padrao_seguro(
     analise: Analise, lista: list[Candidato], motivo: str, tipo: str = MESMA_FACE, modo: str = "SEM_SOBRA"
 ) -> Decisao:
-    """Tempo da comparação esgotado (ou nenhuma simulação concluída): face
-    única + sem sobra (ou o que o "Avançado" fixou), com o porquê no motivo."""
+    """Tempo da comparação esgotado (ou nenhuma simulação concluída): enfesto
+    simples + sem sobra (ou o que o "Avançado" fixou), com o porquê no motivo."""
     rotulo = Candidato(tipo=tipo, modo=modo).rotulo
     return Decisao(
         tipo=tipo,
@@ -329,5 +347,6 @@ def decisao_padrao_seguro(
         face_a_face_valida=analise.face_a_face_valida,
         motivo_face_a_face=analise.motivo_invalida,
         classes=analise.classes,
+        dupla_camada=analise.dupla_camada,
         tempo_esgotado=True,
     )

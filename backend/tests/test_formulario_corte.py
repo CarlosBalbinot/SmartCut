@@ -112,9 +112,9 @@ def test_desenho_sem_dados():
 
 
 def test_enfesto_texto():
-    assert enfesto_texto("FACE_A_FACE", 6) == "Face a face · 6 camadas"
-    assert enfesto_texto("MESMA_FACE", 5) == "Face única · 5 camadas"
-    assert enfesto_texto("MESMA_FACE", 1) == "Face única · 1 camada"
+    assert enfesto_texto("FACE_A_FACE", 6) == "Enfesto duplo · 6 camadas"
+    assert enfesto_texto("MESMA_FACE", 5) == "Enfesto simples · 5 camadas"
+    assert enfesto_texto("MESMA_FACE", 1) == "Enfesto simples · 1 camada"
 
 
 def test_tipo_enfesto_padrao_mesma_face():

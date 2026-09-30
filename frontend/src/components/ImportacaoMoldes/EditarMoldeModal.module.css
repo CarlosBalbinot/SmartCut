@@ -49,6 +49,10 @@
   color: var(--sc-text-primary);
 }
 
+.obrigatorio {
+  color: var(--color-danger);
+}
+
 .input,
 .select {
   width: 100%;

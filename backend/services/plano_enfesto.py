@@ -15,7 +15,7 @@ Modos:
                         camadas = min(max_camadas, maior quantidade); tamanhos
                         com quantidade menor saem com sobra.
 
-Camadas pares (camadas_pares=True): enfesto FACE A FACE com peças em par —
+Camadas pares (camadas_pares=True): enfesto duplo com peças em par —
 cada par de camadas corta a direita e a esquerda, então as camadas de cada
 enfesto são arredondadas para o PAR acima (ou abaixo, se passar do máximo).
 Um tamanho com menos peças que as camadas arredondadas entra com 1 conjunto
@@ -43,7 +43,7 @@ def _enfesto(camadas: int, conjuntos: dict, pedidas: dict) -> dict:
 def camadas_par(camadas: int, max_camadas: int) -> int:
     """Camadas arredondadas para o par acima; passando do máximo, o par
     abaixo. Com máximo 1 não há par possível (devolve 1 — quem chama não
-    oferece face a face nesse caso)."""
+    oferece enfesto duplo nesse caso)."""
     if camadas % 2 == 0:
         return camadas
     if camadas + 1 <= max_camadas:
@@ -107,7 +107,7 @@ def planejar(
     """Retorna {"modo", "camadas_pares", "enfestos": [{camadas,
     conjuntos_por_tamanho, pecas_por_tamanho, sobra_por_tamanho}],
     "pecas_por_tamanho", "sobra_por_tamanho", "sobra_total"} — totais somam
-    todos os enfestos. camadas_pares: ver o topo do módulo (face a face)."""
+    todos os enfestos. camadas_pares: ver o topo do módulo (enfesto duplo)."""
     if modo not in MODOS:
         raise ValueError(f"Modo de camadas inválido: {modo}")
     qtds = {k: int(q) for k, q in quantidades_por_tamanho.items() if q and int(q) > 0}

@@ -70,7 +70,7 @@ _DESENHO_FONTE_MAX_MM = 8 * _PT_MM
 _DESENHO_FONTE_MIN_MM = 5 * _PT_MM
 
 _TIPO_ENFESTO = ("MESMA_FACE", "FACE_A_FACE")
-NOME_TIPO_ENFESTO = {"MESMA_FACE": "Face única", "FACE_A_FACE": "Face a face"}
+NOME_TIPO_ENFESTO = {"MESMA_FACE": "Enfesto simples", "FACE_A_FACE": "Enfesto duplo"}
 
 
 def _dec(valor, casas: int = 3) -> Decimal:
@@ -331,7 +331,7 @@ def tipo_enfesto(mapa: dict | None) -> str:
 
 
 def enfesto_texto(tipo: str, camadas: int) -> str:
-    """Campo ENFESTO do formulário: "Face a face · 6 camadas"."""
+    """Campo ENFESTO do formulário: "Enfesto duplo · 6 camadas"."""
     camadas = max(1, int(camadas or 1))
     return f"{NOME_TIPO_ENFESTO.get(tipo, NOME_TIPO_ENFESTO['MESMA_FACE'])} · {camadas} camada{'s' if camadas != 1 else ''}"
 

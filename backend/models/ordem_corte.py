@@ -38,8 +38,8 @@ MODOS_CAMADAS = ("SEM_SOBRA", "MENOS_ENFESTOS")
 COMPRIMENTO_MAX_PADRAO_CM = 150
 COMPRIMENTO_MAX_MIN_CM = 50
 COMPRIMENTO_MAX_MAX_CM = 2000
-# Tipo de enfesto (nesting_v2/decisor.py): MESMA_FACE ("Face única") ou
-# FACE_A_FACE ("Face a face"); MISTO quando os lotes da OC saíram diferentes.
+# Tipo de enfesto (nesting_v2/decisor.py): MESMA_FACE ("Enfesto simples") ou
+# FACE_A_FACE ("Enfesto duplo"); MISTO quando os lotes da OC saíram diferentes.
 TIPOS_ENFESTO = ("MESMA_FACE", "FACE_A_FACE")
 # Qualidade do encaixe (motor v2): quanto tempo o spyrrow ganha por mesa —
 # ver nesting_service.QUALIDADES. AUTOMATICO (padrão) distribui o orçamento de

@@ -44,8 +44,8 @@ const STATUS_OC = {
 const FINAIS = ["CONCLUIDA", "CANCELADA"];
 
 const MODO_LABEL = { SEM_SOBRA: "sem sobra", MENOS_ENFESTOS: "menos enfestos", MISTO: "misto" };
-// Enfesto decidido na geração: "Face a face · sem sobra"; OC gerada antes da
-// decisão automática não tem tipo_enfesto (era sempre face única).
+// Enfesto decidido na geração: "Enfesto duplo · sem sobra"; OC gerada antes
+// da decisão automática não tem tipo_enfesto (era sempre enfesto simples).
 const enfestoLabel = (oc) => {
   if (!oc.encaixes?.length) return "Automático";
   const tipo =
