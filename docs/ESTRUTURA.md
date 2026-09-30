@@ -8,10 +8,10 @@
 | Backend | Python + FastAPI | Python 3.12 |
 | Banco de dados | PostgreSQL | 15+ |
 | ORM | SQLAlchemy + Alembic | 2.x |
-| PDFs | ReportLab | — |
+| PDFs | ReportLab; relatórios HTML/Jinja2 (`relatorios/`, impressos em PDF pelo navegador) | — |
 | Gráficos | Recharts | — |
 | Autenticação | JWT | Painel vendedor |
-| Encaixe | Python: spyrrow (strip packing) + OR-Tools CP-SAT | 2.x / 9.x |
+| Encaixe | Python: spyrrow (strip packing) + OR-Tools CP-SAT (encaixe e plano de corte) | 2.x / 9.x |
 | Desktop | Electron | Fase 3 |
 
 ---
@@ -46,8 +46,23 @@ SmartCut/
 │   │   ├── vendedores.py
 │   │   └── financeiro.py
 │   ├── services/
-│   │   ├── planejamento/        # decisões antes do motor (custo/orçamento, grupos)
-│   │   └── nesting_v2/          # motor de encaixe v2 (spyrrow + OR-Tools)
+│   │   ├── nesting_service.py   # geração de encaixes: agrupa, decide o enfesto, roda o motor, grava
+│   │   ├── nesting_jobs.py      # geração em segundo plano (progresso, cancelamento)
+│   │   ├── ordem_corte_service.py # Ordem de Corte: snapshot, tecidos, estoque (reserva/baixa/estorno)
+│   │   ├── plano_enfesto.py     # camadas por tamanho de UM lote (OC por COR)
+│   │   ├── planejamento/        # decisões antes do motor (puro, sem banco)
+│   │   │   ├── custo.py         # orçamento de tempo da qualidade Automática
+│   │   │   ├── plano_corte.py   # plano de corte por produto, enfesto multicor (CP-SAT)
+│   │   │   └── estimador.py     # comprimento/mesas de um risco pela área
+│   │   ├── nesting_v2/          # motor de encaixe v2 (spyrrow + OR-Tools)
+│   │   │   ├── geometria.py     # molde → unidades de corte (fio, pares, espelho)
+│   │   │   ├── encaixador.py    # spyrrow (uma mesa)
+│   │   │   ├── planejador.py    # CP-SAT: peças por mesa
+│   │   │   ├── motor.py         # gerar(): risco → mesas
+│   │   │   └── decisor.py       # enfesto simples × duplo (regras e motivo)
+│   │   └── relatorios/          # engine dos relatórios HTML + dados (dados_ordem_corte.py)
+│   ├── scripts/medir_oc.py      # mede uma OC num banco de CÓPIA (diagnóstico)
+│   ├── smartcut.spec            # PyInstaller (npm run build-backend → electron/bin)
 │   ├── uploads/
 │   │   ├── logos/
 │   │   ├── moldes/              # Arquivos PLT/DXF/ADS originais
@@ -86,6 +101,12 @@ SmartCut/
 │   │       └── global.css       # Variáveis CSS globais (sem azul, neutros quentes)
 │   ├── public/
 │   └── vite.config.js
+│
+├── relatorios/                  # modelos HTML/Jinja2 dos relatórios (lidos a cada impressão)
+│   ├── config.json              # modelo padrão de cada relatório
+│   ├── _comum/                  # cabeçalho da empresa
+│   ├── vendas/                  # relVen001 (pedido)
+│   └── producao/                # relPro001 (ficha de corte) e relPro001_basico
 │
 ├── docs/                        # Esta pasta — documentação completa
 │   ├── README.md
@@ -135,11 +156,34 @@ itens_pedido       → id, pedido_id (FK), referencia, tecido_descricao,
                      preco_unitario, subtotal
 ```
 
-### Módulo Encaixes
+### Módulo Encaixes / Ordem de Corte
 ```
-encaixes           → id, nome, tecido_largura_cm, tecido_comprimento_cm,
-                     eficiencia_pct, svg_resultado, created_at
+encaixes           → id, numero (ENC-001), pedido_id, ordem_corte_id, lote_id,
+                     mapa_json (mesa: placements, grade, decisão, qualidade…),
+                     comp_metros, peso_kg, custo_total (de UMA camada),
+                     desperdicio_pct, num_camadas, status, descricao
+                     Uma linha = uma MESA de um enfesto.
+encaixe_camadas    → id, encaixe_id (FK, cascade), lote_id (FK), ordem, cor,
+                     camadas, comp_metros, peso_kg, custo (de UMA camada do lote)
+                     Só em enfesto multicor (OC por produto); o estoque de cada
+                     lote soma estas linhas. Sem linhas = um lote só (lote_id).
+ordens_corte       → id, numero (OC-0001), pedido_id (1 ativa por pedido), status
+                     (RASCUNHO/ENVIADA/EM_CORTE/CONCLUIDA/CANCELADA),
+                     organizar_por (PRODUTO/COR), modo_camadas, tipo_enfesto,
+                     decisao_enfesto (JSON), enfesto_avancado (JSON),
+                     comprimento_max_cm, qualidade (AUTOMATICO/RAPIDO/
+                     EQUILIBRADO/MAXIMO), sugestao_mesa (JSON), pedido_hash,
+                     enviada_em, iniciada_em, concluida_em, cortador
+itens_ordem_corte  → snapshot dos itens do pedido (produto, SKU, cor, tamanho, qtd)
+ordem_corte_tecidos→ lote escolhido para cada (produto, cor)
+consumos_lote      → CONSUMO/ESTORNO de peso por lote e OC (conclusão/reabertura)
 ```
+
+Campos de produção em outras tabelas: `modelos_tecido.max_camadas`,
+`modelos_tecido.tem_direcao`, `moldes.tipo_corte` (simples/par/par_sem_espelho,
+obrigatório na API), `produtos.dupla_camada`, e em `configuracao_empresa`:
+`comprimento_max_mesa_cm`, `alerta_economia_pct`, `tempo_maximo_oc_s`,
+`tolerancia_tecido_pct`.
 
 ### Módulo Precificação
 ```

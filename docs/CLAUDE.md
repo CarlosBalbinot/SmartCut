@@ -1,7 +1,7 @@
 # CLAUDE.md — Contexto do SmartCut para Claude Code
 
 > Leia este arquivo no início de CADA sessão de desenvolvimento.
-> Atualizado em: Junho 2026
+> Atualizado em: Setembro 2026
 
 ---
 
@@ -50,7 +50,9 @@ Database: smartcut
 - Frontend: React 18 + Vite + CSS Modules
 - Backend: Python 3.12 + FastAPI
 - ORM: SQLAlchemy 2.x + Alembic
-- PDFs: ReportLab (A4, preto e branco, com logo)
+- PDFs: ReportLab (A4, preto e branco, com logo); relatórios HTML/Jinja2 em
+  `relatorios/` (relVen001 pedido, relPro001 ficha de corte)
+- Encaixe: spyrrow + OR-Tools CP-SAT, embutido no backend (`services/nesting_v2/`)
 - Gráficos: Recharts
 - Auth: JWT (apenas painel vendedor)
 
@@ -106,12 +108,44 @@ Os seguintes diretórios são ignorados — não ler, não modificar:
 | Moldes | ⚠️ Funcional com bugs | CADASTROS → Moldes |
 | Encaixe Rápido | ✅ Completo | PRODUÇÃO → Encaixe Rápido |
 | Encaixes | ✅ Completo | PRODUÇÃO → Encaixes |
+| Ordem de Corte | ✅ Completo | Pedido → Ordem de Corte |
 | Pedidos de Venda | ⚠️ Bugs conhecidos | VENDAS → Pedidos |
 | Precificação | ✅ Completo | GESTÃO → Precificação |
 | Projeção | ✅ Completo | GESTÃO → Projeção |
 | Configurações | ✅ Completo | Footer → ⚙ |
 | Painel Vendedor | 🔄 Em desenvolvimento | /vendedor |
 | Financeiro | 🔄 Em desenvolvimento | FINANCEIRO |
+
+---
+
+## Produção — motor, enfesto e plano de corte
+
+Detalhes em `docs/FUNCIONALIDADES.md` (PRODUÇÃO). O essencial:
+
+- **Motor único v2** (spyrrow + OR-Tools). O v1 (Node.js) foi removido — não
+  existe seletor nem motor reserva. Boot loga `Motor v2 disponível`.
+- **Tipo de corte do molde** (obrigatório): `simples` · `par` (2 espelhadas no
+  enfesto simples, iguais no duplo) · `par_sem_espelho` (2 iguais, nunca
+  espelhadas). Aviso de simetria na tela de moldes.
+- **Enfesto** decidido pelo sistema (`nesting_v2/decisor.py`): "Enfesto simples"
+  (MESMA_FACE) / "Enfesto duplo" (FACE_A_FACE) — nomes da produção só na
+  interface. Empate < 1%: sem sobra → menos mesas → regras da produção
+  (forrado `produtos.dupla_camada` → duplo; 2–3 camadas → simples; senão duplo).
+- **Qualidade Automática** = orçamento de tempo da OC
+  (`planejamento/custo.py`, Configurações > Produção, 300 s).
+- **Organizar o corte** (`ordens_corte.organizar_por`): PRODUTO (padrão) usa o
+  plano de corte multicor (`planejamento/plano_corte.py`, tolerância de tecido
+  2%, cores do mesmo tecido até 5 cm de largura, sobra só se inevitável);
+  COR é o fluxo antigo por lote (`_agrupar_por_lote` + `_montar_todos`).
+- **Estoque por cor**: encaixe multicor tem uma linha por lote em
+  `encaixe_camadas`; reserva/baixa/estorno somam por essas linhas
+  (`Encaixe.consumo_por_lote`). Nunca somar `Encaixe.lote_id × peso` direto.
+- **Ficha de corte**: `relatorios/producao/relPro001.html` e `_basico` — por
+  produto quando a OC é PRODUTO, lista de mesas quando é COR.
+- **Testes de OC real só em banco de CÓPIA** (`SMARTCUT_DB_PATH` apontando para
+  uma cópia de `backend/smartcut.db`; ver `scripts/medir_oc.py`). O backend dev
+  com `--reload` aplica migrations novas no boot — faça backup antes de criar
+  uma.
 
 ---
 

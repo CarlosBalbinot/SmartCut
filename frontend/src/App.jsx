@@ -759,7 +759,7 @@ export default function App() {
           </div>
         )}
 
-        <div className={styles.sidebarVersion}>v1.0</div>
+        <div className={styles.sidebarVersion}>v1.3.0</div>
       </nav>
 
       {/* Popover do modo recolhido — fora da <nav> de propósito: se
