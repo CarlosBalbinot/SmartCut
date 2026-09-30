@@ -43,8 +43,10 @@ export const getOrdemCorteDoPedido = async (pedidoId) =>
 export const definirTecidosOrdemCorte = (id, escolhas) =>
   request(`/${id}/tecidos`, { method: "PUT", body: JSON.stringify(escolhas) });
 
-// payload: { modo_camadas?, comprimento_max_cm?, qualidade?, observacoes? }
-// qualidade: RAPIDO | EQUILIBRADO | MAXIMO (tempo do motor v2).
+// payload: { enfesto_tipo?, enfesto_modo?, comprimento_max_cm?, qualidade?, observacoes? }
+// enfesto_tipo: AUTOMATICO | MESMA_FACE | FACE_A_FACE; enfesto_modo:
+// AUTOMATICO | SEM_SOBRA | MENOS_ENFESTOS ("Avançado" — AUTOMATICO = o
+// sistema decide). qualidade: AUTOMATICO | RAPIDO | EQUILIBRADO | MAXIMO.
 export const atualizarOrdemCorte = (id, payload) =>
   request(`/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 
@@ -123,8 +125,8 @@ export const aplicarSugestaoMesa = (id) =>
 export const descartarSugestaoMesa = (id) =>
   request(`/${id}/descartar-sugestao-mesa`, { method: "POST" });
 
-// Configurações > Produção: { motor_encaixe, comprimento_max_mesa_cm,
-// alerta_economia_pct } — exige permissão de ver configurações.
+// Configurações > Produção: { comprimento_max_mesa_cm, alerta_economia_pct }
+// — exige permissão de ver configurações.
 export const getConfigProducao = () => request("/configuracao-producao");
 
 // Lotes que podem ser escolhidos (sem arquivados/esgotados), com modelo,

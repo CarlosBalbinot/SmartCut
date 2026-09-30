@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <!--
-  relPro001 - Formulário de corte para o cortador (A4 retrato, Tahoma, preto,
-  linhas finas). Compacto: por mesa, os dados e a tabela de moldes à esquerda
-  e o desenho à direita; várias mesas por página, cada bloco sem quebrar no
-  meio (break-inside: avoid). Variante sem a tabela: relPro001_basico.html.
+  relPro001_basico - Formulário de corte BÁSICO (mesmo visual do relPro001:
+  A4 retrato, Tahoma, preto, linhas finas). Por mesa, só o essencial para
+  estender e cortar: título, tecido / largura / comprimento / enfesto e o
+  desenho da mesa. Várias mesas por página, cada bloco sem quebrar no meio.
+  Modelo HTML/CSS + Jinja2, sem JavaScript; lido a cada impressão.
 
   CAMPOS
     empresa   (igual ao relVen001) nome, endereco, ..., logo, faltando
     oc        numero (OC-0001), data, status, observacoes
     pedido    numero, emissao, cliente, cliente_codigo, vendedor
-    mesas[]   numero_mesa, total_mesas, tecido (modelo), tecido_cor ("MAXXI PRETO"),
-              lote, comprimento_cm (arredondado), largura_cm, largura_texto ("150 cm"),
-              cores[] {cor, camadas}, camadas,
-              cortar[] {molde, tamanho, pecas (no desenho), espelhadas},
+    mesas[]   numero_mesa, total_mesas, tecido_cor ("MAXXI PRETO"), lote,
+              comprimento_cm, largura_texto ("150 cm"), camadas,
+              tipo_enfesto (MESMA_FACE | FACE_A_FACE), tipo_enfesto_nome,
+              enfesto_texto ("Face a face · 6 camadas"),
               avisos[] (peça mais comprida que o limite),
-              tipo_enfesto (MESMA_FACE | FACE_A_FACE), tipo_enfesto_nome ("Face única" |
-              "Face a face"), enfesto_texto ("Face a face · 6 camadas"),
               desenho_svg (desenho deitado, visto do cortador: largura embaixo com
-              "INÍCIO DA MESA", comprimento à esquerda)
+              "INÍCIO DA MESA", comprimento à esquerda, nomes das peças)
+    (os demais campos do relPro001 — cortar[], enfestos[], grupos[], grades[],
+     totais — continuam disponíveis para variantes personalizadas)
 
   FILTROS: moeda, numero(casas), data, cnpj_cpf, cep, telefone (ver relVen001)
 {% raw %}
@@ -66,34 +67,20 @@
   /* Mesa: um bloco por mesa, nunca quebrado no meio */
   .mesa { margin-top: 2mm; padding: 1.5mm 2mm 2mm; border: 0.5pt solid #000; break-inside: avoid; page-break-inside: avoid; }
   .mesa-titulo { font-size: 8.5pt; font-weight: bold; }
-  .mesa-atencao { margin-top: 0.8mm; font-weight: bold; max-width: 95mm; }
+  .mesa-atencao { margin-top: 0.8mm; font-weight: bold; }
 
-  /* Corpo da mesa: dados + moldes à esquerda (largura pelo conteúdo), desenho
-     à direita. Se não couberem lado a lado, o desenho desce para baixo da
-     tabela, alinhado à esquerda (flex-wrap). */
-  .corpo { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.5mm 6mm; margin-top: 1mm; }
-  .corpo-dados { flex: 0 1 auto; }
-  .corpo-desenho { flex: 0 0 auto; }
-
-  /* Dados da mesa: rótulo e valor lado a lado, compacto */
-  .dados-mesa { width: auto; }
-  .dados-mesa td { padding: 0.3mm 3mm 0.3mm 0; white-space: nowrap; }
-  .dados-mesa td.rot { font-weight: bold; }
-
+  /* Tecido | Largura | Comprimento | Enfesto — rótulo sobre o valor */
+  .grade-dados { width: auto; margin-top: 1mm; }
+  .grade-dados td { padding: 0.4mm 7mm 0.4mm 0; white-space: nowrap; vertical-align: bottom; }
+  .grade-dados .rot { display: block; font-weight: bold; }
   /* Campo em destaque: ENFESTO  Face a face · 6 camadas */
-  .enfesto { display: inline-block; margin-top: 1mm; padding: 0.6mm 2mm; border: 0.8pt solid #000; font-size: 9pt; font-weight: bold; white-space: nowrap; }
-  .enfesto .rot { font-size: 7pt; letter-spacing: 0.3pt; margin-right: 2mm; }
-
-  /* Moldes da mesa: MOLDE | TAM. | PEÇAS — colunas pelo conteúdo (~90 mm) */
-  .moldes { width: auto; max-width: 95mm; margin-top: 1.5mm; }
-  .moldes th, .moldes td { padding: 0.4mm 3mm 0.4mm 0; white-space: nowrap; }
-  .moldes th { font-weight: bold; border-bottom: 0.5pt solid #000; }
-  .moldes .centro { text-align: center; }
-  .moldes .conta { color: #777; padding-left: 1.5mm; }
+  .grade-dados td.enfesto { padding: 0.6mm 2mm; border: 0.8pt solid #000; font-size: 9pt; font-weight: bold; }
+  .grade-dados td.enfesto .rot { font-size: 7pt; letter-spacing: 0.3pt; }
 
   /* Desenho da mesa: tamanho fixo do SVG (150 cm ≈ 100 mm, até 110 × 90 mm) */
+  .miniatura { margin-top: 1.5mm; }
   .miniatura svg { display: block; max-width: 100%; height: auto; }
-  .sem-miniatura { font-style: italic; }
+  .sem-miniatura { margin-top: 1.5mm; font-style: italic; }
 
   /* Observações */
   .secao { margin-top: 3mm; }
@@ -128,7 +115,7 @@
     <td class="rot">Pedido:</td><td>{{ pedido.numero }}{% if pedido.emissao %} de {{ pedido.emissao | data }}{% endif %}</td>
   </tr>
   <tr>
-    {% if pedido.vendedor %}<td class="rot">Vendedor:</td><td class="valor-esq">{{ pedido.vendedor }}</td>{% else %}<td></td><td class="valor-esq"></td>{% endif %}
+    <td></td><td class="valor-esq"></td>
     <td class="rot">Mesas:</td><td>{{ mesas | length }}</td>
   </tr>
 </table>
@@ -143,48 +130,24 @@
     {%- if m.tipo_enfesto_nome %} · {{ m.tipo_enfesto_nome | upper }}{% endif %}
   </div>
 
-  <div class="corpo">
-  <div class="corpo-dados">
-    <table class="dados-mesa">
-      <tr><td class="rot">Tecido</td><td>{{ m.tecido_cor or "—" }}</td></tr>
-      <tr><td class="rot">Largura</td><td>{{ m.largura_texto }}</td></tr>
-      <tr><td class="rot">Comprimento</td><td>{{ m.comprimento_cm }} cm</td></tr>
-    </table>
-    <div class="enfesto"><span class="rot">ENFESTO</span>{{ m.enfesto_texto }}</div>
+  <table class="grade-dados">
+    <tr>
+      <td><span class="rot">Tecido</span>{{ m.tecido_cor or "—" }}</td>
+      <td><span class="rot">Largura</span>{{ m.largura_texto }}</td>
+      <td><span class="rot">Comprimento</span>{{ m.comprimento_cm }} cm</td>
+      <td class="enfesto"><span class="rot">ENFESTO</span>{{ m.enfesto_texto }}</td>
+    </tr>
+  </table>
 
-    {% for aviso in m.avisos %}
-    <div class="mesa-atencao">ATENÇÃO: {{ aviso }}</div>
-    {% endfor %}
+  {% for aviso in m.avisos %}
+  <div class="mesa-atencao">ATENÇÃO: {{ aviso }}</div>
+  {% endfor %}
 
-    {% set camadas = m.camadas or 1 %}
-    <table class="moldes">
-      <thead>
-        <tr><th>Molde</th><th class="centro">Tam.</th><th>Peças</th></tr>
-      </thead>
-      <tbody>
-        {% for p in m.cortar %}
-        <tr>
-          <td>{{ p.molde }}{% if p.espelhadas %} ({{ p.espelhadas }} esp.){% endif %}</td>
-          <td class="centro">{{ p.tamanho }}</td>
-          <td>{{ (p.pecas or 0) * camadas }}<span class="conta">
-            {%- if loop.first %}({{ p.pecas or 0 }} no desenho × {{ camadas }} camada{{ "s" if camadas != 1 }})
-            {%- else %}({{ p.pecas or 0 }} × {{ camadas }}){% endif %}</span></td>
-        </tr>
-        {% else %}
-        <tr><td colspan="3">—</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="corpo-desenho">
   {% if m.desenho_svg %}
   <div class="miniatura">{{ m.desenho_svg }}</div>
   {% else %}
   <div class="sem-miniatura">Desenho da mesa não disponível.</div>
   {% endif %}
-  </div>
-  </div>
 </div>
 {% else %}
 <div class="mesa">Nenhuma mesa gerada para esta Ordem de Corte.</div>

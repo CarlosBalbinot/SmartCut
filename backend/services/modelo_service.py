@@ -77,6 +77,7 @@ def _to_completo(modelo: ModeloTecido) -> ModeloComCoresOut:
         nome=modelo.nome,
         tipo=modelo.tipo,
         max_camadas=modelo.max_camadas,
+        tem_direcao=bool(modelo.tem_direcao),
         criado_em=modelo.criado_em,
         cores=cores_out,
     )

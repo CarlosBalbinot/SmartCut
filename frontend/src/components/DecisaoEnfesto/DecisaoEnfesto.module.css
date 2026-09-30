@@ -1,0 +1,97 @@
+/* Quadro "Decisão do sistema" — neutros (sem azul), como os demais quadros. */
+.quadro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-bg-tertiary);
+}
+
+.cabecalho {
+  font-size: var(--sc-font-size-small);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lote + .lote {
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+.tecido {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-secondary);
+}
+
+.escolha {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: var(--sc-font-size-body);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-primary);
+}
+
+.motivo {
+  margin-top: 0.15rem;
+  font-size: var(--sc-font-size-body);
+  color: var(--sc-text-secondary);
+}
+
+.selo {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--sc-border-strong);
+  border-radius: var(--sc-radius-sm);
+  font-size: var(--sc-font-size-small);
+  font-weight: 500;
+  color: var(--sc-text-secondary);
+}
+
+.link {
+  margin-top: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tabela {
+  margin-top: 0.4rem;
+  border-collapse: collapse;
+  font-size: var(--sc-font-size-small);
+}
+
+.tabela th,
+.tabela td {
+  padding: 0.3rem 0.8rem 0.3rem 0;
+  border-bottom: 1px solid var(--sc-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabela th {
+  font-weight: 600;
+  color: var(--sc-text-secondary);
+}
+
+.num {
+  text-align: right !important;
+}
+
+.vencedor td {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+}
+
+.naoAvaliado {
+  color: var(--sc-text-muted);
+  font-style: italic;
+}

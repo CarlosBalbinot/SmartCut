@@ -9,7 +9,6 @@ import {
   descartarSugestaoMesa,
   enviarOrdemCorte,
   gerarEncaixesOrdemCorte,
-  getConfigProducao,
   getJobOrdemCorte,
   getLotesDisponiveis,
   getOrdemCorte,
@@ -20,6 +19,7 @@ import {
 import { RELATORIO_FORMULARIO_CORTE, imprimirRelatorio } from "../api/relatorios";
 import ConcluirCorteModal from "../components/ConcluirCorteModal/ConcluirCorteModal";
 import ConfirmModal from "../components/ConfirmModal/ConfirmModal";
+import DecisaoEnfesto, { NOME_TIPO_ENFESTO } from "../components/DecisaoEnfesto/DecisaoEnfesto";
 import MenuDropdown from "../components/MenuDropdown/MenuDropdown";
 import Modal from "../components/Modal/Modal";
 import OrdemCorteAssistente from "../components/OrdemCorteAssistente/OrdemCorteAssistente";
@@ -43,7 +43,15 @@ const STATUS_OC = {
 };
 const FINAIS = ["CONCLUIDA", "CANCELADA"];
 
-const MODO_LABEL = { SEM_SOBRA: "Sem sobra", MENOS_ENFESTOS: "Menos enfestos" };
+const MODO_LABEL = { SEM_SOBRA: "sem sobra", MENOS_ENFESTOS: "menos enfestos", MISTO: "misto" };
+// Enfesto decidido na geração: "Face a face · sem sobra"; OC gerada antes da
+// decisão automática não tem tipo_enfesto (era sempre face única).
+const enfestoLabel = (oc) => {
+  if (!oc.encaixes?.length) return "Automático";
+  const tipo =
+    oc.tipo_enfesto === "MISTO" ? "Misto" : NOME_TIPO_ENFESTO[oc.tipo_enfesto || "MESMA_FACE"];
+  return `${tipo} · ${MODO_LABEL[oc.modo_camadas] || oc.modo_camadas}`;
+};
 
 // Linha do tempo do cabeçalho: o passo e o campo de data em cada etapa.
 const ETAPAS = [
@@ -207,10 +215,6 @@ export default function OrdemCorteDetalhePage() {
   // Geração em segundo plano (job do backend): enquanto ativa, o progresso
   // fica no lugar do botão e as ações que mudam a OC ficam travadas.
   const [jobAtivo, setJobAtivo] = useState(false);
-  const [avisoMotor, setAvisoMotor] = useState(null);
-  // Motor de Configurações > Produção — distingue "v1 configurado" de "v1
-  // reserva" no rótulo do motor. null se o usuário não pode ver a config.
-  const [motorConfig, setMotorConfig] = useState(null);
 
   const aplicar = (dados) => {
     setOc(dados);
@@ -241,19 +245,12 @@ export default function OrdemCorteDetalhePage() {
     setCarregando(true);
     setOc(null);
     setJobAtivo(false);
-    setAvisoMotor(null);
     carregar();
     // Geração iniciada em outra tela (assistente fechado no meio).
     getJobOrdemCorte(id)
       .then((j) => j && ["FILA", "RODANDO"].includes(j.status) && setJobAtivo(true))
       .catch(() => {});
   }, [id]);
-
-  useEffect(() => {
-    getConfigProducao()
-      .then((c) => setMotorConfig(c.motor_encaixe))
-      .catch(() => setMotorConfig(null));
-  }, []);
 
   const grades = useMemo(() => montarGrades(oc?.itens || []), [oc]);
 
@@ -350,7 +347,6 @@ export default function OrdemCorteDetalhePage() {
   const gerar = async () => {
     setAcao("gerar");
     setErro(null);
-    setAvisoMotor(null);
     try {
       await gerarEncaixesOrdemCorte(oc.id);
       setJobAtivo(true);
@@ -362,9 +358,8 @@ export default function OrdemCorteDetalhePage() {
     }
   };
 
-  const jobConcluido = (estado) => {
+  const jobConcluido = () => {
     setJobAtivo(false);
-    setAvisoMotor(estado.resultado?.aviso_motor || null);
     carregar();
   };
 
@@ -377,7 +372,6 @@ export default function OrdemCorteDetalhePage() {
   const usarMesaMaior = async () => {
     setAcao("mesa");
     setErro(null);
-    setAvisoMotor(null);
     try {
       const r = await aplicarSugestaoMesa(oc.id);
       aplicar(r.ordem_corte);
@@ -488,7 +482,7 @@ export default function OrdemCorteDetalhePage() {
                   Desatualizada
                 </span>
               )}
-              <RotuloMotor encaixes={oc.encaixes} motorConfig={motorConfig} />
+              <RotuloMotor encaixes={oc.encaixes} />
               {obsSalva && <span className={styles.msgSalvo}>Observações salvas.</span>}
             </div>
           </div>
@@ -622,14 +616,6 @@ export default function OrdemCorteDetalhePage() {
           <ProgressoEncaixe ocId={oc.id} onConcluido={jobConcluido} onFim={jobEncerrado} />
         )}
 
-        {avisoMotor && !jobAtivo && (
-          <div className={`${styles.avisoWarn} ${styles.avisoLinha}`}>
-            <span>
-              {avisoMotor}. Os encaixes foram feitos pelo motor v1, que aproveita menos tecido.
-            </span>
-          </div>
-        )}
-
         {rascunho && !jobAtivo && (
           <AlertaMesaMaior
             sugestao={oc.sugestao_mesa}
@@ -721,12 +707,12 @@ export default function OrdemCorteDetalhePage() {
                 />
               </label>
               <label className={`${styles.field} sc-field-m`}>
-                <span className={styles.rotulo}>Modo de camadas</span>
+                <span className={styles.rotulo}>Enfesto</span>
                 <input
                   className={`${styles.input} sc-readonly`}
                   readOnly
                   tabIndex={-1}
-                  value={MODO_LABEL[oc.modo_camadas] || oc.modo_camadas}
+                  value={enfestoLabel(oc)}
                 />
               </label>
               <label
@@ -943,56 +929,59 @@ export default function OrdemCorteDetalhePage() {
               {rascunho ? "Nenhum encaixe gerado ainda." : "Nenhum encaixe nesta OC."}
             </p>
           ) : (
-            // Um bloco por enfesto: a grade por tamanho fica no resumo do
-            // enfesto; cada card (mesa) lista só os moldes que corta.
-            enfestos.map((g) => {
-              const lote = oc.tecidos.find((t) => t.lote?.id === g.lote_id)?.lote;
-              return (
-                <div key={g.chave}>
-                  <ResumoEnfesto grupo={g} loteCodigo={lote?.codigo_lote} />
-                  <div className={styles.encaixes}>
-                    {g.mesas.map((e) => (
-                      <article key={e.id} className={styles.encaixeCard}>
-                        <div className={styles.encaixeTopo}>
-                          <div className={styles.encaixeId}>
-                            <strong>{fmtEnc(e.numero_enc)}</strong>
-                            <span className={styles.encaixeParte}>
-                              {fmtParte(e) || "mesa única"}
-                            </span>
+            <>
+              <DecisaoEnfesto decisoes={oc.decisao_enfesto?.lotes} />
+              {/* Um bloco por enfesto: a grade por tamanho fica no resumo do
+                enfesto; cada card (mesa) lista só os moldes que corta. */}
+              {enfestos.map((g) => {
+                const lote = oc.tecidos.find((t) => t.lote?.id === g.lote_id)?.lote;
+                return (
+                  <div key={g.chave}>
+                    <ResumoEnfesto grupo={g} loteCodigo={lote?.codigo_lote} />
+                    <div className={styles.encaixes}>
+                      {g.mesas.map((e) => (
+                        <article key={e.id} className={styles.encaixeCard}>
+                          <div className={styles.encaixeTopo}>
+                            <div className={styles.encaixeId}>
+                              <strong>{fmtEnc(e.numero_enc)}</strong>
+                              <span className={styles.encaixeParte}>
+                                {fmtParte(e) || "mesa única"}
+                              </span>
+                            </div>
+                            <Link className={styles.linkEncaixe} to={`/producao/encaixes/${e.id}`}>
+                              Ver encaixe
+                            </Link>
                           </div>
-                          <Link className={styles.linkEncaixe} to={`/producao/encaixes/${e.id}`}>
-                            Ver encaixe
-                          </Link>
-                        </div>
-                        <dl className={styles.metricas}>
-                          <div>
-                            <dt title="Camadas">Camadas</dt>
-                            <dd>{e.num_camadas}</dd>
-                          </div>
-                          <div>
-                            <dt title="Comprimento">Comprimento</dt>
-                            <dd>{numBR(e.comp_metros, 2)} m</dd>
-                          </div>
-                          <div>
-                            <dt title="Peso total">Peso total</dt>
-                            <dd>{numBR(e.peso_total_kg, 3)} kg</dd>
-                          </div>
-                          <div>
-                            <dt title="Aproveitamento">Aproveitamento</dt>
-                            <dd>
-                              {e.aproveitamento_pct != null
-                                ? `${numBR(e.aproveitamento_pct, 1)}%`
-                                : "—"}
-                            </dd>
-                          </div>
-                        </dl>
-                        <MoldesMesa pecas={e.pecas_parte} />
-                      </article>
-                    ))}
+                          <dl className={styles.metricas}>
+                            <div>
+                              <dt title="Comprimento">COMPR.</dt>
+                              <dd>{numBR(e.comp_metros, 2)} m</dd>
+                            </div>
+                            <div>
+                              <dt title="Aproveitamento">APROV.</dt>
+                              <dd>
+                                {e.aproveitamento_pct != null
+                                  ? `${numBR(e.aproveitamento_pct, 1)}%`
+                                  : "—"}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt title="Peso total">PESO</dt>
+                              <dd>{numBR(e.peso_total_kg, 3)} kg</dd>
+                            </div>
+                            <div>
+                              <dt title="Camadas">CAMADAS</dt>
+                              <dd>{e.num_camadas}</dd>
+                            </div>
+                          </dl>
+                          <MoldesMesa pecas={e.pecas_parte} />
+                        </article>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </>
           )}
         </section>
       </div>

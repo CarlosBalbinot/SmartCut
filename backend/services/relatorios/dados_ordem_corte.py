@@ -1,12 +1,16 @@
 """Fonte de dados do relPro001 (Formulário de corte da Ordem de Corte).
 
 Mesmo contrato do relVen001 (dados_pedido): só tipos simples (dict/list/
-str/Decimal/date) — o modelo roda em sandbox. A única exceção é
-enfestos[].miniatura_svg, gerado aqui a partir do mapa_json e marcado como
-seguro (Markup): o modelo não escreve JavaScript nem SVG.
+str/Decimal/date) — o modelo roda em sandbox. A única exceção é o desenho
+da mesa (mesas[].desenho_svg, enfestos[].desenho_svg e o antigo
+enfestos[].miniatura_svg, que aponta para o mesmo desenho), gerado aqui a
+partir do mapa_json e marcado como seguro (Markup): o modelo não escreve
+JavaScript nem SVG.
 
-Chaves: empresa, oc, pedido, grades, enfestos, grupos, totais (a engine
-acrescenta "impressao").
+Chaves: empresa, oc, pedido, grades, enfestos, grupos, mesas, totais (a
+engine acrescenta "impressao"). mesas[] alimenta o formulário do cortador
+(relPro001.html) e o formulário básico (relPro001_basico.html);
+enfestos/grupos/grades ficam para variantes personalizadas.
 
 Mesa × enfesto (M2c): cada encaixe é uma MESA (parte do enfesto) e lista os
 MOLDES que corta (mapa_json.pecas_parte). A grade por tamanho é do ENFESTO e
@@ -21,7 +25,9 @@ import uuid
 from decimal import Decimal
 
 from fastapi import HTTPException
-from markupsafe import Markup
+from markupsafe import Markup, escape
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import polylabel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -43,10 +49,28 @@ _STATUS = {
     "CANCELADA": "Cancelada",
 }
 
-# Miniatura: comprimento do enfesto na horizontal (igual ao visualizador),
-# até 180 mm de largura e 90 mm de altura.
-_MINI_LARGURA_MM = 180.0
-_MINI_ALTURA_MAX_MM = 90.0
+# Desenho da mesa (os dois formulários): DEITADO e visto do lado do
+# cortador — ele fica de frente para a largura do tecido, no início da mesa.
+# O encaixe é GIRADO 180° (x e y invertidos juntos, nunca um eixo só: isso
+# espelharia as peças): largura na horizontal com a cota embaixo e "INÍCIO DA
+# MESA" logo abaixo dela; comprimento na vertical com a cota à esquerda.
+# Escala fixa: 150 cm de tecido ≈ 100 mm no papel; o desenho inteiro (com as
+# cotas) vai até 110 × 90 mm e, se passar, encolhe mantendo a proporção.
+# Textos em pt convertidos para mm (unidade do SVG).
+_PT_MM = 0.3528
+_DESENHO_ESCALA_MM_CM = 100.0 / 150.0
+_DESENHO_LARGURA_MAX_MM = 110.0
+_DESENHO_ALTURA_MAX_MM = 90.0
+_DESENHO_MARGEM_ESQ_MM = 6.5  # cota do comprimento
+_DESENHO_MARGEM_TOPO_MM = 1.0
+_DESENHO_MARGEM_BAIXO_MM = 9.6  # cota da largura + "INÍCIO DA MESA"
+_DESENHO_MARGEM_DIR_MM = 0.5
+_DESENHO_FONTE_COTA_MM = 7 * _PT_MM
+_DESENHO_FONTE_MAX_MM = 8 * _PT_MM
+_DESENHO_FONTE_MIN_MM = 5 * _PT_MM
+
+_TIPO_ENFESTO = ("MESMA_FACE", "FACE_A_FACE")
+NOME_TIPO_ENFESTO = {"MESMA_FACE": "Face única", "FACE_A_FACE": "Face a face"}
 
 
 def _dec(valor, casas: int = 3) -> Decimal:
@@ -109,7 +133,7 @@ def _grades(itens: list[ItemOrdemCorte]) -> list[dict]:
     return saida
 
 
-# ── Miniatura SVG ─────────────────────────────────────────────────────────────
+# ── Desenho da mesa ───────────────────────────────────────────────────────────
 
 
 def _rotacionar(pts: list, graus: float) -> list[tuple[float, float]]:
@@ -120,13 +144,116 @@ def _rotacionar(pts: list, graus: float) -> list[tuple[float, float]]:
     return [(x * c - y * s, x * s + y * c) for x, y in pts]
 
 
-def miniatura_svg(mapa: dict | None) -> Markup:
-    """Contorno do tecido + peças (só traço preto) em escala. Mesma
-    geometria do VisualizadorEncaixe: o motor devolve pl.x ao longo da
-    LARGURA e pl.y ao longo do COMPRIMENTO; o polígono é rotacionado na
-    origem e normalizado pelo canto do bounding box. A metade espelhada de
-    um par (motor v2: polígono já virado + espelhada=True) sai tracejada.
-    Sem dados → ""."""
+def _pontos_tela(pl: dict) -> list[tuple[float, float]] | None:
+    """Polígono da peça em cm na tela, no referencial do motor: X = largura
+    do tecido (pl.x + x), Y = comprimento da mesa (pl.y + y, 0 = início da
+    mesa, em cima). Rotacionado na origem e normalizado pelo canto do
+    bounding box, como no VisualizadorEncaixe. Dados inválidos → None."""
+    try:
+        pts = _rotacionar(pl["polygon"], float(pl.get("rotation") or 0))
+        min_x = min(x for x, _ in pts)
+        min_y = min(y for _, y in pts)
+        ox, oy = float(pl.get("x") or 0), float(pl.get("y") or 0)
+    except (TypeError, ValueError, KeyError):
+        return None
+    return [(ox + (x - min_x), oy + (y - min_y)) for x, y in pts]
+
+
+def _cm(valor: float) -> str:
+    """150.0 → "150 cm"; 149.5 → "149,5 cm"."""
+    return f"{valor:.0f} cm" if abs(valor - round(valor)) < 0.05 else f"{valor:.1f} cm".replace(".", ",")
+
+
+def _centro(pts: list[tuple[float, float]]) -> tuple[float, float]:
+    """Centroide do polígono (fórmula do laço); área ~0 → centro do bounding box."""
+    a = cx = cy = 0.0
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:] + pts[:1]):
+        f = x0 * y1 - x1 * y0
+        a += f
+        cx += (x0 + x1) * f
+        cy += (y0 + y1) * f
+    if abs(a) < 1e-9:
+        xs, ys = [x for x, _ in pts], [y for _, y in pts]
+        return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    return cx / (3 * a), cy / (3 * a)
+
+
+def _trecho(poligono: Polygon, centro: Point, a: tuple[float, float], b: tuple[float, float]) -> tuple[float, Point]:
+    """Trecho da reta a–b que fica DENTRO da peça e passa pelo centro: (o
+    comprimento — espaço livre para o texto naquela direção —, o ponto do
+    meio do trecho). Nada → (0, centro)."""
+    corte = LineString([a, b]).intersection(poligono)
+    partes = [g for g in getattr(corte, "geoms", [corte]) if g.length and g.distance(centro) < 1e-6]
+    if not partes:
+        return 0.0, centro
+    trecho = max(partes, key=lambda g: g.length)
+    return trecho.length, trecho.interpolate(0.5, normalized=True)
+
+
+def _espaco(pts: list[tuple[float, float]]) -> tuple[Point, Point, float, float]:
+    """Onde escrever o nome da peça: (meio do trecho livre na horizontal,
+    meio do trecho livre na vertical, comprimento de cada trecho).
+
+    Os trechos passam pelo ponto mais longe das bordas (polylabel), não pelo
+    centroide: em peça com fenda funda (FRENTE da legging) o centroide cai na
+    tira estreita e o nome atravessa o contorno. O texto é centrado no MEIO
+    do trecho na direção em que corre, para não sair da peça. Geometria
+    inválida → centroide e bounding box."""
+    xs, ys = [x for x, _ in pts], [y for _, y in pts]
+    try:
+        poligono = Polygon(pts).buffer(0)
+        if poligono.geom_type == "MultiPolygon":
+            poligono = max(poligono.geoms, key=lambda g: g.area)
+        centro = polylabel(poligono, tolerance=0.2)
+        livre_h, meio_h = _trecho(poligono, centro, (min(xs) - 1, centro.y), (max(xs) + 1, centro.y))
+        livre_v, meio_v = _trecho(poligono, centro, (centro.x, min(ys) - 1), (centro.x, max(ys) + 1))
+    except Exception:  # noqa: BLE001 — desenho nunca derruba o relatório
+        livre_h = livre_v = 0.0
+    if livre_h <= 0 or livre_v <= 0:
+        centro = Point(_centro(pts))
+        return centro, centro, max(xs) - min(xs), max(ys) - min(ys)
+    return meio_h, meio_v, livre_h, livre_v
+
+
+def _rotulo(pts: list[tuple[float, float]], linhas: list[str]) -> str:
+    """Texto no miolo da peça (pts em mm, ver _espaco). A fonte é a maior
+    que cabe no espaço livre, entre _DESENHO_FONTE_MIN_MM e
+    _DESENHO_FONTE_MAX_MM; o texto fica na horizontal e só gira para a
+    vertical em peça estreita (em pé), quando assim cabe bem maior."""
+    meio_h, meio_v, w, h = _espaco(pts)
+    n = max(len(t) for t in linhas)
+
+    def fonte(larg: float, alt: float) -> float:
+        # Tahoma negrito: ~0,62 em por caractere; linha = 1,15 em.
+        return min(larg * 0.85 / (n * 0.62), alt * 0.8 / (len(linhas) * 1.15))
+
+    horizontal, vertical = fonte(w, h), fonte(h, w)
+    girar = vertical > horizontal * 1.2
+    fs = max(_DESENHO_FONTE_MIN_MM, min(_DESENHO_FONTE_MAX_MM, vertical if girar else horizontal))
+    cx, cy = (meio_v.x, meio_v.y) if girar else (meio_h.x, meio_h.y)
+    # Primeira linha sobe metade do bloco; +0,35 em centraliza a altura da letra.
+    y0 = cy - (len(linhas) - 1) * fs * 1.15 / 2 + fs * 0.35
+    tspans = "".join(
+        f'<tspan x="{cx:.2f}" y="{y0 + i * fs * 1.15:.2f}">{escape(t)}</tspan>' for i, t in enumerate(linhas)
+    )
+    giro = f' transform="rotate(-90 {cx:.2f} {cy:.2f})"' if girar else ""
+    return f'<text font-size="{fs:.2f}"{giro}>{tspans}</text>'
+
+
+def _girar_180(pts: list[tuple[float, float]], largura: float, comprimento: float) -> list[tuple[float, float]]:
+    """Giro de 180° dentro do tecido: x → largura − x E y → comprimento − y
+    (os dois juntos — um eixo só espelharia a peça). O início da mesa (y = 0
+    no motor) passa para a borda de baixo, do lado do cortador."""
+    return [(largura - x, comprimento - y) for x, y in pts]
+
+
+def desenho_svg(mapa: dict | None) -> Markup:
+    """Desenho da mesa para o cortador (os dois formulários), em mm, DEITADO
+    e girado 180° (ver _girar_180): largura do tecido na horizontal com a
+    cota embaixo e "INÍCIO DA MESA" (cinza) logo abaixo dela; comprimento da
+    mesa na vertical com a cota à esquerda. Escala fixa (150 cm ≈ 100 mm) até
+    110 × 90 mm no total. Peças com "MOLDE TAMANHO" no centro (5 a 8 pt);
+    metade espelhada tracejada com "(esp.)". Só traço preto. Sem dados → ""."""
     mapa = mapa or {}
     try:
         largura = float(mapa.get("largura_cm") or 0)
@@ -137,39 +264,76 @@ def miniatura_svg(mapa: dict | None) -> Markup:
     if largura <= 0 or comprimento <= 0 or not placements:
         return Markup("")
 
-    escala = min(_MINI_LARGURA_MM / comprimento, _MINI_ALTURA_MAX_MM / largura)  # mm por cm
-    w_mm, h_mm = comprimento * escala, largura * escala
-    poligonos, espelhados = [], []
+    esq, topo, baixo = _DESENHO_MARGEM_ESQ_MM, _DESENHO_MARGEM_TOPO_MM, _DESENHO_MARGEM_BAIXO_MM
+    escala = min(
+        _DESENHO_ESCALA_MM_CM,
+        (_DESENHO_LARGURA_MAX_MM - esq - _DESENHO_MARGEM_DIR_MM) / largura,
+        (_DESENHO_ALTURA_MAX_MM - topo - baixo) / comprimento,
+    )  # mm por cm
+    w, h = largura * escala, comprimento * escala
+    pecas, rotulos = [], []
     for pl in placements:
-        try:
-            pts = _rotacionar(pl["polygon"], float(pl.get("rotation") or 0))
-            min_x = min(x for x, _ in pts)
-            min_y = min(y for _, y in pts)
-            ox, oy = float(pl.get("y") or 0), float(pl.get("x") or 0)
-        except (TypeError, ValueError, KeyError):
+        pts = _pontos_tela(pl)
+        if pts is None:
             continue
-        # Tela: X = comprimento (pl.y + y), Y = largura (pl.x + x).
-        pontos = " ".join(f"{ox + (y - min_y):.1f},{oy + (x - min_x):.1f}" for x, y in pts)
-        (espelhados if pl.get("espelhada") else poligonos).append(f'<polygon points="{pontos}"/>')
+        pts = [(esq + x * escala, topo + y * escala) for x, y in _girar_180(pts, largura, comprimento)]
+        pontos = " ".join(f"{x:.2f},{y:.2f}" for x, y in pts)
+        espelhada = bool(pl.get("espelhada"))
+        tracejado = ' stroke-dasharray="1 0.6"' if espelhada else ""
+        pecas.append(f'<polygon points="{pontos}"{tracejado}/>')
+        nome = " ".join(t for t in (_txt(pl.get("peca")), _txt(pl.get("tamanho"))) if t) or "PEÇA"
+        rotulos.append(_rotulo(pts, [nome, "(esp.)"] if espelhada else [nome]))
 
-    # Traço em unidades do viewBox (cm) para sair com espessura fixa em mm.
-    traco_tecido, traco_peca = 0.3 / escala, 0.15 / escala
-    tracejado = (
-        f'<g stroke-width="{traco_peca * 1.4:.3f}" stroke-dasharray="{1.2 / escala:.3f} {0.6 / escala:.3f}">'
-        f"{''.join(espelhados)}</g>"
-        if espelhados
-        else ""
+    # Cotas: linha com traços nas pontas, texto por fora do tecido — largura
+    # embaixo (e "INÍCIO DA MESA" logo abaixo dela), comprimento à esquerda.
+    # Textos das cotas e "INÍCIO DA MESA" em 7 pt.
+    fc = _DESENHO_FONTE_COTA_MM
+    yc, xc = topo + h + 1.8, esq - 1.8
+    y_largura = yc + 1.2 + fc
+    cotas = (
+        f'<g stroke-width="0.2">'
+        f'<line x1="{esq:.2f}" y1="{yc:.2f}" x2="{esq + w:.2f}" y2="{yc:.2f}"/>'
+        f'<line x1="{esq:.2f}" y1="{yc - 1.2:.2f}" x2="{esq:.2f}" y2="{yc + 1.2:.2f}"/>'
+        f'<line x1="{esq + w:.2f}" y1="{yc - 1.2:.2f}" x2="{esq + w:.2f}" y2="{yc + 1.2:.2f}"/>'
+        f'<line x1="{xc:.2f}" y1="{topo:.2f}" x2="{xc:.2f}" y2="{topo + h:.2f}"/>'
+        f'<line x1="{xc - 1.2:.2f}" y1="{topo:.2f}" x2="{xc + 1.2:.2f}" y2="{topo:.2f}"/>'
+        f'<line x1="{xc - 1.2:.2f}" y1="{topo + h:.2f}" x2="{xc + 1.2:.2f}" y2="{topo + h:.2f}"/>'
+        f"</g>"
+        f'<g fill="#000" stroke="none" font-size="{fc:.2f}" text-anchor="middle">'
+        f'<text x="{esq + w / 2:.2f}" y="{y_largura:.2f}">{_cm(largura)}</text>'
+        f'<text x="{xc - 1.4:.2f}" y="{topo + h / 2:.2f}" transform="rotate(-90 {xc - 1.4:.2f} {topo + h / 2:.2f})">'
+        f"{round(comprimento)} cm</text>"
+        f"</g>"
+        f'<text x="{esq + w / 2:.2f}" y="{y_largura + 0.9 + fc:.2f}" fill="#777" stroke="none" font-size="{fc:.2f}" '
+        f'font-weight="normal" text-anchor="middle">INÍCIO DA MESA</text>'
     )
+    largura_svg, altura_svg = esq + w + _DESENHO_MARGEM_DIR_MM, topo + h + baixo
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{w_mm:.1f}mm" height="{h_mm:.1f}mm" '
-        f'viewBox="0 0 {comprimento:.1f} {largura:.1f}" preserveAspectRatio="xMinYMin meet">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{largura_svg:.1f}mm" height="{altura_svg:.1f}mm" '
+        f'viewBox="0 0 {largura_svg:.2f} {altura_svg:.2f}" '
+        f'font-family="Tahoma, Verdana, sans-serif" font-weight="bold">'
         f'<g fill="none" stroke="#000" stroke-linejoin="round">'
-        f'<rect x="0" y="0" width="{comprimento:.1f}" height="{largura:.1f}" stroke-width="{traco_tecido:.3f}"/>'
-        f'<g stroke-width="{traco_peca:.3f}">{"".join(poligonos)}</g>'
-        f"{tracejado}"
-        f"</g></svg>"
+        f'<rect x="{esq}" y="{topo}" width="{w:.2f}" height="{h:.2f}" stroke-width="0.35"/>'
+        f'<g stroke-width="0.2">{"".join(pecas)}</g>'
+        f"{cotas}"
+        f"</g>"
+        f'<g fill="#000" text-anchor="middle">{"".join(rotulos)}</g>'
+        f"</svg>"
     )
     return Markup(svg)
+
+
+def tipo_enfesto(mapa: dict | None) -> str:
+    """MESMA_FACE | FACE_A_FACE gravado pela geração; ausente/inválido →
+    MESMA_FACE (encaixes de antes da decisão automática do enfesto)."""
+    valor = _txt((mapa or {}).get("tipo_enfesto")).upper()
+    return valor if valor in _TIPO_ENFESTO else "MESMA_FACE"
+
+
+def enfesto_texto(tipo: str, camadas: int) -> str:
+    """Campo ENFESTO do formulário: "Face a face · 6 camadas"."""
+    camadas = max(1, int(camadas or 1))
+    return f"{NOME_TIPO_ENFESTO.get(tipo, NOME_TIPO_ENFESTO['MESMA_FACE'])} · {camadas} camada{'s' if camadas != 1 else ''}"
 
 
 # ── Enfestos ──────────────────────────────────────────────────────────────────
@@ -228,11 +392,14 @@ def _moldes(mapa: dict, camadas: int) -> list[dict]:
 
 
 def _motor(mapa: dict) -> str:
-    """ "Motor v2 · Equilibrado" | "Motor v1" | "" (encaixe antigo)."""
-    motor = mapa.get("motor_usado")
-    if motor == "v2":
-        return f"Motor v2 · {_QUALIDADE.get(mapa.get('qualidade'), 'Equilibrado')}"
-    return "Motor v1" if motor == "v1" else ""
+    """ "Motor v2 · Automático (Máximo)" | "Motor v2 · Equilibrado" | "" (encaixe
+    antigo, gerado sem motor_usado)."""
+    if mapa.get("motor_usado") != "v2":
+        return ""
+    perfil = _QUALIDADE.get(mapa.get("qualidade_perfil") or mapa.get("qualidade"), "Equilibrado")
+    if mapa.get("qualidade") == "AUTOMATICO":
+        return f"Motor v2 · Automático ({perfil})"
+    return f"Motor v2 · {perfil}"
 
 
 def _parte(mapa: dict) -> tuple[int | None, int | None]:
@@ -274,6 +441,15 @@ def _enfesto(e: Encaixe, limite_oc: int) -> dict:
     grupos = _pecas_por_produto(mapa.get("pecas_por_tamanho") or [])
     pecas = [t for g in grupos for t in g["tamanhos"]]
     moldes = _moldes(mapa, camadas)
+    avisos = _pecas_acima_do_limite(mapa, limite)
+    tecido = {
+        "nome": _txt(mapa.get("tecido_nome")),
+        "modelo": _txt(cor.modelo.nome if cor and cor.modelo else ""),
+        "cor": _txt(cor.nome_cor if cor else ""),
+        "lote": _txt(lote.codigo_lote if lote else ""),
+    }
+    tipo = tipo_enfesto(mapa)
+    desenho = desenho_svg(mapa)
     return {
         "lote_id": str(e.lote_id) if e.lote_id else "",
         "numero": e.numero,
@@ -283,13 +459,8 @@ def _enfesto(e: Encaixe, limite_oc: int) -> dict:
         "parte_numero": parte,
         "total_partes": total_partes,
         "comprimento_max_cm": limite,
-        "avisos": _pecas_acima_do_limite(mapa, limite),
-        "tecido": {
-            "nome": _txt(mapa.get("tecido_nome")),
-            "modelo": _txt(cor.modelo.nome if cor and cor.modelo else ""),
-            "cor": _txt(cor.nome_cor if cor else ""),
-            "lote": _txt(lote.codigo_lote if lote else ""),
-        },
+        "avisos": avisos,
+        "tecido": tecido,
         "largura_util_cm": _dec(mapa.get("largura_cm") or (cor.largura_util_cm if cor else 0), 1),
         "comprimento_m": _dec(e.comp_metros, 3),
         "camadas": camadas,
@@ -307,8 +478,19 @@ def _enfesto(e: Encaixe, limite_oc: int) -> dict:
         # peso_kg do Encaixe é de UMA camada
         "peso_total_kg": _dec(float(e.peso_kg or 0) * camadas, 3),
         "aproveitamento": (_dec(100 - float(e.desperdicio_pct), 1) if e.desperdicio_pct is not None else None),
-        "miniatura_svg": miniatura_svg(mapa),
+        "tipo_enfesto": tipo,
+        "tipo_enfesto_nome": NOME_TIPO_ENFESTO[tipo],
+        "enfesto_texto": enfesto_texto(tipo, camadas),
+        "desenho_svg": desenho,
+        # Nome antigo do desenho: continua existindo (o mesmo desenho novo)
+        # para não quebrar variantes personalizadas do modelo.
+        "miniatura_svg": desenho,
     }
+
+
+def _nome_tecido(tecido: dict) -> str:
+    """ "MAXXI PRETO" (modelo + cor); sem cadastro, o nome gravado no mapa."""
+    return " ".join(t for t in (tecido["modelo"], tecido["cor"]) if t) or tecido["nome"]
 
 
 def _grupos(enfestos: list[dict]) -> list[dict]:
@@ -343,6 +525,40 @@ def _grupos(enfestos: list[dict]) -> list[dict]:
         g["comprimento_m"] = _dec(sum(m["comprimento_m"] for m in g["mesas"]), 3)
         g["peso_total_kg"] = _dec(sum(m["peso_total_kg"] for m in g["mesas"]), 3)
     return list(grupos.values())
+
+
+def _mesa(e: Encaixe, enf: dict, numero: int, total: int) -> dict:
+    """Uma mesa do formulário do cortador: o que estender (tecido, medidas,
+    enfesto) e o que cortar. pecas = vezes que o molde aparece no desenho
+    (espelhadas contam); o total cortado é pecas × camadas."""
+    mapa = e.mapa_json or {}
+    cortar = [
+        {"molde": m["molde"], "tamanho": m["tamanho"], "pecas": m["por_camada"], "espelhadas": m["espelhadas"]}
+        for g in enf["moldes"]
+        for m in g["moldes"]
+    ]
+    comprimento = float(mapa.get("comprimento_cm") or 0) or float(e.comp_metros or 0) * 100
+    # Hoje um enfesto tem uma cor só; a lista já comporta várias.
+    cores = [{"cor": enf["tecido"]["cor"] or "—", "camadas": enf["camadas"]}]
+    camadas = sum(c["camadas"] for c in cores)
+    return {
+        "numero_mesa": numero,
+        "total_mesas": total,
+        "tecido": enf["tecido"]["modelo"] or enf["tecido"]["nome"],
+        "tecido_cor": _nome_tecido(enf["tecido"]),
+        "lote": enf["tecido"]["lote"],
+        "comprimento_cm": round(comprimento),
+        "largura_cm": enf["largura_util_cm"],
+        "largura_texto": _cm(float(enf["largura_util_cm"] or 0)),
+        "cores": cores,
+        "camadas": camadas,
+        "cortar": cortar,
+        "avisos": enf["avisos"],
+        "tipo_enfesto": enf["tipo_enfesto"],
+        "tipo_enfesto_nome": enf["tipo_enfesto_nome"],
+        "enfesto_texto": enfesto_texto(enf["tipo_enfesto"], camadas),
+        "desenho_svg": enf["desenho_svg"],
+    }
 
 
 # ── Contexto ──────────────────────────────────────────────────────────────────
@@ -402,6 +618,8 @@ def montar(db: Session, id_registro: str) -> dict:
         "grades": _grades(list(oc.itens)),
         "enfestos": enfestos,
         "grupos": grupos,
+        # Mesas na ordem de corte (a dos encaixes), numeradas 1..N na OC.
+        "mesas": [_mesa(e, enf, i, len(encaixes)) for i, (e, enf) in enumerate(zip(encaixes, enfestos), 1)],
         "totais": {
             "pecas": sum(i.quantidade or 0 for i in oc.itens),
             "pecas_cortadas": sum(g["pecas_total"] for g in grupos),

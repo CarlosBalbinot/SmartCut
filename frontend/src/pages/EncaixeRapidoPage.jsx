@@ -1,11 +1,26 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getCoresDoModelo, getLotesDaCor, getModelos } from "../api/tecidos";
 import { buscarGrupos } from "../api/moldes";
-import { gerarEncaixeAutomatico, getPdfEncaixe } from "../api/encaixes";
+import {
+  cancelarJobEncaixeRapido,
+  gerarEncaixeRapido,
+  getEncaixeRapido,
+  getJobEncaixeRapido,
+  getPdfEncaixe,
+  validarEncaixeRapido,
+} from "../api/encaixes";
 import { getProximoNumeroPedidoVenda, createPedidoVenda, addItemPedidoVenda } from "../api/pedidos";
+import ProgressoEncaixe, {
+  CardMesa,
+  ResumoEnfesto,
+  RotuloMotor,
+  agruparEnfestos,
+  cardsGridClass,
+} from "../components/ProgressoEncaixe/ProgressoEncaixe";
 import styles from "./EncaixeRapidoPage.module.css";
 import useOverlayDismiss from "../hooks/useOverlayDismiss";
+import DecisaoEnfesto from "../components/DecisaoEnfesto/DecisaoEnfesto";
 
 const TAMANHOS_BASE = ["P", "M", "G", "GG"];
 const TAMANHOS_PLUS = ["P", "M", "G", "GG", "G1", "G2", "G3"];
@@ -24,6 +39,61 @@ const QTD_KEYS = ["qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_
 const COMP_MIN = 50;
 const COMP_MAX = 2000;
 const COMP_PADRAO = 150;
+
+// "Avançado" (recolhido): o enfesto é decidido pelo sistema (face única ou
+// face a face, sem sobra ou menos enfestos) e a qualidade é Automática; a
+// escolha manual fica aqui, para exceções.
+const QUALIDADES = [
+  { valor: "AUTOMATICO", rotulo: "Automático" },
+  { valor: "RAPIDO", rotulo: "Rápido" },
+  { valor: "EQUILIBRADO", rotulo: "Equilibrado" },
+  { valor: "MAXIMO", rotulo: "Máximo" },
+];
+const TIPOS_ENFESTO = [
+  { valor: "AUTOMATICO", rotulo: "Automático" },
+  { valor: "MESMA_FACE", rotulo: "Face única" },
+  { valor: "FACE_A_FACE", rotulo: "Face a face" },
+];
+const MODOS_CAMADAS = [
+  { valor: "AUTOMATICO", rotulo: "Automático" },
+  { valor: "SEM_SOBRA", rotulo: "Sem sobra" },
+  { valor: "MENOS_ENFESTOS", rotulo: "Menos enfestos" },
+];
+
+const IconeTesoura = () => (
+  <svg
+    width="28"
+    height="28"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="6" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <line x1="20" y1="4" x2="8.1" y2="15.9" />
+    <line x1="14.5" y1="14.5" x2="20" y2="20" />
+    <line x1="8.1" y1="8.1" x2="12" y2="12" />
+  </svg>
+);
+
+// Totais de todas as mesas do resultado (comprimento é de UMA camada — o
+// risco; peso e custo, de todas as camadas). Aproveitamento médio ponderado
+// pelo comprimento de cada mesa.
+function totaisResultado(encaixes) {
+  const soma = (f) => encaixes.reduce((s, e) => s + (Number(f(e)) || 0), 0);
+  const metros = soma((e) => e.comp_metros);
+  const ponderado = soma((e) => (e.aproveitamento_pct ?? 0) * (e.comp_metros ?? 0));
+  return {
+    metros,
+    peso: soma((e) => e.peso_total_kg),
+    custo: soma((e) => e.custo_total_camadas),
+    aproveitamento: metros > 0 ? ponderado / metros : null,
+  };
+}
 
 const moeda = (v) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v || 0);
@@ -51,6 +121,26 @@ const ITEM_VAZIO = {
   qtd_g3: "",
 };
 
+// Job em andamento guardado na sessão: recarregar a página retoma o
+// acompanhamento (a OC faz o mesmo pelo id na URL). sessionStorage some ao
+// fechar o app — junto com o backend, que leva o job.
+const CHAVE_JOB = "smartcut.encaixeRapido.job";
+
+const lerJobSalvo = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(CHAVE_JOB)) || null;
+  } catch {
+    return null;
+  }
+};
+
+const salvarJob = (job) => {
+  try {
+    if (job) sessionStorage.setItem(CHAVE_JOB, JSON.stringify(job));
+    else sessionStorage.removeItem(CHAVE_JOB);
+  } catch {}
+};
+
 const TM_VAZIO = {
   tmModeloId: "",
   tmCores: [],
@@ -68,21 +158,35 @@ export default function EncaixeRapidoPage() {
   });
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // id do Encaixe Rápido na URL (?id=<pedido_id>): abrir com ele recarrega a
+  // configuração e o resultado do backend, sem gerar de novo.
+  const idRapido = searchParams.get("id");
 
-  const [nome, setNome] = useState("");
+  const [nome, setNome] = useState(() => lerJobSalvo()?.nome ?? "");
   // Limite da mesa de corte (cm): risco maior sai dividido em partes.
   const [comprimentoMax, setComprimentoMax] = useState(String(COMP_PADRAO));
+  const [qualidade, setQualidade] = useState("AUTOMATICO");
+  const [tipoEnfesto, setTipoEnfesto] = useState("AUTOMATICO");
+  const [modoCamadas, setModoCamadas] = useState("AUTOMATICO");
   const [modelos, setModelos] = useState([]);
   const [tecidos, setTecidos] = useState([]);
   const [tecidoModal, setTecidoModal] = useState(null);
   const [pecas, setPecas] = useState([]);
 
   const [itemModal, setItemModal] = useState(null);
+  // gerando: criando o pedido interno e enfileirando; jobPedidoId: job no
+  // backend (o ProgressoEncaixe acompanha e entrega o resultado).
   const [gerando, setGerando] = useState(false);
+  const [jobPedidoId, setJobPedidoId] = useState(() => lerJobSalvo()?.pedidoId ?? null);
   const [resultado, setResultado] = useState(null);
   const [avisos, setAvisos] = useState([]);
+  const [problemas, setProblemas] = useState([]);
   const [erroGeral, setErroGeral] = useState(null);
   const [erroModal, setErroModal] = useState(null);
+  const [carregandoRecarga, setCarregandoRecarga] = useState(false);
+  // Encaixe com ?id= que falhou ao carregar (não existe mais, por exemplo).
+  const [erroRecarga, setErroRecarga] = useState(null);
   const searchTimer = useRef(null);
 
   useEffect(() => {
@@ -90,6 +194,42 @@ export default function EncaixeRapidoPage() {
       .then((m) => setModelos(m || []))
       .catch(() => {});
   }, []);
+
+  // ── Reabrir um Encaixe Rápido já gerado (?id= na URL) ──────────────────────
+  // Carrega configuração (nome, tecidos, peças, comprimento, qualidade) e o
+  // resultado do backend, sem gerar de novo nem retomar job.
+  useEffect(() => {
+    if (!idRapido || jobPedidoId || resultado || erroRecarga || carregandoRecarga) return;
+    let vivo = true;
+    setCarregandoRecarga(true);
+    getEncaixeRapido(idRapido)
+      .then((d) => {
+        if (!vivo) return;
+        const cfg = d.config || {};
+        setNome(cfg.nome || "");
+        setTecidos(cfg.tecidos || []);
+        setPecas(cfg.pecas || []);
+        setComprimentoMax(String(cfg.comprimento_max_cm ?? COMP_PADRAO));
+        setQualidade(cfg.qualidade || "AUTOMATICO");
+        const r = d.resultado || {};
+        setResultado(r);
+        setAvisos(r.avisos || []);
+        setErroGeral(null);
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setErroRecarga(
+          (e.message || "Não foi possível carregar este encaixe.") +
+            " Clique em “Novo encaixe” para começar do zero."
+        );
+      })
+      .finally(() => {
+        if (vivo) setCarregandoRecarga(false);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [idRapido, jobPedidoId, resultado, erroRecarga]);
 
   // ── Tecido modal handlers ──────────────────────────────────────────────────
   const abrirTecidoModal = () => setTecidoModal({ ...TM_VAZIO });
@@ -254,6 +394,7 @@ export default function EncaixeRapidoPage() {
     }
     setGerando(true);
     setErroGeral(null);
+    setProblemas([]);
     setResultado(null);
     setAvisos([]);
 
@@ -285,36 +426,84 @@ export default function EncaixeRapidoPage() {
         });
       }
 
-      // gerarAutomatico retorna {encaixes, avisos} — sem .catch: falhas
-      // agora sobem para o catch abaixo, que já exibe erroGeral na tela em
-      // vez de redirecionar silenciosamente.
-      const resposta = await gerarEncaixeAutomatico(pedido.id, cm);
-      const encaixe = resposta?.encaixes?.[0] ?? null;
-
-      if (encaixe?.id) {
-        setResultado({
-          encaixe_id: encaixe.id,
-          pedido_id: pedido.id,
-          aproveitamento: encaixe.desperdicio_pct != null ? 100 - encaixe.desperdicio_pct : null,
-          // Comprimento é de UMA camada (o risco do corte); peso e custo são
-          // de TODAS as camadas — mesmo critério das telas de encaixe.
-          metros: encaixe.comp_metros != null ? encaixe.comp_metros.toFixed(2) : null,
-          num_camadas: encaixe.num_camadas || 1,
-          peso: encaixe.peso_total_kg ?? encaixe.peso_kg,
-          custo: encaixe.custo_total_camadas ?? encaixe.custo_total,
-          // Enfesto dividido: as métricas acima são da primeira parte.
-          partes: encaixe.total_partes || 1,
-          comprimento_max_cm: cm,
-        });
-        setAvisos(resposta?.avisos ?? []);
-      } else {
-        navigate("/producao/encaixes");
+      // Valida as peças ANTES de enfileirar: peça mais larga que a largura
+      // útil do tecido ou polígono inválido param aqui, com o molde e o
+      // tecido citados. Os avisos (peça maior que a mesa) só informam.
+      const { problemas, avisos: avisosValidacao } = await validarEncaixeRapido(pedido.id, {
+        comprimentoMaxCm: cm,
+      });
+      if (problemas?.length) {
+        setProblemas(problemas);
+        setErroGeral(
+          "Não foi possível gerar o encaixe: resolva os problemas das peças abaixo. Nenhum encaixe foi gravado."
+        );
+        return;
       }
+      if (avisosValidacao?.length) setAvisos(avisosValidacao);
+
+      // 202 { job_id }: o encaixe roda em segundo plano; o resultado chega
+      // pelo ProgressoEncaixe (jobConcluido).
+      await gerarEncaixeRapido(pedido.id, {
+        comprimentoMaxCm: cm,
+        qualidade,
+        tipoEnfesto,
+        modoCamadas,
+      });
+      salvarJob({ pedidoId: pedido.id, nome });
+      setJobPedidoId(pedido.id);
     } catch (e) {
       setErroGeral(e.message || "Erro ao gerar encaixe.");
     } finally {
       setGerando(false);
     }
+  };
+
+  const jobConcluido = (estado) => {
+    const r = estado.resultado || {};
+    const encaixes = r.encaixes || [];
+    salvarJob(null);
+    setJobPedidoId(null);
+    if (!encaixes.length) {
+      navigate("/producao/encaixes");
+      return;
+    }
+    setResultado({
+      pedido_id: estado.pedido_id,
+      encaixes,
+      comprimento_max_cm: encaixes[0].comprimento_max_cm,
+      decisoes: r.decisoes ?? [],
+    });
+    setAvisos(r.avisos ?? []);
+    // Mantém a URL reabrível: /producao/encaixe-rapido?id=<pedido_id>
+    navigate(`/producao/encaixe-rapido?id=${estado.pedido_id}`, { replace: true });
+  };
+
+  // Cancelado, erro dispensado ou job perdido (backend reiniciou).
+  const jobEncerrado = (estado) => {
+    salvarJob(null);
+    setJobPedidoId(null);
+    if (estado?.status === "CANCELADO")
+      setErroGeral("Geração cancelada. Nenhum encaixe foi gravado.");
+    else if (estado?.status === "ERRO") setErroGeral(estado.erro || "Erro ao gerar encaixe.");
+    else setErroGeral("A geração foi interrompida (o servidor reiniciou?). Tente novamente.");
+  };
+
+  // "Novo encaixe": limpa a tela e remove o ?id= da URL (e o job salvo).
+  const novoEncaixe = () => {
+    salvarJob(null);
+    setJobPedidoId(null);
+    setResultado(null);
+    setAvisos([]);
+    setErroGeral(null);
+    setErroRecarga(null);
+    setNome("");
+    setTecidos([]);
+    setPecas([]);
+    setComprimentoMax(String(COMP_PADRAO));
+    setQualidade("AUTOMATICO");
+    setTipoEnfesto("AUTOMATICO");
+    setModoCamadas("AUTOMATICO");
+    setSearchParams({}, { replace: true });
   };
 
   const isPlus = itemModal?.selectedGrupo?.tem_plus;
@@ -354,6 +543,65 @@ export default function EncaixeRapidoPage() {
                 title="Limite da mesa. Riscos menores saem com o tamanho real; maiores são divididos em partes."
               />
             </label>
+            <details
+              className={styles.avancado}
+              open={
+                tipoEnfesto !== "AUTOMATICO" ||
+                modoCamadas !== "AUTOMATICO" ||
+                qualidade !== "AUTOMATICO" ||
+                undefined
+              }
+            >
+              <summary>Avançado</summary>
+              <p className={styles.avancadoNota}>
+                O sistema escolhe como estender cada tecido e explica o porquê no resultado. Use só
+                para exceções.
+              </p>
+              <label className={styles.field}>
+                <span>Tipo de enfesto</span>
+                <select
+                  className={styles.input}
+                  value={tipoEnfesto}
+                  onChange={(e) => setTipoEnfesto(e.target.value)}
+                  title="Face a face só vale para tecido sem direção e sem peça única assimétrica."
+                >
+                  {TIPOS_ENFESTO.map((t) => (
+                    <option key={t.valor} value={t.valor}>
+                      {t.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>Modo de camadas</span>
+                <select
+                  className={styles.input}
+                  value={modoCamadas}
+                  onChange={(e) => setModoCamadas(e.target.value)}
+                >
+                  {MODOS_CAMADAS.map((m) => (
+                    <option key={m.valor} value={m.valor}>
+                      {m.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span>Qualidade do encaixe</span>
+                <select
+                  className={styles.input}
+                  value={qualidade}
+                  onChange={(e) => setQualidade(e.target.value)}
+                  title="Automático escolhe o perfil pelo número de peças do enfesto: poucas → Máximo, médias → Equilibrado, muitas → Rápido."
+                >
+                  {QUALIDADES.map((q) => (
+                    <option key={q.valor} value={q.valor}>
+                      {q.rotulo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </details>
           </div>
 
           {/* ── Card Tecidos ── */}
@@ -441,140 +689,78 @@ export default function EncaixeRapidoPage() {
             </button>
           </div>
 
-          <button className={styles.btnGerar} onClick={handleGerar} disabled={gerando}>
-            {gerando ? "Gerando encaixe…" : "Gerar Encaixe"}
+          <button
+            className={styles.btnGerar}
+            onClick={handleGerar}
+            disabled={gerando || !!jobPedidoId}
+          >
+            {gerando ? "Preparando…" : jobPedidoId ? "Gerando encaixe…" : "Gerar Encaixe"}
           </button>
         </div>
 
         {/* ── Coluna direita ── */}
         <div className={styles.colRight}>
-          {gerando ? (
+          {jobPedidoId ? (
+            <div className={styles.resultCard}>
+              <ProgressoEncaixe
+                chave={jobPedidoId}
+                consultarJob={() => getJobEncaixeRapido(jobPedidoId)}
+                cancelarJob={() => cancelarJobEncaixeRapido(jobPedidoId)}
+                onConcluido={jobConcluido}
+                onFim={jobEncerrado}
+              />
+            </div>
+          ) : gerando ? (
             <div className={styles.emptyState}>
               <div className={styles.spinner} />
-              <p className={styles.emptyText}>Gerando encaixe…</p>
+              <p className={styles.emptyText}>Preparando o encaixe…</p>
+            </div>
+          ) : carregandoRecarga ? (
+            <div className={styles.emptyState}>
+              <div className={styles.spinner} />
+              <p className={styles.emptyText}>Carregando o encaixe salvo…</p>
+            </div>
+          ) : erroRecarga ? (
+            <div className={styles.errorState}>
+              <p className={styles.errorText}>{erroRecarga}</p>
+              <button className={styles.btnPrimary} onClick={novoEncaixe}>
+                Novo encaixe
+              </button>
             </div>
           ) : erroGeral ? (
             <div className={styles.errorState}>
               <p className={styles.errorText}>{erroGeral}</p>
+              {problemas.length > 0 && (
+                <ul className={styles.errorList}>
+                  {problemas.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
+                </ul>
+              )}
               <button className={styles.btnPrimary} onClick={handleGerar}>
                 Tentar novamente
               </button>
             </div>
           ) : !resultado ? (
             <div className={styles.emptyState}>
-              <div className={styles.emptyIcon}>✂</div>
+              <div className={styles.emptyIcon}>
+                <IconeTesoura />
+              </div>
               <p className={styles.emptyText}>
                 Configure as peças e clique em
                 <br />
                 <strong>Gerar Encaixe</strong>
               </p>
             </div>
-          ) : resultado.aproveitamento != null && resultado.aproveitamento <= 0 ? (
-            <div className={styles.warningState}>
-              {avisos.length > 0 ? (
-                avisos.map((aviso, i) => (
-                  <p key={i} className={styles.warningText}>
-                    {aviso}
-                  </p>
-                ))
-              ) : (
-                <p className={styles.warningText}>
-                  Nenhuma peça foi posicionada no tecido. Verifique a largura útil do tecido
-                  selecionado.
-                </p>
-              )}
-              <button className={styles.btnPrimary} onClick={handleGerar}>
-                Tentar novamente
-              </button>
-            </div>
           ) : (
-            <div className={styles.resultCard}>
-              <div className={styles.resultHeader}>
-                <p className={styles.resultTitle}>Encaixe gerado com sucesso</p>
-                <p className={styles.resultSub}>{nome || "Encaixe rápido"}</p>
-                {resultado.partes > 1 && (
-                  <p className={styles.resultSub}>
-                    Dividido em {resultado.partes} partes de até {resultado.comprimento_max_cm} cm —
-                    os valores abaixo são da parte 1.
-                  </p>
-                )}
-              </div>
-
-              <div className={styles.resultGrid}>
-                <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>Aproveitamento</span>
-                  <span
-                    className={styles.resultMetricValue}
-                    data-nivel={nivelAproveitamento(resultado.aproveitamento)}
-                  >
-                    {resultado.aproveitamento != null
-                      ? `${Number(resultado.aproveitamento).toFixed(1)}%`
-                      : "—"}
-                  </span>
-                </div>
-                <div className={styles.resultMetric}>
-                  <span
-                    className={styles.resultMetricLabel}
-                    title="Comprimento de uma camada (risco)"
-                  >
-                    Comprimento do risco
-                  </span>
-                  <span className={styles.resultMetricValue}>
-                    {resultado.metros != null ? `${resultado.metros} m` : "—"}
-                  </span>
-                </div>
-                <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>
-                    Peso total ({resultado.num_camadas} camada
-                    {resultado.num_camadas !== 1 ? "s" : ""})
-                  </span>
-                  <span className={styles.resultMetricValue}>
-                    {resultado.peso != null ? `${Number(resultado.peso).toFixed(3)} kg` : "—"}
-                  </span>
-                </div>
-                <div className={styles.resultMetric}>
-                  <span className={styles.resultMetricLabel}>Custo total</span>
-                  <span className={styles.resultMetricValue}>
-                    {resultado.custo != null ? moeda(resultado.custo) : "—"}
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.resultActions}>
-                <button
-                  className={styles.btnPrimary}
-                  onClick={() => navigate(`/producao/encaixes/${resultado.encaixe_id}`)}
-                >
-                  Ver encaixe completo →
-                </button>
-                <button
-                  className={styles.btnDownload}
-                  onClick={async () => {
-                    try {
-                      const blob = await getPdfEncaixe(resultado.pedido_id);
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `corte-encaixe.pdf`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    } catch {}
-                  }}
-                >
-                  ↓ Baixar PDF de Corte
-                </button>
-              </div>
-
-              {avisos.length > 0 && (
-                <div className={styles.avisoBanner}>
-                  {avisos.map((aviso, i) => (
-                    <p key={i}>{aviso}</p>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ResultadoRapido
+              resultado={resultado}
+              avisos={avisos}
+              nome={nome}
+              onTentar={handleGerar}
+              onNovo={novoEncaixe}
+              onVer={(id) => navigate(`/producao/encaixes/${id}`)}
+            />
           )}
         </div>
       </div>
@@ -775,6 +961,123 @@ export default function EncaixeRapidoPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Resultado: totais, mesas por enfesto (cards com a linha de moldes) ─────────
+
+function ResultadoRapido({ resultado, avisos, nome, onTentar, onNovo, onVer }) {
+  const { encaixes } = resultado;
+  const t = totaisResultado(encaixes);
+  const enfestos = agruparEnfestos(encaixes);
+
+  if (t.aproveitamento != null && t.aproveitamento <= 0)
+    return (
+      <div className={styles.warningState}>
+        {avisos.length > 0 ? (
+          avisos.map((aviso, i) => (
+            <p key={i} className={styles.warningText}>
+              {aviso}
+            </p>
+          ))
+        ) : (
+          <p className={styles.warningText}>
+            Nenhuma peça foi posicionada no tecido. Verifique a largura útil do tecido selecionado.
+          </p>
+        )}
+        <button className={styles.btnPrimary} onClick={onTentar}>
+          Tentar novamente
+        </button>
+      </div>
+    );
+
+  const baixarPdf = async () => {
+    try {
+      const blob = await getPdfEncaixe(resultado.pedido_id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `corte-encaixe.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {}
+  };
+
+  return (
+    <div className={styles.resultCard}>
+      <div className={styles.resultHeader}>
+        <p className={styles.resultTitle}>Encaixe gerado com sucesso</p>
+        <p className={styles.resultSub}>
+          {nome || "Encaixe rápido"} · {encaixes.length} {encaixes.length === 1 ? "mesa" : "mesas"}{" "}
+          de até {resultado.comprimento_max_cm} cm
+        </p>
+        <RotuloMotor encaixes={encaixes} />
+      </div>
+
+      <div className={styles.resultGrid}>
+        <div className={styles.resultMetric}>
+          <span className={styles.resultMetricLabel}>Aproveitamento médio</span>
+          <span
+            className={styles.resultMetricValue}
+            data-nivel={nivelAproveitamento(t.aproveitamento)}
+          >
+            {t.aproveitamento != null ? `${t.aproveitamento.toFixed(1)}%` : "—"}
+          </span>
+        </div>
+        <div className={styles.resultMetric}>
+          <span
+            className={styles.resultMetricLabel}
+            title="Soma do comprimento de uma camada de cada mesa"
+          >
+            Comprimento dos riscos
+          </span>
+          <span className={styles.resultMetricValue}>{t.metros.toFixed(2)} m</span>
+        </div>
+        <div className={styles.resultMetric}>
+          <span className={styles.resultMetricLabel}>Peso total</span>
+          <span className={styles.resultMetricValue}>{t.peso.toFixed(3)} kg</span>
+        </div>
+        <div className={styles.resultMetric}>
+          <span className={styles.resultMetricLabel}>Custo total</span>
+          <span className={styles.resultMetricValue}>{moeda(t.custo)}</span>
+        </div>
+      </div>
+
+      <DecisaoEnfesto decisoes={resultado.decisoes} />
+
+      {enfestos.map((g) => (
+        <section key={g.chave}>
+          <ResumoEnfesto grupo={g} />
+          <div className={cardsGridClass}>
+            {g.mesas.map((e) => (
+              <CardMesa key={e.id} encaixe={e} />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <div className={styles.resultActions}>
+        <button className={styles.btnPrimary} onClick={() => onVer(encaixes[0].id)}>
+          Ver encaixe completo →
+        </button>
+        <button className={styles.btnDownload} onClick={baixarPdf}>
+          ↓ Baixar PDF de Corte
+        </button>
+        <button className={styles.btnSecondary} onClick={onNovo}>
+          Novo encaixe
+        </button>
+      </div>
+
+      {avisos.length > 0 && (
+        <div className={styles.avisoBanner}>
+          {avisos.map((aviso, i) => (
+            <p key={i}>{aviso}</p>
+          ))}
         </div>
       )}
     </div>

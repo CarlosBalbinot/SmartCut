@@ -75,7 +75,12 @@ export default function TecidosPage() {
   // Modal Novo Modelo
   const [modalModelo, setModalModelo] = useState(false);
   const [editandoModelo, setEditandoModelo] = useState(null);
-  const [formModelo, setFormModelo] = useState({ nome: "", tipo: "", max_camadas: "15" });
+  const [formModelo, setFormModelo] = useState({
+    nome: "",
+    tipo: "",
+    max_camadas: "15",
+    tem_direcao: false,
+  });
   const [erroModelo, setErroModelo] = useState(null);
   const [salvandoModelo, setSalvandoModelo] = useState(false);
 
@@ -158,14 +163,19 @@ export default function TecidosPage() {
   // ── Modelo CRUD ───────────────────────────────────────────────────
 
   function abrirNovoModelo() {
-    setFormModelo({ nome: "", tipo: "", max_camadas: "15" });
+    setFormModelo({ nome: "", tipo: "", max_camadas: "15", tem_direcao: false });
     setErroModelo(null);
     setEditandoModelo(null);
     setModalModelo(true);
   }
 
   function abrirEditarModelo(m) {
-    setFormModelo({ nome: m.nome, tipo: m.tipo ?? "", max_camadas: String(m.max_camadas) });
+    setFormModelo({
+      nome: m.nome,
+      tipo: m.tipo ?? "",
+      max_camadas: String(m.max_camadas),
+      tem_direcao: !!m.tem_direcao,
+    });
     setErroModelo(null);
     setEditandoModelo(m);
     setModalModelo(true);
@@ -179,6 +189,7 @@ export default function TecidosPage() {
       nome: formModelo.nome,
       tipo: formModelo.tipo || null,
       max_camadas: Number(formModelo.max_camadas) || 15,
+      tem_direcao: !!formModelo.tem_direcao,
     };
     try {
       if (editandoModelo) {
@@ -422,6 +433,20 @@ export default function TecidosPage() {
                   onPaste={bloquearColarDecimal}
                 />
               </div>
+            </div>
+            <div className={ts.campo}>
+              <label className={ts.checkbox}>
+                <input
+                  type="checkbox"
+                  checked={formModelo.tem_direcao}
+                  onChange={(e) => setFormModelo((p) => ({ ...p, tem_direcao: e.target.checked }))}
+                />
+                <span className={ts.label}>Tecido com direção (estampa ou pelo)</span>
+              </label>
+              <span className={ts.hint}>
+                Marque se o tecido não pode ser virado: o enfesto será sempre com o lado direito
+                para cima.
+              </span>
             </div>
             <div className={ts.formActions}>
               <button

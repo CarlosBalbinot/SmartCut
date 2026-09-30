@@ -11,8 +11,7 @@
 | PDFs | ReportLab | — |
 | Gráficos | Recharts | — |
 | Autenticação | JWT | Painel vendedor |
-| Nesting (provisório) | Node.js skyline packer | — |
-| Nesting (futuro) | Deepnest C++ | via Docker/WSL |
+| Encaixe | Python: spyrrow (strip packing) + OR-Tools CP-SAT | 2.x / 9.x |
 | Desktop | Electron | Fase 3 |
 
 ---
@@ -47,8 +46,8 @@ SmartCut/
 │   │   ├── vendedores.py
 │   │   └── financeiro.py
 │   ├── services/
-│   │   └── nesting/
-│   │       └── engine/          # Deepnest C++ (compilar para Windows)
+│   │   ├── planejamento/        # decisões antes do motor (custo/orçamento, grupos)
+│   │   └── nesting_v2/          # motor de encaixe v2 (spyrrow + OR-Tools)
 │   ├── uploads/
 │   │   ├── logos/
 │   │   ├── moldes/              # Arquivos PLT/DXF/ADS originais
@@ -99,7 +98,7 @@ SmartCut/
 │
 ├── CLAUDE.md                    # Contexto persistente para Claude Code
 ├── ROADMAP.md                   # Cópia na raiz para acesso rápido
-├── .claudeignore                # node_modules/, svgnest/, uploads/
+├── .claudeignore                # node_modules/, uploads/
 └── .gitignore
 ```
 
@@ -227,7 +226,7 @@ camadas = min(ceil(qtd / pecas_por_enfesto), max_camadas)
 1. Sempre especificar quais arquivos ler (máx 3-4 por prompt)
 2. Sempre pedir para ler antes de escrever — nunca assumir nomes de variáveis
 3. Usar `/compact` entre sessões longas
-4. `.claudeignore` ignora: `node_modules/`, `svgnest/`, `uploads/`
+4. `.claudeignore` ignora: `node_modules/`, `uploads/`
 5. **Sem azul no CSS** — usar apenas neutros quentes + cor principal definida
 6. PDFs: A4, preto e branco, com logo da empresa
 7. Comando Python: sempre `py -3.12 -m` (não `python` nem `py -3.11`)

@@ -393,7 +393,7 @@ ipcMain.handle('relatorio:gerar-pdf', async (event, codigo, id, opcoes) => {
 // variável de ambiente SMARTCUT_UPDATE_URL aponta para o repositório de
 // distribuição (ex.: https://downloads.vaidosafitness.com/smartcut/).
 //
-// Para teste local: `python -m http.server 8002 --directory release` (ou
+// Para teste local: `py -3.12 -m http.server 8002 --directory release` (ou
 // similar) e rodar o app com SMARTCUT_UPDATE_URL=http://127.0.0.1:8002 — uma
 // versão "mais nova" no release/ é detectada, baixada e instalada no fechamento.
 function configureAutoUpdate() {

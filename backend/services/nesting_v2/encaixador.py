@@ -4,8 +4,8 @@ O spyrrow faz *strip packing*: a faixa tem altura fixa (`strip_height`, aqui a
 largura útil do tecido) e o comprimento é o que ele minimiza. Uma mesa = uma
 StripPackingInstance.
 
-O motor v1 (skyline por bounding box, em Node.js) posicionava pelo bounding
-box; aqui entra o polígono real, que é a maior parte do ganho.
+    Em vez do bounding box, aqui entra o polígono real — é a maior parte do
+    ganho de aproveitamento.
 
 Troca de referencial (o ponto que mais custa errar):
   spyrrow:  x = ao longo da faixa (o comprimento), y = dentro da altura fixa
@@ -26,12 +26,18 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass, field
 
-import spyrrow
+try:
+    import spyrrow
+
+    ERRO_IMPORT: str | None = None
+except Exception as err:  # noqa: BLE001 — exe sem o v2: o backend sobe e usa o v1
+    spyrrow = None
+    ERRO_IMPORT = f"spyrrow: {type(err).__name__}: {err}"
 
 from services.nesting_v2.geometria import EPS_CM, Unidade, rotacionar
 
 # Um Item por forma+rotações distintas; o id do spyrrow é o índice do grupo.
-_Item = tuple[spyrrow.Item, list[Unidade]]
+_Item = tuple["spyrrow.Item", list[Unidade]]
 
 # Teto de threads do spyrrow por chamada. Sem teto ele usa todos os núcleos
 # lógicos, e a rodada longa do M0 caiu por falta de memória; 2 é o que o M1-B

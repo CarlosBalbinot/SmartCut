@@ -94,7 +94,6 @@ camadas = min(ceil(qtd / pecas_por_enfesto), max_camadas)
 
 Os seguintes diretórios são ignorados — não ler, não modificar:
 - `node_modules/`
-- `svgnest/`
 - `uploads/`
 
 ---
@@ -106,7 +105,7 @@ Os seguintes diretórios são ignorados — não ler, não modificar:
 | Tecidos | ✅ Completo | CADASTROS → Tecidos |
 | Moldes | ⚠️ Funcional com bugs | CADASTROS → Moldes |
 | Encaixe Rápido | ✅ Completo | PRODUÇÃO → Encaixe Rápido |
-| Encaixes | ⚠️ Motor provisório | PRODUÇÃO → Encaixes |
+| Encaixes | ✅ Completo | PRODUÇÃO → Encaixes |
 | Pedidos de Venda | ⚠️ Bugs conhecidos | VENDAS → Pedidos |
 | Precificação | ✅ Completo | GESTÃO → Precificação |
 | Projeção | ✅ Completo | GESTÃO → Projeção |

@@ -47,13 +47,13 @@ Sobre o **certificado digital NF-e** (itens 4.1/4.2):
 ### Gerando segredos fortes
 
 ```bash
-python -c "import secrets; print(secrets.token_hex(32))"
+py -3.12 -c "import secrets; print(secrets.token_hex(32))"
 # ou, com OpenSSL:
 openssl rand -hex 32
 ```
 
 Use o valor gerado como `SECRET_KEY`. Para `POSTGRES_PASSWORD` use algo forte
-(ex.: `python -c "import secrets; print(secrets.token_urlsafe(24))"`).
+(ex.: `py -3.12 -c "import secrets; print(secrets.token_urlsafe(24))"`).
 
 ### Rotação de segredos
 
@@ -278,12 +278,12 @@ criava tabelas novas e nunca alterava tabelas existentes). Agora:
 cd backend
 # 1. Edite o model (models/*.py).
 # 2. Gere a migração a partir da diferença entre models e banco:
-python -m alembic revision --autogenerate -m "descreva_a_mudanca"
+py -3.12 -m alembic revision --autogenerate -m "descreva_a_mudanca"
 # 3. REVISE o arquivo gerado em alembic/versions/ (nunca confie cegamente).
 # 4. Aplique localmente:
-python -m alembic upgrade head
+py -3.12 -m alembic upgrade head
 # 5. Confira que não sobrou drift:
-python -m alembic check
+py -3.12 -m alembic check
 ```
 
 Nos contêineres e no desktop a migração é aplicada automaticamente no boot.

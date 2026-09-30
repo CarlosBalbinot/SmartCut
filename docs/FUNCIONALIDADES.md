@@ -51,6 +51,14 @@ Permite fazer um encaixe sem criar um pedido completo:
 - Seleciona múltiplos tecidos em cascata
 - Cor do tecido é aplicada automaticamente na visualização
 - Resultado mostra aproveitamento (%)
+- Antes de gerar, as peças são validadas: peça mais larga que a largura útil
+  do tecido ou geometria de molde inválida impedem a geração, com o nome do
+  molde e do tecido na mensagem; peça maior que a mesa só avisa
+- Qualidade **Automática** por padrão (o perfil sai do número de peças do
+  enfesto) ou RÁPIDO/EQUILIBRADO/MÁXIMO no seletor "Avançado"
+- Se o motor falhar, ele tenta de novo automaticamente (outra semente, perfil
+  Rápido); na segunda falha nada é gravado e a mensagem diz que os encaixes
+  anteriores foram mantidos
 
 ---
 
@@ -58,9 +66,67 @@ Permite fazer um encaixe sem criar um pedido completo:
 **Localização**: Menu → PRODUÇÃO → Encaixes
 
 Encaixes completos vinculados a pedidos ou criados manualmente.
-Motor de nesting atual: **Node.js skyline packer** (~58% de aproveitamento típico).
+Motor de encaixe atual: **spyrrow + OR-Tools** (spyrrow = strip packing de peças
+irregulares; OR-Tools CP-SAT divide o enfesto em mesas), qualidade Automática por
+padrão ou RÁPIDO/EQUILIBRADO/MÁXIMO no seletor "Avançado".
 
-**Planejado mas não implementado:**
+A qualidade Automática é resolvida por **orçamento de tempo**, não por contagem
+de peças: cada risco começa no perfil Rápido e sobe um degrau (Equilibrado,
+Máximo) enquanto sobrar tempo, na fila dos riscos mais pesados, dentro do limite
+de Configurações > Produção > "Tempo limite da ordem de corte (s)" (padrão
+300 s). O preço de cada risco é estimado antes de qualquer encaixe
+(`backend/services/planejamento/custo.py`) e a escolha fica registrada no
+`mapa_json` do risco (`qualidade_automatica`). Quando nem o perfil mais barato
+cabe no limite, a geração avisa que vai passar do prazo.
+
+O limite vale para a **ordem inteira**: a comparação de enfesto (que roda os
+candidatos no perfil Rápido para escolher face única ou face a face) acontece
+antes e sai da mesma conta. Antes ela tinha um relógio à parte (teto fixo de
+180 s, `decisor.TEMPO_COMPARACAO_S`) e o gasto não era do limite de ninguém:
+na OC-0004 ela consumiu 180 s dos 300 s, gastados deciding um único lote e
+deixando os outros dois no padrão — para escolher, no fim, o próprio padrão
+seguro. Agora ela ganha **me metade da folga** que sobrar depois do piso do
+pedido (o plano mais barato possível, estimado sem rodar o motor). Se o piso
+já come o limite inteiro, a comparação não roda e o motivo na tela diz
+exatamente isso. Dentro da folga, os candidatos são simulados do mais barato
+para o mais caro e só começam se der tempo — então o mesmo segundo decide
+mais lotes, e a OC sai igual em execuções diferentes.
+
+Medido na OC-0004 (300 un de legging, 3 lotes, 324 peças, mesa de 150 cm) com
+`backend/scripts/medir_oc.py`, no banco de cópia. As duas últimas colunas são
+faixas de três rodadas:
+
+| | perfil antigo (por contagem de peças) | só o orçamento de qualidade | + comparação orçada |
+|---|---|---|---|
+| Tempo | 2.008 s | 358,7 s | **278 a 281 s** |
+| Tecido | 42,88 m | 43,29 m | 42,76 a 43,24 m |
+| Mesas | 37 | 37 | 37 |
+| Perfis dos 8 riscos | 8 Máximo | 8 Rápido | 8 Rápido |
+
+7,2× mais rápido que o perfil antigo, com o mesmo tecido (dentro da tolerância
+de 2%) e as mesmas 37 mesas. A comparação orçada rende 80 s sobre os 358,7 s
+— e não os 180 s que ela consumia, porque parte daqueles 180 s não era
+desperdício: a geração reaproveita do cache o que a comparação já rodou no
+perfil Rápido. O que se economiza é a refação. O que muda de verdade é o
+resultado: **~279 s cabe nos 300 s que o usuário cadastrou; 358,7 s não
+cabia.**
+
+O que ficou determinístico é a **decisão**: com o piso ocupando o limite
+inteiro, os três lotes vão para o padrão seguro sempre, pelo mesmo motivo, sem
+depender de qual lote o relógio deixasse decidir primeiro. Nas três rodadas
+saíram sempre as mesmas 37 mesas e os 8 riscos no Rápido. O **desenho** ainda
+oscila um pouco (0,5% de tecido entre rodadas) porque o motor tem teto de tempo
+por enfesto (`QUALIDADES["RAPIDO"]["tempo_max_s"]`) e o empacotamento final
+depende de quanto tempo a máquina deu — isso é do motor, não da decisão, e é
+anterior a este trabalho.
+
+O aviso de "vai passar do prazo" aparece mesmo nesta OC, porque o estimador é
+deliberadamente pessimista (306 s estimados para 279 s medidos: ele erra para o
+lado caro para não estourar o prazo). O texto avisa que a estimativa é o teto,
+não a média.
+
+**Histórico:**
+- Node.js skyline packer (~58% de aproveitamento típico) — removido em 2026-09-29.
 - Deepnest C++ — compilado para Mac, não roda no Windows. Requer recompilação via Docker/WSL.
 
 ---

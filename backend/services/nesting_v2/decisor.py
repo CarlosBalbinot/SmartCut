@@ -1,0 +1,333 @@
+"""decisor.py — o sistema escolhe o tipo de enfesto e o modo de camadas.
+
+O usuário não escolhe como estender: para cada lote de tecido o sistema
+avalia as alternativas válidas, fica com a melhor e explica o porquê. Aqui
+fica a parte PURA da decisão (sem banco e sem motor); quem roda as
+simulações é services/nesting_service.py (_decidir_lote).
+
+Tipos de enfesto
+----------------
+  MESMA_FACE ("Face única") — todas as camadas com o lado direito para
+      cima; corta no fim da mesa e volta ao início. Peça em par entra DUAS
+      vezes no desenho, a 2ª espelhada (geometria.espelha_segunda_copia).
+  FACE_A_FACE ("Face a face") — estende indo e voltando, virando o tecido a
+      cada camada. Peça em par entra duas vezes SEM espelho: a alternância
+      das camadas faz a direita e a esquerda — por isso exige camadas pares
+      quando há peça em par (plano_enfesto, camadas_pares=True).
+
+Face a face é inválido quando:
+  * o tecido tem direção (estampa ou pelo) — não pode ser virado;
+  * há peça ÚNICA assimétrica — metade das camadas a cortaria espelhada;
+  * o lote tem 1 camada (regra da produção: 1 camada é sempre face única)
+    ou o tecido aceita no máximo 1 camada.
+
+Critério (escolher)
+-------------------
+  1. menor consumo de tecido: metros × camadas, todas as mesas;
+  2. empate técnico (diferença < EMPATE_PCT): candidato sem sobra antes de
+     um com sobra; depois o tipo preferido pelas regras da produção —
+     produto "dupla" (peças em par, ou camadas naturalmente pares) → face a
+     face; 2 ou 3 camadas → face única; senão face a face (mais rápido de
+     estender); depois menos mesas, menos camadas;
+  3. sobra de peças só vence se for o menor consumo fora do empate.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
+
+from shapely.geometry import Polygon
+
+from services.nesting_v2.geometria import PARES, eixo_do_fio, espelhar, normalizar
+
+MESMA_FACE = "MESMA_FACE"
+FACE_A_FACE = "FACE_A_FACE"
+TIPOS = (MESMA_FACE, FACE_A_FACE)
+AUTOMATICO = "AUTOMATICO"
+NOME_TIPO = {MESMA_FACE: "Face única", FACE_A_FACE: "Face a face"}
+NOME_MODO = {"SEM_SOBRA": "sem sobra", "MENOS_ENFESTOS": "menos enfestos"}
+
+PAR = "PAR"
+UNICO_SIMETRICO = "UNICO_SIMETRICO"
+UNICO_ASSIMETRICO = "UNICO_ASSIMETRICO"
+
+# Simetria: diferença simétrica entre a peça e o espelho dela no eixo do fio,
+# dividida pelo perímetro — a "largura média" do desvio, em cm.
+TOLERANCIA_SIMETRIA_CM = 0.3
+# Diferença de consumo abaixo da qual dois candidatos empatam (%).
+EMPATE_PCT = 1.0
+# Teto da comparação (simulações RÁPIDO dos candidatos, todos os lotes).
+# É só um TETO: o orçamento de verdade é uma fatia do limite da Ordem de Corte
+# (nesting_service.FOLHA_COMPARACAO), porque a comparação roda o motor e esse
+# tempo sai da mesma conta do usuário. Sem folga nenhuma, a comparação não roda
+# — e todos os lotes vão para o padrão seguro, registrado no motivo.
+TEMPO_COMPARACAO_S = 180.0
+
+
+# ── Peças ────────────────────────────────────────────────────────────────────
+
+
+def desvio_simetria_cm(poligono: list[list[float]], rotacoes: Iterable[float]) -> float:
+    """Largura média (cm) do que muda quando a peça é espelhada no eixo do
+    fio. 0 = simétrica. Geometria inválida → infinito (conta como
+    assimétrica: na dúvida, não se vira a peça)."""
+    try:
+        base = normalizar(poligono)
+        original = Polygon(base).buffer(0)
+        virada = Polygon(espelhar(base, eixo_do_fio(tuple(float(r) for r in rotacoes)))).buffer(0)
+        if original.is_empty or original.length <= 0:
+            return float("inf")
+        return original.symmetric_difference(virada).area / original.length
+    except Exception:  # noqa: BLE001
+        return float("inf")
+
+
+def classificar(
+    poligono: list[list[float]],
+    rotacoes: Iterable[float],
+    tipo_corte: str | None,
+    tolerancia_cm: float = TOLERANCIA_SIMETRIA_CM,
+) -> str:
+    """PAR (par / par_sem_espelho), UNICO_SIMETRICO ou UNICO_ASSIMETRICO."""
+    if (tipo_corte or "simples") in PARES:
+        return PAR
+    return UNICO_SIMETRICO if desvio_simetria_cm(poligono, rotacoes) <= tolerancia_cm else UNICO_ASSIMETRICO
+
+
+@dataclass
+class PecaAnalise:
+    """O que o decisor precisa de um molde."""
+
+    nome: str
+    poligono: list[list[float]]
+    rotacoes: tuple[float, ...]
+    tipo_corte: str
+
+
+@dataclass
+class Analise:
+    """Resultado da análise das peças de um lote."""
+
+    classes: dict[str, str]
+    tem_par: bool
+    assimetricas: list[str]
+    tem_direcao: bool
+    camadas_naturais: int
+    camadas_naturais_pares: bool
+    max_camadas: int
+    face_a_face_valida: bool
+    motivo_invalida: str | None = None
+
+    @property
+    def dupla(self) -> bool:
+        """Produto "dupla": peças em par (2 por roupa) ou quantidades que
+        já geram camadas pares — a produção prefere face a face."""
+        return self.tem_par or (self.camadas_naturais_pares and self.camadas_naturais >= 2)
+
+
+def analisar(
+    pecas: dict[str, PecaAnalise],
+    *,
+    tem_direcao: bool,
+    camadas_naturais: list[int],
+    max_camadas: int,
+) -> Analise:
+    """Classifica os moldes e diz se face a face vale para o lote.
+
+    camadas_naturais: camadas de cada enfesto do plano face única + sem
+    sobra (sem arredondar para par) — é o "quantas camadas este pedido tem"
+    das regras da produção."""
+    classes = {mid: classificar(p.poligono, p.rotacoes, p.tipo_corte) for mid, p in pecas.items()}
+    assimetricas = sorted({pecas[mid].nome for mid, c in classes.items() if c == UNICO_ASSIMETRICO})
+    maior = max(camadas_naturais, default=0)
+    motivo = None
+    if tem_direcao:
+        motivo = "tecido com direção (estampa ou pelo): não pode ser virado"
+    elif assimetricas:
+        motivo = f"peça única assimétrica ({', '.join(assimetricas)}): sairia espelhada em metade das camadas"
+    elif maior <= 1:
+        motivo = "1 camada: regra da produção, sempre face única"
+    elif max_camadas < 2:
+        motivo = "o tecido aceita no máximo 1 camada"
+    return Analise(
+        classes=classes,
+        tem_par=PAR in classes.values(),
+        assimetricas=assimetricas,
+        tem_direcao=tem_direcao,
+        camadas_naturais=maior,
+        camadas_naturais_pares=bool(camadas_naturais) and all(c % 2 == 0 for c in camadas_naturais),
+        max_camadas=max_camadas,
+        face_a_face_valida=motivo is None,
+        motivo_invalida=motivo,
+    )
+
+
+# ── Escolha ──────────────────────────────────────────────────────────────────
+
+
+@dataclass
+class Candidato:
+    """Uma forma de enfesto avaliada (simulação rápida, sem gravar)."""
+
+    tipo: str
+    modo: str
+    metros: float = 0.0
+    mesas: int = 0
+    enfestos: int = 0
+    camadas: int = 0
+    sobra: int = 0
+    segundos: float = 0.0
+    erro: str | None = None
+    avaliado: bool = True
+
+    @property
+    def rotulo(self) -> str:
+        return f"{NOME_TIPO[self.tipo]}, {NOME_MODO.get(self.modo, self.modo)}"
+
+    def json(self) -> dict:
+        return {**asdict(self), "rotulo": self.rotulo, "tipo_nome": NOME_TIPO[self.tipo]}
+
+
+def candidatos(analise: Analise, tipo_fixo: str | None = None, modo_fixo: str | None = None) -> list[Candidato]:
+    """{face única, face a face se válida} × {sem sobra, menos enfestos} —
+    face única + sem sobra primeiro (é o padrão seguro, avaliado antes para
+    estar pronto se o tempo acabar). Escolha manual do "Avançado" fixa uma
+    das dimensões (ou as duas)."""
+    tipos = [MESMA_FACE] + ([FACE_A_FACE] if analise.face_a_face_valida else [])
+    if tipo_fixo in TIPOS:
+        tipos = [tipo_fixo] if tipo_fixo in tipos else [MESMA_FACE]
+    modos = ["SEM_SOBRA", "MENOS_ENFESTOS"]
+    if modo_fixo in modos:
+        modos = [modo_fixo]
+    return [Candidato(tipo=t, modo=m) for t in tipos for m in modos]
+
+
+@dataclass
+class Decisao:
+    """O que foi decidido para um lote — vai para decisao_enfesto."""
+
+    tipo: str
+    modo: str
+    motivo: str
+    regra: str
+    candidatos: list[Candidato] = field(default_factory=list)
+    face_a_face_valida: bool = True
+    motivo_face_a_face: str | None = None
+    classes: dict[str, str] = field(default_factory=dict)
+    tempo_esgotado: bool = False
+    manual: bool = False
+    segundos: float = 0.0
+
+    def json(self) -> dict:
+        return {
+            "tipo_enfesto": self.tipo,
+            "tipo_nome": NOME_TIPO[self.tipo],
+            "modo_camadas": self.modo,
+            "motivo": self.motivo,
+            "regra": self.regra,
+            "face_a_face_valida": self.face_a_face_valida,
+            "motivo_face_a_face": self.motivo_face_a_face,
+            "tempo_esgotado": self.tempo_esgotado,
+            "manual": self.manual,
+            "segundos": round(self.segundos, 1),
+            "classes": self.classes,
+            "candidatos": [c.json() for c in self.candidatos],
+        }
+
+
+def _m(valor: float) -> str:
+    return f"{valor:.2f} m".replace(".", ",")
+
+
+def _pct(valor: float) -> str:
+    return f"{valor:.1f}%".replace(".", ",")
+
+
+def _mesmo_plano(a: Candidato, b: Candidato) -> bool:
+    """Mesmo tipo e o mesmo resultado (ex.: sem sobra e menos enfestos quando
+    todas as quantidades são iguais) — não é empate, é a mesma coisa."""
+    return a.tipo == b.tipo and (a.metros, a.mesas, a.camadas, a.sobra) == (b.metros, b.mesas, b.camadas, b.sobra)
+
+
+def _preferencia(analise: Analise) -> tuple[str, str, str]:
+    """(tipo preferido no empate, regra, frase) pelas regras da produção."""
+    if analise.dupla:
+        por = "peças em par" if analise.tem_par else "camadas pares"
+        return FACE_A_FACE, "PRODUTO_DUPLA", f"produto dupla ({por}) prefere face a face"
+    if 2 <= analise.camadas_naturais <= 3:
+        return MESMA_FACE, "POUCAS_CAMADAS", f"{analise.camadas_naturais} camadas: prefere face única"
+    return FACE_A_FACE, "MAIS_RAPIDO", "face a face é mais rápido de estender"
+
+
+def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, str]:
+    """(vencedor, motivo em texto, regra que pesou). `lista` já avaliada;
+    candidatos com erro ou não avaliados ficam de fora."""
+    validos = [c for c in lista if c.avaliado and c.erro is None]
+    if not validos:
+        raise ValueError("nenhuma forma de enfesto pôde ser avaliada")
+    menor = min(c.metros for c in validos)
+    limite = menor * (1 + EMPATE_PCT / 100) if menor > 0 else 0.0
+    empate = [c for c in validos if c.metros <= limite + 1e-9]
+    notas: list[str] = []
+
+    sem_sobra = [c for c in empate if c.sobra == 0]
+    if sem_sobra and len(sem_sobra) < len(empate):
+        empate = sem_sobra
+        notas.append("sem sobra de peças")
+
+    regra = "MENOR_CONSUMO"
+    tipos = {c.tipo for c in empate}
+    if len(tipos) > 1:
+        preferido, regra, frase = _preferencia(analise)
+        empate = [c for c in empate if c.tipo == preferido]
+        notas.append(frase)
+
+    vencedor = min(empate, key=lambda c: (c.mesas, c.camadas, c.metros))
+    outros = [c for c in validos if c is not vencedor]
+    texto = f"{vencedor.rotulo}: {_m(vencedor.metros)} em {vencedor.mesas} mesa{'s' if vencedor.mesas != 1 else ''}"
+    if vencedor.sobra:
+        texto += f" (sobra de {vencedor.sobra} peça{'s' if vencedor.sobra != 1 else ''})"
+    if not outros:
+        texto += "."
+    elif len(empate) == 1 and all(c.metros > limite + 1e-9 for c in outros):
+        melhor_outro = min(outros, key=lambda c: c.metros)
+        dif = (melhor_outro.metros - vencedor.metros) / vencedor.metros * 100 if vencedor.metros else 0.0
+        texto += f", o menor consumo ({melhor_outro.rotulo}: {_m(melhor_outro.metros)}, +{_pct(dif)})."
+    elif all(_mesmo_plano(c, vencedor) for c in outros):
+        nomes = ", ".join(c.rotulo.lower() for c in outros)
+        texto += f"; {nomes} dá o mesmo resultado."
+    else:
+        rivais = [c for c in outros if c.metros <= limite + 1e-9 and not _mesmo_plano(c, vencedor)]
+        comparado = min(rivais or outros, key=lambda c: c.metros)
+        texto += (
+            f"; empate técnico com {comparado.rotulo} ({_m(comparado.metros)}, diferença < {EMPATE_PCT:g}%)"
+            + (f" — {'; '.join(notas)}" if notas else "")
+            + "."
+        )
+    if not analise.face_a_face_valida and analise.motivo_invalida:
+        texto += f" Face a face descartada: {analise.motivo_invalida}."
+        if regra == "MENOR_CONSUMO" and analise.camadas_naturais <= 1:
+            regra = "UMA_CAMADA"
+        elif regra == "MENOR_CONSUMO":
+            regra = "FACE_A_FACE_INVALIDA"
+    return vencedor, texto, regra
+
+
+def decisao_padrao_seguro(
+    analise: Analise, lista: list[Candidato], motivo: str, tipo: str = MESMA_FACE, modo: str = "SEM_SOBRA"
+) -> Decisao:
+    """Tempo da comparação esgotado (ou nenhuma simulação concluída): face
+    única + sem sobra (ou o que o "Avançado" fixou), com o porquê no motivo."""
+    rotulo = Candidato(tipo=tipo, modo=modo).rotulo
+    return Decisao(
+        tipo=tipo,
+        modo=modo,
+        motivo=f"{rotulo} (padrão seguro): {motivo}.",
+        regra="PADRAO_SEGURO",
+        candidatos=lista,
+        face_a_face_valida=analise.face_a_face_valida,
+        motivo_face_a_face=analise.motivo_invalida,
+        classes=analise.classes,
+        tempo_esgotado=True,
+    )

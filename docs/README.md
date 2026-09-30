@@ -17,7 +17,7 @@ O SmartCut centraliza toda a operação da confecção — desde o cadastro de t
 | Banco de dados | PostgreSQL 15+ |
 | Autenticação | JWT (apenas painel do vendedor) |
 | Parser de moldes | ezdxf (DXF), custom (PLT/ADS) |
-| Motor de nesting | Node.js (skyline packer → futuro: Deepnest C++) |
+| Motor de encaixe | Python: spyrrow (strip packing) + OR-Tools CP-SAT |
 | Relatórios | ReportLab (PDF) |
 | Visualizador | Konva.js |
 | Gráficos | Recharts |
@@ -61,6 +61,12 @@ SmartCut/
 │   │   └── ...outros routers
 │   ├── services/
 │   │   ├── nesting_service.py
+│   │   ├── nesting_jobs.py
+│   │   ├── nesting_v2/           ← motor de encaixe (spyrrow + OR-Tools)
+│   │   │   ├── motor.py
+│   │   │   ├── encaixador.py
+│   │   │   ├── planejador.py
+│   │   │   └── geometria.py
 │   │   ├── gramatura_service.py
 │   │   ├── report_service.py
 │   │   ├── lote_service.py
@@ -72,11 +78,6 @@ SmartCut/
 │   │   ├── dxf_parser.py
 │   │   ├── plt_parser.py
 │   │   └── ads_parser.py
-│   └── nesting/
-│       ├── nest_worker.js
-│       ├── nesting_bridge.py
-│       └── engine/            ← Deepnest C++ (futuro)
-│           └── Release/addon.node
 │
 └── frontend/
     ├── index.html
@@ -109,7 +110,7 @@ SmartCut/
 
 ## Pré-requisitos
 
-- Node.js 18+
+- Node.js 18+ (só para o frontend e o Electron — o motor de encaixe é Python)
 - Python 3.12+
 - PostgreSQL 15+
 
@@ -147,9 +148,9 @@ CREATE DATABASE smartcut_db;
 
 ```bash
 cd backend
-pip install -r requirements.txt
+py -3.12 -m pip install -r requirements.txt
 copy .env.example .env
-alembic upgrade head
+py -3.12 -m alembic upgrade head
 uvicorn main:app --reload
 ```
 
@@ -231,8 +232,8 @@ Cada vendedor vê apenas suas informações, catálogos e leads atribuídos.
 - Pedidos com múltiplos tecidos, peças por tamanho, resumo do corte
 - Status: Rascunho → Em produção → Concluído
 
-### ✅ Fase 4 — Nesting e Relatórios (parcialmente concluída)
-- Motor Node.js skyline packer, limite 130cm, múltiplos enfestos
+### ✅ Fase 4 — Encaixe e Relatórios (parcialmente concluída)
+- Motor de encaixe spyrrow + OR-Tools, limite por mesa, múltiplos enfestos
 - Visualizador Konva.js, PDF de corte com ReportLab
 - Encaixe Rápido: seleção ágil de tecidos e peças sem criar pedido
 
@@ -305,11 +306,10 @@ Leads:
 - Atribui manualmente a um vendedor específico
 - Pode reatribuir a qualquer momento
 
-### ⬜ Fase 8 — Nesting avançado com Deepnest (pendente)
-- Motor C++ Deepnest via addon Node.js (compilar para Windows/Linux)
-- NFP via Minkowski Sum para encaixe preciso de moldes irregulares
+### ✅ Fase 8 — Encaixe avançado (concluída)
+- Motor spyrrow (strip packing de peças irregulares) + OR-Tools CP-SAT para dividir o enfesto em mesas
 - Respeitar sentido do fio (ângulo livre em graus)
-- Aplicar flip_horizontal e flip_vertical
+- Espelhar a segunda metade de peça em par
 - Reduzir desperdício de ~58% para < 20%
 
 ### ⬜ Fase 9 — Defeitos no tecido (pendente)

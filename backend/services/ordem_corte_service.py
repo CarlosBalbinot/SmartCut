@@ -27,6 +27,7 @@ from models.ordem_corte import (
     COMPRIMENTO_MAX_MIN_CM,
     MODOS_CAMADAS,
     QUALIDADES,
+    TIPOS_ENFESTO,
     ItemOrdemCorte,
     OrdemCorte,
     OrdemCorteTecido,
@@ -237,12 +238,17 @@ def conferir(db: Session, oc: OrdemCorte) -> list[dict]:
     """
     pendencias: list[dict] = []
     grupos = _grupos_por_produto(db, {i.produto_pai_id for i in oc.itens})
+    # Lote escolhido de cada (produto, cor) — o mesmo vínculo de montar_pares_oc.
+    lotes = {(t.produto_pai_id, _norm(t.cor)): t.lote for t in oc.tecidos if t.lote}
 
     def _add(codigo: str, mensagem: str, bloqueia: bool = True, **extra) -> None:
         pendencias.append({"codigo": codigo, "mensagem": mensagem, "bloqueia": bloqueia, **extra})
 
     sem_grupo: dict[uuid.UUID, list[int]] = {}
     sem_molde: dict[tuple[uuid.UUID, str], list[int]] = {}
+    # Problemas de geometria/largura/comprimento das peças (Tarefa 2) — a
+    # mensagem já cita molde e tecido; junta os itens afetados por pendência.
+    geo_problemas: dict[tuple[str, str], dict] = {}
     for item in oc.itens:
         produto = item.produto_pai
         nome = produto.descricao if produto else str(item.produto_pai_id)
@@ -258,8 +264,15 @@ def conferir(db: Session, oc: OrdemCorte) -> list[dict]:
         if not grupo:
             sem_grupo.setdefault(item.produto_pai_id, []).append(item.numero_item)
             continue
-        if not moldes_do_tamanho(grupo, item.tamanho):
+        moldes = moldes_do_tamanho(grupo, item.tamanho)
+        if not moldes:
             sem_molde.setdefault((item.produto_pai_id, item.tamanho.strip()), []).append(item.numero_item)
+            continue
+        lote = lotes.get((item.produto_pai_id, _norm(item.cor)))
+        for molde in moldes:
+            for codigo, mensagem, bloqueia in nesting_service.checar_molde(molde, lote, oc.comprimento_max_cm):
+                dado = geo_problemas.setdefault((codigo, mensagem), {"bloqueia": bloqueia, "numero_itens": set()})
+                dado["numero_itens"].add(item.numero_item)
 
     nomes = {i.produto_pai_id: (i.produto_pai.descricao if i.produto_pai else str(i.produto_pai_id)) for i in oc.itens}
     for pai, numeros in sem_grupo.items():
@@ -277,6 +290,9 @@ def conferir(db: Session, oc: OrdemCorte) -> list[dict]:
             produto_pai_id=str(pai),
             tamanho=tamanho,
         )
+
+    for (codigo, mensagem), dados in geo_problemas.items():
+        _add(codigo, mensagem, bloqueia=dados["bloqueia"], numero_itens=sorted(dados["numero_itens"]))
 
     for t in oc.tecidos:
         if t.lote_id is None:
@@ -402,6 +418,9 @@ def _resumo_out(db: Session, oc: OrdemCorte) -> dict:
         "cliente": pedido.cliente_razao_social if pedido else None,
         "status": oc.status,
         "modo_camadas": oc.modo_camadas,
+        "tipo_enfesto": oc.tipo_enfesto,
+        "decisao_enfesto": oc.decisao_enfesto,
+        "enfesto_avancado": enfesto_avancado(oc),
         "comprimento_max_cm": oc.comprimento_max_cm,
         "qualidade": oc.qualidade,
         "sugestao_mesa": oc.sugestao_mesa,
@@ -492,8 +511,50 @@ def _encaixe_out(e) -> dict:
         "sobra_total": mapa.get("sobra_total"),
         "motor_usado": mapa.get("motor_usado"),
         "qualidade": mapa.get("qualidade"),
+        "tipo_enfesto": mapa.get("tipo_enfesto"),
+        "modo_camadas": mapa.get("modo_camadas"),
         "status": e.status,
     }
+
+
+# ── Decisão do enfesto ────────────────────────────────────────────────────────
+
+_AUTOMATICO = "AUTOMATICO"
+
+
+def enfesto_avancado(oc: OrdemCorte) -> dict:
+    """Escolha manual do "Avançado": {tipo_enfesto, modo_camadas}, cada um
+    AUTOMATICO (o sistema decide) ou o valor fixo."""
+    escolha = oc.enfesto_avancado or {}
+    return {
+        "tipo_enfesto": escolha.get("tipo_enfesto") or _AUTOMATICO,
+        "modo_camadas": escolha.get("modo_camadas") or _AUTOMATICO,
+    }
+
+
+def _unico(valores: list[str], padrao: str) -> str:
+    """O valor comum a todos os lotes; divergindo, MISTO."""
+    distintos = list(dict.fromkeys(v for v in valores if v))
+    if not distintos:
+        return padrao
+    return distintos[0] if len(distintos) == 1 else "MISTO"
+
+
+def _resumo_decisao(lotes: list[dict]) -> str:
+    """Uma ou duas frases para o quadro "Decisão do sistema"."""
+    if len(lotes) == 1:
+        return lotes[0]["motivo"]
+    return " ".join(f"{d.get('tecido') or 'Lote'}: {d['motivo']}" for d in lotes)
+
+
+def _gravar_decisao(oc: OrdemCorte, decisoes: list[dict], lotes: dict) -> None:
+    """Grava na OC o que a geração decidiu (tipo, modo e o porquê)."""
+    for d in decisoes:
+        d["lote_codigo"] = lotes.get(d.get("lote_id"))
+    oc.tipo_enfesto = _unico([d["tipo_enfesto"] for d in decisoes], "MESMA_FACE")
+    modo = _unico([d["modo_camadas"] for d in decisoes], oc.modo_camadas)
+    oc.modo_camadas = modo[:20]
+    oc.decisao_enfesto = {"motivo": _resumo_decisao(decisoes), "lotes": decisoes} if decisoes else None
 
 
 # ── Operações ─────────────────────────────────────────────────────────────────
@@ -602,21 +663,30 @@ def definir_tecidos(db: Session, oc_id: uuid.UUID, escolhas: list[dict]) -> dict
 
 
 def atualizar(db: Session, oc_id: uuid.UUID, dados: dict) -> dict:
-    """dados: modo_camadas, comprimento_max_cm e qualidade (só em RASCUNHO)
-    e/ou observacoes. Mudar o limite deixa os encaixes atuais desatualizados
-    (encaixes_desatualizados) até regerar; a qualidade só vale para a
-    próxima geração."""
+    """dados: enfesto_tipo / enfesto_modo (escolha manual do "Avançado":
+    AUTOMATICO ou valor fixo), comprimento_max_cm e qualidade (só em
+    RASCUNHO) e/ou observacoes. Mudar o limite deixa os encaixes atuais
+    desatualizados (encaixes_desatualizados) até regerar; enfesto e
+    qualidade só valem para a próxima geração."""
     oc = _carregar(db, oc_id)
     if not oc:
         raise ErroOC("Ordem de Corte não encontrada", 404)
     if oc.status in _FINAIS:
         raise ErroOC(f"Ordem de Corte {oc.status} não pode ser alterada.", 409)
-    if "modo_camadas" in dados and dados["modo_camadas"] != oc.modo_camadas:
-        if dados["modo_camadas"] not in MODOS_CAMADAS:
-            raise ErroOC(f"Modo de camadas inválido: {dados['modo_camadas']}")
+    avancado = enfesto_avancado(oc)
+    novo = {
+        "tipo_enfesto": dados.get("enfesto_tipo") or avancado["tipo_enfesto"],
+        "modo_camadas": dados.get("enfesto_modo") or avancado["modo_camadas"],
+    }
+    if novo != avancado:
+        if novo["tipo_enfesto"] not in (_AUTOMATICO, *TIPOS_ENFESTO):
+            raise ErroOC(f"Tipo de enfesto inválido: {novo['tipo_enfesto']}")
+        if novo["modo_camadas"] not in (_AUTOMATICO, *MODOS_CAMADAS):
+            raise ErroOC(f"Modo de camadas inválido: {novo['modo_camadas']}")
         if oc.status != _EDITAVEL:
-            raise ErroOC("Modo de camadas só pode ser alterado em RASCUNHO.", 409)
-        oc.modo_camadas = dados["modo_camadas"]
+            raise ErroOC("O enfesto só pode ser alterado em RASCUNHO.", 409)
+        automatico = all(v == _AUTOMATICO for v in novo.values())
+        oc.enfesto_avancado = None if automatico else novo
     if dados.get("comprimento_max_cm") is not None and dados["comprimento_max_cm"] != oc.comprimento_max_cm:
         limite = dados["comprimento_max_cm"]
         if not isinstance(limite, int) or not COMPRIMENTO_MAX_MIN_CM <= limite <= COMPRIMENTO_MAX_MAX_CM:
@@ -908,11 +978,11 @@ def validar_geracao(db: Session, oc_id: uuid.UUID) -> OrdemCorte:
 
 
 def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.Progresso | None = None) -> dict:
-    """Gera (ou regera) os encaixes da OC com o motor de Configurações >
-    Produção e a qualidade da OC. Os anteriores viram 'deletado' e os novos
-    são gravados na MESMA transação, só depois do nesting terminar — falha
-    ou cancelamento (GeracaoCancelada, vinda de `progresso`) não mexem em
-    nada. Roda em segundo plano (nesting_jobs); `progresso` é o do job.
+    """Gera (ou regera) os encaixes da OC com o motor v2 e a qualidade da OC.
+    Os anteriores viram 'deletado' e os novos são gravados na MESMA transação,
+    só depois do motor terminar — falha ou cancelamento (GeracaoCancelada,
+    vinda de `progresso`) não mexem em nada. Roda em segundo plano
+    (nesting_jobs); `progresso` é o do job.
 
     Depois de gravar, se o limite da OC é menor que a maior mesa da fábrica,
     simula a mesa maior (v2 RAPIDO, sem gravar) e deixa a sugestão na OC
@@ -922,40 +992,46 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
 
     entradas, avisos = montar_pares_oc(db, oc)
 
-    def _substituir_anteriores() -> None:
+    lotes_codigo = {str(t.lote.id): t.lote.codigo_lote for t in oc.tecidos if t.lote}
+
+    def _substituir_anteriores(decisoes: list[dict]) -> None:
         for e in oc.encaixes:
             if e.status != "deletado":
                 e.status = "deletado"
         oc.sugestao_mesa = None
+        _gravar_decisao(oc, decisoes, lotes_codigo)
 
     pedido = oc.pedido
-    modo, limite, qualidade = oc.modo_camadas, oc.comprimento_max_cm, oc.qualidade
+    avancado = enfesto_avancado(oc)
+    limite, qualidade = oc.comprimento_max_cm, oc.qualidade
     try:
         resultado = nesting_service.gerar_de_entradas(
             db,
             pedido,
             entradas,
-            modo=modo,
+            modo=avancado["modo_camadas"],
+            tipo_enfesto=avancado["tipo_enfesto"],
             ordem_corte_id=oc.id,
             descricao=f"{numero_fmt(oc.numero)} · Pedido {pedido.numero}",
             comprimento_max_cm=limite,
-            motor=cfg["motor_encaixe"],
             qualidade=qualidade,
             progresso=progresso,
             antes_de_gravar=_substituir_anteriores,
+            tempo_maximo_s=cfg["tempo_maximo_oc_s"],
         )
     except ValueError as exc:
         raise ErroOC(str(exc))
-    except RuntimeError as exc:
-        raise ErroOC(f"Falha no motor de nesting: {exc}", 500)
+    except nesting_service.ErroNesting as exc:
+        # Depois das duas tentativas (retry automático) — mensagem legível.
+        raise ErroOC(str(exc), 500)
 
     db.expire_all()
     oc = _carregar(db, oc_id)
     lotes = {t.lote.id: t.lote.codigo_lote for t in oc.tecidos if t.lote}
 
-    # Totais por tamanho somando cada enfesto uma vez (o v1 repete o
-    # pecas_por_tamanho do enfesto em cada parte; o v2 só o põe na parte 1 —
-    # o que cada parte corta de fato está em pecas_parte).
+    # Totais por tamanho somando cada enfesto uma vez (o pecas_por_tamanho do
+    # enfesto só vem na parte 1 — o que cada parte corta de fato está em
+    # pecas_parte).
     por_tamanho: dict[tuple, dict] = {}
     vistos: set[tuple] = set()
     for enc in resultado["encaixes"]:
@@ -970,22 +1046,21 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
             acc["pecas"] += linha["pecas"]
             acc["sobra"] += linha["sobra"]
 
-    avisos_out = [
-        {"codigo": "MOTOR_RESERVA" if m == nesting_service.AVISO_RESERVA else "AVISO", "mensagem": m}
-        for m in avisos + resultado["avisos"]
-    ] + avisos_estoque(db, oc)
+    avisos_out = [{"codigo": "AVISO", "mensagem": m} for m in avisos + resultado["avisos"]] + avisos_estoque(db, oc)
 
+    escolhas = {d["lote_id"]: (d["tipo_enfesto"], d["modo_camadas"]) for d in resultado["decisoes"]}
     sugestao = None
-    if resultado["motor_usado"] == "v2" and limite < cfg["comprimento_max_mesa_cm"]:
-        sugestao = _sugerir_mesa(db, oc, entradas, modo, resultado["totais"], cfg, progresso)
+    if limite < cfg["comprimento_max_mesa_cm"]:
+        sugestao = _sugerir_mesa(db, oc, entradas, escolhas, resultado["totais"], cfg, progresso)
 
     return {
         "ordem_corte_id": str(oc.id),
-        "modo_camadas": modo,
+        "modo_camadas": oc.modo_camadas,
+        "tipo_enfesto": oc.tipo_enfesto,
+        "decisao_enfesto": oc.decisao_enfesto,
         "comprimento_max_cm": limite,
         "qualidade": qualidade,
         "motor_usado": resultado["motor_usado"],
-        "aviso_motor": nesting_service.AVISO_RESERVA if resultado["reserva"] else None,
         "encaixes": resultado["encaixes"],
         "avisos": avisos_out,
         "pecas_por_tamanho": list(por_tamanho.values()),
@@ -1003,13 +1078,14 @@ def _sugerir_mesa(
     db: Session,
     oc: OrdemCorte,
     entradas: list,
-    modo: str,
+    escolhas: dict[str, tuple[str, str]],
     atual: dict,
     cfg: dict,
     progresso: nesting_service.Progresso | None,
 ) -> dict | None:
-    """Simula a OC na maior mesa da fábrica (v2 RAPIDO, sem gravar encaixes)
-    e grava oc.sugestao_mesa se a economia em metros (todas as camadas) for
+    """Simula a OC na maior mesa da fábrica (v2 RAPIDO, sem gravar encaixes,
+    com o mesmo enfesto decidido na geração — `escolhas`) e grava
+    oc.sugestao_mesa se a economia em metros (todas as camadas) for
     >= alerta_economia_pct. Falha, tempo excedido ou cancelamento: só log —
     os encaixes já estão gravados e a sugestão é opcional."""
     mesa = cfg["comprimento_max_mesa_cm"]
@@ -1023,7 +1099,7 @@ def _sugerir_mesa(
 
     try:
         sugerido = nesting_service.simular_totais(
-            entradas, modo=modo, comprimento_max_cm=mesa, qualidade="RAPIDO", progresso=_progresso
+            entradas, escolhas=escolhas, comprimento_max_cm=mesa, qualidade="RAPIDO", progresso=_progresso
         )
     except Exception as exc:  # inclui GeracaoCancelada: o resultado já foi gravado
         logger.warning("[OC] %s: simulação da mesa de %s cm ignorada: %s", numero_fmt(oc.numero), mesa, exc)

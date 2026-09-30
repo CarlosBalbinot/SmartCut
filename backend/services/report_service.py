@@ -89,7 +89,7 @@ _UW = _PAGE_W - _LM - _RM  # largura útil ≈ 493 pts
 
 
 def _rotate_poly(polygon: list, deg: float) -> list:
-    """Rotação anti-horária padrão (mesma convenção do nest_worker.js)."""
+    """Rotação anti-horária padrão (mesma convenção do motor de encaixe)."""
     if not deg:
         return list(polygon)
     rad = math.radians(deg)

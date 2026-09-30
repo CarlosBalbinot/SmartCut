@@ -6,10 +6,10 @@ uvicorn_d,   uvicorn_b,   uvicorn_h   = collect_all('uvicorn')
 fastapi_d,   fastapi_b,   fastapi_h   = collect_all('fastapi')
 starlette_d, starlette_b, starlette_h = collect_all('starlette')
 pydantic_d,  pydantic_b,  pydantic_h  = collect_all('pydantic')
-# Motor de encaixe v2 (services/nesting_v2): spyrrow (extensão Rust) e
+# Motor de encaixe (services/nesting_v2): spyrrow (extensão Rust) e
 # OR-Tools CP-SAT. O OR-Tools carrega as DLLs de ortools/.libs/ por caminho
 # relativo ao próprio __init__ (WinDLL em _load_ortools_libs) — sem o
-# collect_all elas não entram no exe e o v2 cai sempre no motor reserva (v1).
+# collect_all elas não entram no exe e o motor de encaixe não funciona.
 spyrrow_d,   spyrrow_b,   spyrrow_h   = collect_all('spyrrow')
 ortools_d,   ortools_b,   ortools_h   = collect_all('ortools')
 
@@ -46,12 +46,13 @@ app_h = [
     'schemas', 'schemas.encaixe_schema', 'schemas.financeiro_schema', 'schemas.molde_schema',
     'schemas.precificacao_schema',
     'schemas.tecido_schema', 'schemas.venda_schema',
-    # parsers / nesting
+    # parsers / motor de encaixe
     'parsers', 'parsers.ads_parser', 'parsers.dxf_parser', 'parsers.plt_parser',
-    'nesting', 'nesting.nesting_bridge',
-    # auth / JWT
-    'jose', 'jose.jwt', 'jose.exceptions', 'jose.constants',
-    'passlib', 'passlib.context', 'passlib.handlers', 'passlib.handlers.bcrypt',
+    'services.nesting_v2', 'services.nesting_v2.encaixador',
+    'services.nesting_v2.geometria', 'services.nesting_v2.motor',
+    'services.nesting_v2.planejador',
+    # auth / JWT (PyJWT + bcrypt puro — python-jose e passlib não são mais usados)
+    'jwt',
     'bcrypt',
     # SQLite dialect
     'sqlalchemy.dialects.sqlite',
@@ -107,12 +108,9 @@ all_hidden = (
 all_datas = (
     uvicorn_d + fastapi_d + starlette_d + pydantic_d +
     spyrrow_d + ortools_d +
-    # Arquivos de nesting (js) necessários em runtime
-    [('nesting/nest_worker.js', 'nesting'),
-     ('nesting/svgnest',        'nesting/svgnest'),
-     # Alembic (item 5.2): config + env + template + migrações versionadas
-     # (baseline). O boot roda alembic upgrade head (services/db_migracoes.py).
-     ('alembic.ini',             '.'),
+    # Alembic (item 5.2): config + env + template + migrações versionadas
+    # (baseline). O boot roda alembic upgrade head (services/db_migracoes.py).
+    [('alembic.ini',             '.'),
      ('alembic/env.py',          'alembic'),
      ('alembic/script.py.mako',  'alembic'),
      ('alembic/versions',        'alembic/versions')]

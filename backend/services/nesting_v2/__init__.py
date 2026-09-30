@@ -1,8 +1,8 @@
-"""nesting_v2 — motor de encaixe v2 (M1), EMBUTIDO no backend Python.
+"""nesting_v2 — motor de encaixe (spyrrow + OR-Tools), EMBUTIDO no backend Python.
 
-Motivo: o motor v1 (SVGnest via Node.js, skyline por bounding box) desperdiça
-tecido demais quando há limite de comprimento de mesa. O v2 usa dois
-algoritmos de verdade:
+É o ÚNICO motor do sistema: o antigo (Node.js, skyline por bounding box)
+gastava tecido demais quando há limite de comprimento de mesa. O v2 usa
+dois algoritmos de verdade:
 
   * spyrrow (MIT) — strip packing de peças irregulares, minimiza o
     comprimento da faixa. É o motor de cada mesa.
@@ -20,15 +20,34 @@ Fluxo de `motor.gerar()` (M1-B):
      o lote para a folga de cada mesa; o spyrrow encaixa e o que passar do
      limite volta para a fila.
   4. POLIMENTO    motor._polir — reencaixe final de cada mesa com mais tempo.
-  5. SAÍDA        motor.Resultado — mesas no formato do mapa_json do v1, com a
-     tabela da mesa POR MOLDE; a grade por tamanho só no resumo do enfesto.
-     Tempo, chamadas do spyrrow e pico de memória vêm junto.
+  5. SAÍDA        motor.Resultado — mesas no formato do mapa_json (o mesmo
+      formato de sempre), com a tabela da mesa POR MOLDE; a grade por tamanho
+      só no resumo do enfesto. Tempo, chamadas do spyrrow e pico de memória
+      vêm junto.
 
-O motor v1 (nesting/nesting_bridge.py + services/nesting_service.py) NÃO é
-alterado: o v2 convive com ele e é usado só por quem o chamar.
+A escolha do perfil de tempo (RAPIDO/EQUILIBRADO/MAXIMO, ou AUTOMATICO por
+orçamento de tempo — services/planejamento/custo.py) e a nova tentativa em caso
+de falha ficam em services/nesting_service.py.
 """
 
+from services.nesting_v2 import encaixador, planejador
 from services.nesting_v2.geometria import Peca, Unidade, preparar
 from services.nesting_v2.motor import ErroEncaixe, Mesa, Resultado, gerar
 
-__all__ = ["ErroEncaixe", "Mesa", "Peca", "Resultado", "Unidade", "gerar", "preparar"]
+# spyrrow/ortools ausentes (exe montado sem o v2) não derrubam o import: o
+# motor fica INDISPONÍVEL e o serviço de encaixe avisa que é preciso
+# reinstalar as dependências (não há motor alternativo — o v1 foi removido).
+_ERROS = [e for e in (encaixador.ERRO_IMPORT, planejador.ERRO_IMPORT) if e]
+DISPONIVEL = not _ERROS
+
+
+def diagnostico() -> str:
+    """Linha para o log do boot: versões das bibliotecas ou o erro de import."""
+    if _ERROS:
+        return f"Motor v2 INDISPONÍVEL: {'; '.join(_ERROS)} — reinstale as dependências"
+    import ortools
+
+    return f"Motor v2 disponível (spyrrow {getattr(encaixador.spyrrow, '__version__', '?')}, ortools {ortools.__version__})"
+
+
+__all__ = ["DISPONIVEL", "ErroEncaixe", "Mesa", "Peca", "Resultado", "Unidade", "diagnostico", "gerar", "preparar"]

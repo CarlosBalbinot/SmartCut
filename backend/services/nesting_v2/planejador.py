@@ -18,12 +18,18 @@ peças em K mesas equilibradas por área (makespan). Equilibrar espalha as
 peças pequenas por todas as mesas; com moldes de ~99 cm numa mesa de 150 cada
 mesa ficava com uma fileira de grandes + uma faixa de pequenas, e o PRETO
 parou em 6,04 m. O M1-B enche mesa por mesa (grandes primeiro, pequenas nas
-folgas) e fica em ~5,7 m — ver experimentos/nesting/resultados/RELATORIO_M1B.md.
+folgas) e fica em ~5,7 m.
 """
 
 from __future__ import annotations
 
-from ortools.sat.python import cp_model
+try:
+    from ortools.sat.python import cp_model
+
+    ERRO_IMPORT: str | None = None
+except Exception as err:  # noqa: BLE001 — exe sem o v2: o backend sobe e usa o v1
+    cp_model = None
+    ERRO_IMPORT = f"ortools: {type(err).__name__}: {err}"
 
 from services.nesting_v2.geometria import Unidade
 

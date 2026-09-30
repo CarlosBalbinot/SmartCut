@@ -25,10 +25,10 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Rotaciona pontos em torno da ORIGEM (0,0) — mesma convenção do
-// nest_worker.js (rotatePoly), não do centro do polígono. É essencial usar
-// a mesma referência: nest_worker calcula a posição (x,y) de cada peça a
-// partir do bounding box do polígono já rotacionado desta forma.
+// Rotaciona pontos em torno da ORIGEM (0,0) — a convenção do motor de
+// encaixe, não a do centro do polígono. É essencial usar a mesma
+// referência: o motor calcula a posição (x,y) de cada peça a partir do
+// bounding box do polígono já rotacionado desta forma.
 function rotacionarNaOrigem(pts, deg) {
   if (!deg) return pts;
   const rad = (deg * Math.PI) / 180;
@@ -82,7 +82,7 @@ export default function VisualizadorEncaixe({
     return () => obs.disconnect();
   }, []);
 
-  // Mesa de corte deitada: o comprimento (eixo X do nest_worker é a
+  // Mesa de corte deitada: o comprimento (eixo X do motor é a
   // LARGURA — ver nota abaixo) corre na horizontal, a largura do tecido
   // é a altura do retângulo. Escala única (sem distorcer): o menor fator
   // entre "cabe na largura disponível do canvas" e "não passa de
@@ -244,7 +244,7 @@ export default function VisualizadorEncaixe({
               if (!pl.polygon || pl.polygon.length < 3) return null;
 
               // O polígono bruto (geometria_json) não começa em (0,0) — tem
-              // um offset arbitrário herdado do DXF original. nest_worker.js
+              // um offset arbitrário herdado do DXF original. O motor
               // rotaciona em torno da ORIGEM e usa o bounding-box resultante
               // para decidir onde encaixar a peça, mas nunca devolve esse
               // bounding-box. Sem reproduzir a mesma rotação+normalização
@@ -254,12 +254,11 @@ export default function VisualizadorEncaixe({
               const rotPts = rotacionarNaOrigem(pl.polygon, rotDeg);
               const { minX, minY } = bboxMin(rotPts);
 
-              // IMPORTANTE: no nest_worker.js, pl.x é a posição ao longo da
+              // IMPORTANTE: pl.x é a posição ao longo da
               // LARGURA do tecido (eixo "width", 0..largura_cm) e pl.y é a
               // posição ao longo do COMPRIMENTO (eixo "length", que o
-              // worker minimiza) — confirmado no docstring do worker e nos
-              // dados reais (pl.x nunca passa de largura_cm; pl.y vai até
-              // comprimento_cm). Como a mesa agora é desenhada deitada
+              // motor minimiza) — é o formato do mapa_json. Como a mesa é
+              // desenhada deitada
               // (comprimento na horizontal), o eixo de tela X vem de pl.y
               // e o eixo de tela Y vem de pl.x — é uma transposição, não
               // só um redimensionamento do canvas.

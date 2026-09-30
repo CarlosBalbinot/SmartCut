@@ -291,7 +291,7 @@
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -319,8 +319,8 @@
 }
 .cardMetricas {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
   margin: 0;
 }
 .cardMetricas dt {
@@ -347,10 +347,4 @@
   font-size: var(--sc-font-size-small);
   color: var(--sc-text-muted);
   white-space: nowrap;
-}
-.motorReserva {
-  color: var(--sc-text-warning);
-  cursor: help;
-  text-decoration: underline dotted;
-  text-underline-offset: 2px;
 }

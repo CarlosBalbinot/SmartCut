@@ -43,15 +43,26 @@ def test_espelhar_sobre_o_fio_horizontal_inverte_y():
     assert esp[0] == [0, 60]  # y → 60 − y
 
 
-def test_par_segunda_copia_espelhada_e_par_sem_espelho_igual():
+def test_par_segunda_copia_espelhada_em_face_unica():
     par = preparar([Peca(id="m", poligono=L, quantidade=4, tipo_corte="par")])
     assert [u.espelhada for u in par] == [False, True, False, True]
     assert par[0].par == par[1].par != par[2].par == par[3].par
     assert Polygon(par[1].poligono).equals(Polygon(espelhar(par[0].poligono, "y")))
 
-    igual = preparar([Peca(id="m", poligono=L, quantidade=2, tipo_corte="par_sem_espelho")])
-    assert [u.espelhada for u in igual] == [False, False]
-    assert igual[0].poligono == igual[1].poligono
+    # PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE: em face única o par_sem_espelho
+    # também espelha (senão sairiam duas peças do mesmo lado).
+    sem = preparar([Peca(id="m", poligono=L, quantidade=2, tipo_corte="par_sem_espelho")])
+    assert [u.espelhada for u in sem] == [False, True]
+    assert Polygon(sem[1].poligono).equals(Polygon(espelhar(sem[0].poligono, "y")))
+
+
+def test_face_a_face_nenhum_par_espelha():
+    for tipo in ("par", "par_sem_espelho"):
+        igual = preparar([Peca(id="m", poligono=L, quantidade=4, tipo_corte=tipo, espelhar_par=False)])
+        assert [u.espelhada for u in igual] == [False] * 4
+        assert all(u.poligono == igual[0].poligono for u in igual)
+        # a contagem de peças físicas não muda: 2 por par
+        assert por_molde(igual, camadas=2)[0]["total"] == 8
 
 
 def test_par_com_quantidade_impar_e_erro():

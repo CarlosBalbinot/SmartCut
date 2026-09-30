@@ -10,9 +10,12 @@ import styles from "./ProgressoEncaixe.module.css";
  * mesa maior, moldes por mesa, grade do enfesto e o rótulo do motor.
  *
  * <ProgressoEncaixe ocId onConcluido onFim />
- *   Consulta GET /job a cada 1 s enquanto FILA/RODANDO.
+ * <ProgressoEncaixe consultarJob cancelarJob chave onConcluido onFim />
+ *   Consulta GET /job a cada 1 s enquanto FILA/RODANDO. Sem ocId, quem
+ *   chama passa as funções do job (Encaixe Rápido: api/encaixes) e uma
+ *   `chave` que muda quando é outro job.
  *   onConcluido(estado) — CONCLUIDO (o pai recarrega a OC; estado.resultado
- *                         traz avisos, aviso_motor e sugestao_mesa)
+ *                         traz avisos e sugestao_mesa)
  *   onFim(estado|null)  — CANCELADO, ERRO dispensado pelo usuário, ou não há
  *                         job (null) — o pai volta a mostrar o botão
  */
@@ -20,13 +23,12 @@ import styles from "./ProgressoEncaixe.module.css";
 const ATIVOS = ["FILA", "RODANDO"];
 const INTERVALO_MS = 1000;
 
-// Etapas do motor v2 (última parte de `fase`, ver nesting_v2/motor.py).
+// Etapas do motor (última parte de `fase`, ver nesting_v2/motor.py).
 const ETAPAS = {
   grandes: "peças grandes",
   pequenas: "peças pequenas",
   polimento: "refinando",
   faixa: "encaixando",
-  v1: "motor v1",
 };
 
 const QUALIDADE_LABEL = { RAPIDO: "Rápido", EQUILIBRADO: "Equilibrado", MAXIMO: "Máximo" };
@@ -84,10 +86,16 @@ const IconeInfo = () => (
 // ── Texto do progresso ────────────────────────────────────────────────────────
 
 // fase = "MAXXI — PRETO · enfesto 1/1 · grandes" ou
-//        "Simulando mesa de 200 cm · MAXXI — PRETO · enfesto 1/1 · pequenas"
+//        "Simulando mesa de 200 cm · MAXXI — PRETO · enfesto 1/1 · pequenas" ou
+//        (decisão do enfesto, antes de encaixar)
+//        "Analisando as peças… · MAXXI — PRETO" /
+//        "Comparando formas de enfesto… · MAXXI — PRETO · 2/4 Face a face, sem sobra"
 function descrever(estado) {
   if (!estado || estado.status === "FILA") return { principal: "Na fila...", detalhe: "" };
   const partes = (estado.fase || "").split(" · ").filter(Boolean);
+  if (partes[0]?.startsWith("Analisando") || partes[0]?.startsWith("Comparando")) {
+    return { principal: partes[0], detalhe: partes.slice(1).join(" · ") };
+  }
   const simulando = partes[0]?.startsWith("Simulando");
   const etapa = partes[partes.length - 1];
   const contexto = partes.slice(simulando ? 1 : 0, ETAPAS[etapa] ? -1 : undefined).join(" · ");
@@ -96,11 +104,13 @@ function descrever(estado) {
       ? ` · ${numBR(estado.aproveitamento_parcial * 100, 0)}% de aproveitamento`
       : "";
 
-  if (simulando)
+  if (simulando) {
+    const mesa = partes[0].match(/\d+/)?.[0] || "";
     return {
-      principal: `${partes[0].replace("Simulando", "Comparando com")}...`,
+      principal: mesa ? `Simulando mesas de ${mesa} cm…` : "Simulando mesas…",
       detalhe: "Os encaixes já foram gravados; falta só a comparação com a mesa maior.",
     };
+  }
   const detalhe = [contexto, ETAPAS[etapa]].filter(Boolean).join(" · ");
   if (!estado.mesa_atual) return { principal: "Encaixando...", detalhe };
   const verbo = etapa === "polimento" ? "Refinando" : "Encaixando";
@@ -112,7 +122,14 @@ function descrever(estado) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
+export default function ProgressoEncaixe({
+  ocId,
+  consultarJob,
+  cancelarJob,
+  chave,
+  onConcluido,
+  onFim,
+}) {
   const [estado, setEstado] = useState(null);
   const [agora, setAgora] = useState(Date.now());
   const [confirmando, setConfirmando] = useState(false);
@@ -123,13 +140,19 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
   // pode reiniciar a consulta.
   const cb = useRef({ onConcluido, onFim });
   cb.current = { onConcluido, onFim };
+  const api = useRef(null);
+  api.current = {
+    consultar: consultarJob ?? (() => getJobOrdemCorte(ocId)),
+    cancelar: cancelarJob ?? (() => cancelarJobOrdemCorte(ocId)),
+  };
+  const deOc = !consultarJob;
 
   useEffect(() => {
     let vivo = true;
     let timer = null;
     const consultar = async () => {
       try {
-        const e = await getJobOrdemCorte(ocId);
+        const e = await api.current.consultar();
         if (!vivo) return;
         setErroRede(null);
         setEstado(e);
@@ -148,7 +171,7 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
       vivo = false;
       clearTimeout(timer);
     };
-  }, [ocId]);
+  }, [ocId, chave]);
 
   // Relógio do tempo decorrido.
   useEffect(() => {
@@ -160,7 +183,7 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
     setConfirmando(false);
     setCancelando(true);
     try {
-      setEstado(await cancelarJobOrdemCorte(ocId));
+      setEstado(await api.current.cancelar());
     } catch (err) {
       // 404: o job terminou entre o clique e a confirmação — a próxima
       // consulta traz o estado final.
@@ -175,9 +198,9 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
       <div className={styles.erro} role="alert">
         <IconeAlerta />
         <div className={styles.erroTexto}>
-          <strong>Não foi possível gerar os encaixes.</strong>
-          <span>{estado.erro || "Erro desconhecido."}</span>
-          <span className={styles.nota}>Os encaixes anteriores desta OC foram mantidos.</span>
+          {/* A mensagem vem pronta do servidor (nesting_jobs): motivo + o que
+              foi preservado. Aqui não se acrescenta nada. */}
+          <span>{estado.erro || "Não foi possível gerar o encaixe."}</span>
         </div>
         <button type="button" className={styles.btnSecundario} onClick={() => onFim?.(estado)}>
           Fechar
@@ -232,7 +255,7 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
       )}
 
       {confirmando && (
-        <ConfirmarCancelamento onSim={cancelar} onNao={() => setConfirmando(false)} />
+        <ConfirmarCancelamento deOc={deOc} onSim={cancelar} onNao={() => setConfirmando(false)} />
       )}
     </div>
   );
@@ -240,7 +263,7 @@ export default function ProgressoEncaixe({ ocId, onConcluido, onFim }) {
 
 // Confirmação própria em portal: o ConfirmModal compartilhado fica por baixo
 // do assistente (z-index), e o Esc daqui não pode fechar o assistente junto.
-function ConfirmarCancelamento({ onSim, onNao }) {
+function ConfirmarCancelamento({ deOc, onSim, onNao }) {
   const overlayProps = useOverlayDismiss(onNao);
   useEffect(() => {
     const esc = (e) => {
@@ -263,7 +286,10 @@ function ConfirmarCancelamento({ onSim, onNao }) {
       >
         <h2 className={styles.dialogoTitulo}>Cancelar geração</h2>
         <p className={styles.dialogoTexto}>
-          Interromper o encaixe em andamento? Os encaixes anteriores desta OC serão mantidos.
+          Interromper o encaixe em andamento?
+          {deOc
+            ? " Os encaixes anteriores desta OC serão mantidos."
+            : " Nenhum encaixe será gravado."}
         </p>
         <div className={styles.dialogoAcoes}>
           <button type="button" className={styles.btnSecundario} onClick={onNao}>
@@ -346,7 +372,7 @@ export function MoldesMesa({ pecas }) {
 }
 
 /** Agrupa os encaixes (mesas) por enfesto, na ordem em que vêm. A grade por
- *  tamanho é do enfesto: o v2 a grava só na parte 1, o v1 a repete em todas. */
+ *  tamanho é do enfesto inteiro e vem só na parte 1. */
 export function agruparEnfestos(encaixes) {
   const grupos = new Map();
   for (const e of encaixes || []) {
@@ -363,23 +389,35 @@ export function agruparEnfestos(encaixes) {
   return [...grupos.values()];
 }
 
-/** Cabeçalho do enfesto: tecido, camadas, mesas e a grade por tamanho. */
+/** Cabeçalho do enfesto: tecido · Enfesto N · camadas · mesas e a grade por tamanho. */
 export function ResumoEnfesto({ grupo, loteCodigo }) {
   const mesas = grupo.mesas.length;
   return (
     <div className={styles.enfesto}>
-      <span className={styles.enfestoTitulo}>
-        {grupo.enfesto != null ? `Enfesto ${grupo.enfesto}` : "Encaixe"}
+      <span className={styles.enfestoTitulo} title={loteCodigo ? `Lote ${loteCodigo}` : undefined}>
+        {[
+          grupo.tecido_nome,
+          grupo.enfesto != null ? `Enfesto ${grupo.enfesto}` : "Encaixe",
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Encaixe"}
       </span>
       <span className={styles.enfestoInfo}>
-        {[grupo.tecido_nome, loteCodigo && `lote ${loteCodigo}`].filter(Boolean).join(" · ")} ·{" "}
         {grupo.camadas} {grupo.camadas === 1 ? "camada" : "camadas"} · {mesas}{" "}
         {mesas === 1 ? "mesa" : "mesas"}
       </span>
       {grupo.grade && (
         <span className={styles.grade}>
           {grupo.grade.map((p, i) => (
-            <span key={i} className={styles.gradeTam} title={p.grupo_nome || ""}>
+            <span
+              key={i}
+              className={styles.gradeTam}
+              title={
+                p.sobra > 0
+                  ? `${p.sobra} ${p.sobra === 1 ? "peça" : "peças"} a mais que o pedido (sobra)`
+                  : p.grupo_nome || ""
+              }
+            >
               {p.tamanho} <strong>{p.pecas}</strong>
               {p.sobra > 0 && <span className={styles.sobra}> +{p.sobra}</span>}
             </span>
@@ -403,16 +441,20 @@ export function CardMesa({ encaixe: e }) {
       </div>
       <dl className={styles.cardMetricas}>
         <div>
-          <dt>Comprimento</dt>
+          <dt>COMPR.</dt>
           <dd>{numBR(e.comp_metros)} m</dd>
         </div>
         <div>
-          <dt>Aproveitamento</dt>
+          <dt>APROV.</dt>
           <dd>{e.aproveitamento_pct != null ? `${numBR(e.aproveitamento_pct, 1)}%` : "—"}</dd>
         </div>
         <div>
-          <dt>Peso total</dt>
+          <dt>PESO</dt>
           <dd>{numBR(e.peso_total_kg, 3)} kg</dd>
+        </div>
+        <div>
+          <dt>CAMADAS</dt>
+          <dd>{e.num_camadas != null ? numBR(e.num_camadas, 0) : "—"}</dd>
         </div>
       </dl>
       <MoldesMesa pecas={e.pecas_parte} />
@@ -425,27 +467,25 @@ export const cardsGridClass = styles.cards;
 // ── Rótulo do motor ───────────────────────────────────────────────────────────
 
 /**
- * "Motor v2 · Equilibrado" | "Motor reserva (v1)" | "Motor v1".
- * motorConfig: motor de Configurações > Produção (null se não deu para ler):
- * encaixe v1 com a configuração em v2 só pode ter vindo da reserva.
+ * "Motor v2 · Automático (Máximo)" | "Motor v2 · Equilibrado" | null.
+ * O perfil concreto (qualidade_perfil) vem do mapa_json; quando a OC pediu
+ * "Automático", o rótulo mostra o perfil que o motor escolheu.
  */
-export function RotuloMotor({ encaixes, motorConfig }) {
+export function RotuloMotor({ encaixes }) {
   const e = (encaixes || []).find((x) => x.motor_usado);
-  if (!e) return null;
-  if (e.motor_usado === "v2")
-    return (
-      <span className={styles.motor}>
-        Motor v2 · {QUALIDADE_LABEL[e.qualidade] || "Equilibrado"}
-      </span>
-    );
-  if (motorConfig === "v2")
-    return (
-      <span
-        className={`${styles.motor} ${styles.motorReserva}`}
-        title="O motor principal (v2) falhou nesta geração e os encaixes foram feitos pelo motor reserva (v1), que aproveita menos tecido. Regere para tentar o v2 de novo."
-      >
-        Motor reserva (v1)
-      </span>
-    );
-  return <span className={styles.motor}>Motor v1</span>;
+  if (!e || e.motor_usado !== "v2") return null;
+  const perfil = QUALIDADE_LABEL[e.qualidade_perfil || e.qualidade] || "Equilibrado";
+  const texto = e.qualidade === "AUTOMATICO" ? `Motor v2 · Automático (${perfil})` : `Motor v2 · ${perfil}`;
+  return (
+    <span
+      className={styles.motor}
+      title={
+        e.qualidade === "AUTOMATICO"
+          ? "Qualidade Automática: o perfil é escolhido pelo número de peças do enfesto (poucas → Máximo, médias → Equilibrado, muitas → Rápido)."
+          : undefined
+      }
+    >
+      {texto}
+    </span>
+  );
 }

@@ -6,35 +6,39 @@ Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
      ordem_corte_service.montar_pares_oc (OC).
   2. Agrupa por lote de tecido (_agrupar_por_lote).
   3. Para cada lote:
+       0. Decide o enfesto (_decidir_lote + nesting_v2/decisor.py): face
+          única ou face a face × sem sobra ou menos enfestos. Cada
+          alternativa válida é simulada no perfil RAPIDO (sem gravar, com
+          cache por enfesto) e fica a de menor consumo, com as regras da
+          produção no empate; a escolha manual do "Avançado" pula isso.
        a. Planeja os enfestos (services/plano_enfesto.py): camadas e
-          conjuntos de cada tamanho, no modo SEM_SOBRA ou MENOS_ENFESTOS.
-       b. Para cada enfesto, monta os polígonos para o worker (conjuntos ×
-          multiplicador de tipo_corte) e chama nesting_bridge.executar().
-       c. Se o risco passa do comprimento máximo (mesa de corte), divide
-          as peças em partes <= limite, cada uma um encaixe com as mesmas
-          camadas (_partes_do_enfesto).
-       d. Calcula comp_metros, peso_kg, custo_total e desperdicio_pct com
+          conjuntos de cada tamanho, no modo SEM_SOBRA ou MENOS_ENFESTOS
+          (camadas pares no face a face com peça em par).
+       b. Para cada enfesto, monta os polígonos (conjuntos × multiplicador
+          de tipo_corte) e roda o motor v2 (services/nesting_v2 — spyrrow +
+          OR-Tools): uma mesa = um encaixe.
+       c. Calcula comp_metros, peso_kg, custo_total e desperdicio_pct com
           aplicação do encolhimento e monta o Encaixe na sessão (sem gravar).
   4. Numera (MAX+1) e grava todos os encaixes num único commit — erro em
      qualquer lote descarta tudo.
   5. Retorna os resumos dos encaixes, avisos e o plano de cada lote.
 
-Motores (M2a) — o passo 3b/3c tem dois motores:
-  v1  nesting_bridge (Node, skyline por bounding box) + _partes_do_enfesto;
-  v2  services/nesting_v2 (spyrrow + OR-Tools): uma mesa = um encaixe.
-O motor vem de Configurações > Produção (motor_encaixe, padrão v2). Se o v2
-falhar, a geração inteira é refeita com o v1 (reserva) e a resposta avisa
-(AVISO_RESERVA). A qualidade (QUALIDADES) só vale para o v2. O v2 aceita um
-callback de progresso — é por ele que nesting_jobs mostra a mesa atual e
-cancela (GeracaoCancelada), sem gravar nada.
+Motor (v2) — a qualidade (QUALIDADES) define os orçamentos de tempo do
+spyrrow; AUTOMATICO distribui o orçamento de tempo da Ordem de Corte entre os
+riscos (services/planejamento/custo.py). Falha ou tempo do motor → UMA nova
+tentativa com outra
+semente e perfil RAPIDO; se falhar de novo, ErroNesting (job vira ERRO e nada
+é gravado). O motor aceita um callback de progresso — é por ele que
+nesting_jobs mostra a mesa atual e cancela (GeracaoCancelada), sem gravar.
 """
 
 from __future__ import annotations
 
 import logging
 import math
+import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 
 from sqlalchemy import func
@@ -47,10 +51,12 @@ from models.molde import Molde
 from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, QUALIDADE_PADRAO
 from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
-from nesting.nesting_bridge import build_polygon, executar
 from services import nesting_v2
+from services.nesting_v2 import decisor
+from services.nesting_v2.geometria import PARES
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
 from services.plano_enfesto import linhas_enfesto, planejar
+from services.planejamento.custo import Orcamento, estimar_segundos
 from services.precificacao_service import get_ou_criar_config
 
 logger = logging.getLogger(__name__)
@@ -59,8 +65,6 @@ logger = logging.getLogger(__name__)
 _MULT: dict[str, int] = {"simples": 1, "par": 2, "par_sem_espelho": 2}
 
 # ── Motor e qualidade ────────────────────────────────────────────────────────
-
-MOTORES = ("v1", "v2")
 
 # Qualidade → orçamentos do v2 (segundos por chamada do spyrrow e teto brando
 # da geração). EQUILIBRADO é o padrão do M1-B (PRETO 150: ~110 s, 5,69 m).
@@ -76,13 +80,34 @@ QUALIDADES: dict[str, dict[str, float]] = {
     },
     "MAXIMO": {"segundos_mesa": 6.0, "segundos_polimento": 18.0, "segundos_faixa": 90.0, "tempo_max_s": 1800.0},
 }
+QUALIDADES_PERFIS = ("AUTOMATICO", *QUALIDADES)
 
-AVISO_RESERVA = "Motor principal falhou; usado o motor reserva"
+# Orçamento de tempo da Ordem de Corte quando não vem da configuração
+# (Configurações > Produção > "Tempo limite da ordem de corte (s)"). Ver
+# services/planejamento/custo.py — a qualidade AUTOMATICO é resolvida por ele:
+# cada risco começa no perfil Rápido (pago pela comparação de enfesto) e sobe
+# um degrau enquanto sobrar tempo.
+TEMPO_MAXIMO_OC_PADRAO_S = 300
+
+# Fatia da FOLGA do orçamento que a comparação de enfesto pode ficar. A
+# comparação não é de graça: ela roda o motor em cada candidato, e esse tempo
+# sai da mesma conta do usuário. Mas também não pode competir com o encaixe
+# que vem depois — se ela levasse tudo, nenhum risco teria tempo nem para o
+# perfil Rápido. Metade e metade: a comparação pode mudar o PLANO (mesas e
+# metros, a alavanca maior), o orçamento distribui o resto no GRAU de qualidade.
+# Vira 0 (nada de comparação, todos os lotes no padrão seguro) quando o piso do
+# pedido já come o limite inteiro.
+FOLHA_COMPARACAO = 0.5
 
 
 class GeracaoCancelada(Exception):
     """Levantada pelo callback de progresso para interromper a geração —
-    nunca cai no motor reserva e nunca grava nada."""
+    nunca cai em nova tentativa e nunca grava nada."""
+
+
+class ErroNesting(RuntimeError):
+    """Falha do motor de encaixe (após a nova tentativa) — mensagem legível;
+    o job vira ERRO e nenhum encaixe parcial é gravado."""
 
 
 # progresso(fase=..., mesa_atual=..., total_mesas=..., aproveitamento_parcial=...)
@@ -93,9 +118,9 @@ def config_producao(db: Session) -> dict:
     """Configurações > Produção (singleton configuracao_empresa)."""
     cfg = get_ou_criar_config(db)
     return {
-        "motor_encaixe": cfg.motor_encaixe if cfg.motor_encaixe in MOTORES else "v2",
         "comprimento_max_mesa_cm": int(cfg.comprimento_max_mesa_cm),
         "alerta_economia_pct": float(cfg.alerta_economia_pct),
+        "tempo_maximo_oc_s": int(cfg.tempo_maximo_oc_s),
     }
 
 
@@ -120,6 +145,8 @@ class TecidoNesting:
     max_camadas: int
     lote_id: uuid.UUID | None  # nova hierarquia
     tecido_id: uuid.UUID | None  # legado
+    # Estampa ou pelo: não pode ser virado → enfesto sempre face única.
+    tem_direcao: bool = False
 
     @classmethod
     def de_lote(cls, lote: LoteTecido) -> "TecidoNesting":
@@ -134,6 +161,7 @@ class TecidoNesting:
             max_camadas=int(modelo.max_camadas),
             lote_id=lote.id,
             tecido_id=None,
+            tem_direcao=bool(modelo.tem_direcao),
         )
 
     @classmethod
@@ -167,8 +195,70 @@ def _rotacoes(sentido_fio: str | None) -> list[int]:
 # ── Extração de polígono do molde ────────────────────────────────────────────
 
 
+# ── Extração e saneamento de polígono do molde ───────────────────────────────
+
+
+class ErroPoligono(ValueError):
+    """Geometria do molde inválida e irrecuperável — mensagem cita o molde
+    para o bloqueio de geração (Tarefa 2)."""
+
+
+def _extrair_poligono(molde: Molde) -> list[list[float]]:
+    """Extrai o polígono exterior do geometria_json (GeoJSON Polygon ou
+    lista legada), em cm. Sem geometria, quadrado aproximado pela área —
+    o mesmo fallback que o antigo motor já usava."""
+    if molde.geometria_json:
+        geo = molde.geometria_json
+        if isinstance(geo, dict) and geo.get("type") == "Polygon":
+            ring = geo["coordinates"][0]
+            return [[float(p[0]), float(p[1])] for p in ring]
+        if isinstance(geo, list) and geo:
+            return [[float(p[0]), float(p[1])] for p in geo]
+    lado = math.sqrt(float(molde.area_cm2)) if molde.area_cm2 and float(molde.area_cm2) > 0 else 10.0
+    return [[0.0, 0.0], [lado, 0.0], [lado, lado], [0.0, lado], [0.0, 0.0]]
+
+
+def _sanear_poligono(pontos: list[list[float]], nome: str) -> list[list[float]]:
+    """Valida o anel e tenta corrigir automaticamente com shapely
+    (make_valid; fallback buffer(0)) quando o polígono autointersecta.
+    Devolve o contorno reparado. Se continuar inválido (menos de 3 pontos,
+    área zero ou correção impossível), levanta ErroPoligono citando o molde.
+    """
+    pts = [[float(x), float(y)] for x, y in pontos]
+    if len(pts) < 3:
+        raise ErroPoligono(f"Molde '{nome}': geometria sem 3 pontos (polígono inválido).")
+    try:
+        from shapely.geometry import Polygon
+        from shapely.validation import make_valid
+    except ImportError:  # pragma: no cover — shapely é dependência do backend
+        if _area(pts) <= 1e-6:
+            raise ErroPoligono(f"Molde '{nome}': geometria com área zero.")
+        return pts
+    poly = Polygon(pts)
+    # O reparo vem ANTES do teste de área: num polígono autointersectado o
+    # shoelace (e Polygon.area) dá a diferença das partes, que vale zero num
+    # "bowtie" — sem reparo ele seria rejeitado como área zero.
+    if not poly.is_valid:
+        for candidato in (make_valid(poly), poly.buffer(0)):
+            if candidato.is_empty or candidato.geom_type not in ("Polygon", "MultiPolygon"):
+                continue
+            if candidato.geom_type == "MultiPolygon":
+                partes = [g for g in candidato.geoms if not g.is_empty and g.geom_type == "Polygon"]
+                if not partes:
+                    continue
+                candidato = max(partes, key=lambda g: g.area)
+            anel = [list(p) for p in candidato.exterior.coords]
+            if len(anel) >= 3 and _area(anel) > 1e-6:
+                return anel
+        raise ErroPoligono(f"Molde '{nome}': geometria inválida e não pôde ser corrigida automaticamente.")
+    if poly.area <= 1e-6:
+        raise ErroPoligono(f"Molde '{nome}': geometria com área zero.")
+    return [list(p) for p in poly.exterior.coords]
+
+
 def _poligono(molde: Molde) -> list[list[float]]:
-    return build_polygon(molde.geometria_json, molde.area_cm2)
+    """Polígono do molde, já saneado (reparo automático de autointerseção)."""
+    return _sanear_poligono(_extrair_poligono(molde), _nome_molde(molde))
 
 
 def _rotate_polygon(pts: list[list[float]], angle_deg: int) -> list[list[float]]:
@@ -298,6 +388,80 @@ class _Andamento:
         )
 
 
+def _quantidades(moldes_qtd: dict[uuid.UUID, list]) -> tuple[dict[tuple, list[Molde]], dict[tuple, int]]:
+    """({peça: [moldes]}, {peça: quantidade}) — a peça inteira é grupo +
+    tamanho (_chave); a quantidade é a maior entre os moldes dela."""
+    por_chave: dict[tuple, list[Molde]] = {}
+    qtd_chave: dict[tuple, int] = {}
+    for molde, qtd in moldes_qtd.values():
+        k = _chave(molde)
+        por_chave.setdefault(k, []).append(molde)
+        qtd_chave[k] = max(qtd_chave.get(k, 0), qtd)
+    return por_chave, qtd_chave
+
+
+def _tem_par(moldes_qtd: dict[uuid.UUID, list]) -> bool:
+    return any((molde.tipo_corte or "simples") in PARES for molde, _ in moldes_qtd.values())
+
+
+def _enfestos_do_lote(
+    por_chave: dict[tuple, list[Molde]],
+    qtd_chave: dict[tuple, int],
+    max_camadas: int,
+    *,
+    tipo: str,
+    modo: str,
+    camadas_pares: bool = False,
+) -> list[tuple[int, float]]:
+    """[(peças físicas, área em cm²)] de cada enfesto do plano (tipo, modo).
+
+    Sai de `planejar`, que é puro: nenhum spyrrow, nenhuma consulta. É o que
+    deixa orçar a comparação de enfesto ANTES de pagar a primeira simulação —
+    e o que dá os números do perfil de qualidade sem rodar o motor.
+    """
+    plano = planejar(qtd_chave, max_camadas, modo, camadas_pares=camadas_pares)
+    espelhar_par = tipo != decisor.FACE_A_FACE
+    saida = []
+    for enfesto in plano["enfestos"]:
+        pecas = [
+            _peca_v2(m, c, espelhar_par) for k, c in enfesto["conjuntos_por_tamanho"].items() for m in por_chave[k]
+        ]
+        saida.append(
+            (
+                sum(p.quantidade for p in pecas),
+                sum(p.quantidade * _area(p.poligono) for p in pecas),
+            )
+        )
+    return saida
+
+
+def _custos_candidatos(
+    tecido: TecidoNesting,
+    moldes_qtd: dict[uuid.UUID, list],
+    limite_cm: int,
+    lista: list[decisor.Candidato],
+) -> list[float]:
+    """Segundos estimados (perfil RÁPIDO) de cada candidato, na ordem da lista.
+
+    Serve para duas coisas: pôr a comparação na ordem mais barata primeiro e
+    dizer se o tempo que sobrou do orçamento da OC dá para simular.
+    """
+    por_chave, qtd_chave = _quantidades(moldes_qtd)
+    tem_par = _tem_par(moldes_qtd)
+    custos = []
+    for cand in lista:
+        riscos = _enfestos_do_lote(
+            por_chave,
+            qtd_chave,
+            tecido.max_camadas,
+            tipo=cand.tipo,
+            modo=cand.modo,
+            camadas_pares=cand.tipo == decisor.FACE_A_FACE and tem_par,
+        )
+        custos.append(sum(estimar_segundos(pecas, area, tecido.largura_util_cm, limite_cm) for pecas, area in riscos))
+    return custos
+
+
 def _gerar_para_tecido(
     pedido: Pedido | None,
     tecido: TecidoNesting,
@@ -306,151 +470,266 @@ def _gerar_para_tecido(
     ordem_corte_id: uuid.UUID | None,
     descricao: str | None,
     limite_cm: int,
-    motor: str = "v1",
     qualidade: str = QUALIDADE_PADRAO,
     andamento: _Andamento | None = None,
+    semente: int = 0,
+    *,
+    tipo_enfesto: str = decisor.MESMA_FACE,
+    cache: dict | None = None,
+    perfis: dict[int, str] | None = None,
+    orcamento: Orcamento | None = None,
+    chave_lote: str | None = None,
 ) -> tuple[list[Encaixe], list[str], dict]:
-    """Planeja os enfestos do lote (plano_enfesto) e roda o nesting de cada
-    um — cada enfesto vira um Encaixe, ou várias partes (todas <= limite_cm,
-    mesmas camadas) quando o risco não cabe na mesa. Os encaixes saem
+    """Planeja os enfestos do lote (plano_enfesto) e roda o nesting_v2 de
+    cada um — cada mesa do nesting_v2 vira um Encaixe (_enfesto_v2), sempre
+    <= limite_cm, com as mesmas camadas do enfesto. Os encaixes saem
     montados, fora da sessão, sem número e sem commit.
 
-    motor "v2": cada mesa do nesting_v2 vira uma parte (_enfesto_v2).
+    qualidade: perfil de tempo (ver QUALIDADES); "AUTOMATICO" usa o perfil que
+    perfis dá para este enfesto (o orçamento de tempo da OC distribuiu antes).
+    perfis: {nº do enfesto: perfil} da distribuição do orçamento.
+    orcamento: o mesmo Orcamento, para documentar a escolha no mapa_json.
+    chave_lote: a chave com que este lote foi registrado no orçamento — é com
+    ela que `Orcamento.detalhe` acha o risco. Sem ela (montagem de um risco
+    avulso, sem orçamento) não há o que documentar.
+    semente: troca entre tentativas (jogada do retry automático).
+    tipo_enfesto: MESMA_FACE espelha a 2ª cópia dos pares; FACE_A_FACE não
+    espelha e, havendo peça em par, usa camadas pares. cache: resultados do
+    motor por enfesto (ver _enfesto_v2), compartilhado entre as simulações da
+    decisão e a geração definitiva.
 
     Retorna (encaixes_montados, avisos, plano).
     """
     andamento = andamento or _Andamento(None)
     avisos: list[str] = []
+    perfis = perfis or {}
 
-    por_chave: dict[tuple, list[Molde]] = {}
-    qtd_chave: dict[tuple, int] = {}
-    for molde, qtd in moldes_qtd.values():
-        k = _chave(molde)
-        por_chave.setdefault(k, []).append(molde)
-        qtd_chave[k] = max(qtd_chave.get(k, 0), qtd)
-
-    plano = planejar(qtd_chave, tecido.max_camadas, modo)
+    por_chave, qtd_chave = _quantidades(moldes_qtd)
+    face_a_face = tipo_enfesto == decisor.FACE_A_FACE
+    plano = planejar(qtd_chave, tecido.max_camadas, modo, camadas_pares=face_a_face and _tem_par(moldes_qtd))
     rotulos = {k: _rotulo(ms) for k, ms in por_chave.items()}
-    todos_moldes = [m for m, _ in moldes_qtd.values()]
-    moldes_por_id = {str(m.id): m for m in todos_moldes}
-    pares = {i for i, m in moldes_por_id.items() if _MULT.get(m.tipo_corte or "simples", 1) > 1}
     encaixes: list[Encaixe] = []
 
     for n, enfesto in enumerate(plano["enfestos"], start=1):
         camadas = enfesto["camadas"]
-        if motor == "v2":
-            fase = f"{tecido.nome} · enfesto {n}/{len(plano['enfestos'])}"
-            extras = {
-                "modo_camadas": modo,
-                "enfesto": n,
-                "total_enfestos": len(plano["enfestos"]),
-                "sobra_total": sum(enfesto["sobra_por_tamanho"].values()),
-                "comprimento_max_cm": limite_cm,
-                "motor_usado": "v2",
-                "qualidade": qualidade,
-            }
-            montados = _enfesto_v2(
-                pedido,
-                tecido,
-                [(m, c) for k, c in enfesto["conjuntos_por_tamanho"].items() for m in por_chave[k]],
-                camadas,
-                limite_cm,
-                qualidade,
-                extras,
-                linhas_enfesto(enfesto, rotulos),
-                ordem_corte_id,
-                descricao,
-                lambda f, mesa, total, aprov, fase=fase: andamento.avisar(f"{fase} · {f}", mesa, total, aprov),
-            )
-            andamento.mesas_fechadas += len(montados)
-            encaixes.extend(montados)
-            continue
-
-        andamento.avisar(f"{tecido.nome} · enfesto {n}/{len(plano['enfestos'])} · v1")
-        parts: list[dict] = []
-        for k, conjuntos in enfesto["conjuntos_por_tamanho"].items():
-            for molde in por_chave[k]:
-                parts.append(
-                    {
-                        "id": str(molde.id),
-                        "polygon": _poligono_rotacionado(molde),
-                        "quantity": conjuntos * _MULT.get(molde.tipo_corte or "simples", 1),
-                        "rotations": _rotacoes(molde.sentido_fio),
-                    }
-                )
-        if not parts:
-            continue
-
+        fase = f"{tecido.nome} · enfesto {n}/{len(plano['enfestos'])}"
         extras = {
             "modo_camadas": modo,
+            "tipo_enfesto": tipo_enfesto,
             "enfesto": n,
             "total_enfestos": len(plano["enfestos"]),
-            "pecas_por_tamanho": linhas_enfesto(enfesto, rotulos),
             "sobra_total": sum(enfesto["sobra_por_tamanho"].values()),
-            "motor_usado": "v1",
+            "comprimento_max_cm": limite_cm,
+            "motor_usado": "v2",
+            "qualidade": qualidade,
         }
-        largura = tecido.largura_util_cm
-        partes, avisos_partes = _partes_do_enfesto(parts, largura, limite_cm, pares, moldes_por_id)
-        avisos.extend(avisos_partes)
-
-        if not partes[0][0]["placements"]:
-            # nest_worker descarta peças mais largas que o bin em silêncio
-            # (ver nest_worker.js: findBest retorna null e o item é pulado) —
-            # sem este aviso o usuário só vê 0% de aproveitamento sem saber por quê.
-            avisos.append(
-                f"Nenhuma peça foi posicionada no tecido '{tecido.nome}'. "
-                f"Verifique se a largura útil do tecido "
-                f"({tecido.largura_util_cm} cm) está correta e é maior que as "
-                f"peças a encaixar."
-            )
-
-        total = len(partes)
-        for i, (result_parte, parts_parte) in enumerate(partes, start=1):
-            if result_parte["width_used"] > limite_cm + _EPS_CM and not avisos_partes:
-                # Sem peça maior que o limite: passou por causa de um par
-                # que só cabe junto acima da mesa.
-                avisos.append(
-                    f"Enfesto {n}, parte {i}: {result_parte['width_used']:.1f} cm, acima do limite de {limite_cm} cm."
-                )
-            # "parte" (texto 2/3) só quando dividido — é o que a tela e o
-            # formulário exibem; parte_numero/total_partes sempre.
-            extras_parte = {
-                **extras,
-                "comprimento_max_cm": limite_cm,
-                "parte_numero": i,
-                "total_partes": total,
-                "pecas_parte": _pecas_parte(parts_parte, moldes_por_id, camadas),
-            }
-            if total > 1:
-                extras_parte["parte"] = f"{i}/{total}"
-            encaixes.append(
-                _montar_encaixe(
-                    pedido,
-                    tecido,
-                    result_parte,
-                    camadas,
-                    largura,
-                    parts_parte,
-                    pecas=todos_moldes,
-                    extras=extras_parte,
-                    ordem_corte_id=ordem_corte_id,
-                    descricao=descricao,
-                )
-            )
-        andamento.mesas_fechadas += total
+        montados = _enfesto_v2(
+            pedido,
+            tecido,
+            [(m, c) for k, c in enfesto["conjuntos_por_tamanho"].items() for m in por_chave[k]],
+            camadas,
+            limite_cm,
+            perfis.get(n, qualidade),
+            extras,
+            linhas_enfesto(enfesto, rotulos),
+            ordem_corte_id,
+            descricao,
+            lambda f, mesa, total, aprov, fase=fase: andamento.avisar(f"{fase} · {f}", mesa, total, aprov),
+            semente,
+            espelhar_par=not face_a_face,
+            cache=cache,
+            orcamento=orcamento,
+            enfesto=(chave_lote, n) if chave_lote is not None else n,
+        )
+        andamento.mesas_fechadas += len(montados)
+        encaixes.extend(montados)
 
     # A mesma peça grande em vários enfestos gera o mesmo aviso — uma vez só.
     return encaixes, list(dict.fromkeys(avisos)), plano
 
 
+# ── Decisão do enfesto ───────────────────────────────────────────────────────
+
+
+class _TempoEsgotado(Exception):
+    """A comparação de formas de enfesto passou de TEMPO_COMPARACAO_S."""
+
+
+def _analisar_lote(tecido: TecidoNesting, moldes_qtd: dict[uuid.UUID, list]) -> decisor.Analise:
+    """Classifica as peças do lote e diz se face a face vale para ele."""
+    _, qtd_chave = _quantidades(moldes_qtd)
+    natural = planejar(qtd_chave, tecido.max_camadas, "SEM_SOBRA")
+    pecas = {
+        str(molde.id): decisor.PecaAnalise(
+            nome=_nome_molde(molde),
+            poligono=_poligono_rotacionado(molde),
+            rotacoes=tuple(float(r) for r in _rotacoes(molde.sentido_fio)),
+            tipo_corte=molde.tipo_corte or "simples",
+        )
+        for molde, _ in moldes_qtd.values()
+    }
+    return decisor.analisar(
+        pecas,
+        tem_direcao=tecido.tem_direcao,
+        camadas_naturais=[e["camadas"] for e in natural["enfestos"]],
+        max_camadas=tecido.max_camadas,
+    )
+
+
+def _decidir_lote(
+    tecido: TecidoNesting,
+    moldes_qtd: dict[uuid.UUID, list],
+    limite_cm: int,
+    *,
+    tipo_fixo: str | None,
+    modo_fixo: str | None,
+    semente: int,
+    cache: dict,
+    prazo: float,
+    progresso: Progresso | None,
+    motivo_prazo: str | None = None,
+    custos: list[float] | None = None,
+) -> decisor.Decisao:
+    """Escolhe o tipo de enfesto e o modo de camadas de UM lote.
+
+    Cada candidato válido (decisor.candidatos) roda no perfil RAPIDO, sem
+    gravar; os resultados do motor ficam no `cache` (enfesto igual em dois
+    candidatos não roda duas vezes, e a geração definitiva reaproveita o que
+    já estiver no perfil certo).
+
+    Os candidatos são simulados DO MAIS BARATO PARA O MAIS CARO (custo estimado
+    por `_custos_candidatos`, que não roda o motor) e um candidato só começa se
+    o tempo que resta no `prazo` der para ele. Sem essa checagem, o primeiro
+    candidato de um lote grande consome o prazo inteiro e os lotes seguintes
+    ficam sem comparação nenhuma — e, como o custo medido depende da máquina,
+    a mesma OC saía diferente em execuções diferentes.
+
+    Nenhum candidato avaliado → face única + sem sobra, com o motivo registrado
+    (`motivo_prazo` diz por quê). Escolha manual (tipo e modo fixos) não
+    simula nada."""
+    inicio = time.monotonic()
+    if progresso is not None:
+        progresso(fase=f"Analisando as peças… · {tecido.nome}", mesa_atual=0, total_mesas=0)
+    analise = _analisar_lote(tecido, moldes_qtd)
+    lista = decisor.candidatos(analise, tipo_fixo, modo_fixo)
+
+    if len(lista) == 1:
+        escolhido = lista[0]
+        motivo = f"{escolhido.rotulo}: escolha manual (Avançado)."
+        if tipo_fixo == decisor.FACE_A_FACE and escolhido.tipo != decisor.FACE_A_FACE:
+            motivo = f"{escolhido.rotulo}: face a face pedida no Avançado, mas {analise.motivo_invalida}."
+        escolhido.avaliado = False
+        return decisor.Decisao(
+            tipo=escolhido.tipo,
+            modo=escolhido.modo,
+            motivo=motivo,
+            regra="MANUAL",
+            candidatos=lista,
+            face_a_face_valida=analise.face_a_face_valida,
+            motivo_face_a_face=analise.motivo_invalida,
+            classes=analise.classes,
+            manual=True,
+        )
+
+    if custos is None:
+        custos = _custos_candidatos(tecido, moldes_qtd, limite_cm, lista)
+    # Do mais barato para o mais caro: o mesmo segundo decide mais lotes, e a
+    # ordem deixa de depender da velocidade da máquina.
+    ordem = sorted(range(len(lista)), key=lambda i: (custos[i], i))
+    esgotado = False
+    for posicao, i in enumerate(ordem, start=1):
+        cand = lista[i]
+        restante = prazo - time.monotonic()
+        if esgotado or restante <= 0 or custos[i] > restante:
+            # Não cabe no que sobrou. Como a fila é crescente de custo, nada
+            # depois cabe também — marcar todos de uma vez e parar de conferir.
+            esgotado = True
+            cand.avaliado = False
+            continue
+        fase = f"Comparando formas de enfesto… · {tecido.nome} · {posicao}/{len(lista)} {cand.rotulo}"
+
+        def _aviso(fase: str = fase, **_estado) -> None:
+            if time.monotonic() > prazo:
+                raise _TempoEsgotado()
+            if progresso is not None:
+                progresso(fase=fase, mesa_atual=0, total_mesas=0)
+
+        _aviso()
+        t0 = time.monotonic()
+        try:
+            encaixes, _, plano = _gerar_para_tecido(
+                None,
+                tecido,
+                moldes_qtd,
+                cand.modo,
+                None,
+                None,
+                limite_cm,
+                "RAPIDO",
+                _Andamento(_aviso),
+                semente,
+                tipo_enfesto=cand.tipo,
+                cache=cache,
+            )
+        except _TempoEsgotado:
+            esgotado = True
+            cand.avaliado = False
+            continue
+        except GeracaoCancelada:
+            raise
+        except Exception as exc:  # noqa: BLE001 — um candidato que falha só sai da disputa
+            logger.warning("[NESTING] %s: candidato %s falhou: %s", tecido.nome, cand.rotulo, exc)
+            cand.erro = str(exc) or type(exc).__name__
+            continue
+        t = totais(encaixes)
+        cand.metros = t["metros"]
+        cand.mesas = t["mesas"]
+        cand.enfestos = len(plano["enfestos"])
+        cand.camadas = sum(e["camadas"] for e in plano["enfestos"])
+        cand.sobra = plano["sobra_total"]
+        cand.segundos = round(time.monotonic() - t0, 1)
+
+    # Padrão seguro: face única + sem sobra no que não foi fixado à mão.
+    seguro = (lista[0].tipo if tipo_fixo else decisor.MESMA_FACE, modo_fixo or "SEM_SOBRA")
+    if not any(c.avaliado and c.erro is None for c in lista):
+        porque = motivo_prazo or f"a comparação passou de {decisor.TEMPO_COMPARACAO_S:g} s"
+        decisao = decisor.decisao_padrao_seguro(analise, lista, porque, *seguro)
+    else:
+        vencedor, motivo, regra = decisor.escolher(lista, analise)
+        # Comparação pela metade é melhor que nenhuma: o que sobrou sem simular
+        # entra no motivo, senão a tela mostra uma escolha sem lastro.
+        pendentes = [c for c in lista if not c.avaliado and c.erro is None]
+        if pendentes:
+            nomes = ", ".join(c.rotulo.lower() for c in pendentes)
+            motivo += (
+                f" Comparação incompleta por falta de tempo: {nomes} "
+                f"não {'foi simulado' if len(pendentes) == 1 else 'foram simulados'}."
+            )
+        decisao = decisor.Decisao(
+            tipo=vencedor.tipo,
+            modo=vencedor.modo,
+            motivo=motivo,
+            regra=regra,
+            candidatos=lista,
+            face_a_face_valida=analise.face_a_face_valida,
+            motivo_face_a_face=analise.motivo_invalida,
+            classes=analise.classes,
+            tempo_esgotado=bool(pendentes),
+        )
+    decisao.segundos = time.monotonic() - inicio
+    logger.info("[NESTING] %s: enfesto %s/%s — %s", tecido.nome, decisao.tipo, decisao.modo, decisao.motivo)
+    return decisao
+
+
 # ── Motor v2: um enfesto → uma mesa por encaixe ──────────────────────────────
 
 
-def _peca_v2(molde: Molde, conjuntos: int) -> nesting_v2.Peca:
+def _peca_v2(molde: Molde, conjuntos: int, espelhar_par: bool = True) -> nesting_v2.Peca:
     """Molde → linha de entrada do v2 com o MESMO polígono do v1
     (_poligono_rotacionado, rotacao_base já aplicada — por isso
     rotacao_base=0 aqui) e as mesmas rotações; a quantidade conta as cópias
-    físicas (conjuntos × multiplicador do tipo_corte), como no benchmark."""
+    físicas (conjuntos × multiplicador do tipo_corte), como no benchmark.
+    espelhar_par: False no enfesto face a face (par sem cópia espelhada)."""
     tipo = molde.tipo_corte or "simples"
     return nesting_v2.Peca(
         id=str(molde.id),
@@ -461,6 +740,7 @@ def _peca_v2(molde: Molde, conjuntos: int) -> nesting_v2.Peca:
         peca=molde.peca,
         tamanho=(molde.tamanho or "").strip(),
         grupo_nome=molde.grupo.nome if molde.grupo else None,
+        espelhar_par=espelhar_par,
     )
 
 
@@ -486,6 +766,12 @@ def _enfesto_v2(
     ordem_corte_id: uuid.UUID | None,
     descricao: str | None,
     ao_progresso: Callable[[str, int, int, float | None], None],
+    semente: int = 0,
+    *,
+    espelhar_par: bool = True,
+    cache: dict | None = None,
+    orcamento: Orcamento | None = None,
+    enfesto: Hashable | None = None,
 ) -> list[Encaixe]:
     """Roda o nesting_v2 num enfesto e monta um Encaixe por mesa.
 
@@ -495,26 +781,61 @@ def _enfesto_v2(
     SÓ na parte 1 — as demais partes têm apenas os moldes delas
     (pecas_parte), para o enfesto não ser somado uma vez por parte.
 
-    Raises: nesting_v2.ErroEncaixe / qualquer erro do motor (o chamador cai
-    no v1); GeracaoCancelada vinda de ao_progresso.
+    qualidade: perfil CONCRETO de tempo (Rápido/Equilibrado/Máximo). O
+    "AUTOMATICO" já foi resolvido em _gerar_para_tecido pela distribuição do
+    orçamento da OC (services/planejamento/custo.py) — o que a distribuição
+    decidiu entra no mapa_json do risco (qualidade_automatica) para dizer por
+    que ele ficou neste perfil.
+    semente: usada na geração (o retry automático troca para variar o
+    resultado e escapar da falha).
+    espelhar_par: False no face a face (ver geometria.espelha_segunda_copia).
+    cache: {chave: nesting_v2.Resultado} — o encaixe de um enfesto depende
+    só das peças (não das camadas); a chave junta lote, peças, espelho,
+    perfil, semente e limite. A simulação da decisão e a geração definitiva
+    compartilham o cache.
+    orcamento / enfesto: onde a decisão está registrada no mapa_json. `enfesto`
+    é a chave do risco no orçamento — no fluxo da OC, (lote, nº do enfesto), e
+    não só o nº: é assim que Orcamento.detalhe acha o registro.
+
+    Raises: nesting_v2.ErroEncaixe / qualquer erro do motor (o chamador faz
+    a nova tentativa com outro seed e perfil RAPIDO); GeracaoCancelada vem
+    de ao_progresso.
     """
-    pecas = [_peca_v2(m, c) for m, c in moldes_conjuntos if c > 0]
+    pecas = [_peca_v2(m, c, espelhar_par) for m, c in moldes_conjuntos if c > 0]
     if not pecas:
         return []
-    resultado = nesting_v2.gerar(
-        pecas,
-        tecido.largura_util_cm,
+    perfil = qualidade if qualidade in QUALIDADES else QUALIDADES["EQUILIBRADO"]
+    extras_parte_base = {**extras, "qualidade_perfil": perfil}
+    if orcamento is not None:
+        detalhe = orcamento.detalhe(enfesto)
+        if detalhe:
+            extras_parte_base["qualidade_automatica"] = detalhe
+    chave = (
+        str(tecido.lote_id or tecido.tecido_id),
+        tuple(sorted((p.id, p.quantidade, p.espelhar_par and p.tipo_corte in PARES) for p in pecas)),
+        perfil,
+        semente,
         limite_cm,
-        camadas,
-        ao_progresso=ao_progresso,
-        **QUALIDADES.get(qualidade, QUALIDADES[QUALIDADE_PADRAO]),
     )
+    resultado = cache.get(chave) if cache is not None else None
+    if resultado is None:
+        resultado = nesting_v2.gerar(
+            pecas,
+            tecido.largura_util_cm,
+            limite_cm,
+            camadas,
+            ao_progresso=ao_progresso,
+            seed=semente,
+            **QUALIDADES.get(perfil, QUALIDADES["EQUILIBRADO"]),
+        )
+        if cache is not None:
+            cache[chave] = resultado
     resumo = {k: v for k, v in resultado.resumo_enfesto().items() if k != "pecas_por_tamanho"}
     total = len(resultado.mesas)
     encaixes: list[Encaixe] = []
     for mesa in resultado.mesas:
         extras_parte = {
-            **extras,
+            **extras_parte_base,
             "parte_numero": mesa.indice,
             "total_partes": total,
             "pecas_parte": _pecas_parte_v2(mesa, camadas),
@@ -541,20 +862,12 @@ def _enfesto_v2(
     return encaixes
 
 
-# ── Divisão do enfesto em partes (comprimento máximo) ────────────────────────
-#
-# O nest_worker ignora bin.height: empilha tudo num risco só e não devolve
-# as peças que "não couberam". A divisão é feita aqui, sem mexer no worker:
-#   1. encaixa as peças restantes;
-#   2. a parte fica com as peças cujo topo (y + altura na rotação escolhida)
-#      está dentro do limite — posições válidas, o worker só as empilha;
-#   3. as demais voltam para o passo 1 como a próxima parte.
-# Cada peça sai em exatamente uma parte (nada repetido, nada faltando).
+# ── Dimensões e área (validação e conferência) ───────────────────────────────
 
 
 def _dimensoes(poligono: list[list[float]], graus: float) -> tuple[float, float]:
-    """(largura, comprimento) do bounding box após a rotação — mesma conta
-    do rotatedBBox do nest_worker (rotação em torno da origem)."""
+    """(largura, comprimento) do bounding box após a rotação (rotação em
+    torno da origem — a mesma convenção usada pelo motor)."""
     rad = graus * math.pi / 180
     c, s = math.cos(rad), math.sin(rad)
     xs = [x * c - y * s for x, y in poligono]
@@ -574,113 +887,74 @@ def _nome_molde(molde: Molde | None) -> str:
     return (molde.nome or f"{molde.peca or ''} {molde.tamanho or ''}").strip()
 
 
-def _fechar_pares(manter: list[int], placements: list[dict], topos: list[float], pares: set[str]) -> list[int]:
-    """Peça em par (tipo_corte par) fica inteira na mesma parte: com número
-    ímpar de cópias na parte, a mais alta volta para a próxima. Se a parte
-    ficar vazia (só havia meio par), puxa o par dela — a parte passa do
-    limite e o chamador avisa."""
-    manter = sorted(manter, key=lambda i: topos[i])
-    for pid in pares:
-        do_id = [i for i in manter if placements[i]["id"] == pid]
-        if len(do_id) % 2:
-            manter.remove(do_id[-1])
-    if manter:
-        return manter
-    primeiro = min(range(len(placements)), key=lambda i: topos[i])
-    manter = [primeiro]
-    pid = placements[primeiro]["id"]
-    if pid in pares:
-        outros = [i for i in range(len(placements)) if placements[i]["id"] == pid and i != primeiro]
-        manter += sorted(outros, key=lambda i: topos[i])[:1]
-    return manter
+# ── Validação antes de gerar (Conferência / Encaixe Rápido) ──────────────────
+#
+# Bloqueia a geração com o molde e o tecido citados na mensagem, ANTES de o
+# motor rodar: peça mais larga que a largura útil do tecido em todas as
+# rotações permitidas pelo fio; polígono inválido que não passou no reparo
+# automático do shapely. Peça mais comprida que o limite da mesa NÃO bloqueia
+# (o risco é dividido em mesas) — vira o aviso ATENÇÃO do Comprimento máximo.
 
 
-def _partes_do_enfesto(
-    parts: list[dict],
-    largura: float,
-    limite_cm: float,
-    pares: set[str],
-    moldes_por_id: dict[str, Molde],
-) -> tuple[list[tuple[dict, list[dict]]], list[str]]:
-    """Divide o enfesto em partes de comprimento <= limite_cm.
+def checar_molde(molde: Molde, lote: LoteTecido | None, comprimento_max_cm: int) -> list[tuple[str, str, bool]]:
+    """Problemas de um molde com o tecido do lote.
 
-    Retorna ([(result, parts_da_parte)], avisos) — result no formato do
-    worker (placements, efficiency, width_used). Risco que cabe no limite
-    sai numa parte só, com o resultado do worker intacto (mesmo resultado
-    de antes do limite); a última parte tem o comprimento real usado.
+    Retorna [(codigo, mensagem, bloqueia), ...]:
+      * PECA_LARGURA_UTIL — peça mais larga que a largura útil do tecido em
+        TODAS as rotações permitidas (bloqueia).
+      * POLIGONO_INVALIDO — geometria inválida e irrecuperável (bloqueia).
+      * PECA_LIMITE_MESA — peça mais comprida que o limite da mesa; continua
+        permitido (o risco é dividido em mesas), apenas avisa.
+    Sem lote (sem tecido) não há o que checar aqui — a pendência de tecido
+    fica com a conferência.
     """
-    por_id = {p["id"]: p for p in parts}
-    avisos: list[str] = []
-    for p in parts:
-        dims = [_dimensoes(p["polygon"], r) for r in p["rotations"] or [0]]
-        cabem = [comp for larg, comp in dims if larg <= largura + _EPS_CM]
-        if cabem and min(cabem) > limite_cm + _EPS_CM:
-            avisos.append(
-                f"Peça {_nome_molde(moldes_por_id.get(p['id']))} ({min(cabem):.1f} cm) "
-                f"maior que o limite de {limite_cm:g} cm"
+    if lote is None:
+        return []
+    nome = _nome_molde(molde)
+    tecido_nome = lote.cor.modelo.nome if lote.cor and lote.cor.modelo else lote.codigo_lote
+    tecido_rot = f"{tecido_nome} — {lote.cor.nome_cor}" if lote.cor else lote.codigo_lote
+    try:
+        pts = _poligono_rotacionado(molde)
+    except ErroPoligono as exc:
+        return [("POLIGONO_INVALIDO", str(exc), True)]
+    rots = _rotacoes(molde.sentido_fio) or [0]
+    dims = [_dimensoes(pts, r) for r in rots]
+    largura_util = float(lote.cor.largura_util_cm)
+    menor_largura = min(larg for larg, _ in dims)
+    if menor_largura > largura_util + _EPS_CM:
+        return [
+            (
+                "PECA_LARGURA_UTIL",
+                f"Molde '{nome}': peça mais larga que a largura útil do tecido "
+                f"'{tecido_rot}' ({largura_util:g} cm) em todas as rotações permitidas.",
+                True,
             )
-
-    restante = {p["id"]: p["quantity"] for p in parts}
-    partes: list[tuple[dict, list[dict]]] = []
-    while any(restante.values()):
-        lote = [{**por_id[i], "quantity": q} for i, q in restante.items() if q > 0]
-        result = executar(bin_width_cm=largura, bin_height_cm=limite_cm, parts=lote)
-        pls = result["placements"]
-        if not pls:
-            if not partes:
-                partes.append((result, lote))  # nada coube na largura — o chamador avisa
-            else:
-                avisos.append(
-                    f"{sum(restante.values())} peça(s) mais largas que o tecido ({largura:g} cm) não foram encaixadas."
-                )
-            break
-
-        topos = [pl["y"] + _dimensoes(por_id[pl["id"]]["polygon"], pl["rotation"])[1] for pl in pls]
-        if max(topos) <= limite_cm + _EPS_CM:
-            manter = list(range(len(pls)))
-        else:
-            dentro = [i for i, t in enumerate(topos) if t <= limite_cm + _EPS_CM]
-            manter = _fechar_pares(dentro, pls, topos, pares)
-
-        contagem: dict[str, int] = {}
-        for i in manter:
-            contagem[pls[i]["id"]] = contagem.get(pls[i]["id"], 0) + 1
-        for pid, qtd in contagem.items():
-            restante[pid] -= qtd
-        parts_parte = [{**por_id[pid], "quantity": qtd} for pid, qtd in contagem.items()]
-
-        if len(manter) == len(pls):
-            partes.append((result, parts_parte))
-            continue
-        comprimento = max(topos[i] for i in manter)
-        area = sum(_area(por_id[pls[i]["id"]]["polygon"]) for i in manter)
-        eficiencia = min(area / (largura * comprimento), 1.0) if comprimento > 0 else 0.0
-        parcial = {
-            "placements": [pls[i] for i in sorted(manter)],
-            "efficiency": round(eficiencia, 4),
-            "width_used": round(comprimento, 3),
-        }
-        partes.append((parcial, parts_parte))
-    return partes, avisos
+        ]
+    menor_comprimento = min(comp for _, comp in dims)
+    if menor_comprimento > comprimento_max_cm + _EPS_CM:
+        return [
+            (
+                "PECA_LIMITE_MESA",
+                f"Molde '{nome}': peça mais comprida que o limite da mesa "
+                f"({comprimento_max_cm:g} cm) — o risco será dividido em mesas (ATENÇÃO).",
+                False,
+            )
+        ]
+    return []
 
 
-def _pecas_parte(parts_parte: list[dict], moldes_por_id: dict[str, Molde], camadas: int) -> list[dict]:
-    """Peças (moldes) desta parte: pecas_por_tamanho continua sendo do
-    enfesto inteiro; aqui está o que cada parte corta de fato."""
-    saida = []
-    for p in parts_parte:
-        m = moldes_por_id.get(p["id"])
-        saida.append(
-            {
-                "molde_id": p["id"],
-                "peca": m.peca if m else None,
-                "grupo_nome": m.grupo.nome if m and m.grupo else None,
-                "tamanho": (m.tamanho or "").strip() if m else None,
-                "por_camada": p["quantity"],
-                "total": p["quantity"] * camadas,
-            }
-        )
-    return saida
+def validar_entradas(entradas: list[Entrada], comprimento_max_cm: int) -> tuple[list[str], list[str]]:
+    """Checa todas as entradas (lote, molde, quantidade) antes de gerar.
+
+    Retorna (problemas_bloqueantes, avisos): mensagens que já citam moldes e
+    tecidos; a mesma mensagem repetida de partes iguais aparece uma vez só.
+    """
+    bloqueiam: list[str] = []
+    avisos: list[str] = []
+    for lote, molde, _qtd in entradas:
+        for _codigo, mensagem, bloqueia in checar_molde(molde, lote, comprimento_max_cm):
+            (bloqueiam if bloqueia else avisos).append(mensagem)
+    return list(dict.fromkeys(bloqueiam)), list(dict.fromkeys(avisos))
 
 
 def _montar_encaixe(
@@ -827,9 +1101,14 @@ def _resumo(encaixe: Encaixe) -> dict:
         "sobra_total": mapa.get("sobra_total"),
         "motor_usado": mapa.get("motor_usado"),
         "qualidade": mapa.get("qualidade"),
+        "qualidade_perfil": mapa.get("qualidade_perfil"),
         "resumo_enfesto": mapa.get("resumo_enfesto"),
+        "tipo_enfesto": mapa.get("tipo_enfesto"),
+        "modo_camadas": mapa.get("modo_camadas"),
         "numero_enc": encaixe.numero,
         "descricao": encaixe.descricao,
+        # Por que este risco saiu neste perfil (só na qualidade Automático).
+        "qualidade_automatica": mapa.get("qualidade_automatica"),
     }
 
 
@@ -854,23 +1133,208 @@ def _montar_todos(
     ordem_corte_id: uuid.UUID | None,
     descricao: str | None,
     limite_cm: int,
-    motor: str,
     qualidade: str,
     progresso: Progresso | None,
-) -> tuple[list[Encaixe], list[str], dict[str, dict]]:
-    """Todos os lotes com um motor — nada vai para a sessão."""
+    semente: int = 0,
+    *,
+    tipo_enfesto: str = decisor.AUTOMATICO,
+    escolhas: dict[str, tuple[str, str]] | None = None,
+    cache: dict | None = None,
+    decisoes: dict[str, decisor.Decisao] | None = None,
+    tempo_maximo_s: float | None = None,
+) -> tuple[list[Encaixe], list[str], dict[str, dict], dict[str, decisor.Decisao]]:
+    """Todos os lotes com o motor v2 — nada vai para a sessão.
+
+    modo / tipo_enfesto: "AUTOMATICO" decide cada lote (_decidir_lote); um
+    valor fixo é a escolha manual do "Avançado". escolhas: {lote_id: (tipo,
+    modo)} já decididos (a simulação da mesa maior repete a decisão da
+    geração, sem comparar de novo). decisoes: onde guardar as decisões —
+    passado de uma tentativa para a outra, o retry não refaz a comparação.
+    O prazo da comparação é uma FATIA DO ORÇAMENTO DA OC, não um relógio à
+    parte: metade do que sobrar depois do piso de encaixe, e nunca mais que
+    decisor.TEMPO_COMPARACAO_S (ver FOLHA_COMPARACAO).
+    tempo_maximo_s: orçamento de tempo da qualidade AUTOMATICO (ver
+    Orcamento), contando desde o começo da geração — a comparação de enfesto
+    entra como piso já pago. Um perfil fixo escolhido no "Avançado" não usa
+    orçamento, mas a comparação continua limitada por ele.
+
+    Retorna (encaixes, avisos, planos, decisoes)."""
     andamento = _Andamento(progresso)
+    cache = {} if cache is None else cache
+    decisoes = {} if decisoes is None else decisoes
     encaixes: list[Encaixe] = []
     avisos: list[str] = []
     planos: dict[str, dict] = {}
-    for lote_id, (tecido, moldes_qtd) in grupos.items():
-        montados, avisos_lote, plano = _gerar_para_tecido(
-            pedido, tecido, moldes_qtd, modo, ordem_corte_id, descricao, limite_cm, motor, qualidade, andamento
+    # 1º decide todos os lotes (só as comparações contam no prazo), depois
+    # encaixa de verdade — senão o encaixe definitivo de um lote comeria o
+    # prazo da comparação do lote seguinte.
+    t_decisao = time.monotonic()
+    tipo_fixo = None if tipo_enfesto == decisor.AUTOMATICO else tipo_enfesto
+    modo_fixo = None if modo == decisor.AUTOMATICO else modo
+
+    # A comparação de enfesto RODA O MOTOR, então ela sai do orçamento do
+    # usuário — não de um relógio à parte. Antes de pagar a primeira simulação,
+    # `_custos_candidatos` (puro, sem motor) diz quanto cada candidato custa e
+    # qual é o PISO de cada lote: o plano mais barato possível. O que sobrar do
+    # limite depois do piso é o que dá para comparar.
+    #
+    # Medido na OC-0004 (3 lotes, 324 peças): o piso (306 s estimados) já
+    # estourava o limite de 300 s, e a comparação gastou 180 s para escolher...
+    # o próprio padrão seguro. Aqui ela vira 0 s e a OC sai com a mesma
+    # resposta em 278 s — dentro do limite, que 358,7 s não cabiam.
+    limite_oc = TEMPO_MAXIMO_OC_PADRAO_S if tempo_maximo_s is None else float(tempo_maximo_s)
+    por_chave_lote = {str(lote_id): (tecido, moldes_qtd) for lote_id, (tecido, moldes_qtd) in grupos.items()}
+    custos_por_lote: dict[str, list[float]] = {}
+    for chave, (tecido, moldes_qtd) in por_chave_lote.items():
+        analise = _analisar_lote(tecido, moldes_qtd)
+        if escolhas and chave in escolhas:
+            tipo_c, modo_c = escolhas[chave]
+            lista = decisor.candidatos(analise, tipo_c, modo_c)
+        else:
+            lista = decisor.candidatos(analise, tipo_fixo, modo_fixo)
+        # O mesmo cálculo serve para o piso daqui e para a ordem de simulação
+        # de _decidir_lote — por isso fica guardado, e não é refeito lá.
+        custos_por_lote[chave] = _custos_candidatos(tecido, moldes_qtd, limite_cm, lista)
+    pisos = {chave: min(custos, default=0.0) for chave, custos in custos_por_lote.items()}
+    piso_rapido = sum(pisos.values())
+    folga = max(0.0, limite_oc - piso_rapido)
+    tempo_comparacao = min(decisor.TEMPO_COMPARACAO_S, folga * FOLHA_COMPARACAO)
+    if tempo_comparacao <= 0:
+        # Abaixo de 10 s o inteiro arredonda para 0 e o texto mente.
+        limite_txt = f"{limite_oc:.0f}" if limite_oc >= 10 else f"{limite_oc:.1f}"
+        motivo_prazo = (
+            f"o perfil mais barato deste pedido já está em {piso_rapido:.0f} s estimados, "
+            f"todo o limite de {limite_txt} s (Configurações > Produção > Tempo limite da "
+            f"ordem de corte): não sobrou tempo para comparar"
         )
+    else:
+        motivo_prazo = f"a comparação passou de {tempo_comparacao:.0f} s"
+    prazo = t_decisao + tempo_comparacao
+
+    # Lote mais barato primeiro: o mesmo segundo decide mais lotes, e — o que
+    # importa mais — a ordem deixa de depender da velocidade da máquina. Antes
+    # o tempo acabava no primeiro lote da lista e o resto ia para o padrão,
+    # com o resultado mudando de uma execução para a outra.
+    escolhidos: dict[str, tuple[str, str]] = dict(escolhas or {})
+    a_decidir = [c for c in por_chave_lote if c not in escolhidos]
+    a_decidir.sort(key=lambda c: (pisos[c], c))
+    decididos_agora: set[str] = set()
+    for chave in a_decidir:
+        tecido, moldes_qtd = por_chave_lote[chave]
+        if chave not in decisoes:
+            decisoes[chave] = _decidir_lote(
+                tecido,
+                moldes_qtd,
+                limite_cm,
+                tipo_fixo=tipo_fixo,
+                modo_fixo=modo_fixo,
+                semente=semente,
+                cache=cache,
+                prazo=prazo,
+                progresso=progresso,
+                motivo_prazo=motivo_prazo,
+                custos=custos_por_lote[chave],
+            )
+            decididos_agora.add(chave)
+        escolhidos[chave] = (decisoes[chave].tipo, decisoes[chave].modo)
+
+    # O que a comparação deixou no cache e a geração vai reaproveitar é SÓ o
+    # candidato vencedor, no perfil Rápido: mesmo lote, mesmo tipo/modo, mesma
+    # semente e mesmo limite ⇒ as mesmas chaves de cache. O tempo dos
+    # candidatos perdedores não volta — foi gasto de verdade, e pesa no mesmo
+    # limite do usuário. Por isso só o DEGRAU de cada risco é cobrado abaixo:
+    # o piso Rápido do plano escolhido já foi pago aqui.
+    #
+    # Só conta o que foi decidido NESTA chamada: no retry a semente muda, o
+    # cache não bate mais e o motor roda tudo de novo do zero.
+    piso_pago_s = 0.0
+    for chave in decididos_agora:
+        d = decisoes[chave]
+        piso_pago_s += sum(
+            c.segundos for c in d.candidatos if c.avaliado and c.erro is None and (c.tipo, c.modo) == (d.tipo, d.modo)
+        )
+    logger.info(
+        "[NESTING] comparação: piso estimado %.0f s, limite %.0f s, orçamento %.0f s, "
+        "gasto %.0f s, reaproveitado %.0f s",
+        piso_rapido,
+        limite_oc,
+        tempo_comparacao,
+        time.monotonic() - t_decisao,
+        piso_pago_s,
+    )
+
+    # 2º (AUTOMATICO) distribui o orçamento de tempo entre TODOS os riscos da
+    # OC antes de encaixar o primeiro: cada risco começa no perfil Rápido e
+    # sobe um degrau (Equilibrado, Máximo) enquanto sobrar tempo, na ordem dos
+    # riscos mais pesados. Só aqui se sabe o tamanho de todos — planejar (que é
+    # puro e não roda o motor) sai mais barato do que qualquer tentativa de
+    # adivinhar, e é o que dá a lista completa de riscos para o orçamento.
+    # 3º (abaixo) o laço de geração usa esses perfis; a comparação de enfesto
+    # do passo 1º roda sempre no perfil mais barato e alimenta o cache.
+    orcamento: Orcamento | None = None
+    perfis: dict[str, dict[int, str]] = {}
+    if qualidade == QUALIDADE_PADRAO:
+        orcamento = Orcamento(
+            TEMPO_MAXIMO_OC_PADRAO_S if tempo_maximo_s is None else float(tempo_maximo_s),
+            piso_pago_s=piso_pago_s,
+        )
+        for lote_id, (tecido, moldes_qtd) in grupos.items():
+            chave = str(lote_id)
+            tipo, modo_lote = escolhidos[chave]
+            por_chave, qtd_chave = _quantidades(moldes_qtd)
+            for n, (pecas, area) in enumerate(
+                _enfestos_do_lote(
+                    por_chave,
+                    qtd_chave,
+                    tecido.max_camadas,
+                    tipo=tipo,
+                    modo=modo_lote,
+                    camadas_pares=tipo == decisor.FACE_A_FACE and _tem_par(moldes_qtd),
+                ),
+                start=1,
+            ):
+                orcamento.registrar(
+                    (chave, n),
+                    pecas=pecas,
+                    area_cm2=area,
+                    largura_cm=tecido.largura_util_cm,
+                    limite_cm=limite_cm,
+                )
+        atribuicao = orcamento.distribuir()
+        for (chave, n), perfil in atribuicao.items():
+            perfis.setdefault(chave, {})[n] = perfil
+        aviso_orcamento = orcamento.aviso
+        if aviso_orcamento:
+            avisos.append(aviso_orcamento)
+
+    for lote_id, (tecido, moldes_qtd) in grupos.items():
+        chave = str(lote_id)
+        tipo, modo_lote = escolhidos[chave]
+        decisao = decisoes.get(chave) if not (escolhas and chave in escolhas) else None
+        montados, avisos_lote, plano = _gerar_para_tecido(
+            pedido,
+            tecido,
+            moldes_qtd,
+            modo_lote,
+            ordem_corte_id,
+            descricao,
+            limite_cm,
+            qualidade,
+            andamento,
+            semente,
+            tipo_enfesto=tipo,
+            cache=cache,
+            perfis=perfis.get(chave),
+            orcamento=orcamento,
+            chave_lote=chave if orcamento is not None else None,
+        )
+        if decisao is not None and montados:
+            # A decisão do lote vai uma vez só, na primeira mesa dele.
+            montados[0].mapa_json = {**montados[0].mapa_json, "decisao_enfesto": decisao.json()}
         encaixes.extend(montados)
         avisos.extend(avisos_lote)
-        planos[str(lote_id)] = plano
-    return encaixes, avisos, planos
+        planos[chave] = plano
+    return encaixes, avisos, planos, decisoes
 
 
 def gerar_de_entradas(
@@ -878,56 +1342,83 @@ def gerar_de_entradas(
     pedido: Pedido,
     entradas: list[Entrada],
     *,
-    modo: str,
+    modo: str = decisor.AUTOMATICO,
+    tipo_enfesto: str = decisor.AUTOMATICO,
     ordem_corte_id: uuid.UUID | None = None,
     descricao: str | None = None,
     comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM,
-    motor: str = "v1",
     qualidade: str = QUALIDADE_PADRAO,
     progresso: Progresso | None = None,
-    antes_de_gravar: Callable[[], None] | None = None,
+    antes_de_gravar: Callable[[list[dict]], None] | None = None,
+    tempo_maximo_s: float | None = None,
 ) -> dict:
     """Núcleo comum: agrupa as entradas por lote, planeja os enfestos, roda o
-    nesting e grava tudo numa transação — erro em qualquer lote desfaz tudo
+    motor v2 e grava tudo numa transação — erro em qualquer lote desfaz tudo
     (inclusive o que o chamador deixou pendente na sessão).
 
     comprimento_max_cm: limite de cada encaixe (mesa de corte) — risco maior
-    é dividido em partes (_partes_do_enfesto no v1, mesas no v2).
-    motor/qualidade: ver MOTORES/QUALIDADES. Falha no v2 → log e a geração
-    INTEIRA é refeita com o v1 (motor_usado="v1" + AVISO_RESERVA).
+    é dividido em mesas pelo v2.
+    modo / tipo_enfesto: "AUTOMATICO" (padrão) — o sistema decide o enfesto
+    de cada lote (ver _decidir_lote); valor fixo = escolha manual.
+    qualidade: ver QUALIDADES — AUTOMATICO distribui o orçamento de tempo da
+    ordem de corte entre os riscos (tempo_maximo_s, Configurações >
+    Produção); um perfil fixo é a escolha manual do "Avançado".
+    Falha ou tempo do motor: UMA nova tentativa automática com outra semente
+    e perfil RAPIDO; se falhar de novo, ErroNesting (o job vira ERRO com
+    mensagem legível e nada é gravado). Motor indisponível (exe sem
+    spyrrow/ortools): ErroNesting com instrução de reinstalar.
     progresso: callback (ver _Andamento); GeracaoCancelada levantada nele
     interrompe sem gravar.
-    antes_de_gravar: chamado depois do nesting e antes do commit, na mesma
-    transação (a OC marca os encaixes anteriores como deletados aqui — o
-    nesting pode levar minutos e nada é tocado antes de terminar).
+    antes_de_gravar: chamado com as decisões (ver "decisoes" abaixo) depois
+    do motor e antes do commit, na mesma transação (a OC marca os encaixes
+    anteriores como deletados e grava a decisão do enfesto aqui).
 
     Returns: {"encaixes": [...resumos], "avisos": [...], "planos": {lote_id: plano},
-              "motor_usado": "v1"|"v2", "reserva": bool, "totais": {...}}
-    Raises: ValueError se nenhuma entrada tiver quantidade; RuntimeError
-        se o motor de nesting falhar; GeracaoCancelada.
+              "decisoes": [{lote_id, tecido, **Decisao.json()}],
+              "motor_usado": "v2", "totais": {...}}
+    Raises: ValueError se nenhuma entrada tiver quantidade; ErroNesting se o
+        motor falhar nas duas tentativas; GeracaoCancelada.
     """
     grupos = _agrupar_por_lote(entradas)
     if not grupos:
         db.rollback()
         raise ValueError("Nenhuma peça para encaixar: verifique tecidos, moldes e quantidades.")
 
-    motor = motor if motor in MOTORES else "v2"
-    reserva = False
+    if not nesting_v2.DISPONIVEL:
+        db.rollback()
+        raise ErroNesting("Motor de encaixe não instalado corretamente. Reinstale o SmartCut.")
+
     args = (pedido, grupos, modo, ordem_corte_id, descricao, comprimento_max_cm)
+    semente, tentativas = 0, 0
+    perfil = qualidade
+    cache: dict = {}
+    decisoes: dict[str, decisor.Decisao] = {}
     try:
-        try:
-            encaixes, avisos, planos = _montar_todos(*args, motor, qualidade, progresso)
-        except GeracaoCancelada:
-            raise
-        except Exception:
-            if motor != "v2":
+        while True:
+            try:
+                encaixes, avisos, planos, decisoes = _montar_todos(
+                    *args,
+                    perfil,
+                    progresso,
+                    semente,
+                    tipo_enfesto=tipo_enfesto,
+                    cache=cache,
+                    decisoes=decisoes,
+                    tempo_maximo_s=tempo_maximo_s,
+                )
+                break
+            except GeracaoCancelada:
                 raise
-            logger.exception("[NESTING] motor v2 falhou — refazendo com o v1 (reserva)")
-            motor, reserva = "v1", True
-            encaixes, avisos, planos = _montar_todos(*args, "v1", qualidade, progresso)
-            avisos.insert(0, AVISO_RESERVA)
+            except Exception as exc:
+                tentativas += 1
+                if tentativas >= 2:
+                    raise ErroNesting(str(exc) or type(exc).__name__) from exc
+                logger.exception("[NESTING] motor v2 falhou (semente %d) — nova tentativa com perfil RAPIDO", semente)
+                perfil, semente = "RAPIDO", semente + 1
+        nomes = {str(lote_id): tecido.nome for lote_id, (tecido, _) in grupos.items()}
+        decisoes_out = [{"lote_id": k, "tecido": nomes.get(k), **d.json()} for k, d in decisoes.items()]
         if antes_de_gravar is not None:
-            antes_de_gravar()
+            antes_de_gravar(decisoes_out)
         if encaixes:
             _gravar(db, encaixes)
     except Exception:
@@ -938,8 +1429,8 @@ def gerar_de_entradas(
         "encaixes": [_resumo(e) for e in encaixes],
         "avisos": avisos,
         "planos": planos,
-        "motor_usado": motor,
-        "reserva": reserva,
+        "decisoes": decisoes_out,
+        "motor_usado": "v2",
         "totais": totais(encaixes),
     }
 
@@ -947,15 +1438,19 @@ def gerar_de_entradas(
 def simular_totais(
     entradas: list[Entrada],
     *,
-    modo: str,
+    escolhas: dict[str, tuple[str, str]],
     comprimento_max_cm: int,
     qualidade: str = "RAPIDO",
     progresso: Progresso | None = None,
 ) -> dict:
     """Roda o v2 SEM gravar nada e devolve só os totais (ver totais) — é a
-    simulação do alerta de mesa maior. Erro do v2 sobe (sem reserva)."""
+    simulação do alerta de mesa maior. escolhas: {lote_id: (tipo_enfesto,
+    modo_camadas)} decididos na geração (lote sem escolha decide de novo).
+    Erro do motor sobe sem nova tentativa."""
     grupos = _agrupar_por_lote(entradas)
-    encaixes, _, _ = _montar_todos(None, grupos, modo, None, None, comprimento_max_cm, "v2", qualidade, progresso)
+    encaixes, _, _, _ = _montar_todos(
+        None, grupos, decisor.AUTOMATICO, None, None, comprimento_max_cm, qualidade, progresso, escolhas=escolhas
+    )
     return totais(encaixes)
 
 
@@ -964,27 +1459,29 @@ def gerar_encaixe(
     pedido_id: uuid.UUID,
     comprimento_max_cm: int = COMPRIMENTO_MAX_PADRAO_CM,
     *,
-    motor: str | None = None,
     qualidade: str = QUALIDADE_PADRAO,
+    tipo_enfesto: str = decisor.AUTOMATICO,
+    modo_camadas: str = decisor.AUTOMATICO,
     progresso: Progresso | None = None,
 ) -> dict:
     """Encaixe Rápido: gera encaixes para todos os lotes do pedido interno
-    (formato legado). Mantém a regra antiga de camadas (MENOS_ENFESTOS: um
-    enfesto por lote, camadas = min(max_camadas, maior quantidade)) e divide
-    em partes o risco que passar de comprimento_max_cm.
+    (formato legado). O enfesto (tipo e modo de camadas) é decidido pelo
+    sistema como na OC — tipo_enfesto/modo_camadas fixos são a escolha
+    manual do "Avançado" — e o risco que passar de comprimento_max_cm é
+    dividido em mesas.
 
-    motor None = o de Configurações > Produção (ver gerar_de_entradas para
-    motor, qualidade, progresso e a reserva v1).
+    qualidade: ver QUALIDADES (AUTOMATICO é o padrão); falha ou tempo do
+    motor passam pelo retry automático do gerar_de_entradas.
 
     Returns:
         {"encaixes": [...resumo de cada Encaixe criado...], "avisos": [...],
-         "motor_usado": ...} — avisos cobre itens/tamanhos ignorados que não
-        impediram a geração (e o aviso do motor reserva).
+         "decisoes": [...decisão do enfesto por lote...], "motor_usado": ...}
+        — avisos cobre itens/tamanhos ignorados que não impediram a geração.
 
     Raises:
         ValueError: se o pedido não existir, não tiver itens, ou se nenhuma
             peça pôde ser agrupada (todas sem tecido/molde válido).
-        RuntimeError: se o motor de nesting falhar.
+        ErroNesting: se o motor de nesting falhar nas duas tentativas.
     """
     pedido = (
         db.query(Pedido)
@@ -1005,8 +1502,6 @@ def gerar_encaixe(
     if not pedido.itens:
         raise ValueError("O pedido não possui itens cadastrados.")
 
-    if motor is None:
-        motor = config_producao(db)["motor_encaixe"]
     entradas, avisos = montar_pares_legado(pedido)
     for aviso in avisos:
         logger.info("[NESTING] %s", aviso)
@@ -1020,16 +1515,17 @@ def gerar_encaixe(
         db,
         pedido,
         entradas,
-        modo="MENOS_ENFESTOS",
+        modo=modo_camadas,
+        tipo_enfesto=tipo_enfesto,
         descricao=pedido.observacoes_internas,
         comprimento_max_cm=comprimento_max_cm,
-        motor=motor,
         qualidade=qualidade,
         progresso=progresso,
+        tempo_maximo_s=float(config_producao(db)["tempo_maximo_oc_s"]),
     )
     return {
         "encaixes": resultado["encaixes"],
         "avisos": avisos + resultado["avisos"],
+        "decisoes": resultado["decisoes"],
         "motor_usado": resultado["motor_usado"],
-        "reserva": resultado["reserva"],
     }

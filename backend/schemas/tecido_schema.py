@@ -13,12 +13,14 @@ class ModeloCreate(BaseModel):
     nome: str = Field(..., max_length=100)
     tipo: str | None = Field(None, max_length=50)
     max_camadas: int = Field(15, ge=1, le=500)
+    tem_direcao: bool = False
 
 
 class ModeloUpdate(BaseModel):
     nome: str | None = Field(None, max_length=100)
     tipo: str | None = Field(None, max_length=50)
     max_camadas: int | None = Field(None, ge=1, le=500)
+    tem_direcao: bool | None = None
 
 
 class ModeloOut(BaseModel):
@@ -26,6 +28,7 @@ class ModeloOut(BaseModel):
     nome: str
     tipo: str | None
     max_camadas: int
+    tem_direcao: bool = False
     criado_em: datetime
 
     model_config = {"from_attributes": True}

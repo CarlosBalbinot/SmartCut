@@ -15,6 +15,8 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+# Backup do banco feito antes de uma migração (ex.: *.db.bak-motor-v1)
+*.db.bak*
 
 # Variáveis de ambiente
 .env
@@ -76,16 +78,6 @@ backend/alembic/legado/
 # Exceção: INFOS.md é anotação pessoal do desenvolvedor (caminhos absolutos da
 # máquina) e permanece fora do versionamento.
 docs/INFOS.md
-
-# Parte 10.1: artefatos de build do engine de nesting (node-gyp) NÃO são
-# versionados — binários (Release/ com addon.node, .o, .d) e scaffolding gerado
-# (Makefile, binding.Makefile, *.target.mk, config.gypi, gyp-mac-tool). O runtime
-# usa JS puro (nesting/nest_worker.js + nesting/svgnest), empacotado no
-# smartcut.spec via datas. Ver backend/services/nesting/README.md.
-backend/services/nesting/engine/
-
-# Lib de nesting de terceiros (empacotada apenas, não versionada)
-backend/nesting/svgnest/
 
 # OS
 .DS_Store

@@ -38,10 +38,14 @@ MODOS_CAMADAS = ("SEM_SOBRA", "MENOS_ENFESTOS")
 COMPRIMENTO_MAX_PADRAO_CM = 150
 COMPRIMENTO_MAX_MIN_CM = 50
 COMPRIMENTO_MAX_MAX_CM = 2000
+# Tipo de enfesto (nesting_v2/decisor.py): MESMA_FACE ("Face única") ou
+# FACE_A_FACE ("Face a face"); MISTO quando os lotes da OC saíram diferentes.
+TIPOS_ENFESTO = ("MESMA_FACE", "FACE_A_FACE")
 # Qualidade do encaixe (motor v2): quanto tempo o spyrrow ganha por mesa —
-# ver nesting_service.QUALIDADES.
-QUALIDADES = ("RAPIDO", "EQUILIBRADO", "MAXIMO")
-QUALIDADE_PADRAO = "EQUILIBRADO"
+# ver nesting_service.QUALIDADES. AUTOMATICO (padrão) distribui o orçamento de
+# tempo da OC entre os riscos (ver services/planejamento/custo.py).
+QUALIDADES = ("AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO")
+QUALIDADE_PADRAO = "AUTOMATICO"
 
 
 class OrdemCorte(Base):
@@ -67,7 +71,17 @@ class OrdemCorte(Base):
     numero: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     pedido_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("pedidos_venda.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="RASCUNHO")
+    # Decisão do enfesto (F2), gravada a cada geração: o sistema escolhe o
+    # tipo de enfesto e o modo de camadas de cada lote. modo_camadas e
+    # tipo_enfesto guardam o que foi DECIDIDO (valor único, ou MISTO quando
+    # os lotes divergem); decisao_enfesto = {"motivo", "lotes": [{lote_id,
+    # tecido, tipo_enfesto, modo_camadas, motivo, regra, candidatos[]...}]}.
+    # enfesto_avancado = escolha manual do "Avançado" {tipo_enfesto,
+    # modo_camadas} (AUTOMATICO ou ausente = o sistema decide).
     modo_camadas: Mapped[str] = mapped_column(String(20), nullable=False, default="SEM_SOBRA")
+    tipo_enfesto: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    decisao_enfesto: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    enfesto_avancado: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # LIMITE do comprimento de cada encaixe (a mesa onde o tecido é aberto):
     # risco menor sai com o que precisar, maior é dividido em partes.

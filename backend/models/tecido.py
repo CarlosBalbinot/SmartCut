@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, Uuid, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, Uuid, func, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -19,6 +19,9 @@ class ModeloTecido(Base):
     nome: Mapped[str] = mapped_column(String(100), nullable=False)
     tipo: Mapped[str | None] = mapped_column(String(50))
     max_camadas: Mapped[int] = mapped_column(Integer, default=15)
+    # Estampa ou pelo: o tecido não pode ser virado — o enfesto é sempre de
+    # face única (nesting_v2/decisor.py descarta o face a face).
+    tem_direcao: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     cores: Mapped[list["CorTecido"]] = relationship(back_populates="modelo", cascade="all, delete-orphan")

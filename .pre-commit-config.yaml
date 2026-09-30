@@ -12,10 +12,7 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        # Código vendido/de terceiros não é normalizado (não é nosso).
-        exclude: ^backend/services/nesting/
       - id: end-of-file-fixer
-        exclude: ^backend/services/nesting/
       - id: check-yaml
       - id: check-added-large-files
 

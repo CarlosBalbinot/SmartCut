@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getEncaixe, getEncaixes, getPdfEncaixe } from "../api/encaixes";
-import { getConfigProducao } from "../api/ordensCorte";
 import { imprimirRelatorio, RELATORIO_FORMULARIO_CORTE } from "../api/relatorios";
 import { RotuloMotor } from "../components/ProgressoEncaixe/ProgressoEncaixe";
 import VisualizadorEncaixe from "../components/VisualizadorEncaixe/VisualizadorEncaixe";
@@ -145,15 +144,6 @@ export default function EncaixePage() {
   const [pecaSelecionada, setPecaSelecionada] = useState(null);
   const [listaAberta, setListaAberta] = useState(true);
   const [showJustificativa, setShowJustificativa] = useState(false);
-  // Motor de Configurações > Produção — só para distinguir "v1 reserva" de
-  // "v1 configurado" no rótulo do motor (null sem permissão).
-  const [motorConfig, setMotorConfig] = useState(null);
-
-  useEffect(() => {
-    getConfigProducao()
-      .then((c) => setMotorConfig(c.motor_encaixe))
-      .catch(() => setMotorConfig(null));
-  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -303,8 +293,13 @@ export default function EncaixePage() {
             {(ehRapido || !pedido) && (enc.descricao || (ehRapido ? "Encaixe Rápido" : ""))}
           </p>
           <RotuloMotor
-            encaixes={[{ motor_usado: mapa.motor_usado, qualidade: mapa.qualidade }]}
-            motorConfig={motorConfig}
+            encaixes={[
+              {
+                motor_usado: mapa.motor_usado,
+                qualidade: mapa.qualidade,
+                qualidade_perfil: mapa.qualidade_perfil,
+              },
+            ]}
           />
         </div>
         {nav && nav.total > 1 && (

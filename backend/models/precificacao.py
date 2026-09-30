@@ -14,14 +14,17 @@ class ConfiguracaoEmpresa(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     aliquota_simples: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False, default=Decimal("7.3000"))
     custo_etiqueta: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False, default=Decimal("0.00"))
-    # Produção (M2a): motor dos encaixes ("v2" spyrrow + OR-Tools; "v1" o
-    # antigo, que também é a reserva quando o v2 falha), a maior mesa de
-    # corte da fábrica e a economia mínima para sugerir usá-la.
-    motor_encaixe: Mapped[str] = mapped_column(String(5), nullable=False, default="v2", server_default="v2")
+    # Produção (M2a): a maior mesa de corte da fábrica (base do alerta de
+    # mesa maior) e a economia mínima para sugerir usá-la.
     comprimento_max_mesa_cm: Mapped[int] = mapped_column(Integer, nullable=False, default=200, server_default="200")
     alerta_economia_pct: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), nullable=False, default=Decimal("5.00"), server_default="5.00"
     )
+    # Orçamento de tempo de uma Ordem de Corte (segundos). A qualidade
+    # "Automático" é resolvida por ele: cada risco começa no perfil Rápido e
+    # sobe (Equilibrado, Máximo) enquanto sobrar tempo dentro deste limite —
+    # ver services/planejamento/custo.py.
+    tempo_maximo_oc_s: Mapped[int] = mapped_column(Integer, nullable=False, default=300, server_default="300")
 
 
 class ConfiguracaoCustosFixos(Base):

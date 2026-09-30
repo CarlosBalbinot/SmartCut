@@ -5,6 +5,8 @@ import {
   updateConfiguracaoEmpresa,
   uploadLogoEmpresa,
 } from "../api/configuracaoEmpresa";
+import { atualizarConfigProducao } from "../api/encaixes";
+import { getConfigProducao } from "../api/ordensCorte";
 import { urlAbsoluta } from "../services/config";
 import { buscarEnderecoPorCep } from "../utils/cepIbge";
 import { useAuth } from "../auth/useAuth";
@@ -41,6 +43,17 @@ const EMPRESA_VAZIO = {
   site: "",
 };
 
+// Configurações > Produção — ver ordens_corte.configuracao-producao.
+const PRODUCAO_PADRAO = {
+  comprimento_max_mesa_cm: "200",
+  alerta_economia_pct: "5",
+  tempo_maximo_oc_s: "300",
+};
+const MESA_MIN = 50;
+const MESA_MAX = 2000;
+const TEMPO_MIN = 30;
+const TEMPO_MAX = 7200;
+
 const stripDigits = (v) => (v || "").replace(/\D/g, "");
 const formatCep = (v) => {
   const d = stripDigits(v).slice(0, 8);
@@ -58,6 +71,10 @@ export default function UsuarioConfiguracaoEmpresaPage() {
   const [sucesso, setSucesso] = useState(false);
   const [cepStatus, setCepStatus] = useState(null);
   const fileRef = useRef();
+  const [producao, setProducao] = useState(PRODUCAO_PADRAO);
+  const [salvandoProd, setSalvandoProd] = useState(false);
+  const [erroProd, setErroProd] = useState(null);
+  const [sucessoProd, setSucessoProd] = useState(false);
 
   useEffect(() => {
     getConfiguracaoEmpresa()
@@ -81,7 +98,59 @@ export default function UsuarioConfiguracaoEmpresaPage() {
         if (d.logo_url) setLogoUrl(urlAbsoluta(d.logo_url));
       })
       .catch(() => {});
+    getConfigProducao()
+      .then((c) =>
+        setProducao({
+          comprimento_max_mesa_cm: String(c.comprimento_max_mesa_cm),
+          alerta_economia_pct: String(c.alerta_economia_pct),
+          tempo_maximo_oc_s: String(c.tempo_maximo_oc_s),
+        })
+      )
+      .catch((e) => setErroProd(e.message));
   }, []);
+
+  const salvarProducao = async () => {
+    const mesa = Number(producao.comprimento_max_mesa_cm);
+    const pct = Number(String(producao.alerta_economia_pct).replace(",", "."));
+    if (!Number.isInteger(mesa) || mesa < MESA_MIN || mesa > MESA_MAX) {
+      setErroProd(`O comprimento da mesa deve ser um inteiro entre ${MESA_MIN} e ${MESA_MAX} cm.`);
+      return;
+    }
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      setErroProd("A economia mínima deve estar entre 0 e 100%.");
+      return;
+    }
+    const tempo = Number(producao.tempo_maximo_oc_s);
+    if (!Number.isInteger(tempo) || tempo < TEMPO_MIN || tempo > TEMPO_MAX) {
+      setErroProd(`O tempo limite deve ser um inteiro entre ${TEMPO_MIN} e ${TEMPO_MAX} segundos.`);
+      return;
+    }
+    setSalvandoProd(true);
+    setErroProd(null);
+    setSucessoProd(false);
+    try {
+      const c = await atualizarConfigProducao({
+        comprimento_max_mesa_cm: mesa,
+        alerta_economia_pct: pct,
+        tempo_maximo_oc_s: tempo,
+      });
+      setProducao({
+        comprimento_max_mesa_cm: String(c.comprimento_max_mesa_cm),
+        alerta_economia_pct: String(c.alerta_economia_pct),
+        tempo_maximo_oc_s: String(c.tempo_maximo_oc_s),
+      });
+      setSucessoProd(true);
+    } catch (e) {
+      setErroProd(e.message);
+    } finally {
+      setSalvandoProd(false);
+    }
+  };
+
+  const mudarProducao = (campo) => (e) => {
+    setProducao((p) => ({ ...p, [campo]: e.target.value }));
+    setSucessoProd(false);
+  };
 
   const consultarCep = async () => {
     const digits = stripDigits(form.cep);
@@ -260,6 +329,76 @@ export default function UsuarioConfiguracaoEmpresaPage() {
           <div className={styles.actions}>
             <button className={styles.btnNovo} onClick={handleSave} disabled={saving}>
               {saving ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Produção: alerta de mesa maior ── */}
+      <div className={styles.card} style={{ marginTop: "1.25rem" }}>
+        <p className={styles.secLabel}>Produção</p>
+        <div className={styles.grid2}>
+          <label className={styles.field}>
+            <span>Comprimento máximo da mesa (cm)</span>
+            <input
+              className={styles.input}
+              type="number"
+              inputMode="numeric"
+              min={MESA_MIN}
+              max={MESA_MAX}
+              step={1}
+              value={producao.comprimento_max_mesa_cm}
+              disabled={!podeEditar}
+              onChange={mudarProducao("comprimento_max_mesa_cm")}
+            />
+            <span className={styles.hint}>
+              Usado para sugerir enfestos maiores quando economizam tecido
+            </span>
+          </label>
+          <label className={styles.field}>
+            <span>Alertar economia a partir de (%)</span>
+            <input
+              className={styles.input}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={100}
+              step={0.5}
+              value={producao.alerta_economia_pct}
+              disabled={!podeEditar}
+              onChange={mudarProducao("alerta_economia_pct")}
+            />
+          </label>
+          <label className={styles.field}>
+            <span>Tempo limite da ordem de corte (s)</span>
+            <input
+              className={styles.input}
+              type="number"
+              inputMode="numeric"
+              min={TEMPO_MIN}
+              max={TEMPO_MAX}
+              step={30}
+              value={producao.tempo_maximo_oc_s}
+              disabled={!podeEditar}
+              onChange={mudarProducao("tempo_maximo_oc_s")}
+            />
+            <span className={styles.hint}>
+              Orçamento da qualidade Automático: cada risco começa no perfil Rápido e sobe um
+              degrau (Equilibrado, Máximo) enquanto sobrar tempo. Mais tempo, mais qualidade de
+              encaixe. O limite vale para a ordem inteira — a comparação de enfestos já consome
+              parte dele. Se nem o perfil mais barato couber no que sobrar, a tela avisa que a
+              geração vai passar do prazo.
+            </span>
+          </label>
+        </div>
+
+        {erroProd && <p className={styles.erro}>{erroProd}</p>}
+        {sucessoProd && <p className={styles.sucesso}>Configurações de produção salvas.</p>}
+
+        {podeEditar && (
+          <div className={styles.actions}>
+            <button className={styles.btnNovo} onClick={salvarProducao} disabled={salvandoProd}>
+              {salvandoProd ? "Salvando…" : "Salvar produção"}
             </button>
           </div>
         )}

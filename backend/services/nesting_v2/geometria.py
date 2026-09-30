@@ -17,8 +17,13 @@ Decisões desta etapa (enunciado do M1):
   2. rotações pelo sentido do fio → allowed_orientations — a regra é a mesma
      do v1 (nesting_service._rotacoes), quem chama passa em Peca.rotacoes;
   3. par espelhado como item próprio: `par` vira DUAS unidades, uma o
-     espelho da outra; `par_sem_espelho` vira duas unidades iguais. O v1
-     colocava as duas cópias como a mesma peça (items 2/3 do molde, _MULT);
+     espelho da outra. `par_sem_espelho` também espelha em enfesto de face
+     única (PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE) — com todas as camadas do
+     lado direito para cima, duas cópias iguais dariam duas peças do MESMO
+     lado. No enfesto FACE A FACE nenhum par espelha (Peca.espelhar_par =
+     False): as camadas alternam o lado e cada par de camadas já corta
+     direita e esquerda. O v1 colocava as duas cópias como a mesma peça
+     (items 2/3 do molde, _MULT);
   4. margem entre peças: o spyrrow tem min_items_separation, então não é
      preciso buffer com shapely.
 """
@@ -30,6 +35,11 @@ from dataclasses import dataclass
 
 # tipo_corte que corta DUAS peças de um mesmo molde (a segunda completa o par)
 PARES = ("par", "par_sem_espelho")
+
+# Enfesto de face única (todas as camadas com o lado direito para cima): a
+# 2ª cópia de `par_sem_espelho` também sai espelhada (decisão da produção;
+# no face a face nenhum par espelha).
+PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE = True
 
 Ponto = tuple[float, float]
 
@@ -45,16 +55,19 @@ EPS_CM = 1e-3
 class Peca:
     """Linha de entrada do motor: um molde, quantas vezes e com que rotações.
 
-    id            id do molde — vai para placement.id, como no v1
+    id            id do molde — vai para placement.id
     poligono      contorno em cm no referencial do app, ANTES de rotacao_base.
-                  Molde sem geometria: use nesting_bridge.build_polygon, que
-                  já tem o fallback do retângulo pela área (mesmo do v1)
+                  Molde sem geometria: nesting_service._extrair_poligono já
+                  devolve o retângulo de fallback (pela área)
     quantidade    total de cópias FÍSICAS deste molde a cortar (para par, o
                   total das duas metades — precisa ser par)
     rotacoes      ângulos permitidos em graus (regra do sentido do fio)
     tipo_corte    simples | par | par_sem_espelho
     rotacao_base  giro do cadastro, aplicado na origem (o spyrrow gira em
                   torno da origem do próprio item — ver encaixador)
+    espelhar_par  True no enfesto de face única (a 2ª cópia do par sai
+                  espelhada); False no face a face (duas cópias iguais — a
+                  alternância das camadas faz direita e esquerda)
     """
 
     id: str
@@ -66,6 +79,14 @@ class Peca:
     peca: str | None = None
     tamanho: str | None = None
     grupo_nome: str | None = None
+    espelhar_par: bool = True
+
+
+def espelha_segunda_copia(tipo_corte: str, espelhar_par: bool = True) -> bool:
+    """A 2ª cópia de cada par deste molde sai espelhada no desenho?"""
+    if not espelhar_par:
+        return False
+    return tipo_corte == "par" or (tipo_corte == "par_sem_espelho" and PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE)
 
 
 @dataclass
@@ -183,8 +204,9 @@ def preparar(pecas: list[Peca]) -> list[Unidade]:
     """Expande as linhas de entrada em unidades de corte.
 
     `Peca.quantidade` é o total de cópias físicas; para tipo_corte par as
-    cópias viram pares (metade original + metade espelhada ou idêntica)
-    ligados pelo mesmo `par`. Devolve [] se não há o que cortar.
+    cópias viram pares (metade original + metade espelhada ou idêntica —
+    ver espelha_segunda_copia) ligados pelo mesmo `par`. Devolve [] se não
+    há o que cortar.
     """
     unidades: list[Unidade] = []
     proximo_par = 0
@@ -194,6 +216,7 @@ def preparar(pecas: list[Peca]) -> list[Unidade]:
         base = normalizar(rotacionar(p.poligono, p.rotacao_base))
         area_base = area(base)
         eh_par = p.tipo_corte in PARES
+        espelha = eh_par and espelha_segunda_copia(p.tipo_corte, p.espelhar_par)
         n = int(p.quantidade)
         if eh_par and n % 2:
             raise ValueError(f"Molde {p.id}: tipo_corte '{p.tipo_corte}' com quantidade ímpar ({n})")
@@ -202,7 +225,7 @@ def preparar(pecas: list[Peca]) -> list[Unidade]:
             if eh_par and k % 2 == 0:
                 grupo = proximo_par
                 proximo_par += 1
-            espelhada = eh_par and p.tipo_corte == "par" and k % 2 == 1
+            espelhada = espelha and k % 2 == 1
             poligono = espelhar(base, eixo_do_fio(p.rotacoes)) if espelhada else base
             unidades.append(
                 Unidade(

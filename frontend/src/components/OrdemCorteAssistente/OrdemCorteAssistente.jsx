@@ -14,6 +14,7 @@ import {
   simularOrdemCorte,
 } from "../../api/ordensCorte";
 import useOverlayDismiss from "../../hooks/useOverlayDismiss";
+import DecisaoEnfesto from "../DecisaoEnfesto/DecisaoEnfesto";
 import ProgressoEncaixe, {
   AlertaMesaMaior,
   CardMesa,
@@ -27,9 +28,13 @@ import styles from "./OrdemCorteAssistente.module.css";
  * Assistente da Ordem de Corte (3 passos): Conferência → Tecidos → Encaixes.
  *
  * Tudo o que o usuário escolhe é gravado na hora (lote de cada produto/cor,
- * modo de camadas, comprimento máximo do enfesto, qualidade do encaixe) —
- * fechar em qualquer passo deixa a OC em RASCUNHO com as escolhas feitas, e
- * reabrir continua de onde parou.
+ * comprimento máximo do enfesto e, no "Avançado", tipo de enfesto, modo de
+ * camadas e qualidade) — fechar em qualquer passo deixa a OC em RASCUNHO com
+ * as escolhas feitas, e reabrir continua de onde parou.
+ *
+ * O enfesto (face única ou face a face, sem sobra ou menos enfestos) é
+ * decidido pelo sistema na geração; o passo 3 mostra a "Decisão do sistema".
+ * O "Avançado" (recolhido) só existe para exceções.
  *
  * A geração roda em segundo plano (job no backend): o passo 3 mostra o
  * ProgressoEncaixe e o assistente pode ser fechado no meio — o detalhe da OC
@@ -57,18 +62,39 @@ const PENDENCIAS_MOLDE = {
     curto: "Sem tamanho na grade",
     dica: "O SKU não tem coluna de tamanho na grade. Ajuste a grade do produto em Produtos > Grade.",
   },
+  PECA_LARGURA_UTIL: {
+    curto: "Peça maior que a largura do tecido",
+    dica: "A peça é mais larga que a largura útil do tecido em todas as rotações permitidas. Escolha outro lote/tecido ou um molde menor.",
+  },
+  POLIGONO_INVALIDO: {
+    curto: "Geometria do molde inválida",
+    dica: "O polígono do molde não pôde ser corrigido automaticamente (autointerseção, área zero ou menos de 3 pontos). Reimporte o molde.",
+  },
+  PECA_LIMITE_MESA: {
+    curto: "Peça maior que a mesa",
+    dica: "A peça é mais comprida que o limite da mesa. Pode gerar: o risco será dividido em mesas. Para cortar em uma mesa só, aumente o comprimento máximo.",
+  },
 };
 
+// "Avançado": escolha manual do enfesto (Automático = o sistema decide).
+const TIPOS_ENFESTO = [
+  { valor: "AUTOMATICO", rotulo: "Automático" },
+  { valor: "MESMA_FACE", rotulo: "Face única" },
+  { valor: "FACE_A_FACE", rotulo: "Face a face" },
+];
 const MODOS = [
-  { valor: "SEM_SOBRA", rotulo: "Sem sobra", detalhe: "corta exatamente o pedido" },
-  { valor: "MENOS_ENFESTOS", rotulo: "Menos enfestos", detalhe: "pode sobrar peças" },
+  { valor: "AUTOMATICO", rotulo: "Automático" },
+  { valor: "SEM_SOBRA", rotulo: "Sem sobra (corta exatamente o pedido)" },
+  { valor: "MENOS_ENFESTOS", rotulo: "Menos enfestos (pode sobrar peças)" },
 ];
 
 const norm = (s) => (s || "").trim().toUpperCase();
-// Qualidade do encaixe (motor v2): quanto tempo o motor tem por mesa.
+// Qualidade do encaixe: Automático (padrão) escolhe o perfil pelo nº de peças
+// do enfesto; os três perfis fixos ficam no grupo "Avançado".
 const QUALIDADES = [
+  { valor: "AUTOMATICO", rotulo: "Automático" },
   { valor: "RAPIDO", rotulo: "Rápido" },
-  { valor: "EQUILIBRADO", rotulo: "Equilibrado (padrão)" },
+  { valor: "EQUILIBRADO", rotulo: "Equilibrado" },
   { valor: "MAXIMO", rotulo: "Máximo" },
 ];
 
@@ -181,6 +207,8 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
   const editavel = oc?.status === "RASCUNHO";
   const pendencias = oc?.pendencias || [];
   const pendMolde = pendencias.filter((p) => PENDENCIAS_MOLDE[p.codigo]);
+  const pendBloqueio = pendMolde.filter((p) => p.bloqueia !== false);
+  const pendAviso = pendMolde.filter((p) => p.bloqueia === false);
   const semTecido = (oc?.tecidos || []).some((t) => !t.lote_id);
 
   const pendPorItem = useMemo(() => {
@@ -245,12 +273,13 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
     }
   };
 
-  const mudarModo = async (modo) => {
-    if (modo === oc.modo_camadas) return;
+  // campo: "enfesto_tipo" | "enfesto_modo" (Avançado; AUTOMATICO devolve a
+  // decisão ao sistema).
+  const mudarEnfesto = async (campo, valor) => {
     setSalvando(true);
     setErro(null);
     try {
-      setOc(await atualizarOrdemCorte(oc.id, { modo_camadas: modo }));
+      setOc(await atualizarOrdemCorte(oc.id, { [campo]: valor }));
     } catch (e) {
       setErro(e.message);
     } finally {
@@ -258,7 +287,7 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
     }
   };
 
-  // Grava na hora, como o modo. Devolve false se o valor for inválido (o
+  // Grava na hora, como o enfesto. Devolve false se o valor for inválido (o
   // campo volta ao valor gravado).
   const mudarComprimento = async (cm) => {
     if (cm === oc.comprimento_max_cm) return true;
@@ -449,7 +478,8 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
             <PassoConferencia
               oc={oc}
               pendPorItem={pendPorItem}
-              pendMolde={pendMolde}
+              pendBloqueio={pendBloqueio}
+              pendAviso={pendAviso}
               editavel={editavel}
               atualizando={atualizando}
               onAtualizar={atualizarDoPedido}
@@ -463,7 +493,7 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
               simulacao={simulacao}
               simulando={simulando}
               onLookup={abrirLookup}
-              onModo={mudarModo}
+              onEnfesto={mudarEnfesto}
               onComprimento={mudarComprimento}
               onQualidade={mudarQualidade}
             />
@@ -535,7 +565,15 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
 
 // ── Passo 1 — Conferência ─────────────────────────────────────────────────────
 
-function PassoConferencia({ oc, pendPorItem, pendMolde, editavel, atualizando, onAtualizar }) {
+function PassoConferencia({
+  oc,
+  pendPorItem,
+  pendBloqueio,
+  pendAviso,
+  editavel,
+  atualizando,
+  onAtualizar,
+}) {
   const pecas = oc.itens.reduce((s, i) => s + i.quantidade, 0);
   return (
     <>
@@ -578,8 +616,14 @@ function PassoConferencia({ oc, pendPorItem, pendMolde, editavel, atualizando, o
             {oc.itens.map((i) => {
               const pend = pendPorItem[i.numero_item];
               const info = pend && PENDENCIAS_MOLDE[pend.codigo];
+              // Aviso (bloqueia === false, ex.: peça maior que a mesa) não
+              // impede gerar — só fica marcado na linha.
+              const bloqueia = pend && pend.bloqueia !== false;
               return (
-                <tr key={i.id} className={pend ? styles.linhaPendente : ""}>
+                <tr
+                  key={i.id}
+                  className={pend ? (bloqueia ? styles.linhaPendente : styles.linhaAviso) : ""}
+                >
                   <td className={styles.colItem}>{String(i.numero_item).padStart(3, "0")}</td>
                   <td>{i.sku_codigo || i.produto_codigo}</td>
                   <td>{i.produto_descricao}</td>
@@ -588,8 +632,11 @@ function PassoConferencia({ oc, pendPorItem, pendMolde, editavel, atualizando, o
                   <td className={styles.num}>{i.quantidade}</td>
                   <td>
                     {info ? (
-                      <span className={styles.pendencia} title={`${pend.mensagem}\n${info.dica}`}>
-                        <IconeAlerta />
+                      <span
+                        className={bloqueia ? styles.pendencia : styles.aviso}
+                        title={`${pend.mensagem}\n${info.dica}`}
+                      >
+                        {bloqueia && <IconeAlerta />}
                         {info.curto}
                       </span>
                     ) : (
@@ -603,10 +650,15 @@ function PassoConferencia({ oc, pendPorItem, pendMolde, editavel, atualizando, o
         </table>
       </div>
 
-      {pendMolde.length > 0 && (
+      {pendBloqueio.length > 0 && (
         <p className={styles.notaErro}>
           Resolva as pendências de molde para continuar — passe o mouse sobre a pendência para ver o
           que fazer.
+        </p>
+      )}
+      {pendAviso.length > 0 && (
+        <p className={styles.nota}>
+          Avisos de encaixe (não impedem gerar): {pendAviso.map((p) => p.mensagem).join(" | ")}
         </p>
       )}
     </>
@@ -623,10 +675,18 @@ function PassoTecidos({
   simulacao,
   simulando,
   onLookup,
-  onModo,
+  onEnfesto,
   onComprimento,
   onQualidade,
 }) {
+  const avancado = oc.enfesto_avancado || {
+    tipo_enfesto: "AUTOMATICO",
+    modo_camadas: "AUTOMATICO",
+  };
+  const manual =
+    avancado.tipo_enfesto !== "AUTOMATICO" ||
+    avancado.modo_camadas !== "AUTOMATICO" ||
+    (oc.qualidade && oc.qualidade !== "AUTOMATICO");
   const gravado = oc.comprimento_max_cm ?? COMP_PADRAO;
   const [comp, setComp] = useState(String(gravado));
   useEffect(() => setComp(String(gravado)), [gravado]);
@@ -686,26 +746,8 @@ function PassoTecidos({
         </table>
       </div>
 
-      {/* Modo de camadas e comprimento máximo lado a lado (quebram em tela estreita). */}
+      {/* Só o comprimento máximo fica à vista: o enfesto é decidido pelo sistema. */}
       <div className={styles.modos}>
-        <fieldset className={styles.modos} disabled={!editavel || salvando}>
-          <legend className={styles.secao}>Modo de camadas</legend>
-          {MODOS.map((m) => (
-            <label key={m.valor} className={styles.modo}>
-              <input
-                type="radio"
-                name="modo_camadas"
-                value={m.valor}
-                checked={oc.modo_camadas === m.valor}
-                onChange={() => onModo(m.valor)}
-              />
-              <span>
-                <strong>{m.rotulo}</strong> ({m.detalhe})
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
         <fieldset className={styles.modos} disabled={!editavel || salvando}>
           <legend className={styles.secao}>
             <label htmlFor="oc-comprimento-max">Comprimento máximo do enfesto (cm)</label>
@@ -728,36 +770,94 @@ function PassoTecidos({
             Limite da mesa. Riscos menores saem com o tamanho real; maiores são divididos em partes.
           </span>
         </fieldset>
-
-        <fieldset className={styles.modos} disabled={!editavel || salvando}>
-          <legend className={styles.secao}>
-            <label htmlFor="oc-qualidade">Qualidade do encaixe</label>
-          </legend>
-          <select
-            id="oc-qualidade"
-            className="sc-input"
-            style={{ width: "12rem" }}
-            value={oc.qualidade || "EQUILIBRADO"}
-            onChange={(e) => onQualidade(e.target.value)}
-          >
-            {QUALIDADES.map((q) => (
-              <option key={q.valor} value={q.valor}>
-                {q.rotulo}
-              </option>
-            ))}
-          </select>
-          <span className={styles.nota}>Máximo economiza mais tecido e demora mais.</span>
-        </fieldset>
       </div>
 
-      <h3 className={styles.secao}>Comparação dos modos</h3>
-      {semTecido ? (
-        <p className={styles.estado}>Escolha o lote de todas as linhas para comparar os modos.</p>
-      ) : simulando && !simulacao ? (
-        <p className={styles.estado}>Calculando…</p>
-      ) : simulacao ? (
-        <Comparacao simulacao={simulacao} modoAtual={oc.modo_camadas} />
-      ) : null}
+      <p className={styles.nota}>
+        O sistema escolhe como estender cada tecido (face única ou face a face, sem sobra ou menos
+        enfestos) e explica o porquê no passo Encaixes.
+      </p>
+
+      {/* Avançado: exceções. Recolhido; abre sozinho se houver escolha manual. */}
+      <details className={styles.avancado} open={manual || undefined}>
+        <summary>Avançado{manual ? " · escolha manual ativa" : ""}</summary>
+        <div className={styles.modos}>
+          <fieldset className={styles.modos} disabled={!editavel || salvando}>
+            <legend className={styles.secao}>
+              <label htmlFor="oc-tipo-enfesto">Tipo de enfesto</label>
+            </legend>
+            <select
+              id="oc-tipo-enfesto"
+              className="sc-input"
+              style={{ width: "12rem" }}
+              value={avancado.tipo_enfesto}
+              onChange={(e) => onEnfesto("enfesto_tipo", e.target.value)}
+            >
+              {TIPOS_ENFESTO.map((t) => (
+                <option key={t.valor} value={t.valor}>
+                  {t.rotulo}
+                </option>
+              ))}
+            </select>
+            <span className={styles.nota}>
+              Face a face só vale para tecido sem direção e sem peça única assimétrica.
+            </span>
+          </fieldset>
+
+          <fieldset className={styles.modos} disabled={!editavel || salvando}>
+            <legend className={styles.secao}>
+              <label htmlFor="oc-modo-camadas">Modo de camadas</label>
+            </legend>
+            <select
+              id="oc-modo-camadas"
+              className="sc-input"
+              style={{ width: "17rem" }}
+              value={avancado.modo_camadas}
+              onChange={(e) => onEnfesto("enfesto_modo", e.target.value)}
+            >
+              {MODOS.map((m) => (
+                <option key={m.valor} value={m.valor}>
+                  {m.rotulo}
+                </option>
+              ))}
+            </select>
+          </fieldset>
+
+          <fieldset className={styles.modos} disabled={!editavel || salvando}>
+            <legend className={styles.secao}>
+              <label htmlFor="oc-qualidade">Qualidade do encaixe</label>
+            </legend>
+            <select
+              id="oc-qualidade"
+              className="sc-input"
+              style={{ width: "12rem" }}
+              value={oc.qualidade || "AUTOMATICO"}
+              onChange={(e) => onQualidade(e.target.value)}
+            >
+              {QUALIDADES.map((q) => (
+                <option key={q.valor} value={q.valor}>
+                  {q.rotulo}
+                </option>
+              ))}
+            </select>
+            <span className={styles.nota}>
+              Automático escolhe o perfil pelo número de peças do enfesto: poucas → Máximo, médias →
+              Equilibrado, muitas → Rápido.
+            </span>
+          </fieldset>
+        </div>
+
+        <h3 className={styles.secao}>Comparação dos modos de camadas</h3>
+        {semTecido ? (
+          <p className={styles.estado}>Escolha o lote de todas as linhas para comparar os modos.</p>
+        ) : simulando && !simulacao ? (
+          <p className={styles.estado}>Calculando…</p>
+        ) : simulacao ? (
+          <Comparacao
+            simulacao={simulacao}
+            modoAtual={avancado.modo_camadas !== "AUTOMATICO" ? avancado.modo_camadas : null}
+          />
+        ) : null}
+      </details>
     </>
   );
 }
@@ -879,7 +979,7 @@ function PassoEncaixes({
               <span className={styles.nota}>
                 {encaixes.length
                   ? "Gerar novamente substitui os encaixes atuais desta OC."
-                  : `Modo: ${MODOS.find((m) => m.valor === oc.modo_camadas)?.rotulo.toLowerCase()} · comprimento máximo ${oc.comprimento_max_cm ?? COMP_PADRAO} cm.`}{" "}
+                  : `O sistema escolhe a forma de enfesto · comprimento máximo ${oc.comprimento_max_cm ?? COMP_PADRAO} cm.`}{" "}
                 A geração continua mesmo se você fechar o assistente.
               </span>
             </>
@@ -919,6 +1019,7 @@ function PassoEncaixes({
         <p className={styles.estado}>{jobAtivo ? "" : "Nenhum encaixe gerado ainda."}</p>
       ) : (
         <>
+          {!jobAtivo && <DecisaoEnfesto decisoes={oc.decisao_enfesto?.lotes} />}
           {enfestos.map((g) => (
             <section key={g.chave}>
               <ResumoEnfesto grupo={g} loteCodigo={lotes[g.lote_id]?.codigo_lote} />

@@ -1,5 +1,6 @@
 import logging
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
@@ -12,12 +13,14 @@ from models.ordem_corte import (
     COMPRIMENTO_MAX_MAX_CM,
     COMPRIMENTO_MAX_MIN_CM,
     COMPRIMENTO_MAX_PADRAO_CM,
+    QUALIDADE_PADRAO,
     OrdemCorte,
 )
 from models.pedido import PedidoVenda
 from models.tecido import CorTecido, LoteTecido
+from routers.ordens_corte import encaixe_rapido as encaixe_rapido_job
 from schemas.encaixe_schema import EncaixeCreate
-from services import encaixe_service, nesting_service, report_service
+from services import encaixe_service, report_service
 from services.ordem_corte_service import numero_fmt
 
 logger = logging.getLogger(__name__)
@@ -101,30 +104,21 @@ def listar_encaixes(pedido_id: uuid.UUID | None = None, db: Session = Depends(ge
 @router.post(
     "/gerar/{pedido_id}",
     response_model=dict,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(require_permission("encaixe_rapido", "criar"))],
 )
 def gerar_encaixe_automatico(
     pedido_id: uuid.UUID,
     comprimento_max_cm: int = Query(COMPRIMENTO_MAX_PADRAO_CM, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM),
+    qualidade: Literal["AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO"] = QUALIDADE_PADRAO,
     db: Session = Depends(get_db),
 ):
-    """Gera encaixes automáticos para todos os tecidos do pedido — risco
-    maior que comprimento_max_cm (mesa de corte) é dividido em partes."""
-    try:
-        resultado = nesting_service.gerar_encaixe(db, pedido_id, comprimento_max_cm)
-        return {"data": resultado, "error": None}
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
-    except Exception as exc:
-        # Qualquer outra falha (ex.: dado inconsistente, atributo ausente) não
-        # pode virar um 500 sem corpo — vira mensagem clara para o frontend.
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao gerar encaixe: {exc}",
-        )
+    """Rota antiga do Encaixe Rápido (M2d): não gera mais dentro da
+    requisição — o motor v2 leva minutos. Enfileira o MESMO job de
+    POST /ordens-corte/encaixe-rapido/{pedido_id} e devolve 202 {job_id};
+    o progresso e o resultado ({encaixes, avisos, motor_usado}) saem em
+    GET /ordens-corte/encaixe-rapido/{pedido_id}/job."""
+    return encaixe_rapido_job(pedido_id, comprimento_max_cm, qualidade, db)
 
 
 @router.get("/{encaixe_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])

@@ -215,7 +215,15 @@ def _executar(job: Job) -> None:
     except Exception as exc:
         db.rollback()
         logger.exception("[JOB] %s %s falhou", job.chave[0], job.chave[1])
-        _terminar(job, "ERRO", fase="Erro", erro=getattr(exc, "mensagem", None) or str(exc) or type(exc).__name__)
+        motivo = getattr(exc, "mensagem", None) or str(exc) or type(exc).__name__
+        # Tarefa 3: mensagem única e legível — nada de parcial foi gravado e os
+        # encaixes anteriores continuam (a substituição é só no commit final).
+        _terminar(
+            job,
+            "ERRO",
+            fase="Erro",
+            erro=f"Não foi possível gerar o encaixe: {motivo}. Os encaixes anteriores foram mantidos.",
+        )
     else:
         job.resultado = resultado
         _terminar(job, "CONCLUIDO", fase="Concluído")

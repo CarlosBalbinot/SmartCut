@@ -102,6 +102,11 @@ async def lifespan(app: FastAPI):
     except Exception as err:  # noqa: BLE001 — nunca impede o boot
         logger.warning("[relatorios] aviso no boot: %s", err)
 
+    # Motor de encaixe: exe montado sem spyrrow/ortools aparece aqui e em /health.
+    from services import nesting_v2
+
+    (logger.info if nesting_v2.DISPONIVEL else logger.error)("[encaixe] %s", nesting_v2.diagnostico())
+
     try:
         yield
     finally:
@@ -229,4 +234,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    from services import nesting_v2
+
+    return {"status": "ok", "motor_v2_disponivel": nesting_v2.DISPONIVEL}

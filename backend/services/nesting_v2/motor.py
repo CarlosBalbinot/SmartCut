@@ -467,7 +467,7 @@ def _cortar(faixa: Faixa, limite_cm: float) -> tuple[list[Posicao], list[Unidade
 
 def _checar_largura(faixa: Faixa) -> None:
     """Peça mais larga que o tecido: o spyrrow a descarta sem aviso, e o v1
-    também (nest_worker.findBest devolve null) — lá virava um aviso genérico de
+    também (a peça é pulada) — lá virava um aviso genérico de
     0% de aproveitamento. Aqui é erro explícito, porque uma mesa sem a peça é
     uma mesa com menos peças do que o plano pediu."""
     if faixa.nao_encaixadas:

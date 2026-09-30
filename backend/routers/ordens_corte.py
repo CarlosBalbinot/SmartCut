@@ -5,18 +5,20 @@ from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from database import get_db
 from middleware.permissions import require_permission
 from models.encaixe import Encaixe
+from models.grupo_molde import GrupoMolde
 from models.ordem_corte import (
     COMPRIMENTO_MAX_MAX_CM,
     COMPRIMENTO_MAX_MIN_CM,
     COMPRIMENTO_MAX_PADRAO_CM,
     QUALIDADE_PADRAO,
 )
-from models.pedido import PedidoVenda
+from models.pedido import ItemPedido, PedidoVenda
+from models.tecido import CorTecido, LoteTecido
 from services import nesting_jobs, nesting_service
 from services import ordem_corte_service as svc
 from services.precificacao_service import get_ou_criar_config
@@ -35,7 +37,11 @@ _RAPIDO_CRIAR = Depends(require_permission("encaixe_rapido", "criar"))
 _CONFIG_VER = Depends(require_permission("configuracoes_ver", "ver"))
 _CONFIG_EDITAR = Depends(require_permission("configuracoes_editar", "ver"))
 
-_Qualidade = Literal["RAPIDO", "EQUILIBRADO", "MAXIMO"]
+_Qualidade = Literal["AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO"]
+# Enfesto: AUTOMATICO = o sistema decide (nesting_v2/decisor.py); valor fixo
+# = escolha manual do "Avançado".
+_TipoEnfesto = Literal["AUTOMATICO", "MESMA_FACE", "FACE_A_FACE"]
+_ModoCamadas = Literal["AUTOMATICO", "SEM_SOBRA", "MENOS_ENFESTOS"]
 
 
 class _TecidoEscolha(BaseModel):
@@ -45,7 +51,10 @@ class _TecidoEscolha(BaseModel):
 
 
 class _OrdemCorteUpdate(BaseModel):
-    modo_camadas: Optional[Literal["SEM_SOBRA", "MENOS_ENFESTOS"]] = None
+    # "Avançado" (RASCUNHO): escolha manual do enfesto — AUTOMATICO devolve a
+    # decisão ao sistema. Vale para a próxima geração.
+    enfesto_tipo: Optional[_TipoEnfesto] = None
+    enfesto_modo: Optional[_ModoCamadas] = None
     # Limite de cada encaixe (mesa de corte), só em RASCUNHO — mudar exige regerar.
     comprimento_max_cm: Optional[int] = Field(None, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM)
     # Tempo do motor v2 na próxima geração (RASCUNHO).
@@ -54,10 +63,11 @@ class _OrdemCorteUpdate(BaseModel):
 
 
 class _ConfigProducao(BaseModel):
-    motor_encaixe: Optional[Literal["v1", "v2"]] = None
     # Maior mesa de corte da fábrica — base do alerta de mesa maior.
     comprimento_max_mesa_cm: Optional[int] = Field(None, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM)
     alerta_economia_pct: Optional[Decimal] = Field(None, ge=0, le=100)
+    # Orçamento de tempo da qualidade "Automático" (ver planejamento/custo.py).
+    tempo_maximo_oc_s: Optional[int] = Field(None, ge=30, le=7200)
 
 
 class _IniciarCorte(BaseModel):
@@ -223,23 +233,65 @@ def encaixe_rapido(
     pedido_id: uuid.UUID,
     comprimento_max_cm: int = Query(COMPRIMENTO_MAX_PADRAO_CM, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM),
     qualidade: _Qualidade = QUALIDADE_PADRAO,
+    tipo_enfesto: _TipoEnfesto = "AUTOMATICO",
+    modo_camadas: _ModoCamadas = "AUTOMATICO",
     db: Session = Depends(get_db),
 ):
     """Encaixe Rápido (nesting_service.gerar_encaixe) como job: 202 {job_id};
-    acompanhar em GET /encaixe-rapido/{pedido_id}/job."""
-    if not db.get(PedidoVenda, pedido_id):
+    acompanhar em GET /encaixe-rapido/{pedido_id}/job. O enfesto é decidido
+    pelo sistema; tipo_enfesto/modo_camadas fixos = "Avançado".
+
+    Antes de enfileirar, valida as peças (largura × tecido, polígono): com
+    problema que bloqueia, devolve 400 com a lista em vez de 202 — o
+    frontend mostra e não gera (rota GET .../validar para ver antes)."""
+    pedido = _carregar_pedido_rapido(db, pedido_id)
+    if not pedido:
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
+
+    problemas, _avisos = _validar_rapido(pedido, comprimento_max_cm)
+    if problemas:
+        raise HTTPException(status_code=400, detail="Não foi possível gerar o encaixe: " + " | ".join(problemas))
 
     def _tarefa(sessao: Session, job) -> dict:
         try:
             return nesting_service.gerar_encaixe(
-                sessao, pedido_id, comprimento_max_cm, qualidade=qualidade, progresso=job.progresso
+                sessao,
+                pedido_id,
+                comprimento_max_cm,
+                qualidade=qualidade,
+                tipo_enfesto=tipo_enfesto,
+                modo_camadas=modo_camadas,
+                progresso=job.progresso,
             )
         except ValueError as exc:
             raise nesting_jobs.ErroJob(str(exc), 400)
 
     job = _job(nesting_jobs.enfileirar, ("pedido", pedido_id), _tarefa, _sessao_do_job(db))
     return {"data": {"job_id": job.job_id, "status": job.status}, "error": None}
+
+
+def _carregar_pedido_rapido(db: Session, pedido_id: uuid.UUID) -> PedidoVenda | None:
+    """Pedido com o que a validação/leitura precisam: grupo (com moldes) e
+    lote (com cor/modelo) de cada item."""
+    return (
+        db.query(PedidoVenda)
+        .options(
+            selectinload(PedidoVenda.itens).selectinload(ItemPedido.grupo).selectinload(GrupoMolde.moldes),
+            selectinload(PedidoVenda.itens)
+            .selectinload(ItemPedido.lote)
+            .selectinload(LoteTecido.cor)
+            .selectinload(CorTecido.modelo),
+        )
+        .filter(PedidoVenda.id == pedido_id)
+        .first()
+    )
+
+
+def _validar_rapido(pedido: PedidoVenda, comprimento_max_cm: int) -> tuple[list[str], list[str]]:
+    """(problemas_bloqueantes, avisos) das peças do pedido — mensagens já
+    citando molde e tecido (nesting_service.validar_entradas)."""
+    entradas, _avisos = nesting_service.montar_pares_legado(pedido)
+    return nesting_service.validar_entradas(entradas, comprimento_max_cm)
 
 
 @router.get("/encaixe-rapido/{pedido_id}/job", response_model=dict, dependencies=[_RAPIDO_VER])
@@ -250,6 +302,130 @@ def encaixe_rapido_job(pedido_id: uuid.UUID):
 @router.post("/encaixe-rapido/{pedido_id}/job/cancelar", response_model=dict, dependencies=[_RAPIDO_CRIAR])
 def encaixe_rapido_cancelar(pedido_id: uuid.UUID):
     return {"data": _job(nesting_jobs.cancelar, ("pedido", pedido_id)).estado, "error": None}
+
+
+@router.get("/encaixe-rapido/{pedido_id}/validar", response_model=dict, dependencies=[_RAPIDO_VER])
+def encaixe_rapido_validar(
+    pedido_id: uuid.UUID,
+    comprimento_max_cm: int = Query(COMPRIMENTO_MAX_PADRAO_CM, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM),
+    db: Session = Depends(get_db),
+):
+    """Valida as peças do Encaixe Rápido antes de gerar — o frontend chama
+    depois de criar o pedido e mostra {:problemas, :avisos} no passo 1; se
+    houver problema que bloqueia, aborta antes do POST."""
+    pedido = _carregar_pedido_rapido(db, pedido_id)
+    if not pedido or pedido.tipo != "encaixe_rapido":
+        raise HTTPException(status_code=404, detail="Encaixe Rápido não encontrado.")
+    problemas, avisos = _validar_rapido(pedido, comprimento_max_cm)
+    return {"data": {"problemas": problemas, "avisos": avisos}, "error": None}
+
+
+# ── Encaixe Rápido: leitura do resultado já gravado (tela com ?id= na URL) ───
+#
+# O job da geração vive só em memória (reiniciar o backend o perde); o que
+# fica são os Encaixes do pedido. Esta rota (somente leitura) reconstrói a
+# configuração da tela (nome, tecidos, peças, comprimento, qualidade) a partir
+# dos itens/lotes e o resultado a partir dos Encaixes — para o frontend
+# reabrir /producao/encaixe-rapido?id=<pedido_id> sem regenerar nada.
+
+_QTD_CAMPOS_RAPIDO = ("qtd_p", "qtd_m", "qtd_g", "qtd_gg", "qtd_g1", "qtd_g2", "qtd_g3")
+
+
+def _config_encaixe_rapido(pedido: PedidoVenda, encaixes: list[Encaixe]) -> dict:
+    mapa = encaixes[0].mapa_json or {}
+    tecidos: list[dict] = []
+    vistos: set[str] = set()
+    pecas: list[dict] = []
+    for i, item in enumerate(pedido.itens or []):
+        lote = item.lote
+        tid = str(lote.id) if lote else ""
+        if lote and tid not in vistos:
+            vistos.add(tid)
+            cor = lote.cor
+            modelo = cor.modelo if cor else None
+            tecidos.append(
+                {
+                    "_id": tid,
+                    "modelo_id": str(modelo.id) if modelo else "",
+                    "modelo_nome": modelo.nome if modelo else (cor.nome_cor if cor else ""),
+                    "cor_id": str(cor.id) if cor else "",
+                    "cor_nome": cor.nome_cor if cor else "",
+                    "cor_largura_cm": float(cor.largura_util_cm) if cor and cor.largura_util_cm is not None else 0,
+                    "lote_id": tid,
+                    "lote_codigo": lote.codigo_lote,
+                    "lote_peso_kg": float(lote.peso_disponivel_kg) if lote.peso_disponivel_kg is not None else 0,
+                }
+            )
+        tem_plus = bool(getattr(item, "qtd_g1", None) or getattr(item, "qtd_g2", None) or getattr(item, "qtd_g3", None))
+        peca = {
+            "_id": f"pc-{i + 1}",
+            "grupo_id": str(item.grupo_id) if item.grupo_id else "",
+            "grupo_nome": item.grupo.nome if item.grupo else (item.descricao or ""),
+            "grupo_codigo": item.grupo.codigo if item.grupo else "",
+            "tem_plus": tem_plus,
+            "cor": item.cor or "",
+            "tecido_id": tid,
+        }
+        for campo in _QTD_CAMPOS_RAPIDO:
+            peca[campo] = getattr(item, campo, None) or 0
+        pecas.append(peca)
+
+    return {
+        "nome": pedido.observacoes_internas or "",
+        "tecidos": tecidos,
+        "pecas": pecas,
+        "comprimento_max_cm": int(mapa.get("comprimento_max_cm") or 0) or COMPRIMENTO_MAX_PADRAO_CM,
+        "qualidade": mapa.get("qualidade") or QUALIDADE_PADRAO,
+        "qualidade_perfil": mapa.get("qualidade_perfil") or None,
+    }
+
+
+@router.get("/encaixe-rapido/{pedido_id}", response_model=dict, dependencies=[_RAPIDO_VER])
+def encaixe_rapido_obter(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Lê um Encaixe Rápido existente (somente leitura): configuração da tela
+    (nome, tecidos, peças, comprimento, qualidade) e o resultado (mesas).
+    404 se o pedido não for um encaixe rápido ou não tiver mesas gravadas."""
+    pedido = (
+        db.query(PedidoVenda)
+        .options(
+            selectinload(PedidoVenda.itens).selectinload(ItemPedido.grupo),
+            selectinload(PedidoVenda.itens)
+            .selectinload(ItemPedido.lote)
+            .selectinload(LoteTecido.cor)
+            .selectinload(CorTecido.modelo),
+        )
+        .filter(PedidoVenda.id == pedido_id)
+        .first()
+    )
+    if not pedido or pedido.tipo != "encaixe_rapido":
+        raise HTTPException(status_code=404, detail="Encaixe Rápido não encontrado.")
+    encaixes = sorted(
+        (e for e in pedido.encaixes if e.status != "deletado"),
+        key=lambda e: (e.numero or 0, e.criado_em),
+    )
+    if not encaixes:
+        raise HTTPException(status_code=404, detail="Encaixe Rápido sem mesas geradas.")
+
+    resumos = [nesting_service._resumo(e) for e in encaixes]
+    # Decisão do enfesto: gravada na primeira mesa de cada lote.
+    decisoes = [
+        {"lote_id": (e.mapa_json or {}).get("lote_id"), "tecido": (e.mapa_json or {}).get("tecido_nome"), **d}
+        for e in encaixes
+        if (d := (e.mapa_json or {}).get("decisao_enfesto"))
+    ]
+    return {
+        "data": {
+            "config": _config_encaixe_rapido(pedido, encaixes),
+            "resultado": {
+                "pedido_id": str(pedido_id),
+                "encaixes": resumos,
+                "comprimento_max_cm": resumos[0].get("comprimento_max_cm") or COMPRIMENTO_MAX_PADRAO_CM,
+                "decisoes": decisoes,
+                "avisos": [],
+            },
+        },
+        "error": None,
+    }
 
 
 @router.post("/pedido/{pedido_id}", status_code=status.HTTP_201_CREATED, dependencies=[_CRIAR])

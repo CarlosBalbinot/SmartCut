@@ -21,9 +21,6 @@ extend-exclude = [
     "dist",
     ".venv",
     "uploads",
-    # Código vendido/de terceiros (engine C++ de nesting + helpers JS) — não
-    # passa por ruff (gyp-mac-tool é script Python 2, artefatos de build .o/.mk).
-    "services/nesting",
 ]
 
 # ── Scripts de lint/formatação (8.3) ────────────────────────────────────

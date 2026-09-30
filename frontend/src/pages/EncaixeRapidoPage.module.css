@@ -6,7 +6,7 @@
 }
 
 .colLeft {
-  width: 400px;
+  width: 380px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -276,6 +276,20 @@
   font-size: 0.82rem;
   color: var(--sc-danger-text);
   margin: 0;
+}
+
+/* Problemas das peças na validação (molde/tecido citados), antes de gerar */
+.errorList {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  text-align: left;
+  font-size: 0.82rem;
+  color: var(--sc-danger-text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* ── Warning state (0% de aproveitamento) ── */
@@ -696,8 +710,8 @@
   margin-top: 3px;
 }
 
-/* ── Responsivo ── */
-@media (max-width: 900px) {
+/* ── Responsivo: abaixo de 1100 px as colunas empilham ── */
+@media (max-width: 1100px) {
   .cols {
     flex-direction: column;
   }
@@ -727,4 +741,24 @@
 
 .resultMetricValue[data-nivel="ruim"] {
   color: var(--sc-danger-text);
+}
+
+/* "Avançado" da configuração: escolha manual do enfesto e da qualidade */
+.avancado {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-md);
+}
+.avancado > summary {
+  font-size: var(--sc-font-size-body);
+  font-weight: var(--sc-font-weight-title);
+  color: var(--sc-text-secondary);
+  cursor: pointer;
+}
+.avancadoNota {
+  font-size: var(--sc-font-size-small);
+  color: var(--sc-text-secondary);
 }
