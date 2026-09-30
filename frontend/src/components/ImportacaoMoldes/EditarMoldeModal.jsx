@@ -11,6 +11,7 @@ import SetaFioArrastavel, {
   anguloParaCategoria,
 } from "../SetaFioArrastavel";
 import styles from "./EditarMoldeModal.module.css";
+import useAvisoSimetria, { TEXTO_AVISO_SIMETRIA } from "./useAvisoSimetria";
 
 const TAMANHOS_DISPONIVEIS = ["PP", "P", "M", "G", "GG", "XGG"];
 
@@ -33,6 +34,12 @@ export default function EditarMoldeModal({
   const [angulo, setAngulo] = useState(() => anguloInicial(molde.sentido_fio));
 
   const categoria = useMemo(() => anguloParaCategoria(angulo), [angulo]);
+  const avisoSimetria = useAvisoSimetria({
+    geometrias: [molde.geometria_json],
+    sentidoFio: categoria,
+    rotacaoBase: molde.rotacao_base ?? 0,
+    tipoCorte,
+  });
 
   function submeter(e) {
     e.preventDefault();
@@ -135,6 +142,7 @@ export default function EditarMoldeModal({
               <option value="par">Par (2 peças espelhadas)</option>
               <option value="par_sem_espelho">Par sem espelho (2 peças)</option>
             </select>
+            {avisoSimetria && <p className={styles.avisoSimetria}>{TEXTO_AVISO_SIMETRIA}</p>}
           </div>
 
           <div className={styles.acoes}>

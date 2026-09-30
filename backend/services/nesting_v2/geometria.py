@@ -16,14 +16,15 @@ Decisões desta etapa (enunciado do M1):
   1. polígono REAL (geometria_json), nunca o bounding box;
   2. rotações pelo sentido do fio → allowed_orientations — a regra é a mesma
      do v1 (nesting_service._rotacoes), quem chama passa em Peca.rotacoes;
-  3. par espelhado como item próprio: `par` vira DUAS unidades, uma o
-     espelho da outra. `par_sem_espelho` também espelha em enfesto de face
-     única (PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE) — com todas as camadas do
-     lado direito para cima, duas cópias iguais dariam duas peças do MESMO
-     lado. No enfesto duplo nenhum par espelha (Peca.espelhar_par =
-     False): as camadas alternam o lado e cada par de camadas já corta
-     direita e esquerda. O v1 colocava as duas cópias como a mesma peça
-     (items 2/3 do molde, _MULT);
+  3. par espelhado como item próprio: `par` vira DUAS unidades. No
+     enfesto simples (todas as camadas com o lado direito para cima) a 2ª é
+     o espelho da 1ª — direita e esquerda no mesmo desenho. No enfesto duplo
+     (Peca.espelhar_par = False) as duas são iguais: as camadas alternam o
+     lado e cada par de camadas já corta direita e esquerda.
+     `par_sem_espelho` são duas peças IGUAIS, NUNCA espelhadas, em qualquer
+     enfesto (ex.: dois bolsos idênticos). Se a peça for assimétrica, o
+     enfesto duplo nem é oferecido (decisor.analisar) — metade das camadas a
+     cortaria virada;
   4. margem entre peças: o spyrrow tem min_items_separation, então não é
      preciso buffer com shapely.
 """
@@ -35,11 +36,6 @@ from dataclasses import dataclass
 
 # tipo_corte que corta DUAS peças de um mesmo molde (a segunda completa o par)
 PARES = ("par", "par_sem_espelho")
-
-# Enfesto simples (todas as camadas com o lado direito para cima): a
-# 2ª cópia de `par_sem_espelho` também sai espelhada (decisão da produção;
-# no enfesto duplo nenhum par espelha).
-PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE = True
 
 Ponto = tuple[float, float]
 
@@ -62,12 +58,13 @@ class Peca:
     quantidade    total de cópias FÍSICAS deste molde a cortar (para par, o
                   total das duas metades — precisa ser par)
     rotacoes      ângulos permitidos em graus (regra do sentido do fio)
-    tipo_corte    simples | par | par_sem_espelho
+    tipo_corte    simples | par (2 espelhadas) | par_sem_espelho (2 iguais)
     rotacao_base  giro do cadastro, aplicado na origem (o spyrrow gira em
                   torno da origem do próprio item — ver encaixador)
-    espelhar_par  True no enfesto simples (a 2ª cópia do par sai
+    espelhar_par  True no enfesto simples (a 2ª cópia do `par` sai
                   espelhada); False no enfesto duplo (duas cópias iguais — a
-                  alternância das camadas faz direita e esquerda)
+                  alternância das camadas faz direita e esquerda). Não se
+                  aplica a `par_sem_espelho`, que nunca espelha
     """
 
     id: str
@@ -83,10 +80,9 @@ class Peca:
 
 
 def espelha_segunda_copia(tipo_corte: str, espelhar_par: bool = True) -> bool:
-    """A 2ª cópia de cada par deste molde sai espelhada no desenho?"""
-    if not espelhar_par:
-        return False
-    return tipo_corte == "par" or (tipo_corte == "par_sem_espelho" and PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE)
+    """A 2ª cópia de cada par deste molde sai espelhada no desenho? Só no
+    `par` e só no enfesto simples; `par_sem_espelho` nunca espelha."""
+    return espelhar_par and tipo_corte == "par"
 
 
 @dataclass

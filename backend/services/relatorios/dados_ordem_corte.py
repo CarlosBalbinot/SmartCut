@@ -452,6 +452,8 @@ def _enfesto(e: Encaixe, limite_oc: int) -> dict:
     desenho = desenho_svg(mapa)
     return {
         "lote_id": str(e.lote_id) if e.lote_id else "",
+        # Grupo de corte: o lote (OC por cor) ou lote + produto (OC por produto).
+        "grupo_corte": _txt(mapa.get("grupo_corte")) or (str(e.lote_id) if e.lote_id else ""),
         "numero": e.numero,
         "numero_formatado": numero_encaixe(e.numero),
         "enfesto": mapa.get("enfesto"),
@@ -494,12 +496,12 @@ def _nome_tecido(tecido: dict) -> str:
 
 
 def _grupos(enfestos: list[dict]) -> list[dict]:
-    """Mesas agrupadas por enfesto (lote + número), na ordem dos encaixes.
+    """Mesas agrupadas por enfesto (grupo de corte + número), na ordem dos encaixes.
     A grade por tamanho, a sobra e as peças do enfesto vêm da primeira mesa
     que as tem — uma vez por enfesto, nunca somadas por parte."""
     grupos: dict[tuple, dict] = {}
     for e in enfestos:
-        chave = (e["lote_id"], e["enfesto"]) if e["enfesto"] is not None else ("", e["numero"])
+        chave = (e["grupo_corte"], e["enfesto"]) if e["enfesto"] is not None else ("", e["numero"])
         g = grupos.get(chave)
         if g is None:
             g = grupos[chave] = {

@@ -98,6 +98,12 @@ const QUALIDADES = [
   { valor: "MAXIMO", rotulo: "Máximo" },
 ];
 
+// Como a OC organiza o corte (ordens_corte.organizar_por).
+const ORGANIZAR = [
+  { valor: "PRODUTO", rotulo: "Por produto" },
+  { valor: "COR", rotulo: "Por cor" },
+];
+
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 const fmtNum = (v, casas = 2) =>
   v == null || v === ""
@@ -310,6 +316,19 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
     }
   };
 
+  const mudarOrganizar = async (organizar_por) => {
+    if (organizar_por === oc.organizar_por) return;
+    setSalvando(true);
+    setErro(null);
+    try {
+      setOc(await atualizarOrdemCorte(oc.id, { organizar_por }));
+    } catch (e) {
+      setErro(e.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const mudarQualidade = async (qualidade) => {
     if (qualidade === oc.qualidade) return;
     setSalvando(true);
@@ -481,8 +500,10 @@ export default function OrdemCorteAssistente({ ocId, onFechar, passoInicial = 1 
               pendBloqueio={pendBloqueio}
               pendAviso={pendAviso}
               editavel={editavel}
+              salvando={salvando}
               atualizando={atualizando}
               onAtualizar={atualizarDoPedido}
+              onOrganizar={mudarOrganizar}
             />
           ) : passo === 2 ? (
             <PassoTecidos
@@ -571,10 +592,13 @@ function PassoConferencia({
   pendBloqueio,
   pendAviso,
   editavel,
+  salvando,
   atualizando,
   onAtualizar,
+  onOrganizar,
 }) {
   const pecas = oc.itens.reduce((s, i) => s + i.quantidade, 0);
+  const organizar = oc.organizar_por || "PRODUTO";
   return (
     <>
       {oc.desatualizada && (
@@ -598,6 +622,30 @@ function PassoConferencia({
         {plural(oc.itens.length, "item", "itens")} · {plural(pecas, "peça", "peças")} ·{" "}
         {plural(oc.tecidos.length, "combinação produto/cor", "combinações produto/cor")}
       </p>
+
+      <fieldset className={styles.modos} disabled={!editavel || salvando}>
+        <legend className={styles.secao}>
+          <label htmlFor="oc-organizar">Organizar o corte</label>
+        </legend>
+        <select
+          id="oc-organizar"
+          className="sc-input"
+          style={{ width: "12rem" }}
+          value={organizar}
+          onChange={(e) => onOrganizar(e.target.value)}
+        >
+          {ORGANIZAR.map((o) => (
+            <option key={o.valor} value={o.valor}>
+              {o.rotulo}
+            </option>
+          ))}
+        </select>
+        <span className={styles.nota}>
+          {organizar === "PRODUTO"
+            ? "Cada produto é cortado à parte: um risco nunca mistura produtos."
+            : "Tudo o que usa o mesmo lote de tecido entra no mesmo risco, misturando produtos."}
+        </span>
+      </fieldset>
 
       <div className={styles.tabelaWrap}>
         <table className={styles.tabela}>
@@ -867,7 +915,9 @@ function PassoTecidos({
 function Comparacao({ simulacao, modoAtual }) {
   const semSobra = simulacao.SEM_SOBRA;
   const menos = simulacao.MENOS_ENFESTOS;
-  const menosPorLote = Object.fromEntries(menos.grupos.map((g) => [g.lote_id, g]));
+  // grupo = lote (OC por cor) ou lote + produto (OC por produto).
+  const chave = (g) => g.grupo || g.lote_id;
+  const menosPorGrupo = Object.fromEntries(menos.grupos.map((g) => [chave(g), g]));
   const camadas = (g) => (g ? g.enfestos.map((e) => e.camadas).join(" + ") || "—" : "—");
   const cls = (modo) => (modo === modoAtual ? styles.colModoAtual : "");
 
@@ -900,12 +950,13 @@ function Comparacao({ simulacao, modoAtual }) {
         </thead>
         <tbody>
           {semSobra.grupos.map((g) => (
-            <tr key={g.lote_id || g.produtos_cores.join()}>
+            <tr key={chave(g) || g.produtos_cores.join()}>
               <td>
                 {g.lote_codigo} · {g.tecido}
+                {g.grupo && g.grupo !== g.lote_id ? ` · ${g.produtos_cores.join(", ")}` : ""}
               </td>
               {celulas(g, "SEM_SOBRA")}
-              {celulas(menosPorLote[g.lote_id], "MENOS_ENFESTOS")}
+              {celulas(menosPorGrupo[chave(g)], "MENOS_ENFESTOS")}
             </tr>
           ))}
         </tbody>

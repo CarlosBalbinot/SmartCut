@@ -46,6 +46,15 @@ TIPOS_ENFESTO = ("MESMA_FACE", "FACE_A_FACE")
 # tempo da OC entre os riscos (ver services/planejamento/custo.py).
 QUALIDADES = ("AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO")
 QUALIDADE_PADRAO = "AUTOMATICO"
+# Como a OC organiza o corte (nesting_service._agrupar):
+#   PRODUTO — cada produto corta à parte: um risco nunca mistura produtos,
+#             mesmo quando dois produtos usam o mesmo lote de tecido. É a base
+#             do plano de corte por produto (várias cores do mesmo produto no
+#             mesmo enfesto, services/planejamento/).
+#   COR     — o comportamento anterior: tudo o que usa o mesmo lote (a mesma
+#             cor de tecido) entra no mesmo risco, misturando produtos.
+ORGANIZAR_POR = ("PRODUTO", "COR")
+ORGANIZAR_POR_PADRAO = "PRODUTO"
 
 
 class OrdemCorte(Base):
@@ -90,6 +99,10 @@ class OrdemCorte(Base):
     )
     qualidade: Mapped[str] = mapped_column(
         String(20), nullable=False, default=QUALIDADE_PADRAO, server_default=QUALIDADE_PADRAO
+    )
+    # PRODUTO | COR — ver ORGANIZAR_POR. Vale para a próxima geração.
+    organizar_por: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=ORGANIZAR_POR_PADRAO, server_default=ORGANIZAR_POR_PADRAO
     )
     # Alerta de mesa maior (M2a): gravado pela geração quando a mesa da
     # configuração (comprimento_max_mesa_cm) economizaria >= alerta_economia_pct.

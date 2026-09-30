@@ -376,10 +376,17 @@ export function MoldesMesa({ pecas }) {
 export function agruparEnfestos(encaixes) {
   const grupos = new Map();
   for (const e of encaixes || []) {
-    const chave = e.enfesto != null ? `${e.lote_id}|${e.enfesto}` : e.id;
+    // grupo_corte: lote + produto quando a OC é organizada por produto.
+    const chave = e.enfesto != null ? `${e.grupo_corte || e.lote_id}|${e.enfesto}` : e.id;
     let g = grupos.get(chave);
     if (!g) {
-      g = { chave, enfesto: e.enfesto, tecido_nome: e.tecido_nome, lote_id: e.lote_id, mesas: [] };
+      g = {
+        chave,
+        enfesto: e.enfesto,
+        tecido_nome: e.produto_nome ? `${e.produto_nome} · ${e.tecido_nome}` : e.tecido_nome,
+        lote_id: e.lote_id,
+        mesas: [],
+      };
       grupos.set(chave, g);
     }
     g.mesas.push(e);

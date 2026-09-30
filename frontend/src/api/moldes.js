@@ -55,6 +55,12 @@ export const updateMolde = (id, payload) =>
 
 export const deleteMolde = (id) => request(`/moldes/${id}`, { method: "DELETE" });
 
+// Simetria da peça no eixo do fio (mesma medida do decisor do enfesto):
+// { geometrias: [geometria_json...], sentido_fio, rotacao_base } →
+// { simetrica: bool | null, desvio_cm, tolerancia_cm }.
+export const simetriaMolde = (payload) =>
+  request("/moldes/simetria", { method: "POST", body: JSON.stringify(payload) });
+
 // ── Produtos (para vínculo com o grupo de molde) ────────────────────────
 
 export const buscarProdutos = (termo) => request(`/produtos/?busca=${encodeURIComponent(termo)}`);

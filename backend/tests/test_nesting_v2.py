@@ -49,11 +49,11 @@ def test_par_segunda_copia_espelhada_em_face_unica():
     assert par[0].par == par[1].par != par[2].par == par[3].par
     assert Polygon(par[1].poligono).equals(Polygon(espelhar(par[0].poligono, "y")))
 
-    # PAR_SEM_ESPELHO_ESPELHA_EM_MESMA_FACE: no enfesto simples o par_sem_espelho
-    # também espelha (senão sairiam duas peças do mesmo lado).
+    # par_sem_espelho: duas peças IGUAIS, nunca espelhadas — nem no enfesto simples.
     sem = preparar([Peca(id="m", poligono=L, quantidade=2, tipo_corte="par_sem_espelho")])
-    assert [u.espelhada for u in sem] == [False, True]
-    assert Polygon(sem[1].poligono).equals(Polygon(espelhar(sem[0].poligono, "y")))
+    assert [u.espelhada for u in sem] == [False, False]
+    assert sem[0].par == sem[1].par
+    assert Polygon(sem[1].poligono).equals(Polygon(sem[0].poligono))
 
 
 def test_face_a_face_nenhum_par_espelha():

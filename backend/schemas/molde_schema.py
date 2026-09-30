@@ -37,6 +37,14 @@ class MoldeUpdate(BaseModel):
     rotacao_base: int | None = None
 
 
+class SimetriaIn(BaseModel):
+    """Peças de uma parte (todos os tamanhos) para o aviso de simetria."""
+
+    geometrias: list[dict[str, Any] | None]
+    sentido_fio: str | None = Field(None, max_length=20)
+    rotacao_base: int = 0
+
+
 # ── Preview (arquivo → polylines) ────────────────────────────────────
 
 

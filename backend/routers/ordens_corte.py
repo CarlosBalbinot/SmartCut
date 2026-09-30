@@ -38,6 +38,7 @@ _CONFIG_VER = Depends(require_permission("configuracoes_ver", "ver"))
 _CONFIG_EDITAR = Depends(require_permission("configuracoes_editar", "ver"))
 
 _Qualidade = Literal["AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO"]
+_OrganizarPor = Literal["PRODUTO", "COR"]
 # Enfesto: AUTOMATICO = o sistema decide (nesting_v2/decisor.py); valor fixo
 # = escolha manual do "Avançado".
 _TipoEnfesto = Literal["AUTOMATICO", "MESMA_FACE", "FACE_A_FACE"]
@@ -59,6 +60,9 @@ class _OrdemCorteUpdate(BaseModel):
     comprimento_max_cm: Optional[int] = Field(None, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM)
     # Tempo do motor v2 na próxima geração (RASCUNHO).
     qualidade: Optional[_Qualidade] = None
+    # PRODUTO (cada produto corta à parte) ou COR (tudo do mesmo lote junto),
+    # na próxima geração (RASCUNHO).
+    organizar_por: Optional[_OrganizarPor] = None
     observacoes: Optional[str] = Field(None, max_length=2000)
 
 

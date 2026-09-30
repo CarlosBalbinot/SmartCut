@@ -26,6 +26,7 @@ from models.ordem_corte import (
     COMPRIMENTO_MAX_MAX_CM,
     COMPRIMENTO_MAX_MIN_CM,
     MODOS_CAMADAS,
+    ORGANIZAR_POR,
     QUALIDADES,
     TIPOS_ENFESTO,
     ItemOrdemCorte,
@@ -423,6 +424,7 @@ def _resumo_out(db: Session, oc: OrdemCorte) -> dict:
         "enfesto_avancado": enfesto_avancado(oc),
         "comprimento_max_cm": oc.comprimento_max_cm,
         "qualidade": oc.qualidade,
+        "organizar_por": oc.organizar_por,
         "sugestao_mesa": oc.sugestao_mesa,
         "observacoes": oc.observacoes,
         "criado_em": oc.criado_em.isoformat() if oc.criado_em else None,
@@ -513,6 +515,8 @@ def _encaixe_out(e) -> dict:
         "qualidade": mapa.get("qualidade"),
         "tipo_enfesto": mapa.get("tipo_enfesto"),
         "modo_camadas": mapa.get("modo_camadas"),
+        "grupo_corte": mapa.get("grupo_corte"),
+        "produto_nome": mapa.get("produto_nome"),
         "status": e.status,
     }
 
@@ -664,10 +668,10 @@ def definir_tecidos(db: Session, oc_id: uuid.UUID, escolhas: list[dict]) -> dict
 
 def atualizar(db: Session, oc_id: uuid.UUID, dados: dict) -> dict:
     """dados: enfesto_tipo / enfesto_modo (escolha manual do "Avançado":
-    AUTOMATICO ou valor fixo), comprimento_max_cm e qualidade (só em
-    RASCUNHO) e/ou observacoes. Mudar o limite deixa os encaixes atuais
-    desatualizados (encaixes_desatualizados) até regerar; enfesto e
-    qualidade só valem para a próxima geração."""
+    AUTOMATICO ou valor fixo), comprimento_max_cm, qualidade e
+    organizar_por (só em RASCUNHO) e/ou observacoes. Mudar o limite deixa os
+    encaixes atuais desatualizados (encaixes_desatualizados) até regerar;
+    enfesto, qualidade e organizar_por só valem para a próxima geração."""
     oc = _carregar(db, oc_id)
     if not oc:
         raise ErroOC("Ordem de Corte não encontrada", 404)
@@ -704,6 +708,12 @@ def atualizar(db: Session, oc_id: uuid.UUID, dados: dict) -> dict:
         if oc.status != _EDITAVEL:
             raise ErroOC("Qualidade do encaixe só pode ser alterada em RASCUNHO.", 409)
         oc.qualidade = dados["qualidade"]
+    if dados.get("organizar_por") is not None and dados["organizar_por"] != oc.organizar_por:
+        if dados["organizar_por"] not in ORGANIZAR_POR:
+            raise ErroOC(f"Organização inválida: {dados['organizar_por']}")
+        if oc.status != _EDITAVEL:
+            raise ErroOC("A organização do corte só pode ser alterada em RASCUNHO.", 409)
+        oc.organizar_por = dados["organizar_por"]
     if "observacoes" in dados:
         oc.observacoes = dados["observacoes"] or None
     db.commit()
@@ -1018,6 +1028,7 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
             progresso=progresso,
             antes_de_gravar=_substituir_anteriores,
             tempo_maximo_s=cfg["tempo_maximo_oc_s"],
+            organizar_por=oc.organizar_por,
         )
     except ValueError as exc:
         raise ErroOC(str(exc))
@@ -1036,7 +1047,7 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
     vistos: set[tuple] = set()
     for enc in resultado["encaixes"]:
         enc["lote_codigo"] = lotes.get(uuid.UUID(enc["lote_id"])) if enc["lote_id"] else None
-        chave_enfesto = (enc["lote_id"], enc["enfesto"])
+        chave_enfesto = (enc.get("grupo_corte") or enc["lote_id"], enc["enfesto"])
         if chave_enfesto in vistos or not enc["pecas_por_tamanho"]:
             continue
         vistos.add(chave_enfesto)
@@ -1048,7 +1059,7 @@ def gerar_encaixes(db: Session, oc_id: uuid.UUID, *, progresso: nesting_service.
 
     avisos_out = [{"codigo": "AVISO", "mensagem": m} for m in avisos + resultado["avisos"]] + avisos_estoque(db, oc)
 
-    escolhas = {d["lote_id"]: (d["tipo_enfesto"], d["modo_camadas"]) for d in resultado["decisoes"]}
+    escolhas = {d["grupo"]: (d["tipo_enfesto"], d["modo_camadas"]) for d in resultado["decisoes"]}
     sugestao = None
     if limite < cfg["comprimento_max_mesa_cm"]:
         sugestao = _sugerir_mesa(db, oc, entradas, escolhas, resultado["totais"], cfg, progresso)
@@ -1099,7 +1110,12 @@ def _sugerir_mesa(
 
     try:
         sugerido = nesting_service.simular_totais(
-            entradas, escolhas=escolhas, comprimento_max_cm=mesa, qualidade="RAPIDO", progresso=_progresso
+            entradas,
+            escolhas=escolhas,
+            comprimento_max_cm=mesa,
+            qualidade="RAPIDO",
+            progresso=_progresso,
+            organizar_por=oc.organizar_por,
         )
     except Exception as exc:  # inclui GeracaoCancelada: o resultado já foi gravado
         logger.warning("[OC] %s: simulação da mesa de %s cm ignorada: %s", numero_fmt(oc.numero), mesa, exc)
@@ -1162,7 +1178,9 @@ _MAX_CAMADAS_PADRAO = 15
 def simular(db: Session, oc_id: uuid.UUID, modo: str | None = None) -> dict:
     """Só o plano de enfesto (sem nesting) de cada lote, para a tela
     comparar os modos. Linhas sem lote são simuladas por (produto, cor)
-    com o máximo de camadas padrão (max_camadas_estimado=True)."""
+    com o máximo de camadas padrão (max_camadas_estimado=True). Com a OC
+    organizada por PRODUTO, cada produto do lote é um grupo à parte (como na
+    geração)."""
     oc = _carregar(db, oc_id)
     if not oc:
         raise ErroOC("Ordem de Corte não encontrada", 404)
@@ -1177,8 +1195,13 @@ def simular(db: Session, oc_id: uuid.UUID, modo: str | None = None) -> dict:
             continue
         tecido = linhas.get((item.produto_pai_id, _norm(item.cor)))
         lote = tecido.lote if tecido else None
-        gkey = lote.id if lote else ("SEM_LOTE", item.produto_pai_id, _norm(item.cor))
-        g = grupos.setdefault(gkey, {"lote": lote, "qtds": {}, "rotulos": {}, "produtos_cores": []})
+        if not lote:
+            gkey = ("SEM_LOTE", item.produto_pai_id, _norm(item.cor))
+        elif oc.organizar_por == "PRODUTO":
+            gkey = f"{lote.id}:{item.produto_pai_id}"
+        else:
+            gkey = lote.id
+        g = grupos.setdefault(gkey, {"chave": gkey, "lote": lote, "qtds": {}, "rotulos": {}, "produtos_cores": []})
         produto = item.produto_pai.descricao if item.produto_pai else str(item.produto_pai_id)
         k = (item.produto_pai_id, _norm(item.tamanho))
         g["qtds"][k] = g["qtds"].get(k, 0) + item.quantidade
@@ -1196,6 +1219,8 @@ def simular(db: Session, oc_id: uuid.UUID, modo: str | None = None) -> dict:
         saida.append(
             {
                 "lote_id": str(lote.id) if lote else None,
+                # Chave do grupo (igual ao lote_id quando a OC é por cor).
+                "grupo": g["chave"] if isinstance(g["chave"], str) else (str(lote.id) if lote else None),
                 "lote_codigo": lote.codigo_lote if lote else None,
                 "tecido": f"{cor.modelo.nome} — {cor.nome_cor}" if cor and cor.modelo else None,
                 "produtos_cores": g["produtos_cores"],

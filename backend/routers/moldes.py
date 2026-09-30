@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from middleware.permissions import require_permission
-from schemas.molde_schema import BulkImportCreate, MoldeUpdate
-from services import molde_service
+from schemas.molde_schema import BulkImportCreate, MoldeUpdate, SimetriaIn
+from services import molde_service, nesting_service
+from services.nesting_v2.decisor import TOLERANCIA_SIMETRIA_CM
 
 router = APIRouter(prefix="/api/v1/moldes", tags=["moldes"])
 
@@ -25,6 +26,26 @@ def obter_molde(molde_id: uuid.UUID, db: Session = Depends(get_db)):
     if not molde:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Molde não encontrado")
     return {"data": molde, "error": None}
+
+
+@router.post("/simetria", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
+def simetria(dados: SimetriaIn):
+    """A peça é simétrica no eixo do fio? Mesma medida do decisor do enfesto
+    (a tela avisa quando uma peça assimétrica está como simples ou par sem
+    espelho — não bloqueia). Vale o pior tamanho da parte."""
+    desvios = [nesting_service.simetria_molde(g, dados.sentido_fio, dados.rotacao_base) for g in dados.geometrias if g]
+    desvio = max(desvios, default=0.0)
+    # Geometria inválida não vira aviso de simetria (a validação de polígono
+    # da OC já cuida dela): simetrica = None, "não sei".
+    invalida = desvio == float("inf")
+    return {
+        "data": {
+            "simetrica": None if invalida else desvio <= TOLERANCIA_SIMETRIA_CM,
+            "desvio_cm": None if invalida else round(desvio, 3),
+            "tolerancia_cm": TOLERANCIA_SIMETRIA_CM,
+        },
+        "error": None,
+    }
 
 
 @router.post(

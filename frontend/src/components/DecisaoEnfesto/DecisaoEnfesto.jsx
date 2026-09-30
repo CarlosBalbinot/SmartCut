@@ -9,7 +9,7 @@ import styles from "./DecisaoEnfesto.module.css";
  * decisão do backend (nesting_v2/decisor.py).
  *
  * Props:
- *   decisoes — [{ lote_id, tecido, lote_codigo?, tipo_enfesto, tipo_nome,
+ *   decisoes — [{ lote_id, grupo, tecido, produto_nome?, lote_codigo?, tipo_enfesto, tipo_nome,
  *                modo_camadas, motivo, regra, manual, tempo_esgotado,
  *                candidatos: [{ tipo, modo, rotulo, metros, mesas, camadas,
  *                               sobra, avaliado, erro }] }]
@@ -52,6 +52,7 @@ function Lote({ d, varios }) {
         <div className={styles.tecido}>
           {d.lote_codigo ? `${d.lote_codigo} · ` : ""}
           {d.tecido || "Lote"}
+          {d.produto_nome ? ` · ${d.produto_nome}` : ""}
         </div>
       )}
       <div className={styles.escolha}>
@@ -112,7 +113,7 @@ export default function DecisaoEnfesto({ decisoes }) {
     <section className={styles.quadro} aria-label="Decisão do sistema">
       <h4 className={styles.cabecalho}>Decisão do sistema</h4>
       {decisoes.map((d) => (
-        <Lote key={d.lote_id || d.tecido} d={d} varios={decisoes.length > 1} />
+        <Lote key={d.grupo || d.lote_id || d.tecido} d={d} varios={decisoes.length > 1} />
       ))}
     </section>
   );

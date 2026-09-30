@@ -6,6 +6,7 @@
 import styles from "./ParteCard.module.css";
 import MiniSVG from "./MiniSVG";
 import SetaFioArrastavel from "../SetaFioArrastavel";
+import useAvisoSimetria, { TEXTO_AVISO_SIMETRIA } from "./useAvisoSimetria";
 
 // ── Controles de rotação ─────────────────────────────────────────────
 
@@ -90,6 +91,12 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
   }
 
   const rotacaoBase = parte.rotacao_base ?? 0;
+  const avisoSimetria = useAvisoSimetria({
+    geometrias: parte.pecas.map((p) => p.geometria_json),
+    sentidoFio: parte.sentido_fio,
+    rotacaoBase,
+    tipoCorte: parte.tipo_corte,
+  });
 
   // Peça representativa para a seta: o maior tamanho com geometria disponível
   const pecaRepresentativa = [...parte.pecas].reverse().find((p) => p.geometria_json) ?? null;
@@ -157,6 +164,7 @@ export default function ParteCard({ parte, index, onChange, onRemove }) {
               Tipo de corte<span className={styles.obrigatorio}> *</span>
             </label>
             <BotoesTipoCorte valor={parte.tipo_corte} onChange={(v) => set("tipo_corte", v)} />
+            {avisoSimetria && <p className={styles.avisoSimetria}>{TEXTO_AVISO_SIMETRIA}</p>}
           </div>
         </div>
       </div>

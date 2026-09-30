@@ -32,7 +32,8 @@ def test_classificar_pecas():
     assert decisor.classificar(RETANGULO, (0, 180), "simples") == decisor.UNICO_SIMETRICO
     assert decisor.classificar(L, (0, 180), "simples") == decisor.UNICO_ASSIMETRICO
     assert decisor.classificar(L, (0, 180), "par") == decisor.PAR
-    assert decisor.classificar(L, (0, 180), "par_sem_espelho") == decisor.PAR
+    assert decisor.classificar(L, (0, 180), "par_sem_espelho") == decisor.PAR_SEM_ESPELHO_ASSIMETRICO
+    assert decisor.classificar(RETANGULO, (0, 180), "par_sem_espelho") == decisor.PAR_SEM_ESPELHO_SIMETRICO
 
 
 def test_simetria_com_tolerancia():
@@ -64,6 +65,31 @@ def test_face_a_face_valida_com_par_em_tecido_liso():
     # Peça em par é geometria: a face oposta da mesa cobre o outro lado. Isso
     # TORNA o enfesto duplo possível — mas não diz que o produto é forrado.
     assert a.face_a_face_valida and a.tem_par and not a.dupla
+
+
+def test_par_sem_espelho_assimetrico_invalida_o_duplo():
+    a = decisor.analisar(
+        _pecas(frente=("ret", "simples"), bolso=("l", "par_sem_espelho")),
+        tem_direcao=False,
+        camadas_naturais=[4],
+        max_camadas=15,
+    )
+    assert not a.face_a_face_valida
+    assert a.pares_assimetricos == ["BOLSO"]
+    assert "par sem espelho assimétrico (BOLSO)" in a.motivo_invalida
+    # não é `par`: não pede camadas pares
+    assert not a.tem_par
+    assert [c.tipo for c in decisor.candidatos(a)] == [MESMA_FACE, MESMA_FACE]
+
+
+def test_par_sem_espelho_simetrico_mantem_o_duplo_sem_camadas_pares():
+    a = decisor.analisar(
+        _pecas(frente=("ret", "simples"), bolso=("ret", "par_sem_espelho")),
+        tem_direcao=False,
+        camadas_naturais=[3],
+        max_camadas=15,
+    )
+    assert a.face_a_face_valida and not a.tem_par and not a.pares_assimetricos
 
 
 def test_dupla_camada_so_vem_do_cadastro():
@@ -332,7 +358,7 @@ def test_ponta_a_ponta_peca_unica_assimetrica_descarta_face_a_face(db_session):
     moldes = [_molde(db_session, "FRENTE", RETANGULO, "simples"), _molde(db_session, "BOLSO", L, "simples")]
     _, _, d = _decidir(db_session, lote, moldes)
     assert d.tipo == MESMA_FACE and not d.face_a_face_valida
-    assert "assimétrica" in d.motivo and d.regra == "FACE_A_FACE_INVALIDA"
+    assert "assimétrica" in d.motivo and d.regra == "PECA_ASSIMETRICA"
 
 
 def test_tempo_esgotado_usa_padrao_seguro(db_session):
@@ -529,3 +555,72 @@ def test_decide_todos_os_lotes_antes_de_encaixar(db_session, monkeypatch):
         ("encaixa", grande.id),
         ("encaixa", pequeno.id),
     ]
+
+
+# ── Todas as razões do descarte e a regra ────────────────────────────────
+
+
+def test_descarte_lista_todas_as_razoes_e_pecas():
+    a = decisor.analisar(
+        _pecas(
+            frente=("l", "simples"),
+            costas=("l", "simples"),
+            bolso=("l", "par_sem_espelho"),
+            cos=("ret", "simples"),
+        ),
+        tem_direcao=True,
+        camadas_naturais=[1],
+        max_camadas=15,
+    )
+    assert [c for c, _ in a.razoes_invalida] == [
+        decisor.TECIDO_COM_DIRECAO,
+        decisor.PECA_ASSIMETRICA,
+        decisor.PAR_SEM_ESPELHO_ASSIM,
+        decisor.UMA_CAMADA,
+    ]
+    assert "COSTAS, FRENTE" in a.motivo_invalida and "(BOLSO)" in a.motivo_invalida
+    assert "direção" in a.motivo_invalida and "1 camada" in a.motivo_invalida
+    assert a.regra_invalida == "TECIDO_COM_DIRECAO+PECA_ASSIMETRICA+PAR_SEM_ESPELHO_ASSIMETRICO+UMA_CAMADA"
+
+
+def test_regra_e_a_razao_real_do_descarte():
+    # 1 camada E par sem espelho assimétrico: antes a regra saía só UMA_CAMADA.
+    a = decisor.analisar(
+        _pecas(frente=("ret", "simples"), costas=("l", "par_sem_espelho")),
+        tem_direcao=False,
+        camadas_naturais=[1],
+        max_camadas=15,
+    )
+    lista = [_c(MESMA_FACE, "SEM_SOBRA", 5.0), _c(MESMA_FACE, "MENOS_ENFESTOS", 9.0)]
+    _, motivo, regra = decisor.escolher(lista, a)
+    assert regra == "PAR_SEM_ESPELHO_ASSIMETRICO+UMA_CAMADA"
+    assert "par sem espelho assimétrico (COSTAS)" in motivo and "1 camada" in motivo
+
+    # Desempate pela regra da produção continua com a regra do desempate.
+    b = decisor.analisar(_pecas(frente=("ret", "simples")), tem_direcao=False, camadas_naturais=[3], max_camadas=15)
+    assert b.face_a_face_valida and b.regra_invalida is None
+
+
+# ── Aviso de simetria do cadastro (mesma medida do decisor) ─────────────
+
+
+def test_simetria_molde_usa_a_medida_do_decisor():
+    geo_l = {"type": "Polygon", "coordinates": [L]}
+    geo_ret = {"type": "Polygon", "coordinates": [RETANGULO]}
+    assert svc.simetria_molde(geo_l, "vertical") == pytest.approx(decisor.desvio_simetria_cm(L, (0.0, 180.0)))
+    assert svc.simetria_molde(geo_ret, "vertical") <= decisor.TOLERANCIA_SIMETRIA_CM
+
+
+def test_endpoint_simetria(client, headers_admin):
+    geo_l = {"type": "Polygon", "coordinates": [L]}
+    geo_ret = {"type": "Polygon", "coordinates": [RETANGULO]}
+    url = "/api/v1/moldes/simetria"
+    r = client.post(url, headers=headers_admin, json={"geometrias": [geo_ret, geo_l], "sentido_fio": "vertical"})
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["simetrica"] is False  # vale o pior tamanho
+    r = client.post(url, headers=headers_admin, json={"geometrias": [geo_ret], "sentido_fio": "vertical"})
+    assert r.json()["data"]["simetrica"] is True
+    r = client.post(
+        url, headers=headers_admin, json={"geometrias": [{"type": "Polygon", "coordinates": [[[0, 0], [1, 0]]]}]}
+    )
+    assert r.json()["data"]["simetrica"] is None  # geometria inválida: sem aviso

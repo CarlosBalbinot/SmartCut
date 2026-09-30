@@ -4,7 +4,8 @@ Fluxo (gerar_de_entradas — comum ao Encaixe Rápido e à Ordem de Corte):
   1. Recebe a lista neutra de entradas (lote, molde, quantidade), montada
      por montar_pares_legado (Encaixe Rápido) ou
      ordem_corte_service.montar_pares_oc (OC).
-  2. Agrupa por lote de tecido (_agrupar_por_lote).
+  2. Agrupa em grupos de corte (_agrupar): por lote de tecido (COR) ou por
+     lote e produto (PRODUTO — a OC organizada por produto).
   3. Para cada lote:
        0. Decide o enfesto (_decidir_lote + nesting_v2/decisor.py): enfesto
           simples ou enfesto duplo × sem sobra ou menos enfestos. Cada
@@ -53,7 +54,7 @@ from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from services import nesting_v2
 from services.nesting_v2 import decisor
-from services.nesting_v2.geometria import PARES
+from services.nesting_v2.geometria import espelha_segunda_copia
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
 from services.plano_enfesto import linhas_enfesto, planejar
 from services.planejamento.custo import Orcamento, estimar_segundos
@@ -283,6 +284,19 @@ def _poligono_rotacionado(molde: Molde) -> list[list[float]]:
     return _rotate_polygon(pts, molde.rotacao_base or 0)
 
 
+def simetria_molde(geometria_json: dict | list | None, sentido_fio: str | None, rotacao_base: int = 0) -> float:
+    """Desvio de simetria (cm) de uma peça do cadastro, com a MESMA medida do
+    decisor (decisor.desvio_simetria_cm sobre o polígono e as rotações que o
+    motor usa). É o que a tela de moldes usa para avisar peça assimétrica
+    marcada como simples ou par sem espelho. Geometria inválida → infinito."""
+    molde = Molde(nome="?", geometria_json=geometria_json, sentido_fio=sentido_fio, rotacao_base=rotacao_base or 0)
+    try:
+        poligono = _poligono_rotacionado(molde)
+    except ErroPoligono:
+        return float("inf")
+    return decisor.desvio_simetria_cm(poligono, tuple(float(r) for r in _rotacoes(sentido_fio)))
+
+
 # ── Entrada neutra ───────────────────────────────────────────────────────────
 #
 # Toda geração parte de uma lista neutra de entradas (lote, molde, quantidade)
@@ -355,6 +369,49 @@ def _agrupar_por_lote(
     return grupos
 
 
+def _produto_do_molde(molde: Molde) -> tuple[str, str | None]:
+    """(chave, nome) do produto do molde, pelo grupo de moldes: o produto pai
+    quando o grupo tem um; senão o próprio grupo (Encaixe Rápido legado)."""
+    grupo = molde.grupo
+    if grupo is None:
+        return "", None
+    if grupo.produto_id is not None:
+        return str(grupo.produto_id), (grupo.produto.descricao if grupo.produto else grupo.nome)
+    return f"grupo:{grupo.id}", grupo.nome
+
+
+def _agrupar(entradas: list[Entrada], organizar_por: str = "COR") -> dict:
+    """Grupos de corte da geração — cada grupo tem os seus riscos.
+
+    COR: um grupo por lote (_agrupar_por_lote, o comportamento de sempre):
+    produtos diferentes no mesmo lote entram no mesmo risco.
+    PRODUTO: um grupo por (lote, produto) — um risco nunca mistura produtos.
+    A chave vira "lote:produto"; o lote de verdade continua em
+    TecidoNesting.lote_id (é ele que vai para o encaixe e para o estoque)."""
+    if organizar_por != "PRODUTO":
+        return _agrupar_por_lote(entradas)
+    por_produto: dict[str, list[Entrada]] = {}
+    for entrada in entradas:
+        lote, molde, _ = entrada
+        por_produto.setdefault(f"{lote.id}:{_produto_do_molde(molde)[0]}", []).append(entrada)
+    grupos: dict[str, tuple[TecidoNesting, dict[uuid.UUID, list]]] = {}
+    for chave, lista in por_produto.items():
+        for grupo in _agrupar_por_lote(lista).values():
+            grupos[chave] = grupo
+    return grupos
+
+
+def _info_grupo(chave: str, tecido: TecidoNesting, moldes_qtd: dict[uuid.UUID, list]) -> dict:
+    """O que vai no mapa_json e na decisão para identificar o grupo de corte.
+    Vazio quando o grupo é o próprio lote (COR) — nada muda no que já era
+    gravado."""
+    if chave == str(tecido.lote_id):
+        return {}
+    produtos = sorted({_produto_do_molde(molde) for molde, _ in moldes_qtd.values()}, key=lambda p: p[0])
+    produto_id, produto_nome = produtos[0] if produtos else ("", None)
+    return {"grupo_corte": chave, "produto_id": produto_id or None, "produto_nome": produto_nome}
+
+
 # ── Geração de encaixes para um lote ─────────────────────────────────────────
 
 
@@ -401,7 +458,9 @@ def _quantidades(moldes_qtd: dict[uuid.UUID, list]) -> tuple[dict[tuple, list[Mo
 
 
 def _tem_par(moldes_qtd: dict[uuid.UUID, list]) -> bool:
-    return any((molde.tipo_corte or "simples") in PARES for molde, _ in moldes_qtd.values())
+    """Há `par` (espelhado)? É o que pede camadas pares no enfesto duplo —
+    `par_sem_espelho` são duas peças iguais e não pede."""
+    return any((molde.tipo_corte or "simples") == "par" for molde, _ in moldes_qtd.values())
 
 
 def _dupla_camada(moldes_qtd: dict[uuid.UUID, list]) -> bool:
@@ -492,6 +551,7 @@ def _gerar_para_tecido(
     perfis: dict[int, str] | None = None,
     orcamento: Orcamento | None = None,
     chave_lote: str | None = None,
+    info_grupo: dict | None = None,
 ) -> tuple[list[Encaixe], list[str], dict]:
     """Planeja os enfestos do lote (plano_enfesto) e roda o nesting_v2 de
     cada um — cada mesa do nesting_v2 vira um Encaixe (_enfesto_v2), sempre
@@ -505,6 +565,8 @@ def _gerar_para_tecido(
     chave_lote: a chave com que este lote foi registrado no orçamento — é com
     ela que `Orcamento.detalhe` acha o risco. Sem ela (montagem de um risco
     avulso, sem orçamento) não há o que documentar.
+    info_grupo: identificação do grupo de corte (_info_grupo) — vai no
+    mapa_json de cada mesa; vazio quando o grupo é o lote.
     semente: troca entre tentativas (jogada do retry automático).
     tipo_enfesto: MESMA_FACE espelha a 2ª cópia dos pares; FACE_A_FACE não
     espelha e, havendo peça em par, usa camadas pares. cache: resultados do
@@ -535,6 +597,7 @@ def _gerar_para_tecido(
             "comprimento_max_cm": limite_cm,
             "motor_usado": "v2",
             "qualidade": qualidade,
+            **(info_grupo or {}),
         }
         montados = _enfesto_v2(
             pedido,
@@ -828,7 +891,7 @@ def _enfesto_v2(
             extras_parte_base["qualidade_automatica"] = detalhe
     chave = (
         str(tecido.lote_id or tecido.tecido_id),
-        tuple(sorted((p.id, p.quantidade, p.espelhar_par and p.tipo_corte in PARES) for p in pecas)),
+        tuple(sorted((p.id, p.quantidade, espelha_segunda_copia(p.tipo_corte, p.espelhar_par)) for p in pecas)),
         perfil,
         semente,
         limite_cm,
@@ -1121,6 +1184,9 @@ def _resumo(encaixe: Encaixe) -> dict:
         "resumo_enfesto": mapa.get("resumo_enfesto"),
         "tipo_enfesto": mapa.get("tipo_enfesto"),
         "modo_camadas": mapa.get("modo_camadas"),
+        # Grupo de corte (OC organizada por produto); ausente = o lote.
+        "grupo_corte": mapa.get("grupo_corte"),
+        "produto_nome": mapa.get("produto_nome"),
         "numero_enc": encaixe.numero,
         "descricao": encaixe.descricao,
         # Por que este risco saiu neste perfil (só na qualidade Automático).
@@ -1343,6 +1409,7 @@ def _montar_todos(
             perfis=perfis.get(chave),
             orcamento=orcamento,
             chave_lote=chave if orcamento is not None else None,
+            info_grupo=_info_grupo(chave, tecido, moldes_qtd),
         )
         if decisao is not None and montados:
             # A decisão do lote vai uma vez só, na primeira mesa dele.
@@ -1367,6 +1434,7 @@ def gerar_de_entradas(
     progresso: Progresso | None = None,
     antes_de_gravar: Callable[[list[dict]], None] | None = None,
     tempo_maximo_s: float | None = None,
+    organizar_por: str = "COR",
 ) -> dict:
     """Núcleo comum: agrupa as entradas por lote, planeja os enfestos, roda o
     motor v2 e grava tudo numa transação — erro em qualquer lote desfaz tudo
@@ -1374,6 +1442,8 @@ def gerar_de_entradas(
 
     comprimento_max_cm: limite de cada encaixe (mesa de corte) — risco maior
     é dividido em mesas pelo v2.
+    organizar_por: COR (padrão, um grupo por lote) ou PRODUTO (um grupo por
+    lote e produto) — ver _agrupar.
     modo / tipo_enfesto: "AUTOMATICO" (padrão) — o sistema decide o enfesto
     de cada lote (ver _decidir_lote); valor fixo = escolha manual.
     qualidade: ver QUALIDADES — AUTOMATICO distribui o orçamento de tempo da
@@ -1390,12 +1460,12 @@ def gerar_de_entradas(
     anteriores como deletados e grava a decisão do enfesto aqui).
 
     Returns: {"encaixes": [...resumos], "avisos": [...], "planos": {lote_id: plano},
-              "decisoes": [{lote_id, tecido, **Decisao.json()}],
+              "decisoes": [{lote_id, grupo, tecido, produto_nome?, **Decisao.json()}],
               "motor_usado": "v2", "totais": {...}}
     Raises: ValueError se nenhuma entrada tiver quantidade; ErroNesting se o
         motor falhar nas duas tentativas; GeracaoCancelada.
     """
-    grupos = _agrupar_por_lote(entradas)
+    grupos = _agrupar(entradas, organizar_por)
     if not grupos:
         db.rollback()
         raise ValueError("Nenhuma peça para encaixar: verifique tecidos, moldes e quantidades.")
@@ -1431,8 +1501,20 @@ def gerar_de_entradas(
                     raise ErroNesting(str(exc) or type(exc).__name__) from exc
                 logger.exception("[NESTING] motor v2 falhou (semente %d) — nova tentativa com perfil RAPIDO", semente)
                 perfil, semente = "RAPIDO", semente + 1
-        nomes = {str(lote_id): tecido.nome for lote_id, (tecido, _) in grupos.items()}
-        decisoes_out = [{"lote_id": k, "tecido": nomes.get(k), **d.json()} for k, d in decisoes.items()]
+        por_grupo = {str(chave): par for chave, par in grupos.items()}
+        decisoes_out = []
+        for k, d in decisoes.items():
+            tecido, moldes_qtd = por_grupo[k]
+            info = _info_grupo(k, tecido, moldes_qtd)
+            decisoes_out.append(
+                {
+                    "lote_id": str(tecido.lote_id) if tecido.lote_id else k,
+                    "grupo": k,
+                    "tecido": tecido.nome,
+                    **({"produto_nome": info["produto_nome"]} if info else {}),
+                    **d.json(),
+                }
+            )
         if antes_de_gravar is not None:
             antes_de_gravar(decisoes_out)
         if encaixes:
@@ -1458,12 +1540,14 @@ def simular_totais(
     comprimento_max_cm: int,
     qualidade: str = "RAPIDO",
     progresso: Progresso | None = None,
+    organizar_por: str = "COR",
 ) -> dict:
     """Roda o v2 SEM gravar nada e devolve só os totais (ver totais) — é a
-    simulação do alerta de mesa maior. escolhas: {lote_id: (tipo_enfesto,
-    modo_camadas)} decididos na geração (lote sem escolha decide de novo).
+    simulação do alerta de mesa maior. escolhas: {grupo: (tipo_enfesto,
+    modo_camadas)} decididos na geração (grupo sem escolha decide de novo);
+    organizar_por igual ao da geração, senão as chaves não batem.
     Erro do motor sobe sem nova tentativa."""
-    grupos = _agrupar_por_lote(entradas)
+    grupos = _agrupar(entradas, organizar_por)
     encaixes, _, _, _ = _montar_todos(
         None, grupos, decisor.AUTOMATICO, None, None, comprimento_max_cm, qualidade, progresso, escolhas=escolhas
     )

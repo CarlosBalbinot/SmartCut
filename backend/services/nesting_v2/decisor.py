@@ -8,12 +8,14 @@ simulações é services/nesting_service.py (_decidir_lote).
 Tipos de enfesto
 ----------------
   MESMA_FACE ("Enfesto simples") — todas as camadas com o lado direito para
-      cima; corta no fim da mesa e volta ao início. Peça em par entra DUAS
+      cima; corta no fim da mesa e volta ao início. Peça `par` entra DUAS
       vezes no desenho, a 2ª espelhada (geometria.espelha_segunda_copia).
   FACE_A_FACE ("Enfesto duplo") — estende indo e voltando, virando o tecido a
-      cada camada. Peça em par entra duas vezes SEM espelho: a alternância
+      cada camada. Peça `par` entra duas vezes SEM espelho: a alternância
       das camadas faz a direita e a esquerda — por isso exige camadas pares
-      quando há peça em par (plano_enfesto, camadas_pares=True).
+      quando há `par` (plano_enfesto, camadas_pares=True).
+  `par_sem_espelho` são duas peças IGUAIS, nunca espelhadas, nos dois tipos
+  de enfesto; não pede camadas pares.
 
 Nomes: os códigos MESMA_FACE e FACE_A_FACE são internos e não mudam; quem vê
 a tela e o formulário de corte lê "enfesto simples" e "enfesto duplo", que é
@@ -22,8 +24,13 @@ como a produção nomeia na sala de corte.
 Enfesto duplo é inválido quando:
   * o tecido tem direção (estampa ou pelo) — não pode ser virado;
   * há peça ÚNICA assimétrica — metade das camadas a cortaria espelhada;
+  * há `par_sem_espelho` assimétrico — pela mesma razão: as duas peças
+    iguais sairiam viradas em metade das camadas;
   * o lote tem 1 camada (regra da produção: 1 camada é sempre enfesto simples)
     ou o tecido aceita no máximo 1 camada.
+Todas as razões que valem entram no motivo (com todas as peças envolvidas) e
+os códigos delas viram a `regra` quando foi o descarte que decidiu
+(RAZOES_INVALIDA).
 
 Critério (escolher)
 -------------------
@@ -47,7 +54,7 @@ from dataclasses import asdict, dataclass, field
 
 from shapely.geometry import Polygon
 
-from services.nesting_v2.geometria import PARES, eixo_do_fio, espelhar, normalizar
+from services.nesting_v2.geometria import eixo_do_fio, espelhar, normalizar
 
 MESMA_FACE = "MESMA_FACE"
 FACE_A_FACE = "FACE_A_FACE"
@@ -59,6 +66,17 @@ NOME_MODO = {"SEM_SOBRA": "sem sobra", "MENOS_ENFESTOS": "menos enfestos"}
 PAR = "PAR"
 UNICO_SIMETRICO = "UNICO_SIMETRICO"
 UNICO_ASSIMETRICO = "UNICO_ASSIMETRICO"
+# par_sem_espelho: duas peças iguais, nunca espelhadas.
+PAR_SEM_ESPELHO_SIMETRICO = "PAR_SEM_ESPELHO_SIMETRICO"
+PAR_SEM_ESPELHO_ASSIMETRICO = "PAR_SEM_ESPELHO_ASSIMETRICO"
+
+# Razões que invalidam o enfesto duplo (código → vai para a `regra`).
+TECIDO_COM_DIRECAO = "TECIDO_COM_DIRECAO"
+PECA_ASSIMETRICA = "PECA_ASSIMETRICA"
+PAR_SEM_ESPELHO_ASSIM = "PAR_SEM_ESPELHO_ASSIMETRICO"
+UMA_CAMADA = "UMA_CAMADA"
+TECIDO_UMA_CAMADA = "TECIDO_UMA_CAMADA"
+RAZOES_INVALIDA = (TECIDO_COM_DIRECAO, PECA_ASSIMETRICA, PAR_SEM_ESPELHO_ASSIM, UMA_CAMADA, TECIDO_UMA_CAMADA)
 
 # Simetria: diferença simétrica entre a peça e o espelho dela no eixo do fio,
 # dividida pelo perímetro — a "largura média" do desvio, em cm.
@@ -97,10 +115,15 @@ def classificar(
     tipo_corte: str | None,
     tolerancia_cm: float = TOLERANCIA_SIMETRIA_CM,
 ) -> str:
-    """PAR (par / par_sem_espelho), UNICO_SIMETRICO ou UNICO_ASSIMETRICO."""
-    if (tipo_corte or "simples") in PARES:
+    """PAR (par, 2 espelhadas); PAR_SEM_ESPELHO_SIMETRICO/ASSIMETRICO
+    (par_sem_espelho, 2 iguais); UNICO_SIMETRICO ou UNICO_ASSIMETRICO."""
+    tipo = tipo_corte or "simples"
+    if tipo == "par":
         return PAR
-    return UNICO_SIMETRICO if desvio_simetria_cm(poligono, rotacoes) <= tolerancia_cm else UNICO_ASSIMETRICO
+    simetrica = desvio_simetria_cm(poligono, rotacoes) <= tolerancia_cm
+    if tipo == "par_sem_espelho":
+        return PAR_SEM_ESPELHO_SIMETRICO if simetrica else PAR_SEM_ESPELHO_ASSIMETRICO
+    return UNICO_SIMETRICO if simetrica else UNICO_ASSIMETRICO
 
 
 @dataclass
@@ -130,6 +153,17 @@ class Analise:
     # nada sobre o tecido.
     dupla_camada: bool = False
     motivo_invalida: str | None = None
+    # par_sem_espelho assimétricos (invalidam o enfesto duplo, como a peça
+    # única assimétrica).
+    pares_assimetricos: list[str] = field(default_factory=list)
+    # [(código, texto)] de TODAS as razões que invalidam o enfesto duplo, na
+    # ordem de RAZOES_INVALIDA; motivo_invalida é a junção dos textos.
+    razoes_invalida: list[tuple[str, str]] = field(default_factory=list)
+
+    @property
+    def regra_invalida(self) -> str | None:
+        """Os códigos das razões ("PECA_ASSIMETRICA+UMA_CAMADA")."""
+        return "+".join(c for c, _ in self.razoes_invalida) or None
 
     @property
     def dupla(self) -> bool:
@@ -155,16 +189,31 @@ def analisar(
     dupla_camada: vem do cadastro do produto pai (ver Analise.dupla_camada)."""
     classes = {mid: classificar(p.poligono, p.rotacoes, p.tipo_corte) for mid, p in pecas.items()}
     assimetricas = sorted({pecas[mid].nome for mid, c in classes.items() if c == UNICO_ASSIMETRICO})
+    pares_assimetricos = sorted({pecas[mid].nome for mid, c in classes.items() if c == PAR_SEM_ESPELHO_ASSIMETRICO})
     maior = max(camadas_naturais, default=0)
-    motivo = None
+    razoes: list[tuple[str, str]] = []
     if tem_direcao:
-        motivo = "tecido com direção (estampa ou pelo): não pode ser virado"
-    elif assimetricas:
-        motivo = f"peça única assimétrica ({', '.join(assimetricas)}): sairia espelhada em metade das camadas"
-    elif maior <= 1:
-        motivo = "1 camada: regra da produção, sempre enfesto simples"
-    elif max_camadas < 2:
-        motivo = "o tecido aceita no máximo 1 camada"
+        razoes.append((TECIDO_COM_DIRECAO, "tecido com direção (estampa ou pelo): não pode ser virado"))
+    if assimetricas:
+        razoes.append(
+            (
+                PECA_ASSIMETRICA,
+                f"peça única assimétrica ({', '.join(assimetricas)}): sairia espelhada em metade das camadas",
+            )
+        )
+    if pares_assimetricos:
+        razoes.append(
+            (
+                PAR_SEM_ESPELHO_ASSIM,
+                f"par sem espelho assimétrico ({', '.join(pares_assimetricos)}): "
+                "as duas peças iguais sairiam espelhadas em metade das camadas",
+            )
+        )
+    if maior <= 1:
+        razoes.append((UMA_CAMADA, "1 camada: regra da produção, sempre enfesto simples"))
+    if max_camadas < 2:
+        razoes.append((TECIDO_UMA_CAMADA, "o tecido aceita no máximo 1 camada"))
+    motivo = "; ".join(texto for _, texto in razoes) or None
     return Analise(
         classes=classes,
         tem_par=PAR in classes.values(),
@@ -175,6 +224,8 @@ def analisar(
         face_a_face_valida=motivo is None,
         dupla_camada=dupla_camada,
         motivo_invalida=motivo,
+        pares_assimetricos=pares_assimetricos,
+        razoes_invalida=razoes,
     )
 
 
@@ -325,10 +376,10 @@ def escolher(lista: list[Candidato], analise: Analise) -> tuple[Candidato, str, 
         )
     if not analise.face_a_face_valida and analise.motivo_invalida:
         texto += f" Enfesto duplo descartado: {analise.motivo_invalida}."
-        if regra == "MENOR_CONSUMO" and analise.camadas_naturais <= 1:
-            regra = "UMA_CAMADA"
-        elif regra == "MENOR_CONSUMO":
-            regra = "FACE_A_FACE_INVALIDA"
+        # Sem desempate pelas regras da produção, quem decidiu foi o descarte
+        # do enfesto duplo — a regra diz por quê (todas as razões).
+        if regra == "MENOR_CONSUMO":
+            regra = analise.regra_invalida or regra
     return vencedor, texto, regra
 
 

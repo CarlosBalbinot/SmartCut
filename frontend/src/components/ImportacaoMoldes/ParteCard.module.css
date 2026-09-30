@@ -258,3 +258,14 @@
 .btnAtivo:hover {
   background-color: var(--color-primary-hover) !important;
 }
+
+/* Aviso (não bloqueia): peça assimétrica marcada sem espelho. */
+.avisoSimetria {
+  margin: 6px 0 0;
+  padding: 6px 10px;
+  color: var(--sc-text-warning);
+  background-color: var(--sc-bg-warning);
+  border: 1px solid var(--sc-border-warning);
+  border-radius: var(--sc-radius-sm);
+  font-size: 12px;
+}
