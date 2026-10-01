@@ -3,7 +3,8 @@
 Documento de referência para as próximas fases do SmartCut: para onde o
 produto vai, o que no código atual ajuda ou atrapalha, as decisões já
 tomadas e a ordem de execução. Como o sistema funciona **hoje**:
-[SISTEMA.md](SISTEMA.md). Regras para agentes de código:
+[SISTEMA.md](SISTEMA.md). Estratégia de produto e diferenciais:
+[ESTRATEGIA.md](ESTRATEGIA.md). Regras para agentes de código:
 [CLAUDE.md](CLAUDE.md).
 
 Consulte este documento antes de qualquer mudança estrutural (banco,
@@ -56,6 +57,10 @@ semanas (1 dev). Levantamento feito na versão 1.3.0 (outubro/2026).
     tecidos), integrados ao ERP do cliente pela API de integração.
 - **Idiomas**: pt, it, en, es **só** no Núcleo, Cadastros, Corte, Moldes e
   relatórios de corte. Fiscal, Financeiro e Gestão ficam só em português.
+- **Prioridade** (decidida em 01/10/2026): o produto principal é o **módulo
+  de Corte** (moldes, tecidos, ordens de corte, encaixe, integração com ERPs
+  de terceiros). O ERP (vendas, fiscal, financeiro) fica para depois — ver
+  [itens adiados](#itens-adiados).
 
 ---
 
@@ -410,7 +415,7 @@ Financeiro e contabilidade, Gestão (precificação e projeção, que dependem d
 
 | Tema | Decisão |
 |---|---|
-| Banco | **Só PostgreSQL**, inclusive no Corte avulso de um PC: servidor e estação na mesma máquina. Um único dialeto e uma única suíte de testes. O SQLite fica só na linha 1.x. |
+| Banco | **SQLite até a fase do PostgreSQL**: o Corte vendido avulso (F1–F5) roda num computador só (servidor e estação na mesma máquina). O código continua portável (regra da F0: sequências atômicas, travas com UPDATE condicional, testes com `@pytest.mark.postgres`). Quando o PostgreSQL entrar, passa a ser o **único** banco, inclusive no Corte avulso de um PC; o SQLite fica só na linha 1.x. **Ressalva** (01/10/2026): se a validação com as confecções mostrar vários usuários simultâneos no corte, PostgreSQL e modo servidor sobem na fila. |
 | Estoque | No **Corte**: tecidos e lotes. No **ERP completo**: também aviamentos/insumos e produto acabado por cor e tamanho. |
 | Painel do vendedor | Mantido, acessível **só dentro da rede local**. |
 | Corte avulso | Cadastro próprio de tecidos e lotes; o ERP externo também pode enviá-los pela API. |
@@ -421,21 +426,60 @@ Financeiro e contabilidade, Gestão (precificação e projeção, que dependem d
 
 ## 6. Roadmap
 
-Cada fase entrega valor sozinha.
+Ordem definida em 01/10/2026, com o Corte como produto principal (seção 1)
+e o SmartCut vendido como ponte entre o pedido e o corte
+([ESTRATEGIA.md](ESTRATEGIA.md)). Cada fase entrega valor sozinha.
 
 | Fase | Conteúdo | Valor entregue | Esforço |
 |---|---|---|---|
-| **F0 — Robustez no SQLite** | Sequências atômicas (NF-e primeiro), trava nas transições da OC e na baixa de estoque, coluna `versao` com 409, datas com fuso, erro com `codigo` e `params` | Fecha bugs reais já na 1.x e prepara o resto | M |
-| **Fase 5 — NF-e autorizada gera parcelas no financeiro** | Ao autorizar a NF-e, gerar a venda financeira e as parcelas pela condição de pagamento | Fecha o fluxo Pedido → NF-e → Financeiro | — |
-| **F1 — PostgreSQL num servidor só** | Baseline nova, Postgres embarcado como serviço, backend como serviço, segredos na máquina, `pg_dump`, migração de dados, testes em Postgres | Banco robusto, backup de verdade, "tudo num PC" | G |
-| **F2 — Vários usuários na rede** | Electron estação (endereço, descoberta, CSP dinâmica, checagem de versão), TLS, fila persistente em processo separado, modelos de relatório pela tela | ERP multiusuário | G |
-| **F3 — Módulos, licença e edições** | Corte sem pedido de venda, separar Empresa / Configuração de Produção / Fiscal, licença assinada, routers e menus por licença, edição BR/internacional, cadastros com país, módulo Estoque | Venda modular; Corte avulso | G |
-| **F4 — API de integração** | Chaves de API, `/api/integracao/v1`, produtos, pedidos de corte, tecidos e lotes de entrada; ficha e consumo de saída | Corte e Moldes integrados ao ERP do cliente | M–G |
-| **F5 — Idiomas** | i18next, ~1.100 textos, códigos no backend e no decisor, relatórios com `t()`, unidades imperiais, instalador multilíngue | Edição internacional | G |
+| **F0 — Robustez do Corte** | F0 enxuta (ver abaixo): sequências atômicas de OC, encaixe e códigos de grupo/produto/SKU, trava nas transições da OC e na baixa de estoque, `versao` com 409, datas com fuso, erro com `codigo` e `params` | Fecha bugs reais do Corte já na 1.x | M |
+| **F1 — Corte independente de Vendas** | Origem genérica do pedido de corte (`OrdemCorte.pedido_id` opcional, `origem`, `referencia_externa`); Encaixe Rápido sem pedido de venda; `ConfiguracaoProducao` separada de `ConfiguracaoEmpresa`; ficha de corte sem importar Fiscal nem Vendas (ver 3.3) | Corte funciona sem o ERP | G |
+| **F2 — Consumo previsto x real** | Registro do consumo previsto (encaixe) e real (cortado) por OC; relatório de economia mensal em kg e R$ | Cliente enxerga quanto economiza; base para compra de tecido | — |
+| **F3 — Integração** | Importação de pedidos por CSV/XML; API `/api/integracao/v1` (ver 3.4); conectores Bling e Tiny (o app consulta as plataformas de tempos em tempos); retorno de consumo ao ERP do cliente | Corte plugado no ERP e nas lojas do cliente | G |
+| **F4 — Login, segurança e licença por módulo** | Tela de login redesenhada; primeiro uso guiado (assistente: dados da empresa, primeiro tecido, importação dos primeiros moldes); senhas (troca pelo próprio usuário, redefinição pelo administrador, regra mínima, sessão encerrada por inatividade); perfis prontos Administrador, PCP e Cortador; auditoria das OCs (gerou, alterou, enviou, concluiu, reabriu, cancelou — quem e quando); licença assinada por módulo, com ativação, routers e menus por licença (ver 3.3); instalador assinado com certificado de assinatura de código (sem o aviso de "editor desconhecido" do Windows). TLS e segredos do servidor ficam no modo servidor | Produto pronto para vender e instalar no cliente | M–G |
+| **F5 — Diferenciais** | Áreas proibidas no encaixe (defeitos no tecido), compra de tecido automática, saída HPGL para plotter, pedido por WhatsApp com IA, projetor na mesa de corte, digitalização de molde por foto (ver [ESTRATEGIA.md](ESTRATEGIA.md)) | O que diferencia o SmartCut dos concorrentes | — |
 
-A infraestrutura de i18n (biblioteca e formatação central) pode começar junto
-com F1/F2; a tradução de verdade fica para depois de F3, que mexe nas mesmas
-telas.
+**Depois** (sem ordem definida):
+
+| Bloco | Conteúdo | Esforço |
+|---|---|---|
+| **PostgreSQL e modo servidor** | Baseline nova, Postgres embarcado como serviço, backend como serviço, segredos na máquina, `pg_dump`, migração de dados, testes em Postgres; Electron estação, TLS, fila de encaixe persistente em processo separado, modelos de relatório pela tela (ver 3.1 e 3.2) | G + G |
+| **ERP** | Vendas, Fiscal, Financeiro, Fase 5 (NF-e autorizada gera parcelas no financeiro), os [itens adiados](#itens-adiados) da F0 e o módulo Estoque completo (aviamentos, insumos, produto acabado). O estoque de tecido do Corte continua como está | — |
+| **Idiomas e edição internacional** | i18next, ~1.100 textos, códigos no backend e no decisor, relatórios com `t()`, unidades imperiais, instalador multilíngue (ver 3.5); edição Brasil x internacional e cadastros com país (ver 3.6) | G + M |
+
+PostgreSQL e modo servidor podem subir na fila se a validação com as
+confecções mostrar vários usuários simultâneos no corte (ver "Banco" na
+seção 5).
+
+Esforço "—": ainda não estimado.
+
+### F0 com foco no Corte
+
+Por causa da prioridade do Corte (seção 1), a F0 foi dividida em duas
+entregas e perdeu os itens que só servem ao ERP:
+
+- **v1.4.0**: passo 0 (testes de concorrência), 5a (formato de erro
+  `{codigo, params, mensagem}`), 1a (tabela `sequencias`), sequências de OC e
+  de encaixe (parte do 1c), códigos de grupo, produto e SKU (parte do 1d),
+  2a (transições da OC) e 2b (baixa de estoque dos lotes).
+- **v1.5.0**: passo 3 (`versao` com 409) só para OC, molde/grupo de molde,
+  produto, lote e configurações; passo 4 (datas com fuso); 5b (códigos de
+  erro no Núcleo, Cadastros, Moldes e Corte); 5c (códigos no decisor de
+  enfesto).
+
+### Itens adiados
+
+Fora da F0 por decisão de 01/10/2026; voltam quando o ERP (Vendas, Fiscal,
+Financeiro) voltar a ser prioridade. Até lá, os riscos da tabela "Numerações
+e disputas de concorrência" (seção 3.1) continuam valendo para eles.
+
+| Item | Origem | O que fica para depois | Decisões já tomadas |
+|---|---|---|---|
+| Número da NF-e e NFC-e | F0, passo 1b | Trocar `empresa.nfe_numero_atual += 1` em Python por UPDATE atômico | Contador continua em `empresa.nfe_numero_atual` (não vai para `sequencias`); número consumido na mesma transação da criação da nota, sem buracos; datas da NF-e em UTC, conversão para Brasília só no XML e na DANFE |
+| Número do pedido de venda | F0, parte do 1c | Trocar MAX + 1 por `sequencias` | Uma sequência só para todos os tipos de pedido |
+| Códigos de cliente, transportadora e vendedor | F0, parte do 1d | Trocar o "maior código calculado em Python" por `sequencias` | — |
+| `versao` com 409 no pedido de venda | F0, passo 3 | Pedido (`PUT/PATCH` e `PUT …/itens`) | Alterar os itens incrementa a versão do pedido |
+| Fase 5 — NF-e autorizada gera parcelas no financeiro | Roadmap | Fase inteira | — |
 
 ### Acompanhamento
 
@@ -443,15 +487,17 @@ Atualizar ao fim de cada fase.
 
 | Fase | Conteúdo | Status | Branch | Versão |
 |---|---|---|---|---|
-| F0 | Robustez no SQLite | PENDENTE | — | — |
-| Fase 5 | NF-e autorizada gera parcelas no financeiro | PENDENTE | — | — |
-| F1 | PostgreSQL num servidor só | PENDENTE | — | — |
-| F2 | Vários usuários na rede | PENDENTE | — | — |
-| F3 | Módulos, licença e edições | PENDENTE | — | — |
-| F4 | API de integração | PENDENTE | — | — |
-| F5 | Idiomas | PENDENTE | — | — |
+| F0 | Robustez do Corte | EM ANDAMENTO | `f0-robustez` | 1.4.0 / 1.5.0 |
+| F1 | Corte independente de Vendas | PENDENTE | — | — |
+| F2 | Consumo previsto x real | PENDENTE | — | — |
+| F3 | Integração | PENDENTE | — | — |
+| F4 | Login, segurança e licença por módulo | PENDENTE | — | — |
+| F5 | Diferenciais | PENDENTE | — | — |
+| Depois | PostgreSQL e modo servidor | ADIADA | — | — |
+| Depois | ERP (Vendas, Fiscal, Financeiro, Fase 5, Estoque completo) | ADIADA | — | — |
+| Depois | Idiomas e edição internacional | ADIADA | — | — |
 
-Status: `PENDENTE` · `EM ANDAMENTO` · `CONCLUÍDA`.
+Status: `PENDENTE` · `EM ANDAMENTO` · `CONCLUÍDA` · `ADIADA`.
 
 ---
 

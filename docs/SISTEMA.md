@@ -326,20 +326,24 @@ camada**; os totais multiplicam por `num_camadas`.
 
 ## Próximos passos
 
-Roadmap das próximas fases (detalhes, decisões e status em
-[ARQUITETURA.md](ARQUITETURA.md)):
+O produto principal passa a ser o módulo de Corte, vendido como ponte entre
+o pedido e o corte ([ESTRATEGIA.md](ESTRATEGIA.md)). Roadmap (detalhes,
+decisões e status em [ARQUITETURA.md](ARQUITETURA.md)):
 
-- **F0 — Robustez no SQLite**: numerações atômicas, trava no estoque e nas
-  transições da OC, controle de edição simultânea.
-- **Fase 5 — NF-e autorizada gera parcelas no financeiro.**
-- **F1 — PostgreSQL num servidor só**: banco e backend como serviços do
-  Windows, backup com `pg_dump`.
-- **F2 — Vários usuários na rede**: estações conectando ao servidor da LAN.
-- **F3 — Módulos, licença e edições**: módulos por licença, Corte avulso,
-  edição Brasil e internacional.
-- **F4 — API de integração**: Corte e Moldes integrados ao ERP do cliente.
-- **F5 — Idiomas**: pt, it, en, es no núcleo, Corte, Moldes e relatórios de
-  corte.
+1. **F0 — Robustez do Corte**: numerações atômicas de OC, encaixe e códigos,
+   trava no estoque e nas transições da OC, controle de edição simultânea.
+2. **F1 — Corte independente de Vendas**: origem genérica do pedido de
+   corte, Encaixe Rápido sem pedido de venda, `ConfiguracaoProducao`
+   separada, ficha de corte sem Fiscal/Vendas.
+3. **F2 — Consumo previsto x real** por OC e relatório de economia mensal.
+4. **F3 — Integração**: importação CSV/XML de pedidos, API
+   `/api/integracao/v1`, conectores Bling/Tiny, retorno de consumo.
+5. **F4 — Login, segurança e licença por módulo.**
+6. **F5 — Diferenciais**: áreas proibidas no encaixe, compra de tecido,
+   saída HPGL, pedido por WhatsApp com IA, projetor, digitalização por foto.
+
+Depois: PostgreSQL e modo servidor; ERP (vendas, fiscal, financeiro, Fase 5);
+idiomas.
 
 Pendências pontuais:
 
