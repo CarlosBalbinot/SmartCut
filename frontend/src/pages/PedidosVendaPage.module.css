@@ -338,28 +338,6 @@
   background: var(--sc-surface-hover);
 }
 
-/* Row actions */
-.rowActions {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-}
-
-.btnAbrir {
-  background: none;
-  border: none;
-  color: var(--sc-text-primary);
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--sc-radius-sm);
-  white-space: nowrap;
-}
-.btnAbrir:hover {
-  background: var(--sc-surface-hover);
-}
-
 .menuWrap {
   position: relative;
   display: inline-block;

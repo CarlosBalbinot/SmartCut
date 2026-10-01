@@ -1,4 +1,5 @@
-"""Fonte de dados do relPro001 (Formulário de corte da Ordem de Corte).
+"""Fonte de dados do relPro001 (Formulário de corte da Ordem de Corte ou do
+Encaixe Rápido — este sem OC, pelo id do pedido do encaixe).
 
 Mesmo contrato do relVen001 (dados_pedido): só tipos simples (dict/list/
 str/Decimal/date) — o modelo roda em sandbox. A única exceção é o desenho
@@ -37,7 +38,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe
-from models.ordem_corte import ItemOrdemCorte, OrdemCorte, OrdemCorteTecido
+from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, ItemOrdemCorte, OrdemCorte, OrdemCorteTecido
 from models.pedido import PedidoVenda
 from models.produto_sku import ProdutoSKU
 from models.tecido import CorTecido, LoteTecido
@@ -671,13 +672,8 @@ def _produtos(oc: OrdemCorte, encaixes: list[Encaixe], mesas: list[dict], grades
 # ── Contexto ──────────────────────────────────────────────────────────────────
 
 
-def montar(db: Session, id_registro: str) -> dict:
-    """Contexto do relPro001 para a Ordem de Corte `id_registro` (UUID)."""
-    try:
-        oc_id = uuid.UUID(str(id_registro))
-    except ValueError:
-        raise HTTPException(status_code=422, detail="id da Ordem de Corte inválido.")
-    oc = (
+def _carregar_oc(db: Session, oc_id: uuid.UUID) -> OrdemCorte | None:
+    return (
         db.execute(
             select(OrdemCorte)
             .where(OrdemCorte.id == oc_id)
@@ -700,44 +696,82 @@ def montar(db: Session, id_registro: str) -> dict:
         .scalars()
         .first()
     )
-    if oc is None:
-        raise HTTPException(status_code=404, detail="Ordem de Corte não encontrada")
 
-    pedido = oc.pedido
-    encaixes = sorted((e for e in oc.encaixes if e.status != "deletado"), key=lambda e: (e.numero or 0, e.criado_em))
-    enfestos = [_enfesto(e, oc.comprimento_max_cm) for e in encaixes]
+
+def _carregar_rapido(db: Session, pedido_id: uuid.UUID) -> tuple[PedidoVenda | None, list[Encaixe]]:
+    """Pedido e encaixes do Encaixe Rápido: os do pedido que não são de OC."""
+    pedido = (
+        db.execute(
+            select(PedidoVenda)
+            .where(PedidoVenda.id == pedido_id)
+            .options(selectinload(PedidoVenda.vendedor), selectinload(PedidoVenda.itens))
+        )
+        .scalars()
+        .first()
+    )
+    if pedido is None:
+        return None, []
+    encaixes = (
+        db.execute(
+            select(Encaixe)
+            .where(
+                Encaixe.pedido_id == pedido_id,
+                Encaixe.ordem_corte_id.is_(None),
+                Encaixe.status != "deletado",
+            )
+            .options(
+                selectinload(Encaixe.lote).selectinload(LoteTecido.cor).selectinload(CorTecido.modelo),
+                selectinload(Encaixe.camadas_cor),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return pedido, list(encaixes)
+
+
+def _dados_pedido(pedido: PedidoVenda | None) -> dict:
+    return {
+        "numero": _txt(pedido.numero if pedido else ""),
+        "emissao": pedido.data_emissao if pedido else None,
+        "cliente": _txt(pedido.cliente_razao_social if pedido else ""),
+        "cliente_codigo": _txt(pedido.cliente_codigo if pedido else ""),
+        "vendedor": _txt((pedido.vendedor.nome if pedido.vendedor else pedido.representante) if pedido else ""),
+    }
+
+
+def _contexto(
+    db: Session,
+    *,
+    oc: dict,
+    pedido: PedidoVenda | None,
+    encaixes: list[Encaixe],
+    limite_cm: int,
+    grades: list[dict],
+    pecas_pedido: int,
+    produtos,
+) -> dict:
+    """Contexto comum à OC e ao Encaixe Rápido. `produtos(encaixes, mesas)`
+    monta a ficha por produto (ou devolve [])."""
+    encaixes = sorted(encaixes, key=lambda e: (e.numero or 0, e.criado_em))
+    enfestos = [_enfesto(e, limite_cm) for e in encaixes]
     # Um enfesto dividido em várias mesas (parte 1/2 e 2/2) conta uma vez:
     # peças cortadas e sobra saem da grade de cada ENFESTO, não de cada parte.
     grupos = _grupos(enfestos)
-    grades = _grades(list(oc.itens))
-    # Mesas na ordem de corte (a dos encaixes), numeradas 1..N na OC.
+    # Mesas na ordem de corte (a dos encaixes), numeradas 1..N.
     mesas = [_mesa(e, enf, i, len(encaixes)) for i, (e, enf) in enumerate(zip(encaixes, enfestos), 1)]
 
     return {
         "empresa": _empresa(db),
-        "oc": {
-            "numero": numero_fmt(oc.numero),
-            "data": oc.criado_em.date() if oc.criado_em else None,
-            "status": _STATUS.get(oc.status, oc.status),
-            "modo_camadas": _MODO.get(oc.modo_camadas, oc.modo_camadas),
-            "comprimento_max_cm": oc.comprimento_max_cm,
-            "observacoes": _txt(oc.observacoes),
-            "organizar_por": oc.organizar_por,
-        },
-        "pedido": {
-            "numero": _txt(pedido.numero if pedido else ""),
-            "emissao": pedido.data_emissao if pedido else None,
-            "cliente": _txt(pedido.cliente_razao_social if pedido else ""),
-            "cliente_codigo": _txt(pedido.cliente_codigo if pedido else ""),
-            "vendedor": _txt((pedido.vendedor.nome if pedido.vendedor else pedido.representante) if pedido else ""),
-        },
+        "oc": oc,
+        "pedido": _dados_pedido(pedido),
         "grades": grades,
         "enfestos": enfestos,
         "grupos": grupos,
         "mesas": mesas,
-        "produtos": _produtos(oc, encaixes, mesas, grades) if oc.organizar_por == "PRODUTO" else [],
+        "produtos": produtos(encaixes, mesas),
         "totais": {
-            "pecas": sum(i.quantidade or 0 for i in oc.itens),
+            "pecas": pecas_pedido,
             "pecas_cortadas": sum(g["pecas_total"] for g in grupos),
             "sobra": sum(g["sobra_total"] for g in grupos),
             "enfestos": len(grupos),
@@ -746,3 +780,60 @@ def montar(db: Session, id_registro: str) -> dict:
             "peso_total_kg": _dec(sum(float(e.peso_kg or 0) * (e.num_camadas or 1) for e in encaixes), 3),
         },
     }
+
+
+def montar(db: Session, id_registro: str) -> dict:
+    """Contexto do relPro001. `id_registro` é o UUID de uma Ordem de Corte ou,
+    no Encaixe Rápido (sem OC), o UUID do pedido do encaixe."""
+    try:
+        registro_id = uuid.UUID(str(id_registro))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="id da Ordem de Corte inválido.")
+
+    oc = _carregar_oc(db, registro_id)
+    if oc is not None:
+        grades = _grades(list(oc.itens))
+        return _contexto(
+            db,
+            oc={
+                "numero": numero_fmt(oc.numero),
+                "data": oc.criado_em.date() if oc.criado_em else None,
+                "status": _STATUS.get(oc.status, oc.status),
+                "modo_camadas": _MODO.get(oc.modo_camadas, oc.modo_camadas),
+                "comprimento_max_cm": oc.comprimento_max_cm,
+                "observacoes": _txt(oc.observacoes),
+                "organizar_por": oc.organizar_por,
+            },
+            pedido=oc.pedido,
+            encaixes=[e for e in oc.encaixes if e.status != "deletado"],
+            limite_cm=oc.comprimento_max_cm,
+            grades=grades,
+            pecas_pedido=sum(i.quantidade or 0 for i in oc.itens),
+            produtos=lambda encs, mesas: _produtos(oc, encs, mesas, grades) if oc.organizar_por == "PRODUTO" else [],
+        )
+
+    pedido, encaixes = _carregar_rapido(db, registro_id)
+    if not encaixes:
+        raise HTTPException(status_code=404, detail="Ordem de Corte ou Encaixe Rápido não encontrado")
+    # Encaixe Rápido: sem OC — a ficha sai pela lista de mesas, com o limite
+    # de mesa com que os encaixes foram gerados.
+    primeiro = min(encaixes, key=lambda e: e.criado_em)
+    limite = int((primeiro.mapa_json or {}).get("comprimento_max_cm") or COMPRIMENTO_MAX_PADRAO_CM)
+    return _contexto(
+        db,
+        oc={
+            "numero": "Encaixe Rápido",
+            "data": primeiro.criado_em.date() if primeiro.criado_em else None,
+            "status": "sem OC",
+            "modo_camadas": "",
+            "comprimento_max_cm": limite,
+            "observacoes": "",
+            "organizar_por": "COR",
+        },
+        pedido=pedido,
+        encaixes=encaixes,
+        limite_cm=limite,
+        grades=[],
+        pecas_pedido=sum(i.quantidade_total for i in pedido.itens) if pedido else 0,
+        produtos=lambda encs, mesas: [],
+    )

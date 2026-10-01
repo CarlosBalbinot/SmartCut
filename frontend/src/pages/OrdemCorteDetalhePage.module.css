@@ -467,15 +467,6 @@
   text-decoration: underline;
 }
 
-.encaixeTecido {
-  min-width: 0;
-  font-size: var(--sc-compact-font-size);
-  color: var(--sc-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .metricas {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -513,17 +504,7 @@
   padding-top: 10px;
   border-top: 1px solid var(--sc-border);
 }
-.pecaTam {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--sc-bg-secondary);
-  font-size: var(--sc-compact-label-size);
-  color: var(--sc-text-secondary);
-  white-space: nowrap;
-}
-.pecaTam strong {
-  color: var(--sc-text-primary);
-}
+
 .sobra {
   color: var(--sc-text-warning);
 }

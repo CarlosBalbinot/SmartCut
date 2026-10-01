@@ -15,10 +15,8 @@ def resolver_url() -> str:
 
 _url = resolver_url()
 
-# Item 5.3: `connect_args={"check_same_thread": False}` é específico do
-# SQLite — passá-lo em branco ao Postgres (psycopg2) quebraria o boot do
-# backend no Docker. Aplicado somente quando o driver é SQLite; demais
-# dialetos usam a config padrão (QueuePool etc.).
+# `connect_args={"check_same_thread": False}` é específico do SQLite (o banco
+# do SmartCut); só é aplicado quando o driver é SQLite.
 _engine_kwargs: dict = {"echo": False}
 if _url.startswith("sqlite"):
     _engine_kwargs["connect_args"] = {"check_same_thread": False}

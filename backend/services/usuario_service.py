@@ -44,7 +44,7 @@ MODULOS_ACAO_EXECUCAO_FISCAL = {
 def sincronizar_permissoes_fiscais(db: Session) -> int:
     """Garante a ação de execução para quem já tinha `ver` nos módulos de
     execução fiscal (item 5.1). Idempotente e executada no boot, cobre os
-    bancos existentes (SQLite local e Postgres no Docker) e os novos, sem
+    bancos existentes e os novos, sem
     remover nenhuma permissão. Retorna quantas linhas foram criadas."""
     criadas = 0
     for modulo, acao_exec in MODULOS_ACAO_EXECUCAO_FISCAL.items():

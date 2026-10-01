@@ -13,3 +13,6 @@ pre-commit>=3.8,<5
 
 # Auditoria de dependências (8.2)
 pip-audit>=2.7,<3
+
+# Build do executável do backend (npm run build-backend → smartcut.spec)
+pyinstaller>=6.10,<7

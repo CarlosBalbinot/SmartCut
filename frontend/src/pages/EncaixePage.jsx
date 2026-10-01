@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getEncaixe, getEncaixes, getPdfEncaixe } from "../api/encaixes";
+import { getEncaixe, getEncaixes } from "../api/encaixes";
 import { imprimirRelatorio, RELATORIO_FORMULARIO_CORTE } from "../api/relatorios";
 import { RotuloMotor } from "../components/ProgressoEncaixe/ProgressoEncaixe";
 import VisualizadorEncaixe from "../components/VisualizadorEncaixe/VisualizadorEncaixe";
@@ -139,7 +139,6 @@ export default function EncaixePage() {
   const [enc, setEnc] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
-  const [gerandoPdf, setGerandoPdf] = useState(false);
   const [imprimindo, setImprimindo] = useState(false);
   const [pecaSelecionada, setPecaSelecionada] = useState(null);
   const [listaAberta, setListaAberta] = useState(true);
@@ -169,39 +168,18 @@ export default function EncaixePage() {
   const oc = enc?.ordem_corte;
   const nav = enc?.navegacao;
 
-  // Encaixe de OC abre o formulário de corte (relPro001) no card do
-  // visualizador, sobre a OC. Encaixe sem OC (Encaixe Rápido/antigos) segue
-  // no PDF legado, gerado por pedido.
+  // Formulário de corte (relPro001) no card do visualizador: o da OC ou,
+  // sem OC (Encaixe Rápido), o do pedido do encaixe.
   async function imprimirFormularioCorte() {
-    if (!oc) return;
+    const registro = oc?.id ?? pedido?.id;
+    if (!registro) return;
     setImprimindo(true);
     try {
-      await imprimirRelatorio(RELATORIO_FORMULARIO_CORTE, oc.id);
+      await imprimirRelatorio(RELATORIO_FORMULARIO_CORTE, registro);
     } catch (ex) {
       setErro(ex.message);
     } finally {
       setImprimindo(false);
-    }
-  }
-
-  // Rota legada: baixa o PDF de corte de UM pedido com todos os seus
-  // encaixes (sem OC). Não abre visualizador — é download direto.
-  async function baixarPdf() {
-    if (!pedido) return;
-    setGerandoPdf(true);
-    try {
-      const blob = await getPdfEncaixe(pedido.id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const num = pedido.numero?.replace(/\//g, "-") ?? id.slice(0, 8);
-      a.download = `encaixe-${num}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (ex) {
-      setErro(ex.message);
-    } finally {
-      setGerandoPdf(false);
     }
   }
 
@@ -460,8 +438,8 @@ export default function EncaixePage() {
             )}
           </div>
 
-          {/* Formulário de corte da OC (relPro001) ou, sem OC, o PDF legado por pedido. */}
-          {oc ? (
+          {/* Formulário de corte (relPro001): da OC ou do Encaixe Rápido. */}
+          {(oc || pedido) && (
             <button
               type="button"
               className={styles.btnPdfPainel}
@@ -470,17 +448,6 @@ export default function EncaixePage() {
             >
               {imprimindo ? "Abrindo…" : "Formulário de corte"}
             </button>
-          ) : (
-            pedido && (
-              <button
-                type="button"
-                className={styles.btnPdfPainel}
-                onClick={baixarPdf}
-                disabled={gerandoPdf}
-              >
-                {gerandoPdf ? "Gerando PDF…" : "↓ Baixar PDF de Corte"}
-              </button>
-            )
           )}
         </aside>
 

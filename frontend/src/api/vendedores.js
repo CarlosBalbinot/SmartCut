@@ -22,17 +22,11 @@ export const getVendedores = (busca = "", status = "") => {
   return request(`/vendedores/${qs ? `?${qs}` : ""}`);
 };
 
-export const getVendedor = (id) => request(`/vendedores/${id}`);
-
 export const createVendedor = (payload) =>
   request("/vendedores/", { method: "POST", body: JSON.stringify(payload) });
 
 export const updateVendedor = (id, payload) =>
   request(`/vendedores/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-
-export const deleteVendedor = (id) => request(`/vendedores/${id}`, { method: "DELETE" });
-
-export const getDashboardVendedor = (id) => request(`/vendedores/${id}/dashboard`);
 
 export const getCredenciaisVendedor = (id) => request(`/vendedores/${id}/credenciais`);
 

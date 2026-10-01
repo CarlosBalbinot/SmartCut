@@ -2,21 +2,22 @@
 """Backup seguro do banco SQLite (item 3.3).
 
 Faz uma cópia consistente do `smartcut.db` (e dos arquivos auxiliares
-`-wal`/`-shm`), com checkpoint passivo do WAL antes de copiar, e mantém uma
-retenção de N dias na pasta de backup. Funciona mesmo com o aplicativo em uso
+`-wal`/`-shm`), com checkpoint passivo do WAL antes de copiar, e mantém só os
+N backups mais recentes na pasta (os mais antigos são apagados depois de criar
+o novo). Funciona mesmo com o aplicativo em uso
 (política WAL = leitores não bloqueiam e a cópia reflete o estado mais
 recente confirmado).
 
 Uso (uma execução; ideal para agendador/uso manual):
 
     py -3.12 scripts/backup_sqlite.py --db C:\\...\\smartcut.db \
-        --backup-dir C:\\...\\backups --retention-dias 7
+        --backup-dir C:\\...\\backups --manter 30
 
-Também pode ser importado: `fazer_backup(db_path, backup_dir, retention_dias)`.
+Também pode ser importado: `fazer_backup(db_path, backup_dir, manter)`.
 
 Restore: parar o aplicativo, substituir o `smartcut.db` por um backup
 (`smartcut_<timestamp>`), remover `smartcut.db-wal`/`smartcut.db-shm` (o SQLite
-reconstrói) e abrir o aplicativo. Detalhes no README (seção Backup).
+reconstrói) e abrir o aplicativo. Detalhes em docs/SISTEMA.md (Backup).
 """
 
 from __future__ import annotations
@@ -53,8 +54,9 @@ def checkpoint_wal(db_path: str) -> None:
         print(f"[backup] aviso: checkpoint WAL falhou ({err}) — copiando -wal mesmo assim", file=sys.stderr)
 
 
-def fazer_backup(db_path: str, backup_dir: str, retention_dias: int) -> str | None:
-    """Copia o banco (e -wal/-shm) para backup_dir com timestamp e limpa antigos.
+def fazer_backup(db_path: str, backup_dir: str, manter: int) -> str | None:
+    """Copia o banco (e -wal/-shm) para backup_dir com timestamp e apaga os
+    excedentes, deixando só os `manter` mais recentes.
 
     Retorna o caminho base do backup criado (sem sufixo) ou None se o banco
     não existir.
@@ -73,39 +75,46 @@ def fazer_backup(db_path: str, backup_dir: str, retention_dias: int) -> str | No
         if os.path.exists(origem):
             shutil.copy2(origem, destino_base + sufixo)
 
-    limpar_backups_antigos(backup_dir, retention_dias)
+    limpar_backups_antigos(backup_dir, manter)
     print(f"[backup] ok: {destino_base}")
     return destino_base
 
 
-def limpar_backups_antigos(backup_dir: str, retention_dias: int) -> int:
-    """Remove backups `smartcut_*` mais velhos que retention_dias. Retorna nº removido."""
-    if retention_dias <= 0:
-        return 0
-    limite = datetime.datetime.now() - datetime.timedelta(days=retention_dias)
-    removidos = 0
+def _backups(backup_dir: str) -> list[tuple[datetime.datetime, str]]:
+    """Backups `smartcut_<timestamp>` da pasta (só o arquivo principal), do
+    mais recente para o mais antigo."""
+    achados = []
     for caminho in glob.glob(os.path.join(backup_dir, "smartcut_*")):
         base = os.path.basename(caminho)
-        # Ignora sufixos (-wal/-shm): o "alvo" de retenção é o arquivo principal.
+        # Ignora sufixos (-wal/-shm): o "alvo" da rotação é o arquivo principal.
         if base.endswith(("-wal", "-shm")):
             continue
         try:
             quando = datetime.datetime.strptime(base, "smartcut_%Y%m%d_%H%M%S")
         except ValueError:
             continue
-        if quando < limite:
-            try:
-                os.remove(caminho)
-                # Remove também os auxiliares correspondentes (se existirem).
-                for sufixo in ("-wal", "-shm"):
-                    aux = caminho + sufixo
-                    if os.path.exists(aux):
-                        os.remove(aux)
-                removidos += 1
-            except OSError as err:
-                print(f"[backup] aviso: não removeu {caminho} ({err})", file=sys.stderr)
+        achados.append((quando, caminho))
+    return sorted(achados, reverse=True)
+
+
+def limpar_backups_antigos(backup_dir: str, manter: int) -> int:
+    """Apaga os backups além dos `manter` mais recentes. Retorna nº removido."""
+    if manter <= 0:
+        return 0
+    removidos = 0
+    for _quando, caminho in _backups(backup_dir)[manter:]:
+        try:
+            os.remove(caminho)
+            # Remove também os auxiliares correspondentes (se existirem).
+            for sufixo in ("-wal", "-shm"):
+                aux = caminho + sufixo
+                if os.path.exists(aux):
+                    os.remove(aux)
+            removidos += 1
+        except OSError as err:
+            print(f"[backup] aviso: não removeu {caminho} ({err})", file=sys.stderr)
     if removidos:
-        print(f"[backup] retenção: removidos {removidos} backup(s) antigo(s)")
+        print(f"[backup] rotação: removidos {removidos} backup(s) antigo(s)")
     return removidos
 
 
@@ -113,9 +122,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Backup seguro do SQLite do SmartCut")
     parser.add_argument("--db", required=True, help="Caminho do arquivo .db")
     parser.add_argument("--backup-dir", required=True, help="Pasta onde ficam os backups")
-    parser.add_argument("--retention-dias", type=int, default=7, help="Dias de retenção (padrão: 7)")
+    parser.add_argument("--manter", type=int, default=30, help="Backups mantidos (padrão: 30)")
     args = parser.parse_args()
-    resultado = fazer_backup(args.db, args.backup_dir, args.retention_dias)
+    resultado = fazer_backup(args.db, args.backup_dir, args.manter)
     if not resultado:
         sys.exit(2)
 

@@ -1,15 +1,3 @@
-def peso_para_metros(
-    peso_kg: float,
-    gramatura_g_m2: float,
-    largura_util_cm: float,
-) -> float:
-    """Converte peso em kg para metros lineares de tecido.
-
-    Formula: metros = peso_kg * 1000 / (gramatura_g_m2 * largura_util_cm / 100)
-    """
-    return peso_kg * 1000 / (gramatura_g_m2 * largura_util_cm / 100)
-
-
 def metros_para_peso(
     metros: float,
     gramatura_g_m2: float,

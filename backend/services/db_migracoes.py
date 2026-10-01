@@ -1,4 +1,4 @@
-"""Migrações de schema via Alembic (itens 5.2 e 5.3 do PROMPT-CORRECOES).
+"""Migrações de schema via Alembic (itens 5.2 e 5.3 de docs/historico/PROMPT-CORRECOES.md).
 
 Antes, o schema do banco era criado por `Base.metadata.create_all` no boot
 (que cria tabelas novas mas NUNCA altera tabelas existentes — qualquer
@@ -66,7 +66,7 @@ MSG_SEM_VERSAO = "Banco sem versão registrada, contate o suporte."
 
 def aplicar_migracoes(url: str | None = None) -> None:
     """Aplica as migrações Alembic no banco ativo (resolve SMARTCUT_DB_PATH
-    para o desktop e DATABASE_URL para Docker/dev — mesma lógica do runtime,
+    para o desktop e DATABASE_URL em desenvolvimento — mesma lógica do runtime,
     ver database.resolver_url) ou no banco de ``url`` (script de montagem).
 
     - Banco novo (sem tabelas): upgrade head desde a baseline.

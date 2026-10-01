@@ -7,10 +7,10 @@ import {
   gerarEncaixeRapido,
   getEncaixeRapido,
   getJobEncaixeRapido,
-  getPdfEncaixe,
   validarEncaixeRapido,
 } from "../api/encaixes";
 import { getProximoNumeroPedidoVenda, createPedidoVenda, addItemPedidoVenda } from "../api/pedidos";
+import { imprimirRelatorio, RELATORIO_FORMULARIO_CORTE } from "../api/relatorios";
 import ProgressoEncaixe, {
   CardMesa,
   ResumoEnfesto,
@@ -994,19 +994,9 @@ function ResultadoRapido({ resultado, avisos, nome, onTentar, onNovo, onVer }) {
       </div>
     );
 
-  const baixarPdf = async () => {
-    try {
-      const blob = await getPdfEncaixe(resultado.pedido_id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `corte-encaixe.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {}
-  };
+  // Formulário de corte (relPro001) do Encaixe Rápido: sem OC, pelo pedido.
+  const abrirFormularioCorte = () =>
+    imprimirRelatorio(RELATORIO_FORMULARIO_CORTE, resultado.pedido_id);
 
   return (
     <div className={styles.resultCard}>
@@ -1065,8 +1055,8 @@ function ResultadoRapido({ resultado, avisos, nome, onTentar, onNovo, onVer }) {
         <button className={styles.btnPrimary} onClick={() => onVer(encaixes[0].id)}>
           Ver encaixe completo →
         </button>
-        <button className={styles.btnDownload} onClick={baixarPdf}>
-          ↓ Baixar PDF de Corte
+        <button className={styles.btnDownload} onClick={abrirFormularioCorte}>
+          Formulário de corte
         </button>
         <button className={styles.btnSecondary} onClick={onNovo}>
           Novo encaixe

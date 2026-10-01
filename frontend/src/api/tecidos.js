@@ -18,8 +18,6 @@ async function request(path, options = {}) {
 
 export const getModelos = () => request("/modelos-tecido/");
 
-export const getModelo = (id) => request(`/modelos-tecido/${id}`);
-
 export const createModelo = (payload) =>
   request("/modelos-tecido/", { method: "POST", body: JSON.stringify(payload) });
 
@@ -35,8 +33,6 @@ export const createCorDoModelo = (id, payload) =>
 
 // ── Cores ─────────────────────────────────────────────────────────────
 
-export const getCor = (id) => request(`/cores-tecido/${id}`);
-
 export const updateCor = (id, payload) =>
   request(`/cores-tecido/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
@@ -47,14 +43,7 @@ export const getLotesDaCor = (id) => request(`/cores-tecido/${id}/lotes`);
 export const createLoteDaCor = (id, payload) =>
   request(`/cores-tecido/${id}/lotes`, { method: "POST", body: JSON.stringify(payload) });
 
-export const getRecomendacaoLote = (id) => request(`/cores-tecido/${id}/recomendar-lote`);
-
 // ── Lotes ─────────────────────────────────────────────────────────────
-
-export const getLote = (id) => request(`/lotes-tecido/${id}`);
-
-export const updateLote = (id, payload) =>
-  request(`/lotes-tecido/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
 export const arquivarLote = (id) => request(`/lotes-tecido/${id}/arquivar`, { method: "POST" });
 

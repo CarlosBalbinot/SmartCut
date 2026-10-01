@@ -71,19 +71,6 @@ class EmpresaUpdate(BaseModel):
     site: Optional[str] = None
 
 
-class EmpresaFiscalOut(BaseModel):
-    regime_tributario: str
-    uf_emitente: str
-    ambiente_sefaz: str
-    certificado_path: Optional[str]
-    certificado_senha: Optional[str]
-    certificado_valido: bool
-    nfe_serie_padrao: str
-    nfe_numero_atual: int
-    nfce_serie_padrao: str
-    nfce_numero_atual: int
-
-
 class EmpresaFiscalUpdate(BaseModel):
     regime_tributario: Optional[str] = None
     uf_emitente: Optional[str] = None
@@ -102,26 +89,6 @@ class TestarCertificadoIn(BaseModel):
 
 
 # ── TabelaPreco ───────────────────────────────────────────────────────────
-
-
-class TabelaPrecoOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: UUID
-    nome: str
-    comissao_pct: Decimal
-    ativa: bool
-    criado_em: datetime
-
-
-class TabelaPrecoCreate(BaseModel):
-    nome: str
-    comissao_pct: Decimal
-
-
-class TabelaPrecoUpdate(BaseModel):
-    nome: Optional[str] = None
-    comissao_pct: Optional[Decimal] = None
-    ativa: Optional[bool] = None
 
 
 class TabelaPrecoItemOut(BaseModel):
@@ -430,10 +397,6 @@ class PedidoVendaOut(_PedidoVendaCamposFiscais):
     # de produção. Default None = o model_validate do ORM não acha o
     # atributo e usa o padrão.
     producao: Optional[ProducaoOCOut] = None
-
-
-class PedidoVendaComItensOut(PedidoVendaOut):
-    itens: List[ItemPedidoVendaOut] = []
 
 
 class PedidoVendaCreate(_PedidoVendaCamposFiscais):

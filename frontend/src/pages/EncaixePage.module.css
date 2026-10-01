@@ -69,37 +69,6 @@
   margin: 0;
 }
 
-/* ── Tabs de enfesto ── */
-.tabsBar {
-  display: flex;
-  gap: 0.25rem;
-  border-bottom: 1px solid var(--sc-border);
-  overflow-x: auto;
-}
-
-.tab {
-  background: none;
-  border: none;
-  padding: 0.7rem 0.25rem;
-  margin-right: 1.25rem;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--sc-text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.tab:hover {
-  color: var(--sc-text-primary);
-}
-
-.tabAtiva {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
-}
-
 /* ── Layout principal: painel + visualizador ── */
 .layout {
   display: flex;

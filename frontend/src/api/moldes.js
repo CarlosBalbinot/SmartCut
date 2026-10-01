@@ -29,8 +29,6 @@ export const getGrupos = () => request("/grupos-molde/");
 
 export const buscarGrupos = (busca) => request(`/grupos-molde/?busca=${encodeURIComponent(busca)}`);
 
-export const getGrupo = (id) => request(`/grupos-molde/${id}`);
-
 export const importarGrupoMolde = (payload) =>
   request("/grupos-molde/importar", { method: "POST", body: JSON.stringify(payload) });
 
@@ -41,14 +39,7 @@ export const deleteGrupo = (id) => request(`/grupos-molde/${id}`, { method: "DEL
 
 // ── Moldes ────────────────────────────────────────────────────────────
 
-export const getMoldes = () => request("/moldes/");
-
-export const getMolde = (id) => request(`/moldes/${id}`);
-
 export const previewMolde = (formData) => requestForm("/moldes/preview", formData);
-
-export const bulkImportarMoldes = (payload) =>
-  request("/moldes/bulk", { method: "POST", body: JSON.stringify(payload) });
 
 export const updateMolde = (id, payload) =>
   request(`/moldes/${id}`, { method: "PATCH", body: JSON.stringify(payload) });

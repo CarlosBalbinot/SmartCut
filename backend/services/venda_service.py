@@ -27,12 +27,6 @@ from services.segredo_service import chave_disponivel, cifrar_segredo
 _SENHA_MASCARADA = "••••••••"
 
 
-def get_produto_do_item(item: ItemPedido, db: Session) -> Optional[Produto]:
-    if item.produto_id is None:
-        return None
-    return db.get(Produto, item.produto_id)
-
-
 # ── Cópia do cliente no pedido (cliente_*) ────────────────────────────────────
 # Coluna do pedido → como ler do Cliente. Documento: CNPJ ou, se não tiver,
 # CPF (NF-e decide pela contagem de dígitos); telefone: fixo ou celular.
@@ -124,7 +118,7 @@ def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
     # Item 4.2: a senha do certificado NUNCA vai para o banco em texto claro
     # nem em base64 reversível — vai cifrada (envelope AES-GCM `enc:v1:...`)
     # com a chave mestre/do desktop. Sem chave, recusa salvar com mensagem
-    # clara (leia os trade-offs no README).
+    # clara (trade-offs em docs/SISTEMA.md, pasta de dados).
     if "certificado_senha" in payload and payload["certificado_senha"] is not None:
         senha = str(payload["certificado_senha"]).strip()
         if senha:
@@ -134,7 +128,7 @@ def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
                         status_code=400,
                         detail="Sem chave de segurança configurada para armazenar a senha do "
                         "certificado. No desktop abra pelo SmartCut; fora dele defina "
-                        "CERT_SENHA_KEY no ambiente (ver README).",
+                        "CERT_SENHA_KEY no backend/.env (ver docs/DESENVOLVIMENTO.md).",
                     )
                 payload["certificado_senha"] = cifrar_segredo(senha)
     if payload.get("certificado_path"):

@@ -1,4 +1,4 @@
-# CI — Parte 9.1 do PROMPT-CORRECOES.md
+# CI — Parte 9.1 de docs/historico/PROMPT-CORRECOES.md
 #
 # Jobs (o critério de aceitação da 9.1):
 #   1. backend  : Python 3.12 + ruff (lint/formato) + pytest (cobertura);

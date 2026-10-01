@@ -39,5 +39,3 @@ export const updatePrecificacao = (id, payload) =>
   request(`/precificacoes/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
 
 export const deletePrecificacao = (id) => request(`/precificacoes/${id}`, { method: "DELETE" });
-
-export const calcularPrecificacao = (grupoId) => request(`/precificacoes/${grupoId}/calcular`);

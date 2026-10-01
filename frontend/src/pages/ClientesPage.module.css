@@ -326,19 +326,6 @@
   color: var(--sc-danger-text) !important;
 }
 
-/* ── Section labels ── */
-.sectionLabel {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--sc-text-secondary);
-  margin: 0.5rem 0 0.75rem;
-}
-.sectionLabelMt {
-  margin-top: 1.25rem;
-}
-
 /* ── Field grid ── */
 .fieldGrid {
   display: grid;

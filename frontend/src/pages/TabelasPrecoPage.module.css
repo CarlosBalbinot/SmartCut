@@ -108,11 +108,6 @@
   flex-wrap: wrap;
 }
 
-.tabelaCardComissao {
-  font-size: 12px;
-  color: var(--sc-text-secondary);
-}
-
 .tabelaCardCount {
   font-size: 11px;
   color: var(--sc-text-muted);
@@ -235,12 +230,6 @@
   font-weight: 700;
   color: var(--sc-text-primary);
   margin: 0;
-}
-
-.tabelasRightComissao {
-  font-size: 0.82rem;
-  color: var(--sc-text-secondary);
-  margin: 6px 0 0;
 }
 
 .tabelasRightBtns {

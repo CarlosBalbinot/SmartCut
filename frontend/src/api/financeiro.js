@@ -105,12 +105,6 @@ export const updateCompra = (id, dados) =>
 
 export const deleteCompra = (id) => request(`/compras/${id}`, { method: "DELETE" });
 
-export const importarXmlCompra = (arquivo) => {
-  const fd = new FormData();
-  fd.append("arquivo", arquivo);
-  return requestForm("/compras/importar-xml", fd);
-};
-
 export const importarLoteCompras = (arquivos) => {
   const fd = new FormData();
   arquivos.forEach((arquivo) => fd.append("arquivos", arquivo));
@@ -134,12 +128,6 @@ export const updateVendaFinanceira = (id, dados) =>
 
 export const deleteVendaFinanceira = (id) =>
   request(`/vendas-financeiras/${id}`, { method: "DELETE" });
-
-export const importarXmlVenda = (arquivo) => {
-  const fd = new FormData();
-  fd.append("arquivo", arquivo);
-  return requestForm("/vendas-financeiras/importar-xml", fd);
-};
 
 export const importarLoteVendas = (arquivos) => {
   const fd = new FormData();
@@ -190,9 +178,6 @@ export const reenviarAnexo = (anexoId, arquivo) => {
 };
 
 // ── Projeção ──────────────────────────────────────────────────────────────────
-
-export const getProjecao = (mesInicio, anoInicio, meses = 3) =>
-  request(`/projecao?mes_inicio=${mesInicio}&ano_inicio=${anoInicio}&meses=${meses}`);
 
 // ── Metas ─────────────────────────────────────────────────────────────────────
 

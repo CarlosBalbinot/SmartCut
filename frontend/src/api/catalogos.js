@@ -30,8 +30,6 @@ export const getCatalogos = () => request("/catalogos/");
 
 export const createCatalogo = (formData) => requestForm("/catalogos/", formData);
 
-export const deleteCatalogo = (id) => request(`/catalogos/${id}`, { method: "DELETE" });
-
 export const getCatalogosVendedores = (catId) => request(`/catalogos/${catId}/vendedores`);
 
 export const addVendedorCatalogo = (catId, vendedorId) =>

@@ -43,7 +43,8 @@
       },
       {
         "from": "assets",
-        "to": "assets"
+        "to": "assets",
+        "filter": ["favicon.ico"]
       }
     ],
     "win": {

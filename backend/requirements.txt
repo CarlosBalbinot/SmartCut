@@ -2,10 +2,6 @@ fastapi==0.141.1
 uvicorn[standard]==0.53.0
 sqlalchemy==2.0.54
 alembic==1.20.0
-# Driver PostgreSQL — necessário apenas na implantação via Docker/compose
-# (desktop usa SQLite; o PyInstaller exclui psycopg2 no smartcut.spec, então
-# o executável não carrega o driver).
-psycopg2-binary==2.9.13
 pydantic==2.13.5
 pydantic-settings==2.15.0
 python-dotenv==1.2.3
@@ -18,7 +14,8 @@ spyrrow==0.9.0
 ortools==9.15.6755
 reportlab==4.2.0
 python-multipart==0.0.32
-qrcode[pil]==8.2
+# Pillow: imagens nos relatórios (services/relatorios/engine.py) e no ReportLab.
+pillow==12.3.0
 # Relatórios configuráveis (RL1): modelos HTML editáveis (sandbox Jinja2).
 jinja2==3.1.6
 
@@ -30,7 +27,8 @@ bcrypt==4.0.1
 cryptography>=50.0.1
 
 # Fase 4 — Emissão de NF-e
-nfelib>=2.5.2
 signxml>=5.1.0
 zeep>=4.3.3
+# requests: chamadas diretas à SEFAZ em services/nfe_service.py.
+requests>=2.32
 lxml>=6.1.3

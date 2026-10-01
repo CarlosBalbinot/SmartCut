@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -8,24 +7,6 @@ TipoCorte = Literal["simples", "par", "par_sem_espelho"]
 
 
 # ── Molde individual ────────────────────────────────────────────────
-
-
-class MoldeOut(BaseModel):
-    id: uuid.UUID
-    nome: str
-    arquivo_path: str | None
-    formato: str | None
-    peca: str | None
-    tamanho: str | None
-    sentido_fio: str | None
-    tipo_corte: str
-    rotacao_base: int = 0
-    area_cm2: float | None
-    geometria_json: dict[str, Any] | None
-    grupo_id: uuid.UUID | None
-    criado_em: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class MoldeUpdate(BaseModel):
@@ -43,24 +24,6 @@ class SimetriaIn(BaseModel):
     geometrias: list[dict[str, Any] | None]
     sentido_fio: str | None = Field(None, max_length=20)
     rotacao_base: int = 0
-
-
-# ── Preview (arquivo → polylines) ────────────────────────────────────
-
-
-class PecaPreviewOut(BaseModel):
-    """Polyline extraída do arquivo, ainda não salva no banco."""
-
-    nome_sugerido: str
-    geometria_json: dict[str, Any]
-    area_cm2: float
-    sentido_fio_detectado: str | None = None
-
-
-class PreviewOut(BaseModel):
-    arquivo_path: str
-    formato: str
-    pecas: list[PecaPreviewOut]
 
 
 # ── Importação em grupo ───────────────────────────────────────────────
@@ -100,26 +63,9 @@ class GrupoImportCreate(BaseModel):
 # ── Grupos ────────────────────────────────────────────────────────────
 
 
-class GrupoMoldeCreate(BaseModel):
-    nome: str = Field(..., max_length=150)
-
-
 class GrupoMoldeUpdate(BaseModel):
     nome: str | None = Field(None, max_length=150)
     codigo: str | None = Field(None, max_length=20)
-
-
-class GrupoMoldeOut(BaseModel):
-    id: uuid.UUID
-    nome: str
-    codigo: str | None = None
-    produto_id: uuid.UUID | None = None
-    produto_nome: str | None = None
-    produto_grupo: str | None = None
-    criado_em: datetime
-    moldes: list[MoldeOut] = []
-
-    model_config = {"from_attributes": True}
 
 
 # ── Bulk simples (importação sem grupo) ──────────────────────────────

@@ -30,7 +30,7 @@ _MOD = "encaixes"
 _VER = Depends(require_permission(_MOD, "ver"))
 _CRIAR = Depends(require_permission(_MOD, "criar"))
 _EDITAR = Depends(require_permission(_MOD, "editar"))
-# Encaixe Rápido tem módulo próprio (mesmo de POST /encaixes/gerar).
+# Encaixe Rápido tem módulo próprio.
 _RAPIDO_VER = Depends(require_permission("encaixe_rapido", "ver"))
 _RAPIDO_CRIAR = Depends(require_permission("encaixe_rapido", "criar"))
 # Configurações > Produção — mesmos módulos do resto das Configurações.

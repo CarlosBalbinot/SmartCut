@@ -60,9 +60,6 @@
 .btnLink:hover {
   text-decoration: underline;
 }
-.btnDanger {
-  color: var(--sc-danger-text);
-}
 
 /* ── Tabela principal ── */
 .tableCard {
@@ -104,11 +101,6 @@
   padding: 1.5rem;
   text-align: center;
   color: var(--sc-text-muted);
-}
-
-.actions {
-  display: flex;
-  gap: 0.75rem;
 }
 
 .msgErro {

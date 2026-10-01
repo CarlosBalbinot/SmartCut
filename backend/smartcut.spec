@@ -33,11 +33,11 @@ app_h = [
     'models.molde', 'models.painel_vendedor', 'models.pedido', 'models.precificacao',
     'models.tecido', 'models.venda',
     # services
-    'services', 'services.auth_service', 'services.cor_service', 'services.defeito_service',
+    'services', 'services.auth_service', 'services.cor_service',
     'services.encaixe_service', 'services.gramatura_service', 'services.grupo_service',
     'services.lote_service', 'services.modelo_service', 'services.molde_service',
-    'services.nesting_service', 'services.pdf_venda_service',
-    'services.precificacao_service', 'services.rate_limit', 'services.report_service',
+    'services.nesting_service',
+    'services.precificacao_service', 'services.rate_limit',
     'services.venda_service', 'services.backup_service',
     'services.segredo_service', 'services.db_migracoes',
     # scripts (backup SQLite — item 3.3)
@@ -80,11 +80,6 @@ app_h = [
     'reportlab.graphics.barcode.qr',
     'reportlab.graphics.barcode.widgets',
     'reportlab.graphics.barcode.common',
-    'qrcode',
-    'qrcode.image.pil',
-    'qrcode.image.base',
-    'qrcode.constants',
-    'qrcode.main',
     'PIL',
     'PIL.Image',
     'PIL.ImageDraw',
@@ -94,7 +89,7 @@ app_h = [
     # Alembic (item 5.2) + Mako (templates de migração)
     'alembic',
     'alembic.config', 'alembic.runtime.migration', 'alembic.ddl.sqlite',
-    'alembic.ddl.postgresql', 'alembic.operations', 'alembic.autogenerate',
+    'alembic.operations', 'alembic.autogenerate',
     'mako', 'mako.template', 'mako.lookup', 'mako.runtime',
 ]
 

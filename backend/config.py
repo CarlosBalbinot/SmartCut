@@ -10,24 +10,17 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./smartcut.db"
     secret_key: str = ""
-    # Legado: a pasta de uploads é sempre <pasta de dados>/uploads
-    # (services/pasta_dados.py). Mantido só para não recusar UPLOAD_DIR
-    # em .env/compose antigos.
-    upload_dir: str = "./uploads"
-    max_file_size_mb: int = 50
-    nesting_timeout_sec: int = 120
-    # Cookie de sessão (item 1.4): em produção atrás de HTTPS defina
-    # COOKIE_SECURE=true no ambiente/compose para marcar o cookie como Secure.
+    # Cookie de sessão (item 1.4): atrás de HTTPS defina COOKIE_SECURE=true
+    # no ambiente para marcar o cookie como Secure.
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
 
-    # Backup automático do SQLite (item 3.3): o backend copia periodicamente
-    # o banco (com WAL checkpoint) para uma pasta de backup, mantendo N dias.
-    # Só tem efeito quando o banco é SQLite (desktop); no Docker/Postgres o
-    # backup é um serviço pg_dump no docker-compose.prod.yml.
+    # Backup automático do SQLite (item 3.3): o backend copia o banco (com WAL
+    # checkpoint) no boot e a cada intervalo, mantendo só os N mais recentes.
+    # Com `uvicorn --reload` não há backup no boot (cada salvamento reinicia).
     backup_dir: str = ""  # vazio = pasta "backups" ao lado do arquivo .db
-    backup_retention_dias: int = 7
-    backup_interval_sec: int = 21600  # 6h; segundo backup roda no startup
+    backup_manter: int = 30  # quantidade de backups mantidos
+    backup_interval_sec: int = 21600  # 6h
 
     # Certificado digital NF-e (itens 4.1 e 4.2).
     # certificado_dir: pasta padrão do .pfx (fora da árvore de código). No
@@ -36,7 +29,7 @@ class Settings(BaseSettings):
     # (escolhido pelo usuário com o diálogo nativo, item 4.1).
     certificado_dir: str = ""
     # Chave mestre para cifrar segredos em repouso (senha do certificado,
-    # item 4.2). Docker/servidor: defina CERT_SENHA_KEY no ambiente. Desktop:
+    # item 4.2). Desenvolvimento: defina CERT_SENHA_KEY no backend/.env. Desktop:
     # o Electron gera a chave por instalação e injeta via SMARTCUT_CERT_KEY —
     # aqui fica vazia. Nunca derive de SECRET_KEY (efêmera no desktop).
     cert_senha_key: str = ""
@@ -44,7 +37,7 @@ class Settings(BaseSettings):
     # ── Item 10.4: fonte ÚNICA de configuração (settings do pydantic) ──────
     # Variáveis antes lidas via os.getenv espalhado agora vêm daqui; o arquivo
     # .env carregado é sempre backend/.env (caminho absoluto relativo a este
-    # arquivo — independente do CWD, inclusive no Docker). Prioridade:
+    # arquivo — independente do CWD). Prioridade:
     # variável de ambiente do processo > backend/.env > defaults.
 
     # SMARTCUT_DB_PATH — caminho do smartcut.db injetado pelo Electron
@@ -52,13 +45,15 @@ class Settings(BaseSettings):
     smartcut_db_path: str = ""
     # SMARTCUT_DADOS_DIR — pasta base dos arquivos do usuário (anexos, logo,
     # NF-e, moldes...) injetada pelo Electron empacotado (userData). Vazio =
-    # backend/ (desenvolvimento/Docker). Ver services/pasta_dados.py.
+    # backend/ (desenvolvimento). Ver services/pasta_dados.py.
     smartcut_dados_dir: str = ""
     # SMARTCUT_CERT_KEY — chave de cifragem dos segredos em repouso injetada
     # pelo Electron (item 4.2). Vazio fora do desktop.
     smartcut_cert_key: str = ""
 
-    model_config = {"env_file": str(Path(__file__).resolve().parent / ".env")}
+    # extra="ignore": variáveis que saíram do código (UPLOAD_DIR,
+    # BACKUP_RETENTION_DIAS...) em .env antigos não impedem o boot.
+    model_config = {"env_file": str(Path(__file__).resolve().parent / ".env"), "extra": "ignore"}
 
     _segredo_efemero: str | None = PrivateAttr(default=None)
 

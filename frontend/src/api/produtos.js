@@ -50,13 +50,3 @@ export const gruposProdutoApi = {
 };
 
 // ── Linhas / Colunas de Grade ────────────────────────────────────────────
-
-export const linhasGradeApi = {
-  listar: (situacao) => request(`/linhas-grade/${situacao ? `?situacao=${situacao}` : ""}`),
-  criar: (payload) => request("/linhas-grade/", { method: "POST", body: JSON.stringify(payload) }),
-};
-
-export const colunasGradeApi = {
-  listar: (situacao) => request(`/colunas-grade/${situacao ? `?situacao=${situacao}` : ""}`),
-  criar: (payload) => request("/colunas-grade/", { method: "POST", body: JSON.stringify(payload) }),
-};

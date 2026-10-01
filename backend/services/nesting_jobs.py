@@ -229,17 +229,3 @@ def _executar(job: Job) -> None:
         _terminar(job, "CONCLUIDO", fase="Concluído")
     finally:
         db.close()
-
-
-def aguardar(chave: Chave, timeout: float | None = None) -> Job | None:
-    """Espera o job da chave terminar (testes e scripts)."""
-    import time
-
-    fim = None if timeout is None else time.monotonic() + timeout
-    while True:
-        job = _ultimo.get(chave)
-        if job is None or job.status not in STATUS_ATIVOS:
-            return job
-        if fim is not None and time.monotonic() > fim:
-            return job
-        time.sleep(0.05)

@@ -43,7 +43,7 @@ def baixar_arquivo(
     """Serve um arquivo de <pasta de dados>/uploads com autenticação e autorização.
 
     Substitui o antigo `app.mount("/uploads", StaticFiles(...))`, que era
-    público — qualquer pessoa na rede baixava XMLs de NF-e em Docker. Aqui:
+    público — qualquer pessoa na rede baixava XMLs de NF-e. Aqui:
     - qualquer download exige usuário do sistema administrativo (token JWT
       por header ou cookie HttpOnly);
     - pastas sensíveis (nfe/) exige permissão fiscal correspondente;

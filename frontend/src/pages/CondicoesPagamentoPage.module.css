@@ -345,12 +345,6 @@
   cursor: not-allowed;
 }
 
-.hint {
-  font-size: 0.72rem;
-  color: var(--sc-text-muted);
-  margin: 0;
-}
-
 /* ── Error ── */
 .erro {
   font-size: 0.8rem;

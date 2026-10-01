@@ -6,17 +6,17 @@ reversível: guarda apenas um blob cifrado no formato `enc:v1:<iv>:<tag+data>`
 (AES-256-GCM, via `cryptography`). A chave de cifragem nunca fica no banco.
 
 Fontes da chave, em ordem de prioridade:
-  1. ``CERT_SENHA_KEY``  (settings/ambiente) — Docker/servidor: chave mestre
-     fornecida pelo operador no ambiente (secret manager, .env do compose…).
+  1. ``CERT_SENHA_KEY``  (settings/ambiente) — desenvolvimento: chave mestre
+     definida no backend/.env ou no ambiente.
   2. ``SMARTCUT_CERT_KEY`` (ambiente) — desktop: o Electron gera uma chave por
      instalação, guarda protegida pelo cofre do sistema (DPAPI via
      `safeStorage`) em `userData/smartcut-cert-key.bin` e injeta a chave apenas
      na variável de ambiente do processo do backend.
 
 Sem chave disponível:
-  - persistir uma NOVA senha é recusado com mensagem clara (Docker/navegador:
+  - persistir uma NOVA senha é recusado com mensagem clara (fora do desktop:
     exija a senha em runtime ou defina a chave mestre — trade-off documentado
-    no README);
+    em docs/SISTEMA.md);
   - valores legados (base64 reversível gravados antes da correção) continuam
     utilizáveis em leitura e são migrados para o formato cifrado pelo
     `migrar_segredos_legados` assim que houver chave (startup do backend).

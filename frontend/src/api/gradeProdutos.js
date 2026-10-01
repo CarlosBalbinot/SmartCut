@@ -31,12 +31,6 @@ export const criarProdutoPai = (payload) =>
 export const atualizarProdutoPai = (id, payload) =>
   request(`/produtos/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 
-export const gerarSkus = (produtoId, combinacoes) =>
-  request(`/produtos/${produtoId}/skus/gerar`, {
-    method: "POST",
-    body: JSON.stringify({ combinacoes }),
-  });
-
 export const sincronizarSkus = (produtoId, { combinacoes = [], removerSkuIds = [] }) =>
   request(`/produtos/${produtoId}/skus/sincronizar`, {
     method: "POST",

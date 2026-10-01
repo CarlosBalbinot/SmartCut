@@ -69,8 +69,7 @@
   color: var(--sc-text-primary);
 }
 
-.input,
-.select {
+.input {
   width: 100%;
   padding: var(--sc-input-padding);
   border: var(--sc-input-border);
@@ -88,15 +87,8 @@
   color: var(--sc-text-muted);
 }
 
-.input:focus,
-.select:focus {
+.input:focus {
   border-color: var(--color-primary);
-}
-
-.fileiraDupla {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
 }
 
 /* ── Upload de arquivo (migrado de Page.module.css) ── */

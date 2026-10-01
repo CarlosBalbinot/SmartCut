@@ -1187,32 +1187,3 @@ def parcelas_preview(
         ],
         "error": None,
     }
-
-
-# ── PDFs ──────────────────────────────────────────────────────────────────────
-
-
-@router.get("/{pedido_id}/pdf-pedido", dependencies=[Depends(_VER)])
-def pdf_pedido(pedido_id: uuid.UUID):
-    """Desativado: o pedido é impresso pelo relatório configurável relVen001
-    (GET /api/v1/relatorios/relVen001/html). O layout antigo em ReportLab
-    (pdf_venda_service.gerar_pdf_pedido, obsoleta) não é mais gerado."""
-    raise HTTPException(status_code=410, detail="Relatório antigo desativado. Use o relVen001.")
-
-
-@router.get("/{pedido_id}/pdf-corte", dependencies=[Depends(_VER)])
-def pdf_corte(pedido_id: uuid.UUID):
-    """Desativado: o formulário de corte sai da Ordem de Corte pelo relatório
-    configurável relPro001 (GET /api/v1/relatorios/relPro001/html?id=<oc>)."""
-    raise HTTPException(status_code=410, detail="Relatório antigo desativado. Use o relPro001.")
-
-
-# ── Encaixe (placeholder) ─────────────────────────────────────────────────────
-
-
-@router.post("/{pedido_id}/gerar-encaixe", status_code=202, dependencies=[Depends(_EDITAR)])
-def gerar_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
-    pedido = db.get(PedidoVenda, pedido_id)
-    if not pedido:
-        raise HTTPException(status_code=404, detail="Pedido não encontrado")
-    return {"data": {"status": "aguardando", "pedido_id": str(pedido_id)}, "error": None}

@@ -17,24 +17,12 @@ async function request(path, options = {}) {
   return json.data;
 }
 
-async function requestBlob(path) {
-  const res = await apiFetch(`${BASE_URL}${path}`);
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(json.error || json.detail || `Erro ${res.status}`);
-  }
-  return res.blob();
-}
-
 // ── Encaixes ─────────────────────────────────────────────────────────────────
 
 export const getEncaixes = (pedidoId) =>
   request(`/encaixes/${pedidoId ? `?pedido_id=${pedidoId}` : ""}`);
 
 export const getEncaixe = (id) => request(`/encaixes/${id}`);
-
-export const gerarEncaixe = (payload) =>
-  request("/encaixes/", { method: "POST", body: JSON.stringify(payload) });
 
 // ── Encaixe Rápido em segundo plano (M2d) ────────────────────────────────────
 //
@@ -82,15 +70,7 @@ export const cancelarJobEncaixeRapido = (pedidoId) =>
 // reabre com ?id=<pedido_id> na URL e recarrega sem regenerar.
 export const getEncaixeRapido = (pedidoId) => request(`/ordens-corte/encaixe-rapido/${pedidoId}`);
 
-// Rota antiga: desde o M2d também só enfileira o job (202 { job_id }).
-export const gerarEncaixeAutomatico = (pedidoId, comprimentoMaxCm) =>
-  request(`/encaixes/gerar/${pedidoId}${rapidoQs({ comprimentoMaxCm })}`, { method: "POST" });
-
 export const deleteEncaixe = (id) => request(`/encaixes/${id}`, { method: "DELETE" });
-
-export const getRelatorioEncaixe = (id) => request(`/encaixes/${id}/relatorio`);
-
-export const getPdfEncaixe = (pedidoId) => requestBlob(`/encaixes/${pedidoId}/pdf`);
 
 // ── Configurações > Produção (mesa de corte) ─────────────────────────────────
 // payload: { comprimento_max_mesa_cm, alerta_economia_pct }

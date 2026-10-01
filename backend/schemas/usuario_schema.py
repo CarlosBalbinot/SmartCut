@@ -43,7 +43,3 @@ class UsuarioResponse(BaseModel):
     ultimo_acesso: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
-
-
-class UsuarioDetalheResponse(UsuarioResponse):
-    permissoes: list[PermissaoItem] = []

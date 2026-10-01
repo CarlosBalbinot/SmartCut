@@ -25,9 +25,6 @@ export const createPedidoVenda = (payload) =>
 
 export const getPedidoVenda = (id) => request(`/pedidos-venda/${id}`);
 
-export const updatePedidoVenda = (id, payload) =>
-  request(`/pedidos-venda/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
-
 // "Salvar Pedido": cabeçalho + itens pendentes ({ ...cabeçalho, itens: lote })
 // numa transação só — item inválido → 422 com err.erros e nada é gravado.
 export const salvarPedidoVenda = (id, payload) =>
@@ -36,33 +33,19 @@ export const salvarPedidoVenda = (id, payload) =>
 export const updateStatusPedidoVenda = (id, status) =>
   request(`/pedidos-venda/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
 
-export const deletePedidoVenda = (id) => request(`/pedidos-venda/${id}`, { method: "DELETE" });
-
 export const addItemPedidoVenda = (id, payload) =>
   request(`/pedidos-venda/${id}/itens`, { method: "POST", body: JSON.stringify(payload) });
 
 export const addItensBulkPedidoVenda = (id, itens) =>
   request(`/pedidos-venda/${id}/itens/bulk`, { method: "POST", body: JSON.stringify({ itens }) });
 
-export const updateItemPedidoVenda = (id, itemId, payload) =>
-  request(`/pedidos-venda/${id}/itens/${itemId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-
 // "Salvar Itens": lote { criar, atualizar, remover } — tudo ou nada.
 // Devolve o pedido completo (itens e totais recalculados).
 export const salvarItensPedidoVenda = (id, lote) =>
   request(`/pedidos-venda/${id}/itens`, { method: "PUT", body: JSON.stringify(lote) });
 
-export const removeItemPedidoVenda = (id, itemId) =>
-  request(`/pedidos-venda/${id}/itens/${itemId}`, { method: "DELETE" });
-
 export const getProximoNumeroPedidoVenda = (tipo = "venda") =>
   request(`/pedidos-venda/proximo-numero?tipo=${tipo}`);
-
-export const gerarEncaixePedidoVenda = (id) =>
-  request(`/pedidos-venda/${id}/gerar-encaixe`, { method: "POST" });
 
 // Reprecifica todos os itens pela tabela (inclusive preço manual).
 // Devolve { pedido, sem_preco: [referências que mantiveram o preço] }.

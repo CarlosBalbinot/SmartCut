@@ -28,29 +28,6 @@ class ContaBancariaUpdate(BaseModel):
     ativo: Optional[bool] = None
 
 
-# ── CategoriaFinanceira ───────────────────────────────────────────────────────
-
-
-class CategoriaFinanceiraOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: UUID
-    nome: str
-    tipo: str
-    cor: str
-
-
-class CategoriaFinanceiraCreate(BaseModel):
-    nome: str
-    tipo: str
-    cor: str
-
-
-class CategoriaFinanceiraUpdate(BaseModel):
-    nome: Optional[str] = None
-    tipo: Optional[str] = None
-    cor: Optional[str] = None
-
-
 # ── AnexoLancamento ───────────────────────────────────────────────────────────
 
 

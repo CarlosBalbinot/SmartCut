@@ -347,7 +347,7 @@ export function AlertaMesaMaior({ sugestao, limiteAtual, ocupado, onUsar, onMant
 // ── Mesas e enfestos ──────────────────────────────────────────────────────────
 
 /** Moldes que a mesa corta, por camada: "COSTAS G x2 · COSTAS M x2". */
-export function textoMoldes(pecasParte) {
+function textoMoldes(pecasParte) {
   return (pecasParte || [])
     .map((p) => {
       const nome = [p.peca || p.molde, p.tamanho].filter(Boolean).join(" ") || "Peça";

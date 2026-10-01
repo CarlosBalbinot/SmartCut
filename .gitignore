@@ -1,18 +1,21 @@
 # Dependências
 node_modules/
-**/node_modules/
 
 # Python
 __pycache__/
-**/__pycache__/
 *.py[cod]
-*.pyo
 .venv/
 venv/
 *.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Banco de dados local
+# Banco de dados local (o SQLite em modo WAL cria -wal/-shm ao lado do .db)
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 # Backup do banco feito antes de uma migração (ex.: *.db.bak-motor-v1)
@@ -23,12 +26,10 @@ venv/
 .env.local
 .env.*.local
 
-# Build e dist
+# Build e dist (frontend/dist, backend/build, backend/dist, release/...)
 dist/
 build/
 .vite/
-frontend/dist/
-electron/dist/
 out/
 release/
 *.exe
@@ -44,13 +45,11 @@ release/
 electron/bin/relatorios/
 electron/bin/uploads/
 
-# Uploads e arquivos gerados localmente
-backend/uploads/
+# Uploads e arquivos gerados localmente (em dev ficam em backend/uploads)
 uploads/
 
 # Certificados digitais — CRÍTICO
 Certificados/
-backend/Certificados/
 *.pfx
 *.p12
 *.cer
@@ -62,37 +61,24 @@ release.env
 *.log
 backend/logs/
 
-# Backups automáticos do SQLite (item 3.3)
+# Backups automáticos do SQLite (backups/ ao lado do .db)
 backups/
-backend/backups/
 
 # IDE
 .vscode/
 .idea/
 
-# DB / Docker volumes
-postgres_data/
-
-# Alembic — migrações VERSIONADAS (item 5.2): backend/alembic/versions/*.py
-# são commitadas no git (baseline + evoluções futuras). A pasta legado/
-# guarda migrações antigas nunca commitadas (substituídas pela baseline) e
-# não deve entrar no repo nem na imagem Docker.
+# Alembic — migrações VERSIONADAS: backend/alembic/versions/*.py são
+# commitadas. A pasta legado/ guarda migrações antigas nunca commitadas
+# (substituídas pela baseline) e não entra no repo.
 backend/alembic/legado/
 
-# Documentação (parte 10.2): docs/ é versionado no git (ROADMAP, ESTRUTURA,
-# FUNCIONALIDADES, FINANCEIRO, ELECTRON etc.) — nova máquina tem a documentação.
-# Exceção: INFOS.md é anotação pessoal do desenvolvedor (caminhos absolutos da
-# máquina) e permanece fora do versionamento.
+# Anotação pessoal do desenvolvedor (caminhos da máquina): fora do git.
 docs/INFOS.md
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Cobertura de testes (pytest+coverage, Parte 8)
-backend/.coverage
-backend/htmlcov/
-.htmlcov/
 
 # Fichas de corte geradas em teste (PDFs locais, não versionar)
 fichas-teste/

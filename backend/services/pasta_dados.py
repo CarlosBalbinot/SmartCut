@@ -4,7 +4,7 @@ certificados).
 Uma única pasta, fora da pasta de instalação:
   - app instalado: ``SMARTCUT_DADOS_DIR`` injetada pelo Electron
     (``%APPDATA%\\smartcut`` — a mesma do banco e dos modelos de relatório);
-  - desenvolvimento / Docker: a pasta ``backend/`` (como sempre foi).
+  - desenvolvimento: a pasta ``backend/`` (como sempre foi).
 
 O banco guarda caminhos RELATIVOS a esta pasta (``uploads/financeiro/...``),
 com ``/``. Caminhos absolutos antigos continuam sendo lidos como estão.

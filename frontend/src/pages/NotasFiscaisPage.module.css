@@ -297,10 +297,6 @@
   color: var(--sc-text-secondary);
 }
 
-.fieldFull {
-  grid-column: span 2;
-}
-
 .input,
 .textarea {
   border: var(--sc-input-border);

@@ -1,26 +1,17 @@
 import logging
 import uuid
-from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from middleware.permissions import require_permission
 from models.encaixe import Encaixe
-from models.ordem_corte import (
-    COMPRIMENTO_MAX_MAX_CM,
-    COMPRIMENTO_MAX_MIN_CM,
-    COMPRIMENTO_MAX_PADRAO_CM,
-    QUALIDADE_PADRAO,
-    OrdemCorte,
-)
+from models.ordem_corte import OrdemCorte
 from models.pedido import PedidoVenda
 from models.tecido import CorTecido, LoteTecido
-from routers.ordens_corte import encaixe_rapido as encaixe_rapido_job
-from schemas.encaixe_schema import EncaixeCreate
-from services import encaixe_service, report_service
+from services import encaixe_service
 from services.ordem_corte_service import numero_fmt
 
 logger = logging.getLogger(__name__)
@@ -94,31 +85,6 @@ def listar_encaixes(pedido_id: uuid.UUID | None = None, db: Session = Depends(ge
         "data": [{**e.model_dump(), **ctx[str(row.id)], **_totais_camadas(row)} for e, row in zip(encaixes, linhas)],
         "error": None,
     }
-
-
-# ── Rota fixa deve vir ANTES das rotas com parâmetro ─────────────────────────
-# Geração automática — é a ação do módulo "Encaixe Rápido", distinta da
-# gestão manual de encaixes abaixo.
-
-
-@router.post(
-    "/gerar/{pedido_id}",
-    response_model=dict,
-    status_code=status.HTTP_202_ACCEPTED,
-    dependencies=[Depends(require_permission("encaixe_rapido", "criar"))],
-)
-def gerar_encaixe_automatico(
-    pedido_id: uuid.UUID,
-    comprimento_max_cm: int = Query(COMPRIMENTO_MAX_PADRAO_CM, ge=COMPRIMENTO_MAX_MIN_CM, le=COMPRIMENTO_MAX_MAX_CM),
-    qualidade: Literal["AUTOMATICO", "RAPIDO", "EQUILIBRADO", "MAXIMO"] = QUALIDADE_PADRAO,
-    db: Session = Depends(get_db),
-):
-    """Rota antiga do Encaixe Rápido (M2d): não gera mais dentro da
-    requisição — o motor v2 leva minutos. Enfileira o MESMO job de
-    POST /ordens-corte/encaixe-rapido/{pedido_id} e devolve 202 {job_id};
-    o progresso e o resultado ({encaixes, avisos, motor_usado}) saem em
-    GET /ordens-corte/encaixe-rapido/{pedido_id}/job."""
-    return encaixe_rapido_job(pedido_id, comprimento_max_cm, qualidade, db)
 
 
 @router.get("/{encaixe_id}", response_model=dict, dependencies=[Depends(require_permission(_MOD, "ver"))])
@@ -197,17 +163,6 @@ def obter_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     }
 
 
-@router.post(
-    "/",
-    response_model=dict,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_permission(_MOD, "criar"))],
-)
-def gerar_encaixe(payload: EncaixeCreate, db: Session = Depends(get_db)):
-    encaixe = encaixe_service.gerar(db, payload)
-    return {"data": encaixe, "error": None}
-
-
 @router.delete(
     "/{encaixe_id}",
     status_code=status.HTTP_200_OK,
@@ -219,53 +174,3 @@ def deletar_encaixe(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encaixe não encontrado")
     return {"data": {"id": str(encaixe_id)}, "error": None}
-
-
-@router.get(
-    "/{encaixe_id}/relatorio",
-    response_model=dict,
-    dependencies=[Depends(require_permission(_MOD, "ver"))],
-)
-def gerar_relatorio(encaixe_id: uuid.UUID, db: Session = Depends(get_db)):
-    resultado = encaixe_service.gerar_relatorio(db, encaixe_id)
-    if not resultado:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Encaixe não encontrado")
-    return {"data": resultado, "error": None}
-
-
-@router.get("/{pedido_id}/pdf", dependencies=[Depends(require_permission(_MOD, "ver"))])
-def pdf_encaixe(pedido_id: uuid.UUID, db: Session = Depends(get_db)):
-    """Gera PDF de relatório de corte com mapa visual de todos os enfestos do pedido.
-
-    Rota por PEDIDO (legada) — ainda usada pelo "Baixar PDF de Corte" da
-    EncaixePage e do Encaixe Rápido; o formulário de corte da OC vem no OC5.
-    """
-    encaixes = encaixe_service.listar(db, pedido_id=pedido_id)
-    if not encaixes:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nenhum encaixe encontrado para este pedido.",
-        )
-    pedido_row = db.get(PedidoVenda, pedido_id)
-    if not pedido_row:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pedido não encontrado.",
-        )
-    # gerar_pdf_encaixe só usa esses 3 campos de cabeçalho — todo o resto
-    # (peças, tecido, mapa) já vem do mapa_json dos encaixes carregados
-    # acima. O router legado de pedidos (que acessava
-    # PedidoVenda.pedido_tecidos/.pecas) foi removido na reestruturação —
-    # por isso o PDF passa a ser montado a partir do mapa_json.
-    pedido = {
-        "num_pedido": pedido_row.numero,
-        "cliente": pedido_row.cliente_razao_social,
-        "data_pedido": pedido_row.data_emissao.isoformat() if pedido_row.data_emissao else None,
-    }
-    pdf_bytes = report_service.gerar_pdf_encaixe(pedido, [e.model_dump() for e in encaixes])
-    num = str(pedido.get("num_pedido", "encaixe")).replace("/", "-").replace(" ", "_")
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="encaixe-{num}.pdf"'},
-    )

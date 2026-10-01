@@ -505,10 +505,6 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
-.modalPillWide {
-  width: 480px;
-}
-
 .modalPillTitle {
   font-size: 1.05rem;
   font-weight: 700;
@@ -555,19 +551,6 @@
 }
 .btnPillSecondary:hover {
   background: var(--sc-surface-hover);
-}
-
-/* ── Section labels ── */
-.sectionLabel {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--sc-text-secondary);
-  margin: 0.5rem 0 0.75rem;
-}
-.sectionLabelMt {
-  margin-top: 1.25rem;
 }
 
 /* ── Field grid ── */

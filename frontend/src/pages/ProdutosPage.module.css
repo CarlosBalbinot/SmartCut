@@ -333,9 +333,6 @@
   color: var(--sc-text-secondary);
   margin: 0.5rem 0 0.75rem;
 }
-.sectionLabelMt {
-  margin-top: 1.25rem;
-}
 
 /* ── Field grid ── */
 .fieldGrid {

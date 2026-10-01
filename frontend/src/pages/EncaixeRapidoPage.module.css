@@ -72,27 +72,6 @@
   cursor: not-allowed;
 }
 
-/* ── Badge lote ── */
-.loteBadge {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 9px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--sc-success-bg);
-  color: var(--sc-success-text);
-  border: 1px solid var(--sc-success-border);
-}
-
 /* ── Lista de peças ── */
 .pecasList {
   list-style: none;

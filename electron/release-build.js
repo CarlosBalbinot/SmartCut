@@ -15,7 +15,7 @@
 //        # opcional: WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD também são aceitos
 //   2. Variáveis de ambiente já exportadas no shell/CI (CSC_LINK/CSC_KEY_PASSWORD).
 //
-// Documentação completa: docs/ELECTRON.md (seção "Instalador e assinatura").
+// Documentação completa: docs/DESENVOLVIMENTO.md (seção "Release").
 const { build, Platform, createTargets } = require('electron-builder');
 const fs = require('fs');
 const path = require('path');

@@ -11,7 +11,7 @@ Os arquivos são lidos a cada impressão, sem cache.
 Pasta (<raiz do SmartCut>/relatorios; SMARTCUT_RELATORIOS_DIR sobrescreve):
     vendas/relVen001.html              modelo principal
     vendas/relVen001_<variante>.html   variantes
-    producao/relPro001.html            formulário de corte da Ordem de Corte
+    producao/relPro001.html            formulário de corte (Ordem de Corte ou Encaixe Rápido)
     _comum/                            partes comuns: {% include "_comum/cabecalho_empresa.html" %}
     assets/                            logo e imagens — asset("logo.png")
     config.json                        {"relVen001": {"padrao": "relVen001.html"}, ...}
