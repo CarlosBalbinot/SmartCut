@@ -6,6 +6,9 @@
 testpaths = ["tests"]
 addopts = "-q"
 pythonpath = ["."]
+markers = [
+    "postgres: roda também no PostgreSQL (SMARTCUT_TEST_PG_URL); sem a variável, é pulado",
+]
 
 [tool.coverage.run]
 branch = true

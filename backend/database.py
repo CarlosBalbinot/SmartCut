@@ -13,15 +13,21 @@ def resolver_url() -> str:
     return settings.database_url
 
 
+def criar_engine(url: str):
+    """Engine com a configuração do app. Os testes de concorrência
+    (tests/concorrencia) usam esta mesma função, para disputar o banco com a
+    configuração real.
+
+    `connect_args={"check_same_thread": False}` é específico do SQLite (o
+    banco do SmartCut); só é aplicado quando o driver é SQLite."""
+    kwargs: dict = {"echo": False}
+    if url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    return create_engine(url, **kwargs)
+
+
 _url = resolver_url()
-
-# `connect_args={"check_same_thread": False}` é específico do SQLite (o banco
-# do SmartCut); só é aplicado quando o driver é SQLite.
-_engine_kwargs: dict = {"echo": False}
-if _url.startswith("sqlite"):
-    _engine_kwargs["connect_args"] = {"check_same_thread": False}
-
-engine = create_engine(_url, **_engine_kwargs)
+engine = criar_engine(_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
