@@ -1,5 +1,10 @@
 # SmartCut — Roadmap e Visão de Produto
 
+> **DESCARTADO.** Este plano não vale mais: o SmartCut **não terá versão web,
+> SaaS nem multiempresa**. Tudo roda instalado na máquina do cliente. O
+> documento fica só como registro histórico; o estado atual e os próximos
+> passos estão em [../SISTEMA.md](../SISTEMA.md).
+
 ## Visão do Produto
 
 O SmartCut nasceu como um sistema interno de gestão de corte têxtil para a Vaidosa Fitness.

@@ -11,6 +11,9 @@ Fitness, Guaporé/RS): cadastros de tecidos, moldes e produtos, pedidos de
 venda, **planejamento do corte com encaixe automático**, nota fiscal
 eletrônica, financeiro e um painel para os vendedores.
 
+O SmartCut é **somente desktop**: tudo roda instalado na máquina do cliente
+(aplicativo, backend, banco e arquivos). **Não haverá versão web nem SaaS.**
+
 ---
 
 ## a. Arquitetura
@@ -331,7 +334,8 @@ camada**; os totais multiplicam por `num_camadas`.
 5. Financeiro: despesas recorrentes, relatórios por categoria/fornecedor e
    geração da venda financeira direto do pedido/NF-e.
 6. Redesign: aplicar a cor principal do sistema (a definir; sem azul).
-7. Longo prazo: versão web/SaaS para outras confecções (multiempresa).
 
-O planejamento antigo (fases, deploy web, custos de SaaS) está em
+Fora do escopo: versão web, SaaS ou multiempresa. O SmartCut continua sendo
+um aplicativo instalado na máquina do cliente. O planejamento antigo (fases,
+deploy web, custos de SaaS) foi descartado e fica só como registro em
 [historico/ROADMAP.md](historico/ROADMAP.md).
