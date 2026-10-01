@@ -8,6 +8,7 @@ import { API_BASE } from "../services/config";
 import appIcon from "../assets/android-chrome-512x512.png";
 
 const AUTH_BASE = `${API_BASE}/api/v1/auth`;
+const MSG_FALHA_CADASTRO = "Não foi possível concluir o cadastro. Tente novamente.";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -80,19 +81,24 @@ export default function LoginPage() {
     }
     setEnviando(true);
     try {
-      const res = await fetch(`${AUTH_BASE}/setup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, nome_completo: nomeCompleto, senha }),
-      });
-      const json = await res.json();
+      let res;
+      try {
+        res = await fetch(`${AUTH_BASE}/setup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, nome_completo: nomeCompleto, senha }),
+        });
+      } catch {
+        throw new Error(MSG_FALHA_CADASTRO);
+      }
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw erroDaResposta(res, json);
+        throw erroDaResposta(res, json, MSG_FALHA_CADASTRO);
       }
       await login(username, senha);
       navigate("/");
     } catch (err) {
-      setErro(err.message || "Não foi possível criar o administrador.");
+      setErro(err.message || MSG_FALHA_CADASTRO);
     } finally {
       setEnviando(false);
     }

@@ -464,8 +464,9 @@ entregas e perdeu os itens que só servem ao ERP:
   2a (transições da OC) e 2b (baixa de estoque dos lotes).
 - **v1.5.0**: passo 3 (`versao` com 409) só para OC, molde/grupo de molde,
   produto, lote e configurações; passo 4 (datas com fuso); 5b (códigos de
-  erro no Núcleo, Cadastros, Moldes e Corte); 5c (códigos no decisor de
-  enfesto).
+  erro no Núcleo, Cadastros, Moldes e Corte; na validação de campos, usar
+  `params.campos` para dizer qual campo falhou — "Preencha o campo Nome." —
+  em vez da mensagem genérica); 5c (códigos no decisor de enfesto).
 
 ### Itens adiados
 

@@ -35,7 +35,8 @@ export async function apiFetch(url, options = {}) {
 // português passa direto (inclusive em 5xx de regra, como o motor de
 // encaixe); erro interno, lista de validação do pydantic, 5xx sem o formato
 // novo ou sem JSON e qualquer coisa com cara de erro de banco viram mensagem
-// genérica — nunca mostrar erro técnico cru na tela.
+// genérica — nunca mostrar erro técnico cru na tela. `fallback` (opcional)
+// substitui a genérica quando o backend não mandou mensagem aproveitável.
 const _ERRO_TECNICO =
   /sqlalchemy|sqlite|psycopg|integrityerror|operationalerror|traceback|\b(select|insert|update|delete)\b.+\b(from|into|set|where)\b/i;
 const _MSG_GENERICA = "Não foi possível concluir a operação. Tente novamente.";
@@ -45,19 +46,19 @@ function _erroEstruturado(json) {
   return e && typeof e === "object" && !Array.isArray(e) ? e : null;
 }
 
-export function mensagemErro(json, status) {
+export function mensagemErro(json, status, fallback) {
   const estruturado = _erroEstruturado(json);
   let msg;
   if (estruturado) {
-    if (estruturado.codigo === "ERRO_INTERNO") return _MSG_GENERICA;
+    if (estruturado.codigo === "ERRO_INTERNO") return fallback || _MSG_GENERICA;
     msg = estruturado.mensagem;
   } else {
-    if (status >= 500) return _MSG_GENERICA;
+    if (status >= 500) return fallback || _MSG_GENERICA;
     msg = json?.error || json?.detail;
   }
   if (Array.isArray(msg)) return "Dados inválidos. Verifique os campos.";
   if (typeof msg !== "string" || !msg.trim())
-    return `Não foi possível concluir a operação (erro ${status}).`;
+    return fallback || `Não foi possível concluir a operação (erro ${status}).`;
   if (_ERRO_TECNICO.test(msg))
     return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";
   return msg;
@@ -66,11 +67,12 @@ export function mensagemErro(json, status) {
 // Error pronto para `throw` a partir de uma resposta não-ok: mensagem
 // exibível (mensagemErro) mais `status`, `codigo` (ex.: "OC_STATUS_MUDOU";
 // null se o backend não mandou) e `params` — a tela decide pelo código,
-// não pelo texto. `json` é o corpo já lido ({} se não veio JSON).
-export function erroDaResposta(res, json) {
+// não pelo texto. `json` é o corpo já lido ({} se não veio JSON);
+// `fallback`: mensagem da tela para quando o backend não mandou nenhuma.
+export function erroDaResposta(res, json, fallback) {
   const status = res?.status ?? 0;
   const estruturado = _erroEstruturado(json);
-  const err = new Error(mensagemErro(json, status));
+  const err = new Error(mensagemErro(json, status, fallback));
   err.status = status;
   err.codigo = estruturado?.codigo ?? null;
   err.params = estruturado?.params ?? {};

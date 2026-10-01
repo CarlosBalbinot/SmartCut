@@ -3,6 +3,9 @@ import { API_BASE } from "../services/config";
 import { apiFetch, erroDaResposta } from "../services/api";
 import { tokenStore } from "../services/tokenStore";
 
+const MSG_FALHA_LOGIN =
+  "Não foi possível entrar. Verifique se o SmartCut está aberto e tente novamente.";
+
 const AUTH_BASE = `${API_BASE}/api/v1/auth`;
 
 export const AuthContext = createContext(null);
@@ -36,15 +39,22 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (username, senha) => {
-    const res = await fetch(`${AUTH_BASE}/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, senha }),
-    });
-    const json = await res.json();
+    // Sem resposta do backend (fora do ar, sem JSON): mensagem própria; com
+    // mensagem do backend (ex.: senha incorreta), ela é que aparece.
+    let res;
+    try {
+      res = await fetch(`${AUTH_BASE}/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, senha }),
+      });
+    } catch {
+      throw new Error(MSG_FALHA_LOGIN);
+    }
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw erroDaResposta(res, json);
+      throw erroDaResposta(res, json, MSG_FALHA_LOGIN);
     }
     // Item 1.4: Electron persiste via safeStorage; no navegador o cookie
     // HttpOnly já foi emitido pelo backend na resposta do login.

@@ -174,4 +174,16 @@ describe("formato de erro {codigo, params, mensagem} (F0 passo 5a)", () => {
       "Não foi possível concluir a operação. Verifique os dados e tente novamente."
     );
   });
+
+  it("fallback da tela substitui a genérica só quando o backend não mandou mensagem", () => {
+    const fb = "Não foi possível entrar. Verifique se o SmartCut está aberto e tente novamente.";
+    expect(erroDaResposta({ status: 502 }, {}, fb).message).toBe(fb);
+    expect(erroDaResposta({ status: 400 }, {}, fb).message).toBe(fb);
+    expect(erroDaResposta({ status: 500 }, corpo("ERRO_INTERNO", "Erro interno"), fb).message).toBe(
+      fb
+    );
+    expect(
+      erroDaResposta({ status: 401 }, corpo("ERRO", "Usuário ou senha inválidos"), fb).message
+    ).toBe("Usuário ou senha inválidos");
+  });
 });

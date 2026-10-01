@@ -17,6 +17,8 @@ SQLAlchemy 2, Alembic) + SQLite. Sistema de gestão da Vaidosa Fitness.
 - Ler antes de escrever; usar os nomes exatos que já existem (não renomear).
 - Backend em camadas: `routers/` (respostas `{"data": ..., "error": ...}`) →
   `services/` → `models/`; ids UUID; permissões por `require_permission(modulo, acao)`.
+- Erro de negócio novo usa `ErroApp` com código (ex.: `OC_STATUS_MUDOU`) e
+  params (`services/erros.py`); nunca `HTTPException` com texto solto.
 - Frontend: uma função por rota em `src/api/`; sem dependência nova sem necessidade.
 - Antes de terminar: `ruff check`/`ruff format` + pytest no backend; `npm run lint`,
   `npm test` e `npm run build` no frontend.

@@ -105,4 +105,75 @@ describe("LoginPage", () => {
 
     expect(screen.getByText("As senhas não coincidem.")).toBeInTheDocument();
   });
+
+  async function preencherCadastro(user) {
+    await screen.findByText("Configure o primeiro administrador do sistema");
+    await user.type(screen.getByLabelText(/^Usuário$/), "admin");
+    await user.type(screen.getByLabelText(/nome completo/i), "Admin Teste");
+    await user.type(screen.getByLabelText(/^Senha$/), "senha@123");
+    await user.type(screen.getByLabelText(/confirmar senha/i), "senha@123");
+    await user.click(screen.getByRole("button", { name: "Criar administrador" }));
+  }
+
+  function mockCadastro(respostaSetup) {
+    globalThis.fetch = vi.fn((url) =>
+      String(url).endsWith("/setup")
+        ? respostaSetup()
+        : Promise.resolve({ json: async () => ({ primeiro_acesso: true }) })
+    );
+  }
+
+  it("primeiro cadastro sem mensagem do backend mostra a mensagem própria", async () => {
+    const user = userEvent.setup();
+    mockCadastro(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new SyntaxError("sem JSON");
+        },
+      })
+    );
+    render(<LoginPage />);
+    await preencherCadastro(user);
+
+    expect(
+      await screen.findByText("Não foi possível concluir o cadastro. Tente novamente.")
+    ).toBeInTheDocument();
+    expect(loginMock).not.toHaveBeenCalled();
+  });
+
+  it("primeiro cadastro com backend fora do ar mostra a mensagem própria", async () => {
+    const user = userEvent.setup();
+    mockCadastro(() => Promise.reject(new TypeError("Failed to fetch")));
+    render(<LoginPage />);
+    await preencherCadastro(user);
+
+    expect(
+      await screen.findByText("Não foi possível concluir o cadastro. Tente novamente.")
+    ).toBeInTheDocument();
+  });
+
+  it("primeiro cadastro com mensagem do backend mostra a mensagem dele", async () => {
+    const user = userEvent.setup();
+    mockCadastro(() =>
+      Promise.resolve({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          data: null,
+          error: {
+            codigo: "ERRO",
+            params: {},
+            mensagem: "A senha deve ter ao menos 8 caracteres.",
+          },
+          detail: "A senha deve ter ao menos 8 caracteres.",
+        }),
+      })
+    );
+    render(<LoginPage />);
+    await preencherCadastro(user);
+
+    expect(await screen.findByText("A senha deve ter ao menos 8 caracteres.")).toBeInTheDocument();
+  });
 });
