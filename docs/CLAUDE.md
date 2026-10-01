@@ -2,7 +2,9 @@
 
 Leia antes de qualquer alteração. Como o sistema funciona:
 [SISTEMA.md](SISTEMA.md). Setup, testes e build:
-[DESENVOLVIMENTO.md](DESENVOLVIMENTO.md).
+[DESENVOLVIMENTO.md](DESENVOLVIMENTO.md). Antes de qualquer mudança estrutural
+(banco, instalação, módulos, autenticação, API, idiomas), consultar
+[ARQUITETURA.md](ARQUITETURA.md).
 
 SmartCut: Electron + React 18 (Vite, CSS Modules) + FastAPI (Python 3.12,
 SQLAlchemy 2, Alembic) + SQLite. Sistema de gestão da Vaidosa Fitness.

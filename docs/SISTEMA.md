@@ -326,16 +326,33 @@ camada**; os totais multiplicam por `num_camadas`.
 
 ## Próximos passos
 
+Roadmap das próximas fases (detalhes, decisões e status em
+[ARQUITETURA.md](ARQUITETURA.md)):
+
+- **F0 — Robustez no SQLite**: numerações atômicas, trava no estoque e nas
+  transições da OC, controle de edição simultânea.
+- **Fase 5 — NF-e autorizada gera parcelas no financeiro.**
+- **F1 — PostgreSQL num servidor só**: banco e backend como serviços do
+  Windows, backup com `pg_dump`.
+- **F2 — Vários usuários na rede**: estações conectando ao servidor da LAN.
+- **F3 — Módulos, licença e edições**: módulos por licença, Corte avulso,
+  edição Brasil e internacional.
+- **F4 — API de integração**: Corte e Moldes integrados ao ERP do cliente.
+- **F5 — Idiomas**: pt, it, en, es no núcleo, Corte, Moldes e relatórios de
+  corte.
+
+Pendências pontuais:
+
 1. Corrigir o erro 422 em `POST /financeiro/metas`.
 2. Moldes: alinhamento do SVG importado, detecção de piques, margem de
    costura, tecido tubular (dobrado), zoom/pan no editor.
 3. Pedidos de venda: bugs conhecidos de menu, autocomplete e scroll da grade.
 4. Painel do vendedor: finalizar dashboard de metas e pedidos por mês.
-5. Financeiro: despesas recorrentes, relatórios por categoria/fornecedor e
-   geração da venda financeira direto do pedido/NF-e.
+5. Financeiro: despesas recorrentes e relatórios por categoria/fornecedor.
 6. Redesign: aplicar a cor principal do sistema (a definir; sem azul).
 
-Fora do escopo: versão web, SaaS ou multiempresa. O SmartCut continua sendo
-um aplicativo instalado na máquina do cliente. O planejamento antigo (fases,
-deploy web, custos de SaaS) foi descartado e fica só como registro em
+Fora do escopo: versão web, SaaS ou multiempresa. O SmartCut é instalado na
+empresa do cliente (servidor e estações na rede local); na nuvem ficam só
+licenças e atualizações. O planejamento antigo (fases, deploy web, custos de
+SaaS) foi descartado e fica só como registro em
 [historico/ROADMAP.md](historico/ROADMAP.md).
