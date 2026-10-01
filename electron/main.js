@@ -313,10 +313,12 @@ async function gerarPdfRelatorio(codigo, id, variante) {
     if (!resp.ok) {
       const json = await resp.json().catch(() => ({}));
       const detalhe = typeof json.detail === 'string' ? json.detail : null;
+      // `error`: texto (422 de modelo) ou {codigo, params, mensagem}.
+      const textoError = typeof json.error === 'string' ? json.error : json.error?.mensagem;
       return {
         ok: false,
         status: resp.status,
-        erro: json.error || detalhe || `Erro ${resp.status} ao gerar o relatório.`,
+        erro: textoError || detalhe || `Erro ${resp.status} ao gerar o relatório.`,
         modelo: json.modelo || null,
       };
     }

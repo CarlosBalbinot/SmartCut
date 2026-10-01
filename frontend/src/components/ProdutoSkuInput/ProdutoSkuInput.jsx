@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { API_BASE } from "../../services/config";
-import { apiFetch } from "../../services/api";
+import { apiFetch, erroDaResposta } from "../../services/api";
 // Mesmo visual do TesInput (campo + lupa + modal de seleção).
 import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import styles from "../TesInput/TesInput.module.css";
@@ -17,7 +17,7 @@ async function getSkus(path, params) {
   for (const [k, v] of Object.entries(params)) if (v != null) qs.set(k, v);
   const res = await apiFetch(`${API_BASE}/api/v1/produtos/skus${path}?${qs}`);
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.detail || json.error || `Erro ${res.status}`);
+  if (!res.ok) throw erroDaResposta(res, json);
   return json.data;
 }
 

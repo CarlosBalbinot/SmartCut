@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import styles from "./LoginPage.module.css";
 import { useAuth } from "../auth/useAuth";
+import { erroDaResposta } from "../services/api";
 import { API_BASE } from "../services/config";
 import appIcon from "../assets/android-chrome-512x512.png";
 
@@ -86,7 +87,7 @@ export default function LoginPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json.detail || json.error || "Não foi possível criar o administrador.");
+        throw erroDaResposta(res, json);
       }
       await login(username, senha);
       navigate("/");

@@ -1,5 +1,5 @@
 import { API_BASE } from "../services/config";
-import { apiFetch } from "../services/api";
+import { apiFetch, erroDaResposta } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1/tes`;
 
 async function request(path, options = {}) {
@@ -9,11 +9,7 @@ async function request(path, options = {}) {
   });
   const json = await res.json();
   if (!res.ok) {
-    const detail = json.detail;
-    const msg = Array.isArray(detail)
-      ? detail[0]?.msg || JSON.stringify(detail)
-      : detail || json.error || `Erro ${res.status}`;
-    throw new Error(msg);
+    throw erroDaResposta(res, json);
   }
   return json.data;
 }

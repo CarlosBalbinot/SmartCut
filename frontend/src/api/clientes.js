@@ -1,5 +1,5 @@
 import { API_BASE } from "../services/config";
-import { apiFetch } from "../services/api";
+import { apiFetch, erroDaResposta } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -9,7 +9,7 @@ async function request(path, options = {}) {
   });
   const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.error || json.detail || `Erro ${res.status}`);
+    throw erroDaResposta(res, json);
   }
   return json.data;
 }
@@ -38,7 +38,7 @@ export const getClienteByCnpj = async (cnpj) => {
   });
   if (res.status === 404) return null;
   const json = await res.json();
-  if (!res.ok) throw new Error(json.error || json.detail || `Erro ${res.status}`);
+  if (!res.ok) throw erroDaResposta(res, json);
   return json.data;
 };
 

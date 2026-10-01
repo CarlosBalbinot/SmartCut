@@ -1,5 +1,5 @@
 import { API_BASE } from "../services/config";
-import { apiFetch } from "../services/api";
+import { apiFetch, erroDaResposta } from "../services/api";
 const BASE_URL = `${API_BASE}/api/v1`;
 
 async function request(path, options = {}) {
@@ -9,8 +9,7 @@ async function request(path, options = {}) {
   });
   const json = await res.json();
   if (!res.ok) {
-    const err = new Error(json.error || json.detail || `Erro ${res.status}`);
-    err.status = res.status;
+    const err = erroDaResposta(res, json);
     // Salvar em lote (422): [{ item_id | ref_temp, campo, mensagem }] por item.
     err.erros = json.erros || null;
     throw err;

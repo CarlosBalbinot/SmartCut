@@ -37,6 +37,7 @@ from models.pedido import ItemPedido, PedidoVenda
 from models.produto_sku import ProdutoSKU
 from models.tecido import ConsumoLote, CorTecido, LoteTecido
 from services import lote_service, nesting_service
+from services.erros import ERRO, ErroApp
 from services.plano_enfesto import linhas_enfesto, planejar
 
 logger = logging.getLogger(__name__)
@@ -54,13 +55,11 @@ def _agora() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class ErroOC(Exception):
-    """Regra de negócio da OC violada (router → HTTP `status`)."""
+class ErroOC(ErroApp):
+    """Regra de negócio da OC violada (handler → HTTP `status`)."""
 
-    def __init__(self, mensagem: str, status: int = 400):
-        super().__init__(mensagem)
-        self.mensagem = mensagem
-        self.status = status
+    def __init__(self, mensagem: str, status: int = 400, codigo: str = ERRO, **params):
+        super().__init__(codigo, mensagem, status, **params)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

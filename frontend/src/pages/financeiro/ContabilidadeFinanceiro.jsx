@@ -4,7 +4,7 @@ import {
   gerarPacoteContabil,
   gerarResumoInternoContabil,
 } from "../../api/financeiro";
-import { apiFetch } from "../../services/api";
+import { apiFetch, erroDaResposta } from "../../services/api";
 import { API_BASE } from "../../services/config";
 import styles from "./Contabilidade.module.css";
 
@@ -61,7 +61,7 @@ async function abrirArquivo(caminho) {
     const res = await apiFetch(`${API_BASE}/api/v1/uploads/${rel}`);
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
-      throw new Error(json.error || json.detail || "Não foi possível baixar o arquivo");
+      throw erroDaResposta(res, json);
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

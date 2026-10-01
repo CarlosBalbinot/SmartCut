@@ -25,13 +25,15 @@ const MSG_ERRO = "Não foi possível gerar o relatório.";
 const noElectron = () => Boolean(window.electronAPI);
 
 // Texto do erro para a tela. 422 de modelo: "Erro no modelo {arquivo},
-// linha N: mensagem".
+// linha N: mensagem". `error` vem em texto (422 de modelo) ou no formato
+// {codigo, params, mensagem} (services/erros.py no backend).
 function mensagemErro({ modelo, erro, error, detail } = {}) {
   if (modelo) {
     const onde = modelo.linha ? `${modelo.arquivo}, linha ${modelo.linha}` : modelo.arquivo;
     return `Erro no modelo ${onde}: ${modelo.mensagem}`;
   }
-  return erro || error || (typeof detail === "string" ? detail : null) || MSG_ERRO;
+  const textoError = typeof error === "string" ? error : error?.mensagem;
+  return erro || textoError || (typeof detail === "string" ? detail : null) || MSG_ERRO;
 }
 
 // Número do documento pelo <title> do modelo ("ORÇAMENTO 000001" → "000001").

@@ -37,6 +37,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from services.erros import ERRO, ErroApp
 from services.nesting_service import GeracaoCancelada
 
 logger = logging.getLogger(__name__)
@@ -48,13 +49,11 @@ Chave = tuple[str, uuid.UUID]
 Tarefa = Callable[[Session, "Job"], dict]
 
 
-class ErroJob(Exception):
-    """Regra dos jobs violada (router → HTTP `status`)."""
+class ErroJob(ErroApp):
+    """Regra dos jobs violada (handler → HTTP `status`)."""
 
-    def __init__(self, mensagem: str, status: int = 409):
-        super().__init__(mensagem)
-        self.mensagem = mensagem
-        self.status = status
+    def __init__(self, mensagem: str, status: int = 409, codigo: str = ERRO, **params):
+        super().__init__(codigo, mensagem, status, **params)
 
 
 def _agora() -> datetime:

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styles from "./CatalogosPage.module.css";
+import { erroDaResposta } from "../../services/api";
 import { API_BASE } from "../../services/config";
 import { vendedorFetch } from "../../services/vendedorApi";
 import { tokenStore } from "../../services/tokenStore";
@@ -14,7 +15,7 @@ async function downloadCatalogo(id, nome) {
   });
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
-    throw new Error(json.error || `Erro ${res.status}`);
+    throw erroDaResposta(res, json);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

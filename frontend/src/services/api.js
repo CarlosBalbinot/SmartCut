@@ -30,20 +30,49 @@ export async function apiFetch(url, options = {}) {
   return res;
 }
 
-// Texto de erro exibível ao usuário: o detail em português dos
-// HTTPException passa direto; lista de validação do pydantic, resposta 5xx
-// ou sem JSON e qualquer coisa com cara de erro de banco viram mensagem
+// Texto de erro exibível ao usuário. Formato do backend (F0 passo 5a):
+// {"error": {codigo, params, mensagem}, "detail": mensagem}. A mensagem em
+// português passa direto (inclusive em 5xx de regra, como o motor de
+// encaixe); erro interno, lista de validação do pydantic, 5xx sem o formato
+// novo ou sem JSON e qualquer coisa com cara de erro de banco viram mensagem
 // genérica — nunca mostrar erro técnico cru na tela.
 const _ERRO_TECNICO =
   /sqlalchemy|sqlite|psycopg|integrityerror|operationalerror|traceback|\b(select|insert|update|delete)\b.+\b(from|into|set|where)\b/i;
+const _MSG_GENERICA = "Não foi possível concluir a operação. Tente novamente.";
+
+function _erroEstruturado(json) {
+  const e = json?.error;
+  return e && typeof e === "object" && !Array.isArray(e) ? e : null;
+}
 
 export function mensagemErro(json, status) {
-  const msg = json?.error || json?.detail;
-  if (status >= 500) return "Não foi possível concluir a operação. Tente novamente.";
+  const estruturado = _erroEstruturado(json);
+  let msg;
+  if (estruturado) {
+    if (estruturado.codigo === "ERRO_INTERNO") return _MSG_GENERICA;
+    msg = estruturado.mensagem;
+  } else {
+    if (status >= 500) return _MSG_GENERICA;
+    msg = json?.error || json?.detail;
+  }
   if (Array.isArray(msg)) return "Dados inválidos. Verifique os campos.";
   if (typeof msg !== "string" || !msg.trim())
     return `Não foi possível concluir a operação (erro ${status}).`;
   if (_ERRO_TECNICO.test(msg))
     return "Não foi possível concluir a operação. Verifique os dados e tente novamente.";
   return msg;
+}
+
+// Error pronto para `throw` a partir de uma resposta não-ok: mensagem
+// exibível (mensagemErro) mais `status`, `codigo` (ex.: "OC_STATUS_MUDOU";
+// null se o backend não mandou) e `params` — a tela decide pelo código,
+// não pelo texto. `json` é o corpo já lido ({} se não veio JSON).
+export function erroDaResposta(res, json) {
+  const status = res?.status ?? 0;
+  const estruturado = _erroEstruturado(json);
+  const err = new Error(mensagemErro(json, status));
+  err.status = status;
+  err.codigo = estruturado?.codigo ?? null;
+  err.params = estruturado?.params ?? {};
+  return err;
 }

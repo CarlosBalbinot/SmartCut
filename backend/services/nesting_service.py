@@ -54,6 +54,7 @@ from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, QUALIDADE_PADRAO
 from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
 from services import nesting_v2
+from services.erros import ERRO, ErroApp
 from services.nesting_v2 import decisor
 from services.nesting_v2.geometria import espelha_segunda_copia
 from services.gramatura_service import aplicar_encolhimento, calcular_custo, metros_para_peso
@@ -109,9 +110,12 @@ class GeracaoCancelada(Exception):
     nunca cai em nova tentativa e nunca grava nada."""
 
 
-class ErroNesting(RuntimeError):
+class ErroNesting(ErroApp, RuntimeError):
     """Falha do motor de encaixe (após a nova tentativa) — mensagem legível;
     o job vira ERRO e nenhum encaixe parcial é gravado."""
+
+    def __init__(self, mensagem: str, codigo: str = ERRO, **params):
+        super().__init__(codigo, mensagem, 500, **params)
 
 
 # progresso(fase=..., mesa_atual=..., total_mesas=..., aproveitamento_parcial=...)

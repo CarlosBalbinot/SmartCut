@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LoginVendedorPage.module.css";
+import { erroDaResposta } from "../../services/api";
 import { API_BASE, urlAbsoluta } from "../../services/config";
 import { tokenStore } from "../../services/tokenStore";
 
@@ -34,7 +35,7 @@ export default function LoginVendedorPage() {
         body: JSON.stringify({ username, senha }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || json.detail || "Credenciais inválidas");
+      if (!res.ok) throw erroDaResposta(res, json);
       // Item 1.4: token fora do localStorage — safeStorage no Electron; no
       // navegador o backend já emitiu o cookie HttpOnly.
       await tokenStore.salvar(json.data.token, "vendedor");

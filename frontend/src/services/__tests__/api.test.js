@@ -4,7 +4,7 @@
 // técnico nunca sobem cruas para a tela).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiFetch, mensagemErro } from "../api";
+import { apiFetch, erroDaResposta, mensagemErro } from "../api";
 
 const { obter, limpar } = vi.hoisted(() => ({
   obter: vi.fn(),
@@ -112,6 +112,65 @@ describe("mensagemErro", () => {
   it("mensagem com cara de erro técnico (SQL) nunca sobe crua", () => {
     const tecnico = "sqlalchemy.exc.OperationalError: no such table: tecidos";
     expect(mensagemErro({ detail: tecnico }, 400)).toBe(
+      "Não foi possível concluir a operação. Verifique os dados e tente novamente."
+    );
+  });
+});
+
+describe("formato de erro {codigo, params, mensagem} (F0 passo 5a)", () => {
+  const corpo = (codigo, mensagem, params = {}) => ({
+    data: null,
+    error: { codigo, params, mensagem },
+    detail: mensagem,
+  });
+
+  it("mensagemErro usa a mensagem do erro estruturado", () => {
+    expect(mensagemErro(corpo("ERRO", "Pedido não encontrado"), 404)).toBe("Pedido não encontrado");
+  });
+
+  it("5xx com mensagem de regra passa; erro interno vira genérica", () => {
+    expect(mensagemErro(corpo("ERRO", "Motor de encaixe não instalado."), 500)).toBe(
+      "Motor de encaixe não instalado."
+    );
+    expect(mensagemErro(corpo("ERRO_INTERNO", "Erro interno"), 500)).toBe(
+      "Não foi possível concluir a operação. Tente novamente."
+    );
+  });
+
+  it("validação usa a mensagem do backend, não a lista do pydantic", () => {
+    const json = {
+      ...corpo("DADOS_INVALIDOS", "Dados inválidos. Verifique os campos.", { campos: ["qtd"] }),
+      detail: [{ loc: ["body", "qtd"], msg: "Input should be a valid integer" }],
+    };
+    expect(mensagemErro(json, 422)).toBe("Dados inválidos. Verifique os campos.");
+  });
+
+  it("erroDaResposta preenche status, codigo, params e a mensagem", () => {
+    const err = erroDaResposta(
+      { status: 409 },
+      corpo("OC_STATUS_MUDOU", "A OC mudou de status.", { status_atual: "ENVIADA" })
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("A OC mudou de status.");
+    expect(err.status).toBe(409);
+    expect(err.codigo).toBe("OC_STATUS_MUDOU");
+    expect(err.params).toEqual({ status_atual: "ENVIADA" });
+  });
+
+  it("erroDaResposta aceita o formato antigo e corpo vazio", () => {
+    const antigo = erroDaResposta({ status: 400 }, { detail: "Status inválido" });
+    expect(antigo.message).toBe("Status inválido");
+    expect(antigo.codigo).toBeNull();
+    expect(antigo.params).toEqual({});
+
+    const vazio = erroDaResposta({ status: 502 }, {});
+    expect(vazio.message).toBe("Não foi possível concluir a operação. Tente novamente.");
+    expect(vazio.status).toBe(502);
+  });
+
+  it("erroDaResposta nunca sobe erro técnico cru", () => {
+    const err = erroDaResposta({ status: 400 }, corpo("ERRO", "sqlite3.IntegrityError: UNIQUE"));
+    expect(err.message).toBe(
       "Não foi possível concluir a operação. Verifique os dados e tente novamente."
     );
   });

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../services/config";
-import { apiFetch } from "../services/api";
+import { apiFetch, erroDaResposta } from "../services/api";
 import { tokenStore } from "../services/tokenStore";
 
 const AUTH_BASE = `${API_BASE}/api/v1/auth`;
@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
     });
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.detail || json.error || "Não foi possível entrar.");
+      throw erroDaResposta(res, json);
     }
     // Item 1.4: Electron persiste via safeStorage; no navegador o cookie
     // HttpOnly já foi emitido pelo backend na resposta do login.
@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
     });
     const json = await res.json();
     if (!res.ok) {
-      throw new Error(json.detail || json.error || "Não foi possível salvar.");
+      throw erroDaResposta(res, json);
     }
     setUsuario(json.data);
     return json.data;

@@ -5,15 +5,12 @@
 // - Electron → safeStorage (via IPC);
 // - Navegador → cookie HttpOnly emitido pelo backend (credentials: include);
 // e em 401 a sessão é limpa e o usuário volta ao /vendedor/login.
+import { erroDaResposta } from "./api";
 import { API_BASE } from "./config";
 import { tokenStore } from "./tokenStore";
 
 const BASE_URL = `${API_BASE}/api/v1`;
 const ESCOPO = "vendedor";
-
-function extrairErro(json, status) {
-  return json?.error || json?.detail || `Erro ${status}`;
-}
 
 async function request(path, options = {}, envelopeCompleto = false) {
   const token = await tokenStore.obter(ESCOPO);
@@ -34,9 +31,9 @@ async function request(path, options = {}, envelopeCompleto = false) {
   if (res.status === 401) {
     await tokenStore.limpar(ESCOPO);
     window.location.hash = "/vendedor/login";
-    throw new Error(extrairErro(json, res.status));
+    throw erroDaResposta(res, json);
   }
-  if (!res.ok) throw new Error(extrairErro(json, res.status));
+  if (!res.ok) throw erroDaResposta(res, json);
 
   return envelopeCompleto ? json : json.data;
 }

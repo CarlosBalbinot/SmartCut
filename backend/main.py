@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from services.erros import ERRO_INTERNO, MSG_ERRO_INTERNO, corpo_erro, registrar_handlers
 from services.pasta_dados import pasta_uploads
 
 # Item 9.2: logging estruturado (timestamp, nível, módulo, request_id).
@@ -211,6 +212,11 @@ for grupo, eh_legado, routers_do_grupo in REGISTRO_DE_ROUTERS:
 logger.info("Pasta de dados do usuário: %s", pasta_uploads().parent)
 
 
+# F0 passo 5a: erros no formato {"error": {codigo, params, mensagem}, "detail"}
+# (services/erros.py).
+registrar_handlers(app)
+
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
     # Item 2.5: o corpo do 500 NUNCA devolve a exceção crua (vazava SQL,
@@ -228,7 +234,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
     # usuário repassar o id — a mesma linha existe no log com o traceback.
     return JSONResponse(
         status_code=500,
-        content={"data": None, "error": "Erro interno"},
+        content=corpo_erro(ERRO_INTERNO, MSG_ERRO_INTERNO),
         headers={"X-Request-ID": request_id_var.get()},
     )
 

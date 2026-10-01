@@ -83,7 +83,11 @@ def test_erro_500_rastreavel_com_request_id_e_sem_vazamento(app, logs_capturados
 
     # Resposta: envelope genérico PT-BR + header com o id de correlação.
     assert resp.status_code == 500
-    assert resp.json() == {"data": None, "error": "Erro interno"}
+    assert resp.json() == {
+        "data": None,
+        "error": {"codigo": "ERRO_INTERNO", "params": {}, "mensagem": "Erro interno"},
+        "detail": "Erro interno",
+    }
     rid = resp.headers.get("x-request-id")
     assert rid, resp.headers
 

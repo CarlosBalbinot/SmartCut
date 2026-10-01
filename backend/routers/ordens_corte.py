@@ -99,10 +99,8 @@ class _ReabrirCorte(BaseModel):
 
 
 def _executar(fn, *args):
-    try:
-        return {"data": fn(*args), "error": None}
-    except svc.ErroOC as exc:
-        raise HTTPException(status_code=exc.status, detail=exc.mensagem)
+    # ErroOC é ErroApp: o handler (services/erros.py) devolve código e status.
+    return {"data": fn(*args), "error": None}
 
 
 # ── Totais ────────────────────────────────────────────────────────────────────
@@ -183,10 +181,8 @@ def _sessao_do_job(db: Session):
 
 
 def _job(fn, *args):
-    try:
-        return fn(*args)
-    except nesting_jobs.ErroJob as exc:
-        raise HTTPException(status_code=exc.status, detail=exc.mensagem)
+    # ErroJob é ErroApp: o handler (services/erros.py) devolve código e status.
+    return fn(*args)
 
 
 def _sem_job(oc_id: uuid.UUID) -> None:
