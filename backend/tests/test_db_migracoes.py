@@ -25,11 +25,11 @@ def test_banco_vazio_recebe_a_estrutura_completa(tmp_path):
     db = tmp_path / "novo.db"
     aplicar_migracoes(f"sqlite:///{db}")
     tabelas = _tabelas(db) - {"alembic_version"}
-    # 48 da baseline (f9d6a18fef75) + 4 criadas depois: ordens_corte,
-    # itens_ordem_corte, ordem_corte_tecidos (a3b5c7d9e1f2) e encaixe_camadas
-    # (d5f1b3a7c9e2).
-    assert len(tabelas) == 52
-    assert {"produtos", "usuarios_sistema", "permissoes", "ordens_corte", "encaixe_camadas"} <= tabelas
+    # 48 da baseline (f9d6a18fef75) + 5 criadas depois: ordens_corte,
+    # itens_ordem_corte, ordem_corte_tecidos (a3b5c7d9e1f2), encaixe_camadas
+    # (d5f1b3a7c9e2) e sequencias (b2e8d4f6a1c3).
+    assert len(tabelas) == 53
+    assert {"produtos", "usuarios_sistema", "permissoes", "ordens_corte", "encaixe_camadas", "sequencias"} <= tabelas
     with sqlite3.connect(db) as c:
         assert "numero" in {r[1] for r in c.execute("pragma table_info(encaixes)")}
     assert len(_versao(db)) == 1

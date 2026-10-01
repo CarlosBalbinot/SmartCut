@@ -25,6 +25,7 @@ from .nfe import NotaFiscal
 from .condicao_pagamento import CondicaoPagamento
 from .tabela_grade import TabelaGrade, ItemTabelaGrade
 from .configuracao_grade import ConfiguracaoGrade
+from .sequencia import Sequencia
 
 __all__ = [
     "Cliente",
@@ -67,4 +68,5 @@ __all__ = [
     "TabelaGrade",
     "ItemTabelaGrade",
     "ConfiguracaoGrade",
+    "Sequencia",
 ]

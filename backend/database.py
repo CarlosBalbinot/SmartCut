@@ -58,3 +58,4 @@ import models.condicao_pagamento  # noqa: E402,F401
 import models.tabela_grade  # noqa: E402,F401
 import models.configuracao_grade  # noqa: E402,F401
 import models.produto_sku  # noqa: E402,F401
+import models.sequencia  # noqa: E402,F401
