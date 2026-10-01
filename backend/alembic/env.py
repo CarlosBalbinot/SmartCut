@@ -10,7 +10,9 @@ import models  # noqa: F401
 config = context.config
 # Item 5.2/5.3: a URL é resolvida pelo MESMO caminho do runtime (desktop:
 # SMARTCUT_DB_PATH aponta para userData; Docker/dev: DATABASE_URL/settings).
-config.set_main_option("sqlalchemy.url", resolver_url())
+# aplicar_migracoes(url=...) (script de montagem, testes) passa um banco
+# explícito em config.attributes["url_banco"].
+config.set_main_option("sqlalchemy.url", config.attributes.get("url_banco") or resolver_url())
 
 # Logging (Parte 9.2): NÃO aplicamos o fileConfig do alembic.ini de propósito —
 # ele criaria um handler "generic" duplicado, fora do formato estruturado com

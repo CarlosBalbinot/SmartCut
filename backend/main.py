@@ -57,9 +57,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     # Item 5.2: o schema é governado por migrações Alembic versionadas —
     # `Base.metadata.create_all` deixou de existir no boot (ele criava
-    # tabelas novas mas nunca alterava tabelas existentes). Bancos criados
-    # na era do create_all são registrados na baseline (stamp head) e bancos
-    # novos seguem upgrade head.
+    # tabelas novas mas nunca alterava tabelas existentes). Banco novo segue
+    # upgrade head; banco com tabelas e sem versão registrada interrompe o
+    # boot (services/db_migracoes.py — nunca carimba sem criar a estrutura).
     from services.db_migracoes import aplicar_migracoes
 
     aplicar_migracoes()

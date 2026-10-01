@@ -12,6 +12,11 @@ const logger = require('./logger.js');
 const { sincronizarRelatorios } = require('./relatorios-sync.js');
 
 let backendProcess = null;
+// Boot interrompido pelo backend: o processo encerra antes do health check.
+// A linha "[boot] <mensagem>" do log do backend (ex.: banco sem versão
+// registrada) vira a mensagem do diálogo de erro em vez de esperar 60 s.
+let backendEncerrou = false;
+let erroBoot = null;
 
 function log(msg) {
   logger.info(`[backend.js] ${msg}`);
@@ -71,6 +76,10 @@ function waitForBackend(maxAttempts = 60, interval = 1000) {
       checkHealth()
         .then(resolve)
         .catch(() => {
+          if (backendEncerrou) {
+            reject(new Error(erroBoot || 'O backend encerrou durante a inicialização (detalhes em smartcut.log).'));
+            return;
+          }
           attempts++;
           if (attempts >= maxAttempts) {
             reject(new Error(`Backend não respondeu após ${maxAttempts}s`));
@@ -88,13 +97,20 @@ function attachLogs(proc) {
     d.toString().split('\n').filter(Boolean).forEach(l => log(`[stdout] ${l}`));
   });
   proc.stderr && proc.stderr.on('data', (d) => {
-    d.toString().split('\n').filter(Boolean).forEach(l => log(`[stderr] ${l}`));
+    d.toString().split('\n').filter(Boolean).forEach((l) => {
+      log(`[stderr] ${l}`);
+      const i = l.indexOf('[boot] ');
+      if (i >= 0 && !erroBoot) erroBoot = l.slice(i + 7).trim();
+    });
   });
   proc.on('error', (err) => {
     log(`ERRO ao spawnar: ${err.message}`);
     log(`Stack: ${err.stack}`);
   });
-  proc.on('exit', (code, signal) => log(`encerrou (exit) — código=${code} sinal=${signal}`));
+  proc.on('exit', (code, signal) => {
+    backendEncerrou = true;
+    log(`encerrou (exit) — código=${code} sinal=${signal}`);
+  });
   proc.on('close', (code, signal) => log(`processo encerrou (close) — code: ${code} signal: ${signal}`));
 }
 

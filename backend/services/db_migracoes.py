@@ -9,14 +9,14 @@ commitadas no git (baseline + migrações futuras).
 Caminhos tratados no boot:
 
   - Banco novo (sem nenhuma tabela):                      alembic upgrade head
-  - Banco da era do create_all (tabelas, sem version):    stamp head + upgrade
-  - Banco com alembic_version FORA da cadeia atual
-      (ex.: stamp antigo o0d1e2... da cadeia legada):     stamp head + upgrade
   - Banco já sob a cadeia atual:                          alembic upgrade head
+  - Banco com tabelas e SEM alembic_version, ou com
+      versão FORA da cadeia atual:                        para com erro
+      ("Banco sem versão registrada, contate o suporte")
 
-O `alembic_version` fica registrado nos casos em que é possível; a partir
-daí evolução futura chega por migração e é aplicada nas duas famílias de
-banco do projeto: SQLite (desktop) e Postgres (Docker dev/prod).
+Não há mais stamp automático: carimbar a head num banco antigo registrava a
+versão sem criar a estrutura das migrações puladas. Um banco nessa situação
+é montado à parte (scripts/montar_banco_producao.py).
 """
 
 import logging
@@ -57,37 +57,27 @@ def _revisoes_conhecidas(cfg: Config) -> set[str]:
     return {s.revision for s in ScriptDirectory.from_config(cfg).walk_revisions()}
 
 
-def _avisar_drift(engine, url: str) -> None:
-    """Log de advertência (não bloqueia o boot): compara o banco existente
-    (já fora da era do create_all) com os models atuais. Se houver diferença,
-    o operador deve criar uma migração de sincronização."""
-    try:
-        import models  # noqa: F401, E402 — garante Base.metadata completo
-        from alembic.autogenerate import compare_metadata
-        from alembic.migration import MigrationContext
-
-        from database import Base
-
-        with engine.connect() as conn:
-            diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
-        if diff:
-            logger.warning(
-                "Drift detectado no banco existente (%s): %d diferença(s) em "
-                "relação aos models — avalie criar migração de sincronização "
-                "(alembic revision --autogenerate).",
-                url.split("://", 1)[0],
-                len(diff),
-            )
-    except Exception as err:  # noqa: BLE001 — aviso nunca impede o boot
-        logger.warning("Não foi possível checar drift no banco existente: %s", err)
+class BancoSemVersao(RuntimeError):
+    """Banco com tabelas mas sem versão Alembic reconhecível: o boot para."""
 
 
-def aplicar_migracoes() -> None:
+MSG_SEM_VERSAO = "Banco sem versão registrada, contate o suporte."
+
+
+def aplicar_migracoes(url: str | None = None) -> None:
     """Aplica as migrações Alembic no banco ativo (resolve SMARTCUT_DB_PATH
     para o desktop e DATABASE_URL para Docker/dev — mesma lógica do runtime,
-    ver database.resolver_url). Falha alto com mensagem clara: o app nunca
-    deve rodar sobre um schema que não é o esperado."""
-    url = resolver_url()
+    ver database.resolver_url) ou no banco de ``url`` (script de montagem).
+
+    - Banco novo (sem tabelas): upgrade head desde a baseline.
+    - Banco registrado na cadeia atual: upgrade head.
+    - Banco com tabelas e SEM versão (ou com versão fora da cadeia): para com
+      BancoSemVersao. Nunca carimba (stamp) a versão: o stamp registrava a
+      head sem criar a estrutura, e o banco ficava sem as tabelas/colunas das
+      migrações puladas (caso da instalação de 28/09, carimbada em
+      f8a6f7ef2ccf sem 16 das 48 tabelas).
+    """
+    url = url or resolver_url()
     logger.info("Aplicando migrações Alembic (%s)…", url.split("://", 1)[0])
 
     engine = create_engine(url)
@@ -102,28 +92,17 @@ def aplicar_migracoes() -> None:
         engine.dispose()
 
     cfg = _config_alembic()
+    cfg.attributes["url_banco"] = url
     conhecidas = _revisoes_conhecidas(cfg)
     tem_tabelas_app = any(t != "alembic_version" for t in tabelas)
-    versao_na_cadeia = bool(reg) and all(rv in conhecidas for rv in reg)
 
-    # Banco existente que não está registrado na cadeia atual (criado pela
-    # era do create_all ou com stamp da cadeia legada): o schema já é a
-    # baseline — registra head SEM reexecutar a DDL inicial.
-    if tem_tabelas_app and (not reg or not versao_na_cadeia):
-        logger.info(
-            "Banco existente fora da cadeia Alembic atual — registrando "
-            "baseline (stamp head) sem reexecutar a DDL inicial."
-        )
-        # Stamp explícito pelo id do head: `stamp "head"` tentaria calcular o
-        # caminho a partir da revisão atual (que pode ser desconhecida — stamp
-        # da cadeia legada) e falharia com ResolutionError.
-        cabeca = ScriptDirectory.from_config(cfg).get_current_head()
-        if not cabeca:
-            raise RuntimeError("Nenhuma revisão head encontrada nas migrações Alembic.")
-        # purge=True: ignora a revisão atual do banco (pode ser desconhecida —
-        # stamp da cadeia legada), apaga o version antigo e grava a baseline.
-        command.stamp(cfg, cabeca, purge=True)
-        _avisar_drift(engine, url)
+    if tem_tabelas_app and not reg:
+        logger.error("[boot] %s O banco tem tabelas mas não tem alembic_version.", MSG_SEM_VERSAO)
+        raise BancoSemVersao(MSG_SEM_VERSAO)
+    desconhecidas = [rv for rv in reg if rv not in conhecidas]
+    if desconhecidas:
+        logger.error("[boot] %s Versão fora da cadeia de migrações: %s.", MSG_SEM_VERSAO, ", ".join(desconhecidas))
+        raise BancoSemVersao(MSG_SEM_VERSAO)
 
     command.upgrade(cfg, "head")
     logger.info("Migrações Alembic aplicadas com sucesso.")
