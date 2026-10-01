@@ -19,6 +19,7 @@ import {
 import FormularioCompraVenda from "./FormularioCompraVenda";
 import ImportarXMLModal from "./ImportarXMLModal";
 import DocumentosFiscaisCard from "./DocumentosFiscaisCard";
+import AnexoArquivo from "../../components/AnexoArquivo/AnexoArquivo";
 import { useAuth } from "../../auth/useAuth";
 import styles from "./comprasVendas.module.css";
 import useOverlayDismiss from "../../hooks/useOverlayDismiss";
@@ -394,6 +395,16 @@ export default function VendasFinanceiro() {
     } catch (err) {
       setErroEdit(err.message || "Erro ao remover anexo.");
     }
+  };
+
+  const handleAnexoReenviado = (parcela, novo) => {
+    setEditParcelas((prev) =>
+      prev.map((p) =>
+        p.key === parcela.key
+          ? { ...p, anexos: (p.anexos || []).map((a) => (a.id === novo.id ? novo : a)) }
+          : p
+      )
+    );
   };
 
   const handleDownloadAnexo = async (anexo) => {
@@ -965,13 +976,13 @@ export default function VendasFinanceiro() {
                             <span className={styles.anexoRowNome} title={boleto.nome_original}>
                               {truncarNome(boleto.nome_original)}
                             </span>
-                            <button
-                              type="button"
+                            <AnexoArquivo
+                              anexo={boleto}
                               className={styles.btnLinkSmall}
-                              onClick={() => handleDownloadAnexo(boleto)}
-                            >
-                              Download
-                            </button>
+                              accept=".pdf,application/pdf"
+                              onDownload={handleDownloadAnexo}
+                              onReenviado={(novo) => handleAnexoReenviado(p, novo)}
+                            />
                             <button
                               type="button"
                               className={styles.btnLinkSmall}
@@ -1015,13 +1026,13 @@ export default function VendasFinanceiro() {
                         <span className={styles.anexoRowNome} title={xmlAnexo.nome_original}>
                           {truncarNome(xmlAnexo.nome_original)}
                         </span>
-                        <button
-                          type="button"
+                        <AnexoArquivo
+                          anexo={xmlAnexo}
                           className={styles.btnLinkSmall}
-                          onClick={() => handleDownloadAnexo(xmlAnexo)}
-                        >
-                          Download
-                        </button>
+                          accept=".xml,text/xml,application/xml"
+                          onDownload={handleDownloadAnexo}
+                          onReenviado={(novo) => handleAnexoReenviado(primeiraParcela, novo)}
+                        />
                         <button
                           type="button"
                           className={styles.btnLinkSmall}
@@ -1065,13 +1076,13 @@ export default function VendasFinanceiro() {
                         <span className={styles.anexoRowNome} title={pdfAnexo.nome_original}>
                           {truncarNome(pdfAnexo.nome_original)}
                         </span>
-                        <button
-                          type="button"
+                        <AnexoArquivo
+                          anexo={pdfAnexo}
                           className={styles.btnLinkSmall}
-                          onClick={() => handleDownloadAnexo(pdfAnexo)}
-                        >
-                          Download
-                        </button>
+                          accept=".pdf,application/pdf"
+                          onDownload={handleDownloadAnexo}
+                          onReenviado={(novo) => handleAnexoReenviado(primeiraParcela, novo)}
+                        />
                         <button
                           type="button"
                           className={styles.btnLinkSmall}

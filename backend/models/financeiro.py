@@ -132,6 +132,14 @@ class AnexoLancamento(Base):
 
     lancamento: Mapped["Lancamento"] = relationship(back_populates="anexos")
 
+    @property
+    def arquivo_existe(self) -> bool:
+        """O arquivo está na pasta de dados? (False = perdido; a tela
+        oferece reenviar)."""
+        from services.pasta_dados import existe
+
+        return existe(self.arquivo_path)
+
 
 class SaldoInicialConta(Base):
     __tablename__ = "saldo_inicial_conta"

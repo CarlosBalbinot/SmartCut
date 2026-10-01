@@ -1,14 +1,13 @@
 import os
 import shutil
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from config import settings
 from database import get_db
 from middleware.permissions import require_permission
+from services.pasta_dados import pasta_uploads, relativo, resolver
 from schemas.venda_schema import EmpresaOut, EmpresaUpdate, EmpresaFiscalUpdate, TestarCertificadoIn
 from services.venda_service import (
     atualizar_fiscal,
@@ -19,7 +18,6 @@ from services.venda_service import (
 
 router = APIRouter(prefix="/api/v1/configuracao-empresa", tags=["empresa"])
 
-_LOGO_DIR = "uploads/logos"
 _MOD_VER = "configuracoes_ver"
 _MOD_EDITAR = "configuracoes_editar"
 
@@ -47,13 +45,7 @@ def get_logo(db: Session = Depends(get_db)):
     if not empresa.logo_path:
         raise HTTPException(status_code=404, detail="Logo não configurada")
 
-    logo = str(empresa.logo_path).replace("\\", "/")
-    if "uploads/" in logo:
-        rel = logo.split("uploads/", 1)[-1]
-        arquivo = Path(settings.upload_dir).resolve() / rel
-    else:
-        arquivo = Path(logo).resolve()
-
+    arquivo = resolver(empresa.logo_path)
     if not arquivo.is_file():
         raise HTTPException(status_code=404, detail="Logo não encontrada")
     return FileResponse(str(arquivo))
@@ -71,20 +63,17 @@ def update_empresa(payload: EmpresaUpdate, db: Session = Depends(get_db)):
 
 @router.patch("/logo", dependencies=[Depends(require_permission(_MOD_EDITAR, "ver"))])
 async def upload_logo(logo: UploadFile = File(...), db: Session = Depends(get_db)):
-    # Certifica que o diretório existe
-    os.makedirs(_LOGO_DIR, exist_ok=True)
-
-    # Extrai a extensão do arquivo enviado
+    # Pasta de dados do usuário (fora da instalação): uploads/logos
     ext = os.path.splitext(logo.filename or "logo.png")[1] or ".png"
-    path = os.path.join(_LOGO_DIR, f"empresa_logo{ext}")
+    path = pasta_uploads("logos") / f"empresa_logo{ext}"
 
     # Salva o arquivo no disco
     with open(path, "wb") as f:
         shutil.copyfileobj(logo.file, f)
 
-    # Guarda o caminho relativo (usado como URL: /uploads/logos/...)
+    # Guarda o caminho relativo à pasta de dados (uploads/logos/...)
     empresa = get_ou_criar_empresa(db)
-    empresa.logo_path = path.replace("\\", "/")
+    empresa.logo_path = relativo(path)
     db.commit()
     db.refresh(empresa)
 

@@ -1,12 +1,11 @@
 import logging
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from config import settings
+from services.pasta_dados import pasta_uploads
 
 # Item 9.2: logging estruturado (timestamp, nível, módulo, request_id).
 from logging_conf import RequestIdMiddleware, instalar_logging, request_id_var
@@ -207,7 +206,9 @@ for grupo, eh_legado, routers_do_grupo in REGISTRO_DE_ROUTERS:
         app.include_router(router)
 
 
-os.makedirs(settings.upload_dir, exist_ok=True)
+# Arquivos do usuário: sempre na pasta de dados (userData no app instalado),
+# nunca na pasta do executável — ver services/pasta_dados.py.
+logger.info("Pasta de dados do usuário: %s", pasta_uploads().parent)
 
 
 @app.exception_handler(Exception)

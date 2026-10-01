@@ -1,0 +1,10 @@
+.aviso {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--sc-danger-text);
+  white-space: nowrap;
+}
+
+.inputOculto {
+  display: none;
+}

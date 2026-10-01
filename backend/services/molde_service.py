@@ -4,12 +4,12 @@ from pathlib import Path
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
-from config import settings
 from models.molde import Molde
 from models.pedido import ItemPedido
 from parsers.ads_parser import parse_ads
 from parsers.dxf_parser import parse_dxf
 from parsers.plt_parser import parse_plt
+from services.pasta_dados import pasta_uploads, relativo
 from schemas.molde_schema import BulkImportCreate, MoldeUpdate
 
 PARSERS = {
@@ -38,9 +38,8 @@ async def preview_arquivo(arquivo: UploadFile) -> dict:
     if extensao not in PARSERS:
         raise ValueError(f"Formato '{extensao}' não suportado. Use DXF, PLT ou ADS.")
 
-    upload_dir = Path(settings.upload_dir)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    destino = upload_dir / f"{uuid.uuid4()}_{arquivo.filename}"
+    # Pasta de dados do usuário: uploads/moldes (banco guarda o relativo).
+    destino = pasta_uploads("moldes") / f"{uuid.uuid4()}_{Path(arquivo.filename).name}"
 
     conteudo = await arquivo.read()
     destino.write_bytes(conteudo)
@@ -49,7 +48,7 @@ async def preview_arquivo(arquivo: UploadFile) -> dict:
     pecas.sort(key=lambda p: p["area_cm2"])
 
     return {
-        "arquivo_path": str(destino),
+        "arquivo_path": relativo(destino),
         "formato": extensao,
         "pecas": pecas,
     }

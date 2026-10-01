@@ -1,4 +1,4 @@
-import os
+import shutil
 import uuid
 from decimal import Decimal
 from typing import Optional
@@ -21,6 +21,7 @@ from models.venda import (
     Vendedor,
     VendedorTabelaComissao,
 )
+from services.pasta_dados import existe, pasta_certificados, relativo, resolver
 from services.segredo_service import chave_disponivel, cifrar_segredo
 
 _SENHA_MASCARADA = "••••••••"
@@ -111,7 +112,7 @@ def empresa_fiscal_out(empresa: Empresa) -> dict:
         "ambiente_sefaz": empresa.ambiente_sefaz,
         "certificado_path": empresa.certificado_path,
         "certificado_senha": _SENHA_MASCARADA if empresa.certificado_senha else None,
-        "certificado_valido": bool(empresa.certificado_path) and os.path.exists(empresa.certificado_path),
+        "certificado_valido": existe(empresa.certificado_path),
         "nfe_serie_padrao": empresa.nfe_serie_padrao,
         "nfe_numero_atual": empresa.nfe_numero_atual,
         "nfce_serie_padrao": empresa.nfce_serie_padrao,
@@ -136,6 +137,8 @@ def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
                         "CERT_SENHA_KEY no ambiente (ver README).",
                     )
                 payload["certificado_senha"] = cifrar_segredo(senha)
+    if payload.get("certificado_path"):
+        payload["certificado_path"] = _guardar_certificado(payload["certificado_path"])
     for field, val in payload.items():
         setattr(empresa, field, val)
     db.commit()
@@ -143,12 +146,32 @@ def atualizar_fiscal(db: Session, empresa: Empresa, payload: dict) -> Empresa:
     return empresa
 
 
+def _guardar_certificado(caminho: str) -> str:
+    """Copia o .pfx escolhido para a pasta de certificados (dentro da pasta
+    de dados do usuário no app instalado) e devolve o caminho a gravar.
+
+    O arquivo escolhido no diálogo pode estar em qualquer lugar (Downloads,
+    pendrive...) — a cópia garante que o certificado continue disponível e
+    entre no backup da pasta de dados. Já dentro da pasta: só normaliza.
+    """
+    origem = resolver(caminho)
+    if not origem.is_file():
+        return caminho  # inexistente: grava como veio (a tela mostra inválido)
+    pasta = pasta_certificados()
+    destino = pasta / origem.name
+    if origem.resolve() != destino.resolve():
+        pasta.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(origem, destino)
+    return relativo(destino)
+
+
 def testar_certificado(certificado_path: str, certificado_senha: str) -> dict:
-    if not os.path.exists(certificado_path):
+    arquivo_pfx = resolver(certificado_path)
+    if not arquivo_pfx or not arquivo_pfx.is_file():
         return {"valido": False, "titular": None, "validade": None, "erro": "Arquivo de certificado não encontrado."}
 
     try:
-        with open(certificado_path, "rb") as f:
+        with open(arquivo_pfx, "rb") as f:
             dados = f.read()
         _, certificado, _ = pkcs12.load_key_and_certificates(dados, certificado_senha.encode("utf-8"))
     except Exception:

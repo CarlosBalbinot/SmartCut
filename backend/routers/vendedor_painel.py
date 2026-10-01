@@ -1,5 +1,4 @@
 import math
-import os
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -16,6 +15,7 @@ from dependencies import get_vendedor_atual
 from models.painel_vendedor import Catalogo, CatalogoVendedor, Lead, MetaVendedor
 from models.pedido import PedidoVenda
 from models.venda import TabelaPreco, Vendedor
+from services.pasta_dados import resolver
 
 router = APIRouter(prefix="/api/v1/vendedor", tags=["vendedor-painel"])
 
@@ -176,13 +176,14 @@ def download_catalogo(
     if not cat or not cat.ativo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Catálogo não encontrado")
 
-    if not os.path.isfile(cat.arquivo_path):
+    arquivo = resolver(cat.arquivo_path)
+    if not arquivo or not arquivo.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Arquivo não encontrado no servidor")
 
-    filename = os.path.basename(cat.arquivo_path)
+    filename = arquivo.name
 
     def _stream():
-        with open(cat.arquivo_path, "rb") as f:
+        with open(arquivo, "rb") as f:
             yield from f
 
     return StreamingResponse(

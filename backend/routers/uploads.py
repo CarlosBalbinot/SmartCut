@@ -1,14 +1,13 @@
-from pathlib import Path
 from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from config import settings
 from database import get_db
 from middleware.permissions import get_current_user
 from models.usuario import Permissao, Usuario
+from services.pasta_dados import pasta_uploads
 
 router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 
@@ -41,7 +40,7 @@ def baixar_arquivo(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Serve um arquivo de upload_dir com autenticação e autorização.
+    """Serve um arquivo de <pasta de dados>/uploads com autenticação e autorização.
 
     Substitui o antigo `app.mount("/uploads", StaticFiles(...))`, que era
     público — qualquer pessoa na rede baixava XMLs de NF-e em Docker. Aqui:
@@ -52,12 +51,12 @@ def baixar_arquivo(
     - arquivos inexistentes ou diretórios retornam 404.
     """
     caminho_decodificado = unquote(caminho)
-    raiz = Path(settings.upload_dir).resolve()
+    raiz = pasta_uploads().resolve()
     # Decodifica percent-encoding (ex.: "%2e%2e" => "..") caso o framework
     # entregue o segmento cru — a contenção abaixo funciona com o texto real.
     alvo = (raiz / caminho_decodificado).resolve()
 
-    # Bloqueia path traversal: o arquivo precisa estar dentro de upload_dir.
+    # Bloqueia path traversal: o arquivo precisa estar dentro de uploads/.
     if raiz != alvo and raiz not in alvo.parents:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

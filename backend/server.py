@@ -8,7 +8,15 @@ import os
 import sys
 
 if getattr(sys, "frozen", False):
-    os.chdir(os.path.dirname(sys.executable))
+    # cwd = pasta de dados do usuário (SMARTCUT_DADOS_DIR, injetada pelo
+    # Electron), nunca a pasta de instalação: os arquivos do usuário são
+    # resolvidos por services/pasta_dados.py e este chdir é só a rede de
+    # segurança para algum caminho relativo esquecido — uma reinstalação apaga
+    # a pasta do executável.
+    _dados = os.environ.get("SMARTCUT_DADOS_DIR", "").strip()
+    if _dados:
+        os.makedirs(_dados, exist_ok=True)
+    os.chdir(_dados or os.path.dirname(sys.executable))
     # Saída em pipe (Electron) usaria a página de código do Windows (cp1252) e
     # o Electron lê UTF-8: acentos do log — e da mensagem "[boot] …" mostrada
     # no diálogo de erro — chegavam quebrados. O exe ignora PYTHONIOENCODING.

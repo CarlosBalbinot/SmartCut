@@ -21,6 +21,7 @@ import {
 } from "../../api/financeiro";
 import { useAuth } from "../../auth/useAuth";
 import styles from "./FluxoCaixa.module.css";
+import AnexoArquivo from "../../components/AnexoArquivo/AnexoArquivo";
 import useOverlayDismiss from "../../hooks/useOverlayDismiss";
 import { upperOnChange } from "../../utils/uppercase";
 
@@ -1485,16 +1486,19 @@ export default function FluxoCaixa() {
                 <ul className={styles.attachList}>
                   {anexos.map((a) => (
                     <li key={a.id} className={styles.attachItem}>
-                      <span className={styles.attachNome} title={a.nome || a.arquivo}>
-                        {a.nome || a.arquivo || "Arquivo"}
+                      <span className={styles.attachNome} title={a.nome_original}>
+                        {a.nome_original || "Arquivo"}
                       </span>
                       {a.tipo && <span className={styles.attachTipo}>{a.tipo}</span>}
-                      <button
+                      <AnexoArquivo
+                        anexo={a}
                         className={styles.btnSmall}
-                        onClick={() => handleDownload(a.id, a.nome || a.arquivo)}
-                      >
-                        ↓ Download
-                      </button>
+                        rotulo="↓ Download"
+                        onDownload={() => handleDownload(a.id, a.nome_original)}
+                        onReenviado={(novo) =>
+                          setAnexos((prev) => prev.map((x) => (x.id === novo.id ? novo : x)))
+                        }
+                      />
                     </li>
                   ))}
                 </ul>

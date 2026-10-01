@@ -10,6 +10,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./smartcut.db"
     secret_key: str = ""
+    # Legado: a pasta de uploads é sempre <pasta de dados>/uploads
+    # (services/pasta_dados.py). Mantido só para não recusar UPLOAD_DIR
+    # em .env/compose antigos.
     upload_dir: str = "./uploads"
     max_file_size_mb: int = 50
     nesting_timeout_sec: int = 120
@@ -47,6 +50,10 @@ class Settings(BaseSettings):
     # SMARTCUT_DB_PATH — caminho do smartcut.db injetado pelo Electron
     # empacotado (userData). Vazio = usa DATABASE_URL normalmente.
     smartcut_db_path: str = ""
+    # SMARTCUT_DADOS_DIR — pasta base dos arquivos do usuário (anexos, logo,
+    # NF-e, moldes...) injetada pelo Electron empacotado (userData). Vazio =
+    # backend/ (desenvolvimento/Docker). Ver services/pasta_dados.py.
+    smartcut_dados_dir: str = ""
     # SMARTCUT_CERT_KEY — chave de cifragem dos segredos em repouso injetada
     # pelo Electron (item 4.2). Vazio fora do desktop.
     smartcut_cert_key: str = ""

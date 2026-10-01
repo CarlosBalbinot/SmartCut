@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from config import settings
+from services.pasta_dados import resolver
 from models.condicao_pagamento import CondicaoPagamento
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto_sku import ProdutoSKU
@@ -85,15 +85,9 @@ _CAMPOS_EMPRESA = {
 
 def _arquivo_logo(logo_path: str | None) -> Path | None:
     """Mesma resolução do GET /configuracao-empresa/logo: o upload grava
-    "uploads/logos/empresa_logo.png" (relativo), resolvido pelo UPLOAD_DIR —
-    no Electron empacotado o cwd/uploads ficam no userData, não na pasta
-    do backend."""
-    if not logo_path:
-        return None
-    logo = str(logo_path).replace("\\", "/")
-    if "uploads/" in logo:
-        return Path(settings.upload_dir).resolve() / logo.split("uploads/", 1)[-1]
-    return Path(logo).resolve()
+    "uploads/logos/empresa_logo.png", relativo à pasta de dados do usuário
+    (services/pasta_dados.py)."""
+    return resolver(logo_path)
 
 
 def _empresa(db: Session) -> dict:

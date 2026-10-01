@@ -62,6 +62,7 @@ class AnexoLancamentoOut(BaseModel):
     tipo: str
     nome_original: str
     created_at: datetime
+    arquivo_existe: bool = True
 
 
 # ── Lancamento ────────────────────────────────────────────────────────────────

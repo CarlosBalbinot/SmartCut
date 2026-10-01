@@ -18,8 +18,8 @@ async function request(path, options = {}) {
   return json.data;
 }
 
-async function requestForm(path, formData) {
-  const res = await apiFetch(`${BASE_URL}${path}`, { method: "POST", body: formData });
+async function requestForm(path, formData, method = "POST") {
+  const res = await apiFetch(`${BASE_URL}${path}`, { method, body: formData });
   const json = await res.json();
   if (!res.ok) {
     const detail = json.detail;
@@ -181,6 +181,13 @@ export const getAnexos = (lancamentoId) => request(`/lancamentos/${lancamentoId}
 export const downloadAnexo = (anexoId) => requestBlob(`/anexos/${anexoId}/download`);
 
 export const deleteAnexo = (anexoId) => request(`/anexos/${anexoId}`, { method: "DELETE" });
+
+// Substitui o arquivo de um anexo cujo arquivo se perdeu (mantém o registro).
+export const reenviarAnexo = (anexoId, arquivo) => {
+  const fd = new FormData();
+  fd.append("arquivo", arquivo);
+  return requestForm(`/anexos/${anexoId}/arquivo`, fd, "PUT");
+};
 
 // ── Projeção ──────────────────────────────────────────────────────────────────
 

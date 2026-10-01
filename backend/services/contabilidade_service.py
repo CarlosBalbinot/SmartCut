@@ -24,6 +24,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from services.pasta_dados import resolver
+
 MESES_NOME = [
     "Janeiro",
     "Fevereiro",
@@ -128,9 +130,10 @@ def gerar_resumo_pdf(dados: dict, empresa=None) -> bytes:
 
     # ── Cabeçalho ──────────────────────────────────────────────────────────────
     logo_cell = Paragraph("", _N)
-    if empresa and getattr(empresa, "logo_path", None) and os.path.exists(empresa.logo_path):
+    arquivo_logo = resolver(getattr(empresa, "logo_path", None)) if empresa else None
+    if arquivo_logo and arquivo_logo.is_file():
         try:
-            logo_cell = RLImage(empresa.logo_path, width=26 * mm, height=17 * mm)
+            logo_cell = RLImage(str(arquivo_logo), width=26 * mm, height=17 * mm)
         except Exception:
             pass
 
@@ -398,8 +401,9 @@ def montar_pacote_zip(dados: dict, empresa=None) -> bytes:
 
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
 
-        def _add_arquivo(subpasta: str, nome_base: str, caminho_disco: Optional[str]) -> None:
-            if not caminho_disco or not os.path.exists(caminho_disco):
+        def _add_arquivo(subpasta: str, nome_base: str, caminho_banco: Optional[str]) -> None:
+            caminho_disco = resolver(caminho_banco)
+            if not caminho_disco or not caminho_disco.is_file():
                 return
             ext = os.path.splitext(caminho_disco)[1] or ".pdf"
             nome = _sanitize_nome_arquivo(nome_base) + ext

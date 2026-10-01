@@ -12,10 +12,11 @@ from database import get_db
 from middleware.permissions import require_permission
 from models.painel_vendedor import Catalogo, CatalogoVendedor
 from models.venda import TabelaPreco
+from services.pasta_dados import pasta_uploads, relativo
 
 router = APIRouter(prefix="/api/v1/catalogos", tags=["catalogos"])
 
-_UPLOAD_DIR = "uploads/catalogos"
+_UPLOAD_SUBPASTA = "catalogos"  # <pasta de dados>/uploads/catalogos
 # Catálogos são geridos a partir da página Vendedores (aba "Catálogos"),
 # por isso usam a mesma permissão de cadastros_vendedores.
 _MOD = "cadastros_vendedores"
@@ -49,16 +50,15 @@ async def criar(
     arquivo: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    os.makedirs(_UPLOAD_DIR, exist_ok=True)
     ext = os.path.splitext(arquivo.filename or "")[1] or ".pdf"
-    path = os.path.join(_UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
+    path = pasta_uploads(_UPLOAD_SUBPASTA) / f"{uuid.uuid4()}{ext}"
     with open(path, "wb") as f:
         shutil.copyfileobj(arquivo.file, f)
 
     cat = Catalogo(
         nome=nome,
         tabela_preco_id=uuid.UUID(tabela_preco_id) if tabela_preco_id else None,
-        arquivo_path=path,
+        arquivo_path=relativo(path),
     )
     db.add(cat)
     db.commit()

@@ -4,7 +4,9 @@ A instalação de 28/09 carimbou a versão f8a6f7ef2ccf num banco antigo sem
 criar a estrutura (faltam 16 das 48 tabelas da baseline) — a 1.3.0 não sobe
 sobre ele. Este script gera um banco NOVO, na estrutura da head, com:
 
-  - do banco INSTALADO: o financeiro (dados reais) e os arquivos dos anexos;
+  - do banco INSTALADO: o financeiro (dados reais) e os arquivos dos anexos
+    (anexo cujo arquivo não existe NÃO é copiado — entra como descartado no
+    relatório; lançamentos e saldos não mudam);
   - do banco de DEV: os cadastros (empresa, configurações, produtos, grades,
     preços, moldes, tecidos, condições de pagamento, TES, transportadoras)
     e os arquivos que eles referenciam (moldes, logo da empresa).
@@ -25,7 +27,17 @@ Uso (de backend/):
         --base-dev   <pasta onde "uploads/..." do dev existe (backend\\)> \\
         --saida      <pasta nova>
 
-Saída: <saida>/smartcut.db, <saida>/uploads/ e <saida>/relatorio_montagem.txt.
+Saída: a pasta de dados do usuário pronta, na mesma estrutura de
+%APPDATA%\\smartcut (ver backend/services/pasta_dados.py):
+    <saida>/smartcut.db
+    <saida>/uploads/financeiro/<lançamento>/...   anexos
+    <saida>/uploads/logos/...                     logo
+    <saida>/uploads/...                           moldes
+    <saida>/Certificados/...                      certificado (se houver)
+    <saida>/relatorio_montagem.txt
+Os caminhos no banco ficam relativos a essa pasta ("uploads/...", com "/").
+Instalação: com o SmartCut fechado, copiar o conteúdo de <saida> para
+%APPDATA%\\smartcut.
 """
 
 from __future__ import annotations
@@ -96,8 +108,11 @@ CONFIG_DO_INSTALADO = ("aliquota_simples", "custo_etiqueta")
 CONFLITOS_RESOLVIDOS = {"configuracao_empresa"}
 
 # Colunas com caminho de arquivo (relativo à pasta de dados: "uploads/...").
-ARQUIVOS_INSTALADO = {"anexos_lancamento": "arquivo_path"}
-ARQUIVOS_DEV = {"moldes": "arquivo_path", "empresa": "logo_path"}
+ARQUIVOS_INSTALADO = [("anexos_lancamento", "arquivo_path")]
+ARQUIVOS_DEV = [("moldes", "arquivo_path"), ("empresa", "logo_path"), ("empresa", "certificado_path")]
+# Tabela cujo registro é DESCARTADO quando o arquivo não existe (nas demais o
+# registro fica e o arquivo só é listado como não encontrado).
+DESCARTA_SEM_ARQUIVO = {"anexos_lancamento"}
 
 
 @dataclass
@@ -150,27 +165,79 @@ def _copiar(con: sqlite3.Connection, esquema: str, tabela: str, rel: Relatorio) 
     return _contar(con, tabela)
 
 
+def _destino_relativo(caminho: str, coluna: str) -> Path | None:
+    """Caminho gravado na origem -> caminho relativo na pasta de dados nova.
+
+    Relativo ("uploads/...", inclusive com "\\") fica igual; absoluto vira
+    relativo pelo trecho a partir de "uploads/" (ex.: moldes gravados com o
+    caminho completo do userData) ou, no certificado, "Certificados/<nome>".
+    """
+    p = Path(caminho.replace("\\", "/"))
+    if not p.is_absolute():
+        return None if ".." in p.parts else p
+    partes = [x.lower() for x in p.parts]
+    if "uploads" in partes:
+        return Path(*p.parts[partes.index("uploads") :])
+    if coluna == "certificado_path":
+        return Path("Certificados") / p.name
+    return None
+
+
 def _copiar_arquivos(
     con: sqlite3.Connection, tabela: str, coluna: str, base: Path, saida: Path, rel: Relatorio
-) -> tuple[int, list[str]]:
-    copiados, faltando = 0, []
-    for (caminho,) in con.execute(
-        f'select "{coluna}" from main."{tabela}" where "{coluna}" is not null and "{coluna}" <> "" order by rowid'
-    ):
-        relativo = Path(caminho.replace("\\", "/"))
-        if relativo.is_absolute() or ".." in relativo.parts:
+) -> tuple[int, list[str], int]:
+    """Copia os arquivos referenciados para <saida> e grava no banco novo o
+    caminho relativo normalizado. Retorna (copiados, não encontrados,
+    registros descartados)."""
+    copiados, faltando, descartados = 0, [], 0
+    linhas = con.execute(
+        f'select rowid, "{coluna}" from main."{tabela}" where "{coluna}" is not null and "{coluna}" <> "" order by rowid'
+    ).fetchall()
+    for rowid, caminho in linhas:
+        relativo = _destino_relativo(caminho, coluna)
+        if relativo is None:
             rel.erros.append(f"{tabela}.{coluna}: caminho fora da pasta de dados: {caminho}")
             continue
-        src = base / relativo
-        if not src.is_file():
+        absoluto = Path(caminho)
+        candidatos = [absoluto] if absoluto.is_absolute() else []
+        candidatos.append(base / relativo)
+        src = next((c for c in candidatos if c.is_file()), None)
+        if src is None:
             faltando.append(caminho)
+            if tabela in DESCARTA_SEM_ARQUIVO:
+                con.execute(f'delete from main."{tabela}" where rowid = ?', (rowid,))
+                descartados += 1
             continue
         dst = saida / relativo
         dst.parent.mkdir(parents=True, exist_ok=True)
         if not dst.exists():
             shutil.copy2(src, dst)
+        con.execute(f'update main."{tabela}" set "{coluna}" = ? where rowid = ?', (relativo.as_posix(), rowid))
         copiados += 1
-    return copiados, faltando
+    return copiados, faltando, descartados
+
+
+def _saldos_por_conta(con: sqlite3.Connection, esquema: str) -> dict[tuple, tuple]:
+    """Saldo por conta e mês com a regra de GET /saldo-contas (saldo inicial
+    do mês + recebidos - pagos no mês) e o pendente por conta (a receber -
+    a pagar). Chave (conta, ano, mês) ou (conta, "pendente")."""
+    saldos: dict[tuple, list] = {}
+    for conta, mes, ano, valor in con.execute(
+        f"select conta_bancaria_id, mes, ano, valor from {esquema}.saldo_inicial_conta"
+    ):
+        saldos.setdefault((conta, int(ano), int(mes)), [0.0, 0.0, 0.0])[0] += float(valor or 0)
+    for conta, tipo, status, data_pag, valor in con.execute(
+        f"select conta_bancaria_id, tipo, status, data_pagamento, valor from {esquema}.lancamentos "
+        "where conta_bancaria_id is not null"
+    ):
+        if status == "PAGO" and data_pag:
+            chave = (conta, int(str(data_pag)[:4]), int(str(data_pag)[5:7]))
+        elif status != "PAGO":
+            chave = (conta, "pendente")
+        else:
+            continue
+        saldos.setdefault(chave, [0.0, 0.0, 0.0])[1 if tipo == "RECEBER" else 2] += float(valor or 0)
+    return {k: (round(v[0] + v[1] - v[2], 2), round(v[1], 2), round(v[2], 2)) for k, v in saldos.items()}
 
 
 def montar(instalado: Path, dev: Path, base_instalado: Path, base_dev: Path, saida: Path) -> int:
@@ -274,25 +341,46 @@ def montar(instalado: Path, dev: Path, base_instalado: Path, base_dev: Path, sai
     rel()
     rel("   Arquivos:")
     faltando_total: list[str] = []
-    for tabelas, base in ((ARQUIVOS_INSTALADO, base_instalado), (ARQUIVOS_DEV, base_dev)):
-        for t, coluna in tabelas.items():
-            ok, faltando = _copiar_arquivos(con, t, coluna, base, saida, rel)
-            total = ok + len(faltando)
-            rel(f"   - {t}.{coluna}: {ok} de {total} copiados (origem {base})")
-            faltando_total += [f"{t}: {f}" for f in faltando]
+    descartados_total = 0
+    with con:
+        for tabelas, base in ((ARQUIVOS_INSTALADO, base_instalado), (ARQUIVOS_DEV, base_dev)):
+            for t, coluna in tabelas:
+                ok, faltando, descartados = _copiar_arquivos(con, t, coluna, base, saida, rel)
+                extra = f" — {descartados} registro(s) DESCARTADO(S): arquivo não existe" if descartados else ""
+                rel(f"   - {t}.{coluna}: {ok} de {ok + len(faltando)} copiados (origem {base}){extra}")
+                descartados_total += descartados
+                if t not in DESCARTA_SEM_ARQUIVO:
+                    faltando_total += [f"{t}: {f}" for f in faltando]
+    rel(f"   Anexos descartados por arquivo inexistente: {descartados_total}")
     if faltando_total:
-        rel(f"   ARQUIVOS NÃO ENCONTRADOS ({len(faltando_total)}):")
+        rel(f"   ARQUIVOS NÃO ENCONTRADOS, registro mantido ({len(faltando_total)}):")
         for f in faltando_total:
             rel(f"     {f}")
+
+    # 5. Saldos por conta: o descarte de anexos não pode mexer em lançamento.
+    rel()
+    saldos_origem = _saldos_por_conta(con, "inst")
+    saldos_destino = _saldos_por_conta(con, "main")
+    nomes = dict(con.execute("select id, nome from main.contas_bancarias"))
+    rel("5. Saldos por conta (inicial + recebido - pago, por mês; pendente = a receber - a pagar):")
+    rel(f"   {'conta':28}{'período':>10}{'origem':>14}{'destino':>14}")
+    for chave in sorted(saldos_origem.keys() | saldos_destino.keys(), key=str):
+        a, b = saldos_origem.get(chave), saldos_destino.get(chave)
+        periodo = "pendente" if chave[1] == "pendente" else f"{chave[2]:02d}/{chave[1]}"
+        nome = str(nomes.get(chave[0], chave[0]))[:27]
+        marca = "" if a == b else "   <-- DIFERENTE"
+        if a != b:
+            rel.erros.append(f"saldo da conta {nome} ({periodo}): origem {a} x destino {b}")
+        rel(f"   {nome:28}{periodo:>10}{a[0] if a else '-':>14}{b[0] if b else '-':>14}{marca}")
 
     con.execute("detach database inst")
     con.execute("detach database dev")
 
-    # 5. Integridade.
+    # 6. Integridade.
     rel()
     integ = [r[0] for r in con.execute("pragma integrity_check")]
     fks = con.execute("pragma foreign_key_check").fetchall()
-    rel(f"5. PRAGMA integrity_check: {', '.join(integ)}")
+    rel(f"6. PRAGMA integrity_check: {', '.join(integ)}")
     rel(f"   PRAGMA foreign_key_check: {'sem erros' if not fks else f'{len(fks)} erro(s)'}")
     for linha in fks[:20]:
         rel(f"     {linha}")
@@ -308,10 +396,12 @@ def montar(instalado: Path, dev: Path, base_instalado: Path, base_dev: Path, sai
         for e in rel.erros:
             rel(f"  - {e}")
     else:
-        rel(
-            "RESULTADO: OK"
-            + (f" (com {len(faltando_total)} arquivo(s) de anexo não encontrado(s))" if faltando_total else "")
-        )
+        avisos = []
+        if descartados_total:
+            avisos.append(f"{descartados_total} anexo(s) descartado(s) por arquivo inexistente")
+        if faltando_total:
+            avisos.append(f"{len(faltando_total)} arquivo(s) não encontrado(s) com registro mantido")
+        rel("RESULTADO: OK" + (f" ({'; '.join(avisos)})" if avisos else ""))
     (saida / "relatorio_montagem.txt").write_text("\n".join(rel.linhas) + "\n", encoding="utf-8")
     return 1 if rel.erros else 0
 

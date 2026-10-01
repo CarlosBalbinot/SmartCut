@@ -4,7 +4,6 @@ import tempfile
 from datetime import datetime
 from decimal import Decimal
 from io import BytesIO
-from pathlib import Path
 
 from lxml import etree
 from reportlab.graphics.barcode.code128 import Code128
@@ -21,21 +20,21 @@ from reportlab.platypus import (
 )
 from sqlalchemy.orm import Session
 
-from config import settings
 from models.cliente import Cliente  # noqa: F401 — referência futura (ver limitações no fim do arquivo)
 from models.nfe import NotaFiscal
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto import Produto
 from models.tes import TES
 from models.venda import Empresa
+from services.pasta_dados import pasta_certificados, pasta_dados, resolver
 from services.segredo_service import decifrar_segredo
 
 NFE_NS = "http://www.portalfiscal.inf.br/nfe"
 NSMAP = {None: NFE_NS}
 
-# Estrutura de pastas — caminhos relativos ao cwd do processo (mesma
-# convenção de uploads/logos em routers/configuracao_empresa.py). O processo
-# roda com cwd = backend/, então "../Certificados" fica na raiz do projeto.
+# Estrutura de pastas — relativa à pasta de dados do usuário
+# (services/pasta_dados.py: userData no app instalado, backend/ no dev),
+# nunca ao cwd (no executável o cwd seria a pasta de instalação).
 # Item 4.1: o .pfx NÃO vive mais ao lado do código — o caminho vem da
 # configuração da empresa (escolhido pelo usuário; no desktop via diálogo
 # nativo). A pasta padrão (quando definida por CERTIFICADO_DIR) é criada
@@ -80,26 +79,14 @@ _MODFRETE_POR_TIPO = {
 
 def criar_pastas_nfe() -> None:
     for nome in _PASTAS_NFE:
-        os.makedirs(os.path.join(_NFE_BASE, nome), exist_ok=True)
+        (pasta_dados() / _NFE_BASE / nome).mkdir(parents=True, exist_ok=True)
     os.makedirs(pasta_certificados_padrao(), exist_ok=True)
 
 
 def pasta_certificados_padrao() -> str:
-    """Pasta convencional dos certificados digitais (item 4.1).
-
-    Prioridade:
-      1. ``CERTIFICADO_DIR`` (settings/ambiente) — no desktop o Electron
-         injeta ``<userData>/Certificados`` (fora da árvore de código).
-      2. Sem override: a pasta ``Certificados/`` na raiz do repositório
-         (convenção do projeto, decidida com o usuário). Resolvida via
-         ``__file__`` — NUNCA via ``cwd``, que era o "bug" que quebrava a
-         localização no app empacotado (cwd = userData).
-    """
-    if settings.certificado_dir:
-        return settings.certificado_dir
-    # backend/services/nfe_service.py -> backend/ -> raiz do projeto
-    raiz_repo = Path(__file__).resolve().parents[2]
-    return str(raiz_repo / "Certificados")
+    """Pasta convencional dos certificados digitais (item 4.1) — ver
+    ``services.pasta_dados.pasta_certificados``."""
+    return str(pasta_certificados())
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -445,13 +432,14 @@ class _NFeXMLSigner:
 def _carregar_certificado(empresa: Empresa):
     from cryptography.hazmat.primitives.serialization import pkcs12
 
-    if not empresa.certificado_path or not os.path.exists(empresa.certificado_path):
+    arquivo_pfx = resolver(empresa.certificado_path)
+    if not arquivo_pfx or not arquivo_pfx.is_file():
         raise ValueError("Certificado digital não configurado ou arquivo .pfx não encontrado.")
     if not empresa.certificado_senha:
         raise ValueError("Senha do certificado não configurada.")
 
     senha = decifrar_segredo(empresa.certificado_senha)
-    with open(empresa.certificado_path, "rb") as f:
+    with open(arquivo_pfx, "rb") as f:
         dados_pfx = f.read()
     try:
         private_key, certificate, _ = pkcs12.load_key_and_certificates(dados_pfx, senha.encode("utf-8"))
@@ -596,11 +584,12 @@ def transmitir_nfe(xml_assinado: str, empresa: Empresa) -> dict:
     from zeep import Client
     from zeep.transports import Transport
 
-    if not empresa.certificado_path or not os.path.exists(empresa.certificado_path):
+    arquivo_pfx = resolver(empresa.certificado_path)
+    if not arquivo_pfx or not arquivo_pfx.is_file():
         raise ValueError("Certificado digital não configurado ou arquivo .pfx não encontrado.")
 
     senha = decifrar_segredo(empresa.certificado_senha)
-    with open(empresa.certificado_path, "rb") as f:
+    with open(arquivo_pfx, "rb") as f:
         dados_pfx = f.read()
     private_key, certificate, _ = pkcs12.load_key_and_certificates(dados_pfx, senha.encode("utf-8"))
 
@@ -709,11 +698,12 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
 
     # Cabeçalho
     logo_cell = Paragraph("", _D_N)
-    if empresa.logo_path and os.path.exists(empresa.logo_path):
+    arquivo_logo = resolver(empresa.logo_path)
+    if arquivo_logo and arquivo_logo.is_file():
         try:
             from reportlab.platypus import Image as RLImage
 
-            logo_cell = RLImage(empresa.logo_path, width=32 * mm, height=20 * mm)
+            logo_cell = RLImage(str(arquivo_logo), width=32 * mm, height=20 * mm)
         except Exception:
             pass
 
@@ -839,8 +829,9 @@ def gerar_danfe(xml_assinado: str, nfe: NotaFiscal, empresa: Empresa) -> str:
 
     doc.build(story)
 
-    caminho = os.path.join(_NFE_BASE, "Geradas", f"{chave}.pdf")
-    os.makedirs(os.path.dirname(caminho), exist_ok=True)
+    pasta = pasta_dados() / _NFE_BASE / "Geradas"
+    pasta.mkdir(parents=True, exist_ok=True)
+    caminho = str(pasta / f"{chave}.pdf")
     with open(caminho, "wb") as f:
         f.write(buf.getvalue())
     return caminho

@@ -23,6 +23,7 @@ from services.nfe_service import (
     proximo_numero,
     transmitir_nfe,
 )
+from services.pasta_dados import existe, relativo, resolver
 from services.venda_service import get_ou_criar_empresa
 
 router = APIRouter(prefix="/api/v1/nfe", tags=["nfe"])
@@ -40,6 +41,14 @@ _XML_GERADAS = "uploads/nfe/Geradas"
 _XML_ENVIADAS = "uploads/nfe/Enviadas"
 _XML_SOLIC_CANCELAMENTO = "uploads/nfe/SolicCancelamento"
 _XML_CARTAS_CORRECAO = "uploads/nfe/CartasDeCorrecaoEnviadas"
+# Pastas relativas à pasta de dados do usuário (services/pasta_dados.py);
+# xml_path/danfe_path vão para o banco relativos a ela ("uploads/nfe/...").
+
+
+def _pasta(pasta_rel: str):
+    pasta = resolver(pasta_rel)
+    pasta.mkdir(parents=True, exist_ok=True)
+    return pasta
 
 
 # ── Schemas ─────────────────────────────────────────────────────────────
@@ -152,10 +161,10 @@ def criar_nfe(payload: NotaFiscalCreate, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    xml_path = os.path.join(_XML_GERADAS, f"{nfe.chave_acesso}.xml")
+    xml_path = resolver(_XML_GERADAS) / f"{nfe.chave_acesso}.xml"
     with open(xml_path, "w", encoding="utf-8") as f:
         f.write(xml_assinado)
-    nfe.xml_path = xml_path
+    nfe.xml_path = relativo(xml_path)
 
     db.add(nfe)
     db.commit()
@@ -207,11 +216,11 @@ def transmitir(nfe_id: int, db: Session = Depends(get_db)):
     nfe = _get_nfe_ou_404(db, nfe_id)
     if nfe.status not in ("Rascunho", "Rejeitada"):
         raise HTTPException(status_code=400, detail=f"NF-e no status '{nfe.status}' não pode ser transmitida.")
-    if not nfe.xml_path or not os.path.exists(nfe.xml_path):
+    if not existe(nfe.xml_path):
         raise HTTPException(status_code=400, detail="XML da NF-e não encontrado em disco.")
 
     empresa = get_ou_criar_empresa(db)
-    with open(nfe.xml_path, "r", encoding="utf-8") as f:
+    with open(resolver(nfe.xml_path), "r", encoding="utf-8") as f:
         xml_assinado = f.read()
 
     try:
@@ -224,10 +233,10 @@ def transmitir(nfe_id: int, db: Session = Depends(get_db)):
         nfe.status = "Autorizada"
         nfe.protocolo = resultado.get("protocolo")
         nfe.data_autorizacao = datetime.now()
-        os.makedirs(_XML_ENVIADAS, exist_ok=True)
-        novo_path = os.path.join(_XML_ENVIADAS, os.path.basename(nfe.xml_path))
-        os.replace(nfe.xml_path, novo_path)
-        nfe.xml_path = novo_path
+        atual = resolver(nfe.xml_path)
+        novo_path = _pasta(_XML_ENVIADAS) / atual.name
+        os.replace(atual, novo_path)
+        nfe.xml_path = relativo(novo_path)
     elif cstat in ("103", "104", "105"):
         nfe.status = "Aguardando"
     else:
@@ -253,8 +262,7 @@ def cancelar(nfe_id: int, payload: CancelarIn, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    os.makedirs(_XML_SOLIC_CANCELAMENTO, exist_ok=True)
-    caminho = os.path.join(_XML_SOLIC_CANCELAMENTO, f"canc_{nfe.chave_acesso}.xml")
+    caminho = _pasta(_XML_SOLIC_CANCELAMENTO) / f"canc_{nfe.chave_acesso}.xml"
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(xml_evento)
 
@@ -275,18 +283,19 @@ def cancelar(nfe_id: int, payload: CancelarIn, db: Session = Depends(get_db)):
 def obter_danfe(nfe_id: int, db: Session = Depends(get_db)):
     nfe = _get_nfe_ou_404(db, nfe_id)
 
-    if nfe.danfe_path and os.path.exists(nfe.danfe_path):
-        return FileResponse(nfe.danfe_path, media_type="application/pdf", filename=os.path.basename(nfe.danfe_path))
+    if existe(nfe.danfe_path):
+        danfe = resolver(nfe.danfe_path)
+        return FileResponse(str(danfe), media_type="application/pdf", filename=danfe.name)
 
-    if not nfe.xml_path or not os.path.exists(nfe.xml_path):
+    if not existe(nfe.xml_path):
         raise HTTPException(status_code=400, detail="XML da NF-e não encontrado — não é possível gerar o DANFE.")
 
     empresa = get_ou_criar_empresa(db)
-    with open(nfe.xml_path, "r", encoding="utf-8") as f:
+    with open(resolver(nfe.xml_path), "r", encoding="utf-8") as f:
         xml_assinado = f.read()
 
     danfe_path = gerar_danfe(xml_assinado, nfe, empresa)
-    nfe.danfe_path = danfe_path
+    nfe.danfe_path = relativo(danfe_path)
     db.commit()
 
     return FileResponse(danfe_path, media_type="application/pdf", filename=os.path.basename(danfe_path))
@@ -304,8 +313,7 @@ def carta_correcao(nfe_id: int, payload: CartaCorrecaoIn, db: Session = Depends(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    os.makedirs(_XML_CARTAS_CORRECAO, exist_ok=True)
-    caminho = os.path.join(_XML_CARTAS_CORRECAO, f"cce_{nfe.chave_acesso}_{datetime.now():%Y%m%d%H%M%S}.xml")
+    caminho = _pasta(_XML_CARTAS_CORRECAO) / f"cce_{nfe.chave_acesso}_{datetime.now():%Y%m%d%H%M%S}.xml"
     with open(caminho, "w", encoding="utf-8") as f:
         f.write(xml_evento)
 

@@ -53,11 +53,9 @@ def _ads_minimo() -> bytes:
 
 @pytest.fixture()
 def upload_dir(tmp_path, monkeypatch):
-    """O preview escreve em settings.upload_dir — aponta para o tmp do teste."""
-    d = tmp_path / "uploads"
-    d.mkdir()
-    monkeypatch.setattr(settings, "upload_dir", str(d))
-    return d
+    """O preview escreve em <pasta de dados>/uploads — aponta para o tmp do teste."""
+    monkeypatch.setattr(settings, "smartcut_dados_dir", str(tmp_path))
+    return tmp_path / "uploads"
 
 
 class TestClientesCRUD:

@@ -1,4 +1,3 @@
-import os
 from decimal import Decimal
 from io import BytesIO
 
@@ -15,6 +14,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+from services.pasta_dados import resolver
 
 # ── Paleta (preto / branco / cinza claro apenas) ────────────────────────────
 _CINZA_CLARO = colors.Color(0.98, 0.98, 0.98)  # #fafafa — linhas alternadas
@@ -165,9 +166,10 @@ def gerar_pdf_pedido(pedido, itens, empresa, precos_ref=None) -> bytes:
 
     # ── Cabeçalho: logo (30%) | empresa (40%) | box do pedido (30%) ──────────
     logo_cell = Paragraph("", _N)
-    if empresa and empresa.logo_path and os.path.exists(empresa.logo_path):
+    arquivo_logo = resolver(empresa.logo_path) if empresa else None
+    if arquivo_logo and arquivo_logo.is_file():
         try:
-            logo_cell = RLImage(empresa.logo_path, width=38 * mm, height=24 * mm)
+            logo_cell = RLImage(str(arquivo_logo), width=38 * mm, height=24 * mm)
         except Exception:
             pass
 

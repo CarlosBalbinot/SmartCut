@@ -206,7 +206,11 @@ async function spawnBackend() {
 
     const userData  = app.getPath('userData');
     const dbPath    = path.join(userData, 'smartcut.db');
-    const uploadDir = path.join(userData, 'uploads');
+    // Pasta base de TODOS os arquivos do usuário (uploads/financeiro, logos,
+    // nfe, moldes, catálogos, Certificados): o banco guarda caminhos
+    // relativos a ela (backend/services/pasta_dados.py). Nunca a pasta de
+    // instalação — uma reinstalação apaga resources/bin.
+    const dadosDir  = userData;
     const certificadosDir = path.join(userData, 'Certificados');
     // Modelos de relatório editáveis pelo usuário em userData/relatorios,
     // atualizados a partir de resources/relatorios-padrao sem sobrescrever
@@ -216,7 +220,7 @@ async function spawnBackend() {
 
     log(`userData: ${userData}`);
     log(`dbPath: ${dbPath}`);
-    log(`uploadDir: ${uploadDir}`);
+    log(`dadosDir: ${dadosDir}`);
     log(`certificadosDir: ${certificadosDir}`);
     try {
       fs.mkdirSync(certificadosDir, { recursive: true });
@@ -265,7 +269,7 @@ async function spawnBackend() {
       env: {
         ...process.env,
         SMARTCUT_DB_PATH: dbPath,
-        UPLOAD_DIR: uploadDir,
+        SMARTCUT_DADOS_DIR: dadosDir,
         CERTIFICADO_DIR: certificadosDir,
         SMARTCUT_RELATORIOS_DIR: relatoriosDir,
         SMARTCUT_CERT_KEY: certKey,

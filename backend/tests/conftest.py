@@ -164,3 +164,15 @@ def _limpar_estados_globais():
     rate_limit._BLOQUEIO_ATE.clear()
     rate_limit._COOLDOWN_NIVEL.clear()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _pasta_dados_temporaria(tmp_path_factory, monkeypatch):
+    """Arquivos do usuário (anexos, logo, NF-e, certificados...) vão para uma
+    pasta temporária — nunca para backend/uploads nem Certificados/ reais."""
+    from config import settings
+
+    dados = tmp_path_factory.mktemp("dados")
+    monkeypatch.setattr(settings, "smartcut_dados_dir", str(dados))
+    monkeypatch.setattr(settings, "certificado_dir", "")
+    yield dados

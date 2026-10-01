@@ -26,6 +26,7 @@ from models.financeiro import (
     VendaFinanceira,
 )
 from models.venda import Empresa
+from services.pasta_dados import existe, pasta_uploads, relativo, resolver
 from services.contabilidade_service import gerar_resumo_interno_pdf, montar_pacote_zip
 from services.danfe_service import gerar_danfe_simplificada_pdf
 from schemas.financeiro_schema import (
@@ -64,7 +65,9 @@ from schemas.financeiro_schema import (
 router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
 logger = logging.getLogger(__name__)
 
-_UPLOAD_DIR = "uploads/financeiro"
+# Anexos em <pasta de dados>/uploads/financeiro/<lançamento>/ (fora da pasta
+# de instalação); o banco guarda o caminho relativo "uploads/financeiro/...".
+_UPLOAD_SUBPASTA = "financeiro"
 
 # Este router cobre cinco telas distintas do Financeiro (Painel, Fluxo de
 # Caixa, Compras, Vendas, Contabilidade); cada grupo de endpoints abaixo é
@@ -940,11 +943,7 @@ def deletar_compra(compra_id: uuid.UUID, db: Session = Depends(get_db)):
 
     for lanc in compra.lancamentos:
         for anexo in lanc.anexos:
-            if os.path.exists(anexo.arquivo_path):
-                try:
-                    os.remove(anexo.arquivo_path)
-                except OSError:
-                    pass
+            _remover_arquivo(anexo.arquivo_path)
 
     for lanc in compra.lancamentos:
         db.delete(lanc)
@@ -1161,11 +1160,7 @@ def deletar_venda(venda_id: uuid.UUID, db: Session = Depends(get_db)):
 
     for lanc in venda.lancamentos:
         for anexo in lanc.anexos:
-            if os.path.exists(anexo.arquivo_path):
-                try:
-                    os.remove(anexo.arquivo_path)
-                except OSError:
-                    pass
+            _remover_arquivo(anexo.arquivo_path)
 
     for lanc in venda.lancamentos:
         db.delete(lanc)
@@ -1206,6 +1201,24 @@ async def gerar_danfe_simplificada(arquivo: UploadFile = File(...), db: Session 
 # ver relatório final.
 
 
+def _gravar_anexo(lancamento_id: uuid.UUID, arquivo: UploadFile, nome_original: str) -> str:
+    """Grava o arquivo na pasta de dados e devolve o caminho relativo."""
+    ext = os.path.splitext(nome_original)[1] or ".pdf"
+    caminho = pasta_uploads(_UPLOAD_SUBPASTA, str(lancamento_id)) / f"{uuid.uuid4()}{ext}"
+    with open(caminho, "wb") as f:
+        shutil.copyfileobj(arquivo.file, f)
+    return relativo(caminho)
+
+
+def _remover_arquivo(caminho_banco: str | None) -> None:
+    alvo = resolver(caminho_banco)
+    if alvo and alvo.is_file():
+        try:
+            alvo.unlink()
+        except OSError:
+            pass
+
+
 @router.post(
     "/lancamentos/{lancamento_id}/anexos",
     dependencies=[Depends(require_permission(_FLUXO, "criar"))],
@@ -1220,20 +1233,10 @@ async def upload_anexo(
     if not lancamento:
         raise HTTPException(status_code=404, detail="Lançamento não encontrado")
 
-    pasta = os.path.join(_UPLOAD_DIR, str(lancamento_id))
-    os.makedirs(pasta, exist_ok=True)
-
     nome_original = arquivo.filename or "arquivo.pdf"
-    ext = os.path.splitext(nome_original)[1] or ".pdf"
-    nome_arquivo = f"{uuid.uuid4()}{ext}"
-    caminho = os.path.join(pasta, nome_arquivo)
-
-    with open(caminho, "wb") as f:
-        shutil.copyfileobj(arquivo.file, f)
-
     anexo = AnexoLancamento(
         lancamento_id=lancamento_id,
-        arquivo_path=caminho.replace("\\", "/"),
+        arquivo_path=_gravar_anexo(lancamento_id, arquivo, nome_original),
         tipo=tipo,
         nome_original=nome_original,
     )
@@ -1271,13 +1274,34 @@ def download_anexo(anexo_id: uuid.UUID, db: Session = Depends(get_db)):
     anexo = db.get(AnexoLancamento, anexo_id)
     if not anexo:
         raise HTTPException(status_code=404, detail="Anexo não encontrado")
-    if not os.path.exists(anexo.arquivo_path):
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+    if not existe(anexo.arquivo_path):
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
     return FileResponse(
-        path=anexo.arquivo_path,
+        path=str(resolver(anexo.arquivo_path)),
         filename=anexo.nome_original,
         media_type="application/octet-stream",
     )
+
+
+@router.put(
+    "/anexos/{anexo_id}/arquivo",
+    dependencies=[Depends(require_permission(_FLUXO, "criar"))],
+)
+async def reenviar_anexo(anexo_id: uuid.UUID, arquivo: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Substitui o arquivo de um anexo (ex.: arquivo perdido no disco),
+    mantendo o registro, o lançamento e o tipo."""
+    anexo = db.get(AnexoLancamento, anexo_id)
+    if not anexo:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    antigo = anexo.arquivo_path
+    nome_original = arquivo.filename or anexo.nome_original
+    anexo.arquivo_path = _gravar_anexo(anexo.lancamento_id, arquivo, nome_original)
+    anexo.nome_original = nome_original
+    db.commit()
+    db.refresh(anexo)
+    if antigo != anexo.arquivo_path:
+        _remover_arquivo(antigo)
+    return {"data": AnexoLancamentoOut.model_validate(anexo), "error": None}
 
 
 @router.delete(
@@ -1288,11 +1312,7 @@ def deletar_anexo(anexo_id: uuid.UUID, db: Session = Depends(get_db)):
     anexo = db.get(AnexoLancamento, anexo_id)
     if not anexo:
         raise HTTPException(status_code=404, detail="Anexo não encontrado")
-    if os.path.exists(anexo.arquivo_path):
-        try:
-            os.remove(anexo.arquivo_path)
-        except OSError:
-            pass
+    _remover_arquivo(anexo.arquivo_path)
     db.delete(anexo)
     db.commit()
     return {"data": None, "error": None}
