@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, selectinload
 from models.produto import GrupoProduto, Produto
 from models.produto_sku import ProdutoSKU
 from schemas.produto_schema import ProdutoCreate, ProdutoUpdate
+from services import sequencia_service
 
 
 def _opts():
@@ -16,20 +17,32 @@ def _opts():
     ]
 
 
+def seq_produto(prefixo: str) -> str:
+    """Sequência do código do produto (F0, passo 1d): uma por PREFIXO, não
+    por grupo — o prefixo não é único entre grupos e o código (PREFIXO-NNN)
+    é único no banco inteiro, então o prefixo é o espaço de numeração."""
+    return f"produto:{prefixo}"
+
+
+def _ultimo_numero(prefixo: str):
+    """inicial(db): maior NNN já usado em códigos PREFIXO-NNN, de qualquer grupo."""
+
+    def inicial(db: Session) -> int:
+        inicio = f"{prefixo}-"
+        max_val = 0
+        for (codigo,) in db.query(Produto.codigo).filter(Produto.codigo.startswith(inicio, autoescape=True)).all():
+            try:
+                max_val = max(max_val, int(codigo[len(inicio) :]))
+            except ValueError:
+                pass
+        return max_val
+
+    return inicial
+
+
 def _proximo_codigo(db: Session, grupo: GrupoProduto) -> str:
-    prefixo = f"{grupo.prefixo}-"
-    codigos = [row[0] for row in db.query(Produto.codigo).filter(Produto.grupo_id == grupo.id).all()]
-    max_val = 0
-    for codigo in codigos:
-        if not codigo.startswith(prefixo):
-            continue
-        try:
-            n = int(codigo[len(prefixo) :])
-            if n > max_val:
-                max_val = n
-        except ValueError:
-            pass
-    return f"{grupo.prefixo}-{max_val + 1:03d}"
+    n = sequencia_service.proximo(db, seq_produto(grupo.prefixo), _ultimo_numero(grupo.prefixo))
+    return f"{grupo.prefixo}-{n:03d}"
 
 
 def listar(

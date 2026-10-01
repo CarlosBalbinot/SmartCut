@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from middleware.permissions import require_permission
+from models.produto import Produto
 from models.produto_sku import ProdutoSKU
 from schemas.produto_schema import (
     GradeItemCreate,
@@ -306,6 +307,11 @@ def atualizar_sku_produto(produto_id: uuid.UUID, sku_id: int, payload: SkuUpdate
         dados["preco_manual"] = True
     for campo, valor in dados.items():
         setattr(sku, campo, valor)
+    if dados.get("codigo"):
+        # Código digitado à mão: a sequência do prefixo não entrega mais o
+        # {SEQ} dele (F0 passo 1d). Desfeito junto se o código já existir.
+        with db.no_autoflush:
+            grade_service.garantir_minimo_sku(db, db.get(Produto, produto_id).grupo.prefixo, dados["codigo"])
     try:
         db.commit()
     except Exception:

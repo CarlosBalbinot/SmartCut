@@ -4,19 +4,26 @@ from sqlalchemy.orm import Session
 
 from models.produto import GrupoProduto
 from schemas.produto_schema import GrupoProdutoCreate, GrupoProdutoUpdate
+from services import sequencia_service
+
+# Sequência do código do grupo (services/sequencia_service.py, F0 passo 1d).
+SEQ_GRUPO = "grupo_produto"
+
+
+def _ultimo_codigo(db: Session) -> int:
+    """Maior código numérico já usado (códigos não numéricos são ignorados) —
+    ponto de partida da sequência no primeiro uso."""
+    max_val = 0
+    for (codigo,) in db.query(GrupoProduto.codigo).all():
+        try:
+            max_val = max(max_val, int(codigo))
+        except (ValueError, TypeError):
+            pass
+    return max_val
 
 
 def _proximo_codigo(db: Session) -> str:
-    codigos = [row[0] for row in db.query(GrupoProduto.codigo).all()]
-    max_val = 0
-    for codigo in codigos:
-        try:
-            n = int(codigo)
-            if n > max_val:
-                max_val = n
-        except (ValueError, TypeError):
-            pass
-    return str(max_val + 1).zfill(3)
+    return str(sequencia_service.proximo(db, SEQ_GRUPO, _ultimo_codigo)).zfill(3)
 
 
 def listar(db: Session, situacao: str | None = None) -> list[GrupoProduto]:

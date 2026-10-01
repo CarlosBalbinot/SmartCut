@@ -146,6 +146,10 @@ do maior número já gravado (`inicial(db)`, com a regra que cada service já
 usava). **Todo caminho que grava códigos fora do fluxo normal (importações,
 integração da F3, `montar_banco_producao`, códigos digitados à mão) deve
 chamar `sequencia_service.garantir_minimo`.**
+Sequências em uso: `oc`, `encaixe` (passo 1c), `grupo_produto`,
+`produto:<PREFIXO>` e `sku:<PREFIXO>` (passo 1d). As de produto e SKU são
+por prefixo, não por grupo: o prefixo não é único entre grupos e os códigos
+são únicos no banco inteiro.
 
 #### Migração de dados e das migrations — **M**
 

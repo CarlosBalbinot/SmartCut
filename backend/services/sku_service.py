@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from models.produto import Produto
 from models.produto_sku import ProdutoSKU
 from models.tabela_grade import ItemTabelaGrade
-from services.grade_service import gerar_codigo_filho, proximo_seq_grupo
+from services.grade_service import gerar_codigo_filho, proximo_seq_sku
 
 
 def _obter_produto_pai_ou_erro(db: Session, produto_pai_id: uuid.UUID) -> Produto:
@@ -15,12 +15,26 @@ def _obter_produto_pai_ou_erro(db: Session, produto_pai_id: uuid.UUID) -> Produt
     return produto
 
 
+def _codigo_livre(db: Session, grupo_prefixo: str, cor: str | None, tam: str | None, desta_geracao: set[str]) -> str:
+    """Código do SKU com o próximo {SEQ} da sequência do prefixo (atômica:
+    duas gerações ao mesmo tempo nunca pegam o mesmo número). Se o código já
+    existe — SKU antigo da regra anterior, que recomeçava a numeração, ou
+    código digitado à mão —, pega o número seguinte."""
+    while True:
+        codigo = gerar_codigo_filho(db, grupo_prefixo, proximo_seq_sku(db, grupo_prefixo), cor, tam)
+        if codigo in desta_geracao:
+            continue
+        with db.no_autoflush:
+            existe = db.query(ProdutoSKU.id).filter(ProdutoSKU.codigo == codigo).first()
+        if not existe:
+            return codigo
+
+
 def gerar_skus(db: Session, produto_pai_id: uuid.UUID, combinacoes: list[dict]) -> list[ProdutoSKU]:
     produto = _obter_produto_pai_ou_erro(db, produto_pai_id)
     grupo_prefixo = produto.grupo.prefixo
 
     criados = []
-    seq = proximo_seq_grupo(db, grupo_prefixo)
     for combo in combinacoes:
         linha_item_id = combo.get("linha_item_id")
         coluna_item_id = combo.get("coluna_item_id")
@@ -40,12 +54,12 @@ def gerar_skus(db: Session, produto_pai_id: uuid.UUID, combinacoes: list[dict]) 
         linha_item = db.get(ItemTabelaGrade, linha_item_id) if linha_item_id else None
         coluna_item = db.get(ItemTabelaGrade, coluna_item_id) if coluna_item_id else None
 
-        codigo = gerar_codigo_filho(
+        codigo = _codigo_livre(
             db,
             grupo_prefixo,
-            seq,
             linha_item.codigo_curto if linha_item else None,
             coluna_item.codigo_curto if coluna_item else None,
+            {s.codigo for s in criados},
         )
         sku = ProdutoSKU(
             produto_pai_id=produto_pai_id,
@@ -55,7 +69,6 @@ def gerar_skus(db: Session, produto_pai_id: uuid.UUID, combinacoes: list[dict]) 
         )
         db.add(sku)
         criados.append(sku)
-        seq += 1
 
     db.commit()
     for sku in criados:
