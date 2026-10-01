@@ -36,7 +36,7 @@ from models.ordem_corte import (
 from models.pedido import ItemPedido, PedidoVenda
 from models.produto_sku import ProdutoSKU
 from models.tecido import ConsumoLote, CorTecido, LoteTecido
-from services import lote_service, nesting_service
+from services import lote_service, nesting_service, sequencia_service
 from services.erros import ERRO, ErroApp
 from services.plano_enfesto import linhas_enfesto, planejar
 
@@ -67,6 +67,16 @@ class ErroOC(ErroApp):
 
 def _norm(texto: str | None) -> str:
     return (texto or "").strip().casefold()
+
+
+# Sequência do número da OC (services/sequencia_service.py, F0 passo 1c).
+SEQ_OC = "oc"
+
+
+def _ultimo_numero_oc(db: Session) -> int:
+    """Maior número de OC já gravado — ponto de partida da sequência `oc` no
+    primeiro uso (inclui as canceladas: número nunca é reaproveitado)."""
+    return db.execute(select(func.max(OrdemCorte.numero))).scalar() or 0
 
 
 def numero_fmt(numero: int | None) -> str:
@@ -599,8 +609,7 @@ def criar_ordem_corte(db: Session, pedido_id: uuid.UUID) -> dict:
     if not any(i.produto_id is not None for i in itens):
         raise ErroOC("O pedido não possui itens de produto para cortar.")
 
-    ultimo = db.execute(select(func.max(OrdemCorte.numero))).scalar() or 0
-    oc = OrdemCorte(numero=ultimo + 1, pedido_id=pedido_id, status=_EDITAVEL, modo_camadas="SEM_SOBRA")
+    oc = OrdemCorte(pedido_id=pedido_id, status=_EDITAVEL, modo_camadas="SEM_SOBRA")
     db.add(oc)
     # no_autoflush: o _snapshot consulta os grupos de molde, e num sessão com
     # autoflush ligado esse SELECT gravaria a OC antes de o pedido_hash (NOT
@@ -608,11 +617,15 @@ def criar_ordem_corte(db: Session, pedido_id: uuid.UUID) -> dict:
     # suíte não é — sem isto a criação quebra só no teste.
     with db.no_autoflush:
         _snapshot(db, oc, itens)
+        # Número atômico, pego por último: o UPDATE da sequência trava a
+        # gravação no SQLite até o commit, então quanto mais tarde, menos
+        # as outras criações esperam. Rollback devolve o número.
+        oc.numero = sequencia_service.proximo(db, SEQ_OC, _ultimo_numero_oc)
     try:
         db.commit()
     except IntegrityError:
-        # Corrida com outra criação: ou a OC ativa do pedido (índice
-        # parcial) ou o número — nos dois casos nada foi gravado.
+        # Corrida com outra criação para o mesmo pedido (índice parcial da
+        # OC ativa): nada foi gravado e o número volta para a sequência.
         db.rollback()
         raise ErroOC("Outra Ordem de Corte foi criada ao mesmo tempo para este pedido; recarregue.", 409)
     return ordem_out(db, _carregar(db, oc.id))

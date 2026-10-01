@@ -44,7 +44,6 @@ from collections.abc import Callable, Hashable
 from dataclasses import dataclass
 
 from sqlalchemy import func
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from models.encaixe import Encaixe, EncaixeCamada
@@ -53,7 +52,7 @@ from models.molde import Molde
 from models.ordem_corte import COMPRIMENTO_MAX_PADRAO_CM, QUALIDADE_PADRAO
 from models.pedido import ItemPedido, PedidoVenda as Pedido
 from models.tecido import CorTecido, LoteTecido, ModeloTecido
-from services import nesting_v2
+from services import nesting_v2, sequencia_service
 from services.erros import ERRO, ErroApp
 from services.nesting_v2 import decisor
 from services.nesting_v2.geometria import espelha_segunda_copia
@@ -1092,38 +1091,34 @@ def _montar_encaixe(
 
 # ── Numeração e gravação ─────────────────────────────────────────────────────
 
-# Tentativas de gravação quando outra geração simultânea pega o mesmo número
-# (a UNIQUE uq_encaixes_numero rejeita o segundo commit).
-_TENTATIVAS_NUMERACAO = 3
+# Sequência do número ENC-XXX (services/sequencia_service.py, F0 passo 1c).
+SEQ_ENCAIXE = "encaixe"
+
+
+def _ultimo_numero_encaixe(db: Session) -> int:
+    """Maior ENC já gravado, inclusive os deletados (soft-delete) — ponto de
+    partida da sequência `encaixe` no primeiro uso."""
+    return db.query(func.max(Encaixe.numero)).scalar() or 0
 
 
 def _numerar(db: Session, encaixes: list[Encaixe]) -> None:
-    """ENC-XXX = MAX(numero)+1 sobre TODOS os encaixes, inclusive os
-    deletados (soft-delete), para nunca reaproveitar um número. A sessão
-    roda com autoflush=False, então os encaixes pendentes desta chamada
-    não entram no MAX."""
-    ultimo = db.query(func.max(Encaixe.numero)).scalar() or 0
-    for i, encaixe in enumerate(encaixes, start=1):
-        encaixe.numero = ultimo + i
+    """ENC-XXX pela sequência atômica: duas gerações ao mesmo tempo nunca
+    pegam o mesmo número, e um número nunca é reaproveitado."""
+    # no_autoflush: o UPDATE da sequência não pode gravar antes os encaixes
+    # pendentes (ainda sem número).
+    with db.no_autoflush:
+        for encaixe in encaixes:
+            encaixe.numero = sequencia_service.proximo(db, SEQ_ENCAIXE, _ultimo_numero_encaixe)
 
 
 def _gravar(db: Session, encaixes: list[Encaixe]) -> None:
     """Numera e grava todos os encaixes da chamada num único commit — junto
     com o que mais estiver pendente na sessão (ex.: encaixes anteriores da
-    OC marcados como deletados)."""
+    OC marcados como deletados). Se o commit falhar, quem chama desfaz tudo,
+    inclusive os números."""
+    _numerar(db, encaixes)
     db.add_all(encaixes)
-    for tentativa in range(1, _TENTATIVAS_NUMERACAO + 1):
-        _numerar(db, encaixes)
-        try:
-            db.commit()
-            return
-        except IntegrityError:
-            db.rollback()
-            if tentativa == _TENTATIVAS_NUMERACAO:
-                raise
-            # O rollback expulsa os objetos pendentes da sessão — readiciona
-            # e tenta de novo com o MAX atualizado.
-            db.add_all(encaixes)
+    db.commit()
 
 
 def _resumo(encaixe: Encaixe) -> dict:
