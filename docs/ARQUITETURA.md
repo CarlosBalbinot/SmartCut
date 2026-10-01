@@ -140,6 +140,13 @@ Transições com `SELECT … FOR UPDATE` ou `UPDATE … WHERE status = :esperado
 conferindo as linhas afetadas. Estoque com
 `UPDATE lotes SET peso = peso - :kg` direto no SQL.
 
+Implementado no passo 1a (`services/sequencia_service.py`): a tabela
+`sequencias` nasce vazia e cada sequência é criada no primeiro uso, a partir
+do maior número já gravado (`inicial(db)`, com a regra que cada service já
+usava). **Todo caminho que grava códigos fora do fluxo normal (importações,
+integração da F3, `montar_banco_producao`, códigos digitados à mão) deve
+chamar `sequencia_service.garantir_minimo`.**
+
 #### Migração de dados e das migrations — **M**
 
 - **Baseline nova só para Postgres** ("2.0" = retrato da head atual). A

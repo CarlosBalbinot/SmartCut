@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -7,10 +9,14 @@ from config import settings
 def resolver_url() -> str:
     # Em produção (Electron empacotado), o main.js define SMARTCUT_DB_PATH
     # apontando para o diretório de dados do usuário. Item 10.4: fonte única
-    # de configuração — tudo passa pelos settings do pydantic (config.py).
-    if settings.smartcut_db_path:
-        return f"sqlite:///{settings.smartcut_db_path}"
-    return settings.database_url
+    # de configuração — os settings do pydantic (config.py).
+    # A variável de ambiente é lida AGORA, não só na importação dos settings:
+    # quem define SMARTCUT_DB_PATH depois de importar (scripts, alembic em
+    # cópia do banco) não pode cair no banco de desenvolvimento.
+    caminho = os.environ.get("SMARTCUT_DB_PATH") or settings.smartcut_db_path
+    if caminho:
+        return f"sqlite:///{caminho}"
+    return os.environ.get("DATABASE_URL") or settings.database_url
 
 
 def criar_engine(url: str):

@@ -47,6 +47,8 @@ SQLAlchemy 2, Alembic) + SQLite. Sistema de gestão da Vaidosa Fitness.
   migration nova no boot.
 - **Testes com dados reais só em cópia do banco** (`SMARTCUT_DB_PATH` apontando para a
   cópia; `scripts/medir_oc.py`). Os testes automáticos já usam banco e pasta temporários.
+- **Antes de qualquer comando alembic, conferir o caminho do banco impresso no início**
+  (`[alembic] banco alvo: ...`). Downgrade só roda com `SMARTCUT_PERMITIR_DOWNGRADE=1`.
 
 ## Regras de negócio que não mudam sem decisão explícita
 ```python

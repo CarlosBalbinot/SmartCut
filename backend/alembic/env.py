@@ -1,8 +1,10 @@
+import sys
+
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 from database import Base, resolver_url
-from config import settings
+from services.db_migracoes import com_trava_de_downgrade, descrever_alvo
 
 # Importar todos os modelos para que o Alembic os detecte no autogenerate
 import models  # noqa: F401
@@ -12,7 +14,13 @@ config = context.config
 # SMARTCUT_DB_PATH aponta para userData; dev: DATABASE_URL/settings).
 # aplicar_migracoes(url=...) (script de montagem, testes) passa um banco
 # explícito em config.attributes["url_banco"].
-config.set_main_option("sqlalchemy.url", config.attributes.get("url_banco") or resolver_url())
+# Resolvida a cada execução deste arquivo (resolver_url lê SMARTCUT_DB_PATH do
+# ambiente na hora), nunca com o valor da importação dos settings.
+url_alvo = config.attributes.get("url_banco") or resolver_url()
+config.set_main_option("sqlalchemy.url", url_alvo.replace("%", "%%"))
+alvo = descrever_alvo(url_alvo)
+# Trava de segurança: o banco alvo aparece no início de todo comando.
+print(f"[alembic] banco alvo: {alvo}", file=sys.stderr, flush=True)
 
 # Logging (Parte 9.2): NÃO aplicamos o fileConfig do alembic.ini de propósito —
 # ele criaria um handler "generic" duplicado, fora do formato estruturado com
@@ -22,15 +30,24 @@ config.set_main_option("sqlalchemy.url", config.attributes.get("url_banco") or r
 target_metadata = Base.metadata
 
 
+def _trava_downgrade(**opcoes) -> None:
+    """Reconfigura com a função de passos do comando envolvida pela trava de
+    downgrade (services/db_migracoes.py): sem SMARTCUT_PERMITIR_DOWNGRADE=1,
+    um downgrade para antes de rodar o primeiro passo."""
+    fn = context.get_context().opts.get("fn")
+    context.configure(**opcoes, fn=com_trava_de_downgrade(fn, alvo))
+
+
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
+    opcoes = dict(
+        url=url_alvo,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         render_as_batch=True,  # necessário para SQLite (não suporta ALTER TABLE nativo)
     )
+    context.configure(**opcoes)
+    _trava_downgrade(**opcoes)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -42,11 +59,13 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(
+        opcoes = dict(
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=True,  # necessário para SQLite
         )
+        context.configure(**opcoes)
+        _trava_downgrade(**opcoes)
         with context.begin_transaction():
             context.run_migrations()
 

@@ -20,13 +20,16 @@ versão sem criar a estrutura das migrações puladas. Um banco nessa situação
 """
 
 import logging
+import os
 import sys
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 
 from database import resolver_url
 
@@ -55,6 +58,49 @@ def _config_alembic() -> Config:
 
 def _revisoes_conhecidas(cfg: Config) -> set[str]:
     return {s.revision for s in ScriptDirectory.from_config(cfg).walk_revisions()}
+
+
+# ── Trava de segurança dos comandos Alembic (alembic/env.py) ────────────────
+# Todo comando mostra o banco alvo antes de começar, e downgrade (ou stamp
+# para trás) só roda com SMARTCUT_PERMITIR_DOWNGRADE=1.
+
+PERMITIR_DOWNGRADE = "SMARTCUT_PERMITIR_DOWNGRADE"
+
+
+class DowngradeBloqueado(RuntimeError):
+    """Downgrade sem a confirmação explícita: nada foi alterado no banco."""
+
+
+def descrever_alvo(url: str) -> str:
+    """Banco alvo legível: caminho absoluto do arquivo SQLite ou a URL sem
+    a senha."""
+    u = make_url(url)
+    if u.get_backend_name() == "sqlite":
+        return str(Path(u.database).resolve()) if u.database and u.database != ":memory:" else "(SQLite em memória)"
+    return u.render_as_string(hide_password=True)
+
+
+Passos = Callable[..., Iterable]
+
+
+def com_trava_de_downgrade(fn: Passos | None, alvo: str) -> Passos | None:
+    """Envolve a função do comando Alembic que calcula os passos. Os passos
+    são todos calculados ANTES do primeiro rodar: se algum desce a versão e
+    a confirmação não foi dada, para sem tocar no banco."""
+    if fn is None:
+        return None
+
+    def passos(heads, contexto):
+        lista = list(fn(heads, contexto))
+        desce = [p for p in lista if not getattr(p, "is_upgrade", True)]
+        if desce and os.environ.get(PERMITIR_DOWNGRADE) != "1":
+            raise DowngradeBloqueado(
+                f"Downgrade bloqueado no banco {alvo}. Confira o caminho; para confirmar, "
+                f"rode de novo com {PERMITIR_DOWNGRADE}=1."
+            )
+        return lista
+
+    return passos
 
 
 class BancoSemVersao(RuntimeError):
