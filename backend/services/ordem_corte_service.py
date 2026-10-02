@@ -948,7 +948,7 @@ def concluir(db: Session, oc_id: uuid.UUID, cortador: str, consumos: list[dict],
                 observacao=(observacao or "").strip() or None,
             )
         )
-        lote_service.debitar(lote, kg)
+        lote_service.debitar(db, lote.id, kg)
     return _finalizar(db, oc_id)
 
 
@@ -991,9 +991,7 @@ def reabrir(db: Session, oc_id: uuid.UUID, quem: str, observacao: str | None = N
     for cons in vivos:
         kg = float(cons.peso_consumido_kg or 0.0)
         if cons.lote_id:
-            lote = db.get(LoteTecido, cons.lote_id)
-            if lote:
-                lote_service.creditar(lote, kg)
+            lote_service.creditar(db, cons.lote_id, kg)
         db.add(
             ConsumoLote(
                 lote_id=cons.lote_id,

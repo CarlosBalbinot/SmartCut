@@ -1,12 +1,16 @@
 import re
 import uuid
+from decimal import ROUND_HALF_UP, Decimal
 
+from sqlalchemy import and_, case, func, update
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.util import identity_key
 
 from models.tecido import LoteTecido
 from schemas.tecido_schema import LoteCreate, LoteOut, LoteUpdate
 
 _LIMITE_ALERTA_KG = 5.0
+_MILESIMO = Decimal("0.001")
 
 
 def listar_por_cor(db: Session, cor_id: uuid.UUID) -> list[LoteOut]:
@@ -61,37 +65,83 @@ def arquivar(db: Session, lote_id: uuid.UUID) -> LoteOut | None:
     return LoteOut.model_validate(lt)
 
 
-def debitar(lote: LoteTecido, peso_kg: float) -> None:
+def _kg(peso_kg) -> Decimal:
+    """Peso em Decimal com 3 casas, como a coluna (Numeric(10, 3))."""
+    return Decimal(str(peso_kg)).quantize(_MILESIMO, rounding=ROUND_HALF_UP)
+
+
+def _mover(db: Session, lote_id: uuid.UUID, peso, status) -> bool:
+    """UPDATE do lote com o novo peso e status calculados NO BANCO, a partir
+    do valor que está gravado na hora — nunca de um valor lido antes (F0,
+    passo 2b). Duas OCs concluídas ao mesmo tempo no mesmo lote somam as
+    duas baixas; com o cálculo em Python, a segunda gravava por cima da
+    primeira (`peso lido − consumo`) e uma baixa sumia.
+
+    Sem commit. Devolve False se o lote não existe. O objeto do lote que
+    estiver na sessão é expirado, para a próxima leitura vir do banco."""
+    mudou = db.execute(
+        update(LoteTecido)
+        .where(LoteTecido.id == lote_id)
+        .values(peso_disponivel_kg=peso, status=status)
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    carregado = db.identity_map.get(identity_key(LoteTecido, lote_id))
+    if carregado is not None:
+        db.expire(carregado, ["peso_disponivel_kg", "status"])
+    return mudou > 0
+
+
+def debitar(db: Session, lote_id: uuid.UUID, peso_kg) -> bool:
     """Baixa `peso_kg` do lote e ajusta o status — SEM commit.
 
-    O commit é de quem chama: a conclusão da OC grava todos os consumos e a
-    troca de status numa transação só, então o service do lote não pode
-    commitar por conta própria.
+    O saldo para no zero (débito maior que o saldo zera o lote); lote
+    intacto vira aberto e lote zerado vira esgotado. O commit é de quem
+    chama: a conclusão da OC grava todos os consumos e a troca de status
+    numa transação só, então o service do lote não pode commitar por conta
+    própria.
+
+        UPDATE lotes_tecido
+           SET peso_disponivel_kg = CASE WHEN round(peso - :kg, 3) > 0
+                                         THEN round(peso - :kg, 3) ELSE 0 END,
+               status = CASE WHEN round(peso - :kg, 3) <= 0 THEN 'esgotado'
+                             WHEN status = 'intacto' THEN 'aberto'
+                             ELSE status END
+         WHERE id = :id
     """
-    lote.peso_disponivel_kg = max(0.0, float(lote.peso_disponivel_kg) - peso_kg)
-    if lote.status == "intacto":
-        lote.status = "aberto"
-    if float(lote.peso_disponivel_kg) <= 0:
-        lote.status = "esgotado"
+    peso = LoteTecido.peso_disponivel_kg
+    restante = func.round(peso - _kg(peso_kg), 3)
+    return _mover(
+        db,
+        lote_id,
+        case((restante > 0, restante), else_=0),
+        case(
+            (restante <= 0, "esgotado"),
+            (LoteTecido.status == "intacto", "aberto"),
+            else_=LoteTecido.status,
+        ),
+    )
 
 
-def creditar(lote: LoteTecido, peso_kg: float) -> None:
-    """Devolve `peso_kg` ao lote (estorno) e reativa um lote esgotado — SEM commit."""
-    lote.peso_disponivel_kg = round(float(lote.peso_disponivel_kg) + peso_kg, 3)
-    # Nunca passa do inicial: um lote arquivado continua arquivado.
-    if lote.status == "esgotado" and float(lote.peso_disponivel_kg) > 0:
-        lote.status = "aberto"
+def creditar(db: Session, lote_id: uuid.UUID, peso_kg) -> bool:
+    """Devolve `peso_kg` ao lote (estorno) e reativa um lote esgotado — SEM
+    commit. Mesmo caminho do débito: a soma é feita no banco."""
+    peso = LoteTecido.peso_disponivel_kg
+    novo = func.round(peso + _kg(peso_kg), 3)
+    # Só o esgotado volta a aberto: um lote arquivado continua arquivado.
+    return _mover(
+        db,
+        lote_id,
+        novo,
+        case((and_(LoteTecido.status == "esgotado", novo > 0), "aberto"), else_=LoteTecido.status),
+    )
 
 
 def consumir(db: Session, lote_id: uuid.UUID, peso_kg: float) -> LoteOut | None:
     """Debita peso do lote e atualiza status para 'aberto' se estava intacto."""
-    lt = db.get(LoteTecido, lote_id)
-    if not lt:
+    if not debitar(db, lote_id, peso_kg):
         return None
-    debitar(lt, peso_kg)
     db.commit()
-    db.refresh(lt)
-    return LoteOut.model_validate(lt)
+    return LoteOut.model_validate(db.get(LoteTecido, lote_id))
 
 
 def verificar_alertas(db: Session) -> list[dict]:
