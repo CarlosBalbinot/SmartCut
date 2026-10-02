@@ -235,8 +235,10 @@ export default function OrdemCorteDetalhePage() {
       .then((lotes) => setEstoque(Object.fromEntries(lotes.map((l) => [l.id, l]))))
       .catch(() => setEstoque(null));
 
-  const carregar = () => {
-    setErro(null);
+  // manterErro: recarregar depois de uma ação recusada sem apagar a mensagem
+  // dela (ex.: 409 OC_STATUS_MUDOU — outra pessoa mudou a OC).
+  const carregar = ({ manterErro = false } = {}) => {
+    if (!manterErro) setErro(null);
     return getOrdemCorte(id)
       .then((dados) => {
         aplicar(dados);
@@ -275,7 +277,9 @@ export default function OrdemCorteDetalhePage() {
       }
     } catch (e) {
       setErro(e.message);
-      if (e.status === 409) carregar();
+      // OC_STATUS_MUDOU (outra pessoa mudou a OC no meio da ação) e os demais
+      // 409: mostra a mensagem e traz a OC como está agora.
+      if (e.codigo === "OC_STATUS_MUDOU" || e.status === 409) carregar({ manterErro: true });
     } finally {
       setAcao(null);
     }
@@ -357,7 +361,7 @@ export default function OrdemCorteDetalhePage() {
       setJobAtivo(true);
     } catch (e) {
       setErro(e.message);
-      if (e.status === 409) carregar();
+      if (e.status === 409) carregar({ manterErro: true });
     } finally {
       setAcao(null);
     }
@@ -383,7 +387,7 @@ export default function OrdemCorteDetalhePage() {
       setJobAtivo(true);
     } catch (e) {
       setErro(e.message);
-      carregar();
+      carregar({ manterErro: true });
     } finally {
       setAcao(null);
     }

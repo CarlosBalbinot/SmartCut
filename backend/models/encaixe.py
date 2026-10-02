@@ -34,8 +34,8 @@ class Encaixe(Base):
     num_camadas: Mapped[int] = mapped_column(Integer, default=1)
     # Numeração sequencial própria do encaixe (ENC-001, ENC-002...),
     # independente do número do PedidoVenda — gerada em
-    # nesting_service._numerar via MAX(numero)+1 contando também os
-    # deletados (soft-delete), para nunca reaproveitar um número.
+    # nesting_service._numerar pela sequência atômica "encaixe"
+    # (sequencia_service, F0 passo 1c) — nunca reaproveita um número.
     numero: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Identificação textual — herda o "Nome / identificação" que o usuário
     # digitou no Encaixe Rápido (PedidoVenda.observacoes_internas).

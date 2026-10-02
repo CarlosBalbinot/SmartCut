@@ -16,7 +16,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -769,6 +769,45 @@ def atualizar_do_pedido(db: Session, oc_id: uuid.UUID) -> dict:
     return ordem_out(db, _carregar(db, oc_id))
 
 
+# Código do 409 quando outra sessão mudou o status da OC no meio da ação: a
+# tela mostra a mensagem e recarrega a OC.
+OC_STATUS_MUDOU = "OC_STATUS_MUDOU"
+
+
+def _transicionar(db: Session, oc: OrdemCorte, de: tuple[str, ...], para: str, **campos) -> None:
+    """Troca o status com UPDATE condicional (F0, passo 2a):
+
+        UPDATE ordens_corte SET status = :para, ... WHERE id = :id AND status IN (:de)
+
+    Duas ações ao mesmo tempo sobre a mesma OC: o banco deixa uma de cada vez
+    passar; a segunda não encontra mais o status esperado, nenhuma linha muda
+    e ela sai com 409 OC_STATUS_MUDOU, sem ter gravado nada. Por isso vem
+    ANTES de mexer no estoque (concluir/reabrir): quem perde a disputa falha
+    antes de debitar ou creditar. Sem commit — o resto da ação entra na mesma
+    transação."""
+    tabela = OrdemCorte.__table__
+    mudou = db.execute(
+        update(tabela).where(tabela.c.id == oc.id, tabela.c.status.in_(de)).values(status=para, **campos)
+    ).rowcount
+    if mudou == 0:
+        db.rollback()
+        atual = db.execute(select(tabela.c.status).where(tabela.c.id == oc.id)).scalar_one_or_none()
+        if atual is None:
+            raise ErroOC("Ordem de Corte não encontrada", 404)
+        raise ErroOC(
+            f"A Ordem de Corte mudou de situação (agora está {atual}). Recarregue a tela.",
+            409,
+            codigo=OC_STATUS_MUDOU,
+            status_atual=atual,
+        )
+
+
+def _finalizar(db: Session, oc_id: uuid.UUID) -> dict:
+    db.commit()
+    db.expire_all()
+    return ordem_out(db, _carregar(db, oc_id))
+
+
 def cancelar(db: Session, oc_id: uuid.UUID) -> dict:
     """RASCUNHO/ENVIADA/EM_CORTE → CANCELADA. Cancelar em EM_CORTE não dá
     baixa nenhuma: consumo só existe depois de CONCLUIDA, e aí cancelar já
@@ -778,10 +817,8 @@ def cancelar(db: Session, oc_id: uuid.UUID) -> dict:
         raise ErroOC("Ordem de Corte não encontrada", 404)
     if oc.status in _FINAIS:
         raise ErroOC(f"Ordem de Corte já está {oc.status}.", 409)
-    oc.status = "CANCELADA"
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+    _transicionar(db, oc, ("RASCUNHO", "ENVIADA", "EM_CORTE"), "CANCELADA")
+    return _finalizar(db, oc_id)
 
 
 def enviar_a_producao(db: Session, oc_id: uuid.UUID) -> dict:
@@ -803,11 +840,8 @@ def enviar_a_producao(db: Session, oc_id: uuid.UUID) -> dict:
             "Regere os encaixes antes de enviar.",
             409,
         )
-    oc.status = "ENVIADA"
-    oc.enviada_em = _agora()
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+    _transicionar(db, oc, ("RASCUNHO",), "ENVIADA", enviada_em=_agora())
+    return _finalizar(db, oc_id)
 
 
 # ── Produção (OC6a) ───────────────────────────────────────────────────────────
@@ -823,12 +857,8 @@ def voltar_rascunho(db: Session, oc_id: uuid.UUID) -> dict:
         raise ErroOC(f"Só uma Ordem de Corte ENVIADA volta para rascunho (esta está {oc.status}).", 409)
     if oc.iniciada_em is not None:
         raise ErroOC("A Ordem de Corte já iniciou o corte e não volta para rascunho.", 409)
-    oc.status = "RASCUNHO"
-    oc.enviada_em = None
-    oc.cortador = None
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+    _transicionar(db, oc, ("ENVIADA",), "RASCUNHO", enviada_em=None, cortador=None)
+    return _finalizar(db, oc_id)
 
 
 def iniciar_corte(db: Session, oc_id: uuid.UUID, cortador: str | None = None) -> dict:
@@ -841,13 +871,11 @@ def iniciar_corte(db: Session, oc_id: uuid.UUID, cortador: str | None = None) ->
             f"Só uma Ordem de Corte ENVIADA inicia o corte (esta está {oc.status}).",
             409,
         )
-    oc.status = "EM_CORTE"
-    oc.iniciada_em = _agora()
+    campos = {"iniciada_em": _agora()}
     if cortador:
-        oc.cortador = cortador
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+        campos["cortador"] = cortador
+    _transicionar(db, oc, ("ENVIADA",), "EM_CORTE", **campos)
+    return _finalizar(db, oc_id)
 
 
 def concluir(db: Session, oc_id: uuid.UUID, cortador: str, consumos: list[dict], observacao: str | None = None) -> dict:
@@ -884,7 +912,8 @@ def concluir(db: Session, oc_id: uuid.UUID, cortador: str, consumos: list[dict],
     for lote_id in planejado:
         pedidos.setdefault(lote_id, {"lote_id": lote_id, "kg_real": planejado[lote_id], "sobra_kg": None})
 
-    agora = _agora()
+    # Valida tudo antes de gravar qualquer coisa.
+    baixas = []
     for lote_id, item in pedidos.items():
         lote = lotes_oc.get(lote_id) or db.get(LoteTecido, lote_id)
         if not lote:
@@ -896,6 +925,16 @@ def concluir(db: Session, oc_id: uuid.UUID, cortador: str, consumos: list[dict],
         sobra = item.get("sobra_kg")
         if sobra is not None and float(sobra) < 0:
             raise ErroOC(f"Sobra negativa no consumo do lote {lote.codigo_lote}.", 400)
+        baixas.append((lote_id, lote, kg, sobra))
+
+    agora = _agora()
+    # Status primeiro: quem perde a disputa sai aqui, antes de debitar.
+    campos = {"concluida_em": agora}
+    if cortador:
+        campos["cortador"] = cortador
+    _transicionar(db, oc, ("EM_CORTE",), "CONCLUIDA", **campos)
+
+    for lote_id, lote, kg, sobra in baixas:
         db.add(
             ConsumoLote(
                 lote_id=lote.id,
@@ -910,14 +949,7 @@ def concluir(db: Session, oc_id: uuid.UUID, cortador: str, consumos: list[dict],
             )
         )
         lote_service.debitar(lote, kg)
-
-    oc.status = "CONCLUIDA"
-    oc.concluida_em = agora
-    if cortador:
-        oc.cortador = cortador
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+    return _finalizar(db, oc_id)
 
 
 def reabrir(db: Session, oc_id: uuid.UUID, quem: str, observacao: str | None = None) -> dict:
@@ -950,6 +982,8 @@ def reabrir(db: Session, oc_id: uuid.UUID, quem: str, observacao: str | None = N
         raise ErroOC("A Ordem de Corte não tem consumo para estornar.", 409)
 
     agora = _agora()
+    # Status primeiro: quem perde a disputa sai aqui, antes de creditar.
+    _transicionar(db, oc, ("CONCLUIDA",), "EM_CORTE", concluida_em=None)
     assinatura = (observacao or "").strip()
     nota = f"Reabertura por {quem} em {agora:%d/%m/%Y %H:%M}".strip()
     if assinatura:
@@ -974,11 +1008,7 @@ def reabrir(db: Session, oc_id: uuid.UUID, quem: str, observacao: str | None = N
                 observacao=nota,
             )
         )
-    oc.status = "EM_CORTE"
-    oc.concluida_em = None
-    db.commit()
-    db.expire_all()
-    return ordem_out(db, _carregar(db, oc_id))
+    return _finalizar(db, oc_id)
 
 
 # ── Encaixes da OC ────────────────────────────────────────────────────────────

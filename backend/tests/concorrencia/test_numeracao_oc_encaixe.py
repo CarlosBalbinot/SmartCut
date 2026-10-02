@@ -6,48 +6,22 @@ Agora as duas numerações saem de services/sequencia_service.py.
 """
 
 import uuid
-from datetime import date
 from decimal import Decimal
 
 import pytest
 
 from models.encaixe import Encaixe
 from models.ordem_corte import OrdemCorte
-from models.pedido import ItemPedido, PedidoVenda
 from services import nesting_service
 from services import ordem_corte_service as svc
+from tests.concorrencia import cenario
 from tests.concorrencia.disputa import disputar, erros
-from tests.test_ordem_corte_producao import _novo_produto
 
 N = 10
 
 
 def _pedidos(fabrica, n: int) -> list[uuid.UUID]:
-    """`n` pedidos, cada um com um item de produto (o mínimo para gerar OC)."""
-    db = fabrica()
-    try:
-        produto, sku = _novo_produto(db)
-        ids = []
-        for i in range(n):
-            pedido = PedidoVenda(numero=f"P{i:04d}", data_emissao=date(2026, 10, 1))
-            db.add(pedido)
-            db.flush()
-            db.add(
-                ItemPedido(
-                    pedido_id=pedido.id,
-                    produto_id=produto.id,
-                    sku_id=sku.id,
-                    cor="Azul",
-                    quantidade=4,
-                    preco_unitario=Decimal("90.00"),
-                    preco_total=Decimal("360.00"),
-                )
-            )
-            ids.append(pedido.id)
-        db.commit()
-        return ids
-    finally:
-        db.close()
+    return cenario.pedidos(fabrica, n)
 
 
 def _encaixe(pedido_id: uuid.UUID) -> Encaixe:
