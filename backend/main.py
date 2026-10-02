@@ -116,7 +116,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SmartCut API",
     description="Sistema inteligente de gestão e otimização de corte têxtil",
-    version="1.3.0",
+    version="1.4.0",
     lifespan=lifespan,
 )
 
